@@ -333,12 +333,15 @@
       .then(r => r.json())
       .then(data => {
         tbody.innerHTML = data.projects.map(p => `
-          <tr data-thumb="${p.thumb || ''}">
-            <td>${p.title}</td>
+          <tr data-thumb="${p.thumb || ''}" ${p.url ? `data-url="${p.url}" style="cursor:pointer"` : ''}>
+            <td>${p.url ? `<a href="${p.url}" style="color:inherit;text-decoration:none;">${p.title}</a>` : p.title}</td>
             <td>${p.category}</td>
             <td>${p.year}</td>
           </tr>`).join('');
         bindHover();
+        document.querySelectorAll('tbody tr[data-url]').forEach(row => {
+          row.addEventListener('click', () => window.location = row.dataset.url);
+        });
       });
   </script>
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
