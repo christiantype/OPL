@@ -234,11 +234,11 @@
       const dpr = window.devicePixelRatio || 1;
       W = window.innerWidth;
       H = window.innerHeight;
-      canvas.width  = W * dpr;
-      canvas.height = H * dpr;
+      canvas.width  = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
       canvas.style.width  = W + 'px';
       canvas.style.height = H + 'px';
-      ctx.scale(dpr, dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
     window.addEventListener('resize', resize);
@@ -265,9 +265,10 @@
               const t = 1 - dist/150;
               const a = t * Math.min(state.nodes[i].alpha, state.nodes[j].alpha) * 0.9;
               const [r,g,b] = state.nodes[i].color;
-              ctx.beginPath(); ctx.moveTo(state.nodes[i].x, state.nodes[i].y);
-              ctx.lineTo(state.nodes[j].x, state.nodes[j].y);
-              ctx.strokeStyle = `rgba(${r},${g},${b},${a})`; ctx.lineWidth = 0.8; ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(Math.round(state.nodes[i].x) + 0.5, Math.round(state.nodes[i].y) + 0.5);
+              ctx.lineTo(Math.round(state.nodes[j].x) + 0.5, Math.round(state.nodes[j].y) + 0.5);
+              ctx.strokeStyle = `rgba(${r},${g},${b},${a})`; ctx.lineWidth = 1; ctx.stroke();
             }
           }
         }
