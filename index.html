@@ -70,6 +70,22 @@
       text-transform: uppercase;
       white-space: nowrap;
       user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: #FF69B4;
+      animation: blink 1s step-start infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
     }
 
     /* ── Hero definitions ── */
@@ -206,7 +222,7 @@
   <div id="thumb"><img src="" alt="" /></div>
 
   <section id="hero">
-    <div id="wordmark">Original Practice Lab</div>
+    <div id="wordmark">Original Practice Lab<span id="cursor"></span></div>
     <div id="hero-defs">
       <div>
         <div class="def-term">Original</div>
@@ -264,7 +280,7 @@
           vx: rand(-0.08, 0.08),
           vy: rand(-0.08, 0.08),
           color: c,
-          alpha: rand(0.08, 0.28),
+          alpha: rand(0.25, 0.7),
         };
       });
     }
@@ -280,13 +296,13 @@
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < maxDist) {
             const t = 1 - dist / maxDist;
-            const a = t * Math.min(nodes[i].alpha, nodes[j].alpha) * 0.4;
+            const a = t * Math.min(nodes[i].alpha, nodes[j].alpha) * 0.9;
             const [r, g, b] = nodes[i].color;
             ctx.beginPath();
             ctx.moveTo(nodes[i].x, nodes[i].y);
             ctx.lineTo(nodes[j].x, nodes[j].y);
             ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
-            ctx.lineWidth = 0.3;
+            ctx.lineWidth = 0.8;
             ctx.stroke();
           }
         }
