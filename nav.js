@@ -1,5 +1,5 @@
 /* ── OPL Shared Nav — edit NAV_LOGO_HEIGHT to resize the logo ── */
-const NAV_LOGO_HEIGHT = '20px';
+const NAV_LOGO_HEIGHT = '100px';
 
 (function () {
   const inProject = window.location.pathname.includes('/projects/');
