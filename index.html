@@ -296,12 +296,18 @@
     (function () {
       const el = document.getElementById('footer-wm-text');
       function fit() {
-        el.style.fontSize = '10px';
-        const scale = window.innerWidth / el.scrollWidth;
-        el.style.fontSize = (10 * scale) + 'px';
+        el.style.fontSize = '100px';
+        el.style.visibility = 'hidden';
+        requestAnimationFrame(function () {
+          const scale = window.innerWidth / el.scrollWidth;
+          el.style.fontSize = (100 * scale) + 'px';
+          el.style.visibility = 'visible';
+        });
       }
-      fit();
-      window.addEventListener('resize', fit);
+      document.fonts.ready.then(function () {
+        fit();
+        window.addEventListener('resize', fit);
+      });
     })();
   </script>
 
