@@ -7,14 +7,6 @@
   <link rel="stylesheet" href="styles.css">
   <style>
 
-    #canvas {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      pointer-events: none;
-      z-index: 0;
-    }
-
     /* ── Hero ── */
     #hero {
       position: relative;
@@ -149,10 +141,10 @@
     }
 
   </style>
+
 </head>
 <body>
   <script src="nav.js"></script>
-  <canvas id="canvas"></canvas>
   <div id="thumb"><img src="" alt="" /></div>
 
   <section id="hero">
@@ -172,65 +164,6 @@
   </section>
 
   <script>
-    const canvas = document.getElementById('canvas');
-    const ctx    = canvas.getContext('2d');
-    let W, H, raf, state = {};
-
-    function rand(a, b) { return a + Math.random() * (b - a); }
-
-    function resize() {
-      const dpr = window.devicePixelRatio || 1;
-      W = window.innerWidth;
-      H = window.innerHeight;
-      canvas.width  = Math.round(W * dpr);
-      canvas.height = Math.round(H * dpr);
-      canvas.style.width  = W + 'px';
-      canvas.style.height = H + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    window.addEventListener('resize', resize);
-    resize();
-
-    function startNodes() {
-      const COLORS = [[26,25,23],[74,71,68],[140,136,133],[196,192,187]];
-      state.nodes = Array.from({length: 70}, () => {
-        const c = COLORS[Math.floor(Math.random() * COLORS.length)];
-        return { x: rand(0,W), y: rand(0,H), r: rand(0.5,2),
-                 vx: rand(-0.08,0.08), vy: rand(-0.08,0.08), color: c, alpha: rand(0.25,0.7) };
-      });
-      (function loop() {
-        ctx.clearRect(0, 0, W, H);
-        for (let i = 0; i < state.nodes.length; i++) {
-          for (let j = i+1; j < state.nodes.length; j++) {
-            const dx = state.nodes[j].x - state.nodes[i].x;
-            const dy = state.nodes[j].y - state.nodes[i].y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist < 150) {
-              const t = 1 - dist/150;
-              const a = t * Math.min(state.nodes[i].alpha, state.nodes[j].alpha) * 0.9;
-              const [r,g,b] = state.nodes[i].color;
-              ctx.beginPath();
-              ctx.moveTo(Math.round(state.nodes[i].x) + 0.5, Math.round(state.nodes[i].y) + 0.5);
-              ctx.lineTo(Math.round(state.nodes[j].x) + 0.5, Math.round(state.nodes[j].y) + 0.5);
-              ctx.strokeStyle = `rgba(${r},${g},${b},${a})`; ctx.lineWidth = 1; ctx.stroke();
-            }
-          }
-        }
-        for (const n of state.nodes) {
-          const [r,g,b] = n.color;
-          ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
-          ctx.fillStyle = `rgba(${r},${g},${b},${n.alpha})`; ctx.fill();
-          n.x += n.vx; n.y += n.vy;
-          if (n.x < -20) n.x = W+20; if (n.x > W+20) n.x = -20;
-          if (n.y < -20) n.y = H+20; if (n.y > H+20) n.y = -20;
-        }
-        raf = requestAnimationFrame(loop);
-      })();
-    }
-
-    startNodes();
-
     (function () {
       const words = ['non-derivative','ongoing','process-based','experimental',
                      'collaborative','exploratory','opalescent','mindful',
@@ -302,11 +235,12 @@
   <script>
     (function () {
       const el = document.getElementById('footer-wm-text');
+      const wrapper = document.getElementById('footer-wordmark');
       function fit() {
         el.style.fontSize = '100px';
         el.style.visibility = 'hidden';
         requestAnimationFrame(function () {
-          const scale = window.innerWidth / el.scrollWidth;
+          const scale = wrapper.offsetWidth / el.scrollWidth;
           el.style.fontSize = (100 * scale) + 'px';
           el.style.visibility = 'visible';
         });

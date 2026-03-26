@@ -1,79 +1,115 @@
-/* ── OPL Custom Cursor — + with fading trail ── */
+/* ── OPL Custom Cursor — dot + tapering canvas trail ── */
 (function () {
 
   /* Hide default cursor */
   document.documentElement.style.cursor = 'none';
 
-  /* Main + cursor */
-  const cursor = document.createElement('div');
-  Object.assign(cursor.style, {
+  /* Small dot that tracks the pointer */
+  const dot = document.createElement('div');
+  Object.assign(dot.style, {
     position:      'fixed',
     pointerEvents: 'none',
     zIndex:        '99999',
-    fontSize:      '18px',
-    fontFamily:    'inherit',
-    fontWeight:    '300',
-    color:         '#000',
-    lineHeight:    '1',
+    width:         '6px',
+    height:        '6px',
+    borderRadius:  '50%',
+    background:    '#0D0C0A',
     transform:     'translate(-50%, -50%)',
     top:           '-100px',
     left:          '-100px',
   });
-  cursor.textContent = '+';
-  document.body.appendChild(cursor);
+  document.body.appendChild(dot);
 
-  let lastX = 0, lastY = 0, ticking = false;
-  const TRAIL_INTERVAL = 30; /* ms between trail marks */
-  let lastTrail = 0;
+  /* Full-page canvas for the trail */
+  const canvas = document.createElement('canvas');
+  Object.assign(canvas.style, {
+    position:      'fixed',
+    top:           '0',
+    left:          '0',
+    pointerEvents: 'none',
+    zIndex:        '99998',
+  });
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
 
-  document.addEventListener('mousemove', function (e) {
-    lastX = e.clientX;
-    lastY = e.clientY;
+  function resizeCanvas() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
 
-    if (!ticking) {
-      requestAnimationFrame(function () {
-        cursor.style.left = lastX + 'px';
-        cursor.style.top  = lastY + 'px';
-        ticking = false;
-      });
-      ticking = true;
+  /* Trail state */
+  const trail   = [];
+  const MAX     = 180;
+  let trailAlpha = 0;
+  let idleTimer  = null;
+  let animating  = false;
+
+  /* Draw one frame */
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (trail.length < 2 || trailAlpha <= 0) {
+      animating = false;
+      return;
     }
 
-    /* Throttle trail creation */
-    const now = Date.now();
-    if (now - lastTrail < TRAIL_INTERVAL) return;
-    lastTrail = now;
+    for (let i = 1; i < trail.length; i++) {
+      const progress = i / trail.length;
+      ctx.beginPath();
+      ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+      ctx.lineTo(trail[i].x, trail[i].y);
+      ctx.strokeStyle = `rgba(13,12,10,${progress * 0.5 * trailAlpha})`;
+      ctx.lineWidth   = progress * 1.1;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+      ctx.stroke();
+    }
 
-    const dot = document.createElement('div');
-    Object.assign(dot.style, {
-      position:      'fixed',
-      pointerEvents: 'none',
-      zIndex:        '99998',
-      fontSize:      '14px',
-      fontFamily:    'inherit',
-      fontWeight:    '300',
-      color:         '#000',
-      lineHeight:    '1',
-      transform:     'translate(-50%, -50%)',
-      left:          e.clientX + 'px',
-      top:           e.clientY + 'px',
-      opacity:       '0.5',
-      transition:    'opacity 1s ease',
-    });
-    dot.textContent = '+';
-    document.body.appendChild(dot);
+    requestAnimationFrame(draw);
+  }
 
-    requestAnimationFrame(function () {
-      dot.style.opacity = '0';
-    });
+  /* Fade out trail when mouse is idle */
+  function startFade() {
+    (function fade() {
+      trailAlpha -= 0.018;
+      if (trailAlpha > 0) {
+        requestAnimationFrame(fade);
+      } else {
+        trailAlpha   = 0;
+        trail.length = 0;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        animating = false;
+      }
+    })();
+  }
 
-    setTimeout(function () { dot.remove(); }, 1000);
+  document.addEventListener('mousemove', function (e) {
+    /* Move dot */
+    dot.style.left = e.clientX + 'px';
+    dot.style.top  = e.clientY + 'px';
+
+    /* Accumulate trail points */
+    trail.push({ x: e.clientX, y: e.clientY });
+    if (trail.length > MAX) trail.shift();
+
+    trailAlpha = 1;
+
+    /* Reset idle timer */
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(startFade, 900);
+
+    /* Kick off draw loop if not already running */
+    if (!animating) {
+      animating = true;
+      requestAnimationFrame(draw);
+    }
   });
 
-  /* Restore cursor when leaving window */
   document.addEventListener('mouseleave', function () {
-    cursor.style.top  = '-100px';
-    cursor.style.left = '-100px';
+    dot.style.top  = '-100px';
+    dot.style.left = '-100px';
   });
 
 })();
