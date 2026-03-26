@@ -252,88 +252,266 @@
 
   <script>
     const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx    = canvas.getContext('2d');
+    let W, H, raf, state = {};
 
-    const COLORS = [
-      [26,  25,  23],
-      [74,  71,  68],
-      [140, 136, 133],
-      [196, 192, 187],
-    ];
-
-    let W, H, nodes;
+    function rand(a, b) { return a + Math.random() * (b - a); }
 
     function resize() {
       W = canvas.width  = window.innerWidth;
       H = canvas.height = window.innerHeight;
     }
 
-    function rand(a, b) { return a + Math.random() * (b - a); }
-
-    function createNodes(count) {
-      return Array.from({ length: count }, () => {
-        const c = COLORS[Math.floor(Math.random() * COLORS.length)];
-        return {
-          x: rand(0, W),
-          y: rand(0, H),
-          r: rand(0.5, 2),
-          vx: rand(-0.08, 0.08),
-          vy: rand(-0.08, 0.08),
-          color: c,
-          alpha: rand(0.25, 0.7),
-        };
-      });
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      const maxDist = 150;
-
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const dx = nodes[j].x - nodes[i].x;
-          const dy = nodes[j].y - nodes[i].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < maxDist) {
-            const t = 1 - dist / maxDist;
-            const a = t * Math.min(nodes[i].alpha, nodes[j].alpha) * 0.9;
-            const [r, g, b] = nodes[i].color;
-            ctx.beginPath();
-            ctx.moveTo(nodes[i].x, nodes[i].y);
-            ctx.lineTo(nodes[j].x, nodes[j].y);
-            ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
-          }
-        }
-      }
-
-      for (const n of nodes) {
-        const [r, g, b] = n.color;
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${r},${g},${b},${n.alpha})`;
-        ctx.fill();
-      }
-    }
-
-    function update() {
-      for (const n of nodes) {
-        n.x += n.vx;
-        n.y += n.vy;
-        if (n.x < -20)    n.x = W + 20;
-        if (n.x > W + 20) n.x = -20;
-        if (n.y < -20)    n.y = H + 20;
-        if (n.y > H + 20) n.y = -20;
-      }
-    }
-
-    function loop() { update(); draw(); requestAnimationFrame(loop); }
-
     window.addEventListener('resize', resize);
     resize();
-    nodes = createNodes(70);
-    loop();
+
+    /* ── stop current animation ── */
+    function stop() {
+      cancelAnimationFrame(raf);
+      ctx.clearRect(0, 0, W, H);
+      const tw = document.getElementById('tw-overlay');
+      if (tw) tw.style.display = 'none';
+      state = {};
+    }
+
+    /* ══════════════════════════════════════════
+       1. NODES
+    ══════════════════════════════════════════ */
+    function startNodes() {
+      const COLORS = [[26,25,23],[74,71,68],[140,136,133],[196,192,187]];
+      state.nodes = Array.from({length: 70}, () => {
+        const c = COLORS[Math.floor(Math.random() * COLORS.length)];
+        return { x: rand(0,W), y: rand(0,H), r: rand(0.5,2),
+                 vx: rand(-0.08,0.08), vy: rand(-0.08,0.08), color: c, alpha: rand(0.25,0.7) };
+      });
+      (function loop() {
+        ctx.clearRect(0, 0, W, H);
+        for (let i = 0; i < state.nodes.length; i++) {
+          for (let j = i+1; j < state.nodes.length; j++) {
+            const dx = state.nodes[j].x - state.nodes[i].x;
+            const dy = state.nodes[j].y - state.nodes[i].y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 150) {
+              const t = 1 - dist/150;
+              const a = t * Math.min(state.nodes[i].alpha, state.nodes[j].alpha) * 0.9;
+              const [r,g,b] = state.nodes[i].color;
+              ctx.beginPath(); ctx.moveTo(state.nodes[i].x, state.nodes[i].y);
+              ctx.lineTo(state.nodes[j].x, state.nodes[j].y);
+              ctx.strokeStyle = `rgba(${r},${g},${b},${a})`; ctx.lineWidth = 0.8; ctx.stroke();
+            }
+          }
+        }
+        for (const n of state.nodes) {
+          const [r,g,b] = n.color;
+          ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+          ctx.fillStyle = `rgba(${r},${g},${b},${n.alpha})`; ctx.fill();
+          n.x += n.vx; n.y += n.vy;
+          if (n.x < -20) n.x = W+20; if (n.x > W+20) n.x = -20;
+          if (n.y < -20) n.y = H+20; if (n.y > H+20) n.y = -20;
+        }
+        raf = requestAnimationFrame(loop);
+      })();
+    }
+
+    /* ══════════════════════════════════════════
+       2. DRAWING LINE
+    ══════════════════════════════════════════ */
+    function startLine() {
+      let t = 0;
+      const pts = [
+        [0.1, 0.5], [0.25, 0.3], [0.4, 0.65], [0.55, 0.35],
+        [0.7, 0.6], [0.85, 0.4], [0.95, 0.5]
+      ];
+      (function loop() {
+        ctx.clearRect(0, 0, W, H);
+        t = (t + 0.003) % 1;
+        const total = pts.length - 1;
+        const drawTo = t * total;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0]*W, pts[0][1]*H);
+        for (let i = 1; i <= total; i++) {
+          const prog = Math.min(Math.max(drawTo - (i-1), 0), 1);
+          if (prog <= 0) break;
+          const x = pts[i-1][0]*W + (pts[i][0] - pts[i-1][0])*W * prog;
+          const y = pts[i-1][1]*H + (pts[i][1] - pts[i-1][1])*H * prog;
+          ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = 'rgba(26,25,23,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+        raf = requestAnimationFrame(loop);
+      })();
+    }
+
+    /* ══════════════════════════════════════════
+       3. BREATH — ellipse expanding/contracting
+    ══════════════════════════════════════════ */
+    function startBreath() {
+      let t = 0;
+      (function loop() {
+        ctx.clearRect(0, 0, W, H);
+        t += 0.008;
+        const scale = 0.7 + Math.sin(t) * 0.3;
+        const rx = W * 0.28 * scale;
+        const ry = H * 0.12 * scale;
+        // outer ring
+        ctx.beginPath(); ctx.ellipse(W/2, H/2, rx, ry, 0, 0, Math.PI*2);
+        ctx.strokeStyle = `rgba(26,25,23,${0.12 + Math.sin(t)*0.08})`; ctx.lineWidth = 1; ctx.stroke();
+        // inner ellipse
+        ctx.beginPath(); ctx.ellipse(W/2, H/2, rx*0.38, ry*0.38, 0, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(26,25,23,${0.08 + Math.sin(t)*0.05})`; ctx.fill();
+        raf = requestAnimationFrame(loop);
+      })();
+    }
+
+    /* ══════════════════════════════════════════
+       4. TYPEWRITER
+    ══════════════════════════════════════════ */
+    function startTypewriter() {
+      const phrases = ['attention','authorship','restraint','clarity','not yet',
+                       'process','never finished','presence','inquiry','courage'];
+      let pi = 0, ci = 0, erasing = false, wait = 0;
+      let tw = document.getElementById('tw-overlay');
+      if (!tw) {
+        tw = document.createElement('div'); tw.id = 'tw-overlay';
+        Object.assign(tw.style, {
+          position:'fixed', inset:'0', display:'flex', alignItems:'center',
+          justifyContent:'center', pointerEvents:'none', zIndex:'1',
+          fontFamily:'inherit', fontSize:'13px', letterSpacing:'4px',
+          textTransform:'uppercase', color:'rgba(26,25,23,0.45)'
+        });
+        document.body.appendChild(tw);
+      }
+      tw.style.display = 'flex';
+      ctx.clearRect(0, 0, W, H);
+
+      function tick() {
+        if (wait-- > 0) { raf = setTimeout(tick, 60); return; }
+        const word = phrases[pi];
+        if (!erasing) {
+          ci++;
+          tw.textContent = word.slice(0, ci);
+          if (ci >= word.length) { erasing = true; wait = 30; }
+        } else {
+          ci--;
+          tw.textContent = word.slice(0, ci);
+          if (ci <= 0) { erasing = false; pi = (pi+1) % phrases.length; wait = 8; }
+        }
+        raf = setTimeout(tick, erasing ? 50 : 90);
+      }
+      tick();
+    }
+
+    /* ══════════════════════════════════════════
+       5. GRAIN
+    ══════════════════════════════════════════ */
+    function startGrain() {
+      (function loop() {
+        ctx.clearRect(0, 0, W, H);
+        const img = ctx.createImageData(W, H);
+        for (let i = 0; i < img.data.length; i += 4) {
+          const v = Math.random() > 0.92 ? Math.floor(rand(100,180)) : 240;
+          img.data[i] = img.data[i+1] = img.data[i+2] = v;
+          img.data[i+3] = v < 240 ? Math.floor(rand(20, 80)) : 0;
+        }
+        ctx.putImageData(img, 0, 0);
+        raf = requestAnimationFrame(loop);
+      })();
+    }
+
+    /* ══════════════════════════════════════════
+       6. INK DIFFUSION
+    ══════════════════════════════════════════ */
+    function startInk() {
+      let t = 0;
+      (function loop() {
+        ctx.clearRect(0, 0, W, H);
+        t += 0.004;
+        const r = (Math.sin(t) * 0.5 + 0.5) * Math.min(W, H) * 0.45 + 20;
+        const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, r);
+        grad.addColorStop(0,   'rgba(26,25,23,0.18)');
+        grad.addColorStop(0.4, 'rgba(26,25,23,0.06)');
+        grad.addColorStop(1,   'rgba(26,25,23,0)');
+        ctx.beginPath(); ctx.arc(W/2, H/2, r, 0, Math.PI*2);
+        ctx.fillStyle = grad; ctx.fill();
+        raf = requestAnimationFrame(loop);
+      })();
+    }
+
+    /* ══════════════════════════════════════════
+       7. GRID REVEAL
+    ══════════════════════════════════════════ */
+    function startGridReveal() {
+      const COLS = 12, GAP = 24;
+      const colW = (W - GAP * (COLS-1)) / COLS;
+      state.cols = Array.from({length: COLS}, (_, i) => ({
+        x: i * (colW + GAP), alpha: rand(0, 1), speed: rand(0.003, 0.012)
+      }));
+      (function loop() {
+        ctx.clearRect(0, 0, W, H);
+        for (const c of state.cols) {
+          c.alpha = (Math.sin(Date.now() * c.speed * 0.01 + c.x) * 0.5 + 0.5) * 0.12;
+          ctx.fillStyle = `rgba(26,25,23,${c.alpha})`;
+          ctx.fillRect(c.x, 0, colW, H);
+        }
+        raf = requestAnimationFrame(loop);
+      })();
+    }
+
+    /* ══════════════════════════════════════════
+       8. HORIZON LINE
+    ══════════════════════════════════════════ */
+    function startHorizon() {
+      let t = 0;
+      (function loop() {
+        ctx.clearRect(0, 0, W, H);
+        t += 0.006;
+        const y = H/2 + Math.sin(t) * H * 0.08;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y);
+        ctx.strokeStyle = 'rgba(26,25,23,0.2)'; ctx.lineWidth = 1; ctx.stroke();
+        raf = requestAnimationFrame(loop);
+      })();
+    }
+
+    /* ── Mode map ── */
+    const MODES = {
+      'nodes':      startNodes,
+      'line':       startLine,
+      'breath':     startBreath,
+      'typewriter': startTypewriter,
+      'grain':      startGrain,
+      'ink':        startInk,
+      'grid':       startGridReveal,
+      'horizon':    startHorizon,
+    };
+
+    function switchMode(key) {
+      stop();
+      MODES[key]();
+    }
+
+    /* ── Dropdown UI ── */
+    const dropdown = document.createElement('select');
+    Object.assign(dropdown.style, {
+      position: 'fixed', bottom: '24px', right: '64px', zIndex: '10000',
+      background: 'transparent', border: '1px solid rgba(140,136,133,0.4)',
+      color: '#8C8885', fontSize: '9px', fontFamily: 'inherit',
+      letterSpacing: '1px', cursor: 'pointer', padding: '4px 6px',
+      outline: 'none', borderRadius: '0',
+    });
+
+    [['nodes','Nodes (current)'],['line','Drawing Line'],['breath','Breath / Ellipse'],
+     ['typewriter','Typewriter'],['grain','Film Grain'],['ink','Ink Diffusion'],
+     ['grid','Grid Reveal'],['horizon','Horizon Line']
+    ].forEach(([val, label]) => {
+      const opt = document.createElement('option');
+      opt.value = val; opt.textContent = label;
+      dropdown.appendChild(opt);
+    });
+
+    dropdown.addEventListener('change', () => switchMode(dropdown.value));
+    document.body.appendChild(dropdown);
+
+    /* ── Start default ── */
+    startNodes();
 
     // ── Projects — load from projects.json ──
     const thumb    = document.getElementById('thumb');
