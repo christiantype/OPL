@@ -226,58 +226,7 @@
           <th>Year</th>
         </tr>
       </thead>
-      <tbody>
-        <tr data-thumb="https://picsum.photos/seed/opl1/960/720">
-          <td>Threshold Study No. 1</td>
-          <td>Research</td>
-          <td>2025</td>
-        </tr>
-        <tr data-thumb="https://picsum.photos/seed/opl2/960/720">
-          <td>Material Residue</td>
-          <td>Installation</td>
-          <td>2025</td>
-        </tr>
-        <tr data-thumb="https://picsum.photos/seed/opl3/960/720">
-          <td>Ambient Protocols</td>
-          <td>Sound</td>
-          <td>2024</td>
-        </tr>
-        <tr data-thumb="https://picsum.photos/seed/opl4/960/720">
-          <td>Fieldwork: Series A</td>
-          <td>Documentation</td>
-          <td>2024</td>
-        </tr>
-        <tr data-thumb="https://picsum.photos/seed/opl5/960/720">
-          <td>Soft Infrastructure</td>
-          <td>Architecture</td>
-          <td>2024</td>
-        </tr>
-        <tr data-thumb="https://picsum.photos/seed/opl6/960/720">
-          <td>Latent Structures</td>
-          <td>Publication</td>
-          <td>2023</td>
-        </tr>
-        <tr data-thumb="https://picsum.photos/seed/opl7/960/720">
-          <td>Index of Friction</td>
-          <td>Research</td>
-          <td>2023</td>
-        </tr>
-        <tr data-thumb="https://picsum.photos/seed/opl8/960/720">
-          <td>Controlled Variables</td>
-          <td>Performance</td>
-          <td>2023</td>
-        </tr>
-        <tr data-thumb="https://picsum.photos/seed/opl9/960/720">
-          <td>Specimen Drawings</td>
-          <td>Print</td>
-          <td>2022</td>
-        </tr>
-        <tr data-thumb="https://picsum.photos/seed/opl10/960/720">
-          <td>Negative Space Protocol</td>
-          <td>Installation</td>
-          <td>2022</td>
-        </tr>
-      </tbody>
+      <tbody id="project-rows"></tbody>
     </table>
   </section>
 
@@ -366,20 +315,35 @@
     nodes = createNodes(70);
     loop();
 
-    // ── Thumbnail hover ──
+    // ── Projects — load from projects.json ──
     const thumb    = document.getElementById('thumb');
     const thumbImg = thumb.querySelector('img');
-    const rows     = document.querySelectorAll('tbody tr[data-thumb]');
+    const tbody    = document.getElementById('project-rows');
 
-    rows.forEach(row => {
-      row.addEventListener('mouseenter', () => {
-        thumbImg.src = row.dataset.thumb;
-        thumb.style.opacity = '1';
+    function bindHover() {
+      document.querySelectorAll('tbody tr[data-thumb]').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+          thumbImg.src = row.dataset.thumb;
+          thumb.style.opacity = '1';
+        });
+        row.addEventListener('mouseleave', () => {
+          thumb.style.opacity = '0';
+        });
       });
-      row.addEventListener('mouseleave', () => {
-        thumb.style.opacity = '0';
+    }
+
+    fetch('projects.json')
+      .then(r => r.json())
+      .then(data => {
+        tbody.innerHTML = data.projects.map(p => `
+          <tr data-thumb="${p.thumb || ''}">
+            <td>${p.title}</td>
+            <td>${p.category}</td>
+            <td>${p.year}</td>
+          </tr>`).join('');
+        bindHover();
       });
-    });
   </script>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </body>
 </html>

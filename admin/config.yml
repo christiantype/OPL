@@ -1,0 +1,44 @@
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "images"
+public_folder: "/images"
+
+collections:
+
+  # ── Projects (index page table) ──
+  - name: "projects"
+    label: "Projects"
+    files:
+      - name: "project-list"
+        label: "Project List"
+        file: "projects.json"
+        fields:
+          - name: "projects"
+            label: "Projects"
+            label_singular: "Project"
+            widget: "list"
+            fields:
+              - { name: "title",    label: "Title",     widget: "string" }
+              - { name: "category", label: "Category",  widget: "select",
+                  options: ["Research", "Installation", "Sound", "Documentation",
+                            "Architecture", "Publication", "Performance", "Print", "Other"] }
+              - { name: "year",     label: "Year",      widget: "string" }
+              - { name: "thumb",    label: "Thumbnail", widget: "image", required: false }
+
+  # ── About page ──
+  - name: "about"
+    label: "About Page"
+    files:
+      - name: "about-content"
+        label: "About Content"
+        file: "about.json"
+        fields:
+          - { name: "ethos_line_1", label: "Ethos — Line 1", widget: "string",
+              default: "We work where meaning forms... before it has language, before it becomes useful." }
+          - { name: "ethos_line_2", label: "Ethos — Line 2", widget: "string",
+              default: "We build bridges between what is and what refuses to arrive quietly." }
+          - { name: "phone",   label: "Phone",   widget: "string", required: false }
+          - { name: "address", label: "Address", widget: "string",
+              default: "1029 Lake St, Oak Park IL 60301" }
