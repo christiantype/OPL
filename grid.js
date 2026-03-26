@@ -12,19 +12,28 @@
     zIndex:        '9999',
     pointerEvents: 'none',
     display:       'none',
-    paddingLeft:   getComputedStyle(document.documentElement).getPropertyValue('--grid-padding').trim() || '10em',
-    paddingRight:  getComputedStyle(document.documentElement).getPropertyValue('--grid-padding').trim() || '10em',
     boxSizing:     'border-box',
   });
 
   const inner = document.createElement('div');
 
-  Object.assign(inner.style, {
-    display:             'grid',
-    gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-    gap:                 getComputedStyle(document.documentElement).getPropertyValue('--grid-gap').trim() || '24px',
-    height:              '100%',
-  });
+  function syncToContainer() {
+    const ref = document.querySelector('.container');
+    if (!ref) return;
+    const rect   = ref.getBoundingClientRect();
+    const gap    = getComputedStyle(document.documentElement)
+                     .getPropertyValue('--grid-gap').trim() || '24px';
+    Object.assign(inner.style, {
+      position:            'absolute',
+      top:                 '0',
+      left:                rect.left + 'px',
+      width:               rect.width + 'px',
+      display:             'grid',
+      gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+      gap:                 gap,
+      height:              '100%',
+    });
+  }
 
   for (let i = 0; i < COLS; i++) {
     const col = document.createElement('div');
@@ -39,6 +48,9 @@
 
   overlay.appendChild(inner);
   document.body.appendChild(overlay);
+
+  syncToContainer();
+  window.addEventListener('resize', syncToContainer);
 
   /* Toggle button */
   const btn = document.createElement('button');
