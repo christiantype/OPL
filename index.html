@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Original Practice Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /*
+      Palette drawn from reference image:
+      --bg:   #ECEAE4  warm off-white / cream
+      --ink:  #1A1917  warm near-black
+      --mid:  #4A4744  dark warm gray
+      --ash:  #8C8885  medium gray
+      --fog:  #C4C0BB  light warm gray
+    */
+    :root {
+      --bg:   #ECEAE4;
+      --ink:  #1A1917;
+      --mid:  #4A4744;
+      --ash:  #8C8885;
+      --fog:  #C4C0BB;
+    }
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--bg);
+    }
+
+    body {
+      width: 100%;
+      min-height: 100vh;
+      font-family: 'Space Mono', monospace;
+      color: var(--ink);
+      overflow-x: hidden;
+    }
+
+    #canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Hero ── */
+    #hero {
+      position: relative;
+      z-index: 10;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+    }
+
+    #wordmark {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding-left: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    /* ── Hero definitions ── */
+    #hero-defs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0 48px;
+      width: 560px;
+    }
+
+    #hero-defs .def-term {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--ash);
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--fog);
+      margin-bottom: 8px;
+    }
+
+    #hero-defs .def-body {
+      font-size: 9px;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      line-height: 1.8;
+      color: var(--ash);
+      text-transform: lowercase;
+    }
+
+    /* ── Project list ── */
+    #projects {
+      position: relative;
+      z-index: 10;
+      padding: 0 48px 120px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    thead tr {
+      border-bottom: 1px solid var(--ink);
+    }
+
+    thead th {
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 2px;
+      font-size: 9px;
+      color: var(--ash);
+      padding: 0 0 10px;
+      text-align: left;
+    }
+
+    thead th:last-child {
+      text-align: right;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--fog);
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody td {
+      padding: 12px 0;
+      vertical-align: top;
+      color: var(--mid);
+    }
+
+    tbody td:first-child {
+      color: var(--ink);
+      width: 55%;
+    }
+
+    tbody td:nth-child(2) {
+      width: 30%;
+      color: var(--ash);
+    }
+
+    tbody td:last-child {
+      text-align: right;
+      width: 15%;
+      color: var(--ash);
+    }
+
+    /* ── Thumbnail ── */
+    #thumb {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 480px;
+      height: 360px;
+      z-index: 5;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    #thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: grayscale(1) contrast(0.9);
+      mix-blend-mode: multiply;
+    }
+
+    tbody tr {
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="thumb"><img src="" alt="" /></div>
+
+  <section id="hero">
+    <div id="wordmark">Original Practice Lab</div>
+    <div id="hero-defs">
+      <div>
+        <div class="def-term">Original</div>
+        <div class="def-body">authorship, point of view, not derivative</div>
+      </div>
+      <div>
+        <div class="def-term">Practice</div>
+        <div class="def-body">ongoing, process-based, never finished</div>
+      </div>
+      <div>
+        <div class="def-term">Lab</div>
+        <div class="def-body">experimental, exploratory, collaborative</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="projects">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Category</th>
+          <th>Year</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-thumb="https://picsum.photos/seed/opl1/960/720">
+          <td>Threshold Study No. 1</td>
+          <td>Research</td>
+          <td>2025</td>
+        </tr>
+        <tr data-thumb="https://picsum.photos/seed/opl2/960/720">
+          <td>Material Residue</td>
+          <td>Installation</td>
+          <td>2025</td>
+        </tr>
+        <tr data-thumb="https://picsum.photos/seed/opl3/960/720">
+          <td>Ambient Protocols</td>
+          <td>Sound</td>
+          <td>2024</td>
+        </tr>
+        <tr data-thumb="https://picsum.photos/seed/opl4/960/720">
+          <td>Fieldwork: Series A</td>
+          <td>Documentation</td>
+          <td>2024</td>
+        </tr>
+        <tr data-thumb="https://picsum.photos/seed/opl5/960/720">
+          <td>Soft Infrastructure</td>
+          <td>Architecture</td>
+          <td>2024</td>
+        </tr>
+        <tr data-thumb="https://picsum.photos/seed/opl6/960/720">
+          <td>Latent Structures</td>
+          <td>Publication</td>
+          <td>2023</td>
+        </tr>
+        <tr data-thumb="https://picsum.photos/seed/opl7/960/720">
+          <td>Index of Friction</td>
+          <td>Research</td>
+          <td>2023</td>
+        </tr>
+        <tr data-thumb="https://picsum.photos/seed/opl8/960/720">
+          <td>Controlled Variables</td>
+          <td>Performance</td>
+          <td>2023</td>
+        </tr>
+        <tr data-thumb="https://picsum.photos/seed/opl9/960/720">
+          <td>Specimen Drawings</td>
+          <td>Print</td>
+          <td>2022</td>
+        </tr>
+        <tr data-thumb="https://picsum.photos/seed/opl10/960/720">
+          <td>Negative Space Protocol</td>
+          <td>Installation</td>
+          <td>2022</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const COLORS = [
+      [26,  25,  23],
+      [74,  71,  68],
+      [140, 136, 133],
+      [196, 192, 187],
+    ];
+
+    let W, H, nodes;
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    function createNodes(count) {
+      return Array.from({ length: count }, () => {
+        const c = COLORS[Math.floor(Math.random() * COLORS.length)];
+        return {
+          x: rand(0, W),
+          y: rand(0, H),
+          r: rand(0.5, 2),
+          vx: rand(-0.08, 0.08),
+          vy: rand(-0.08, 0.08),
+          color: c,
+          alpha: rand(0.08, 0.28),
+        };
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      const maxDist = 150;
+
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[j].x - nodes[i].x;
+          const dy = nodes[j].y - nodes[i].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < maxDist) {
+            const t = 1 - dist / maxDist;
+            const a = t * Math.min(nodes[i].alpha, nodes[j].alpha) * 0.4;
+            const [r, g, b] = nodes[i].color;
+            ctx.beginPath();
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
+            ctx.lineWidth = 0.3;
+            ctx.stroke();
+          }
+        }
+      }
+
+      for (const n of nodes) {
+        const [r, g, b] = n.color;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r},${g},${b},${n.alpha})`;
+        ctx.fill();
+      }
+    }
+
+    function update() {
+      for (const n of nodes) {
+        n.x += n.vx;
+        n.y += n.vy;
+        if (n.x < -20)    n.x = W + 20;
+        if (n.x > W + 20) n.x = -20;
+        if (n.y < -20)    n.y = H + 20;
+        if (n.y > H + 20) n.y = -20;
+      }
+    }
+
+    function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+    window.addEventListener('resize', resize);
+    resize();
+    nodes = createNodes(70);
+    loop();
+
+    // ── Thumbnail hover ──
+    const thumb    = document.getElementById('thumb');
+    const thumbImg = thumb.querySelector('img');
+    const rows     = document.querySelectorAll('tbody tr[data-thumb]');
+
+    rows.forEach(row => {
+      row.addEventListener('mouseenter', () => {
+        thumbImg.src = row.dataset.thumb;
+        thumb.style.opacity = '1';
+      });
+      row.addEventListener('mouseleave', () => {
+        thumb.style.opacity = '0';
+      });
+    });
+  </script>
+</body>
+</html>
