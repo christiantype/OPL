@@ -18,11 +18,13 @@
   const inner = document.createElement('div');
 
   function syncToContainer() {
-    const ref = document.querySelector('.container');
+    // Measure the .grid inside a .container — this gives us the
+    // actual content area after padding, so columns align exactly.
+    const ref = document.querySelector('.container .grid');
     if (!ref) return;
-    const rect   = ref.getBoundingClientRect();
-    const gap    = getComputedStyle(document.documentElement)
-                     .getPropertyValue('--grid-gap').trim() || '24px';
+    const rect = ref.getBoundingClientRect();
+    const gap  = getComputedStyle(document.documentElement)
+                   .getPropertyValue('--grid-gap').trim() || '24px';
     Object.assign(inner.style, {
       position:            'absolute',
       top:                 '0',
