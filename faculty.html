@@ -7,20 +7,23 @@
   <link rel="stylesheet" href="styles.css">
   <style>
 
-    /* ── Nav — sits on the same grid as everything else ── */
+    /* ── Nav ── */
     nav {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       z-index: 100;
-      padding: var(--space-6) var(--grid-padding);
-      display: flex;
-      justify-content: space-between;
+      padding-top: var(--space-6);
+      padding-bottom: var(--space-6);
+    }
+
+    nav .grid {
       align-items: center;
     }
 
     .nav-wordmark {
+      grid-column: span 6;
       font-size: var(--text-sm);
       font-weight: var(--weight-bold);
       letter-spacing: var(--tracking-widest);
@@ -30,7 +33,9 @@
     }
 
     .nav-links {
+      grid-column: span 6;
       display: flex;
+      justify-content: flex-end;
       gap: var(--space-8);
     }
 
@@ -45,13 +50,6 @@
 
     .nav-link:hover { color: var(--color-ink); }
 
-    /* ── All sections share one container ── */
-    .section-wrap {
-      width: 100%;
-      padding-left: var(--grid-padding);
-      padding-right: var(--grid-padding);
-    }
-
     /* ── Hero ── */
     #hero {
       min-height: 100vh;
@@ -61,15 +59,6 @@
       padding-top: 120px;
       padding-bottom: var(--space-12);
     }
-
-    .meta {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: var(--grid-gap);
-      margin-bottom: var(--space-8);
-    }
-
-    .meta-item { grid-column: span 2; }
 
     .meta-label {
       font-size: var(--text-2xs);
@@ -87,46 +76,26 @@
       color: var(--color-mid);
     }
 
-    .hero-title {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: var(--grid-gap);
-      margin-bottom: var(--space-12);
-    }
-
-    .hero-title h1 {
-      grid-column: span 12;
-      color: var(--color-ink);
-    }
-
     .hero-rule {
-      width: 100%;
       height: 1px;
       background: var(--color-fog);
+      grid-column: span 12;
+      margin-top: var(--space-8);
     }
 
-    /* ── Body copy ── */
+    /* ── Body ── */
     #body {
       padding-top: var(--space-16);
       padding-bottom: var(--space-16);
     }
 
-    .body-inner {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: var(--grid-gap);
-    }
-
     .lead {
-      grid-column: span 7;
       font-size: var(--text-lg);
       line-height: var(--leading-loose);
       color: var(--color-ink);
-      margin-bottom: var(--space-8);
     }
 
     .body-copy {
-      grid-column: 1 / span 5;
       font-size: var(--text-base);
       line-height: var(--leading-loose);
       color: var(--color-mid);
@@ -137,15 +106,14 @@
       padding-bottom: var(--space-16);
     }
 
-    .image-grid {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: var(--grid-gap);
+    .img-placeholder {
+      background: var(--color-fog);
+      width: 100%;
     }
 
-    .img-full  { grid-column: span 12; aspect-ratio: 16/9;  background: var(--color-fog); }
-    .img-half  { grid-column: span 6;  aspect-ratio: 4/3;   background: var(--color-fog); }
-    .img-third { grid-column: span 4;  aspect-ratio: 3/4;   background: var(--color-fog); }
+    .img-placeholder.ratio-16-9  { aspect-ratio: 16/9; }
+    .img-placeholder.ratio-4-3   { aspect-ratio: 4/3; }
+    .img-placeholder.ratio-3-4   { aspect-ratio: 3/4; }
 
     /* ── Credits ── */
     #credits {
@@ -154,20 +122,19 @@
       border-top: 1px solid var(--color-fog);
     }
 
-    .credits-inner {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: var(--grid-gap);
-      align-items: start;
+    .credit-label {
+      font-size: var(--text-2xs);
+      font-weight: var(--weight-bold);
+      letter-spacing: var(--tracking-widest);
+      text-transform: uppercase;
+      color: var(--color-ash);
+      margin-bottom: var(--space-2);
     }
 
-    .credits-info { grid-column: span 4; }
-
-    .credits-info p {
-      margin-top: var(--space-4);
+    .credit-value {
       font-size: var(--text-sm);
-      color: var(--color-mid);
       line-height: var(--leading-loose);
+      color: var(--color-mid);
     }
 
     .credits-link {
@@ -185,28 +152,6 @@
     }
 
     .credits-link:hover { opacity: 0.6; }
-
-    .credits-cols {
-      grid-column: span 8;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: var(--space-12);
-    }
-
-    .credit-label {
-      font-size: var(--text-2xs);
-      font-weight: var(--weight-bold);
-      letter-spacing: var(--tracking-widest);
-      text-transform: uppercase;
-      color: var(--color-ash);
-      margin-bottom: var(--space-2);
-    }
-
-    .credit-value {
-      font-size: var(--text-sm);
-      line-height: var(--leading-loose);
-      color: var(--color-mid);
-    }
 
     /* ── Footer stripe ── */
     #footer-stripe {
@@ -245,106 +190,115 @@
       letter-spacing: var(--tracking-tight);
     }
 
-    .next-arrow {
-      font-size: 2rem;
-      color: rgba(255,255,255,0.3);
-    }
-
     /* ── Responsive ── */
     @media (max-width: 1024px) {
-      .lead      { grid-column: span 10; }
-      .body-copy { grid-column: span 7; }
-      .img-third { grid-column: span 6; }
+      .col-lead      { grid-column: span 10; }
+      .col-body-copy { grid-column: span 7;  }
     }
 
     @media (max-width: 768px) {
-      .meta-item     { grid-column: span 4; }
-      .lead          { grid-column: span 12; }
-      .body-copy     { grid-column: span 12; }
-      .credits-info  { grid-column: span 12; }
-      .credits-cols  { grid-column: span 12; grid-template-columns: 1fr 1fr; }
-      .img-half      { grid-column: span 12; }
-      .img-third     { grid-column: span 12; }
+      .col-meta      { grid-column: span 4; }
+      .col-lead      { grid-column: span 12; }
+      .col-body-copy { grid-column: span 12; }
+      .col-img-half  { grid-column: span 12; }
+      .col-img-third { grid-column: span 12; }
+      .col-credit-info { grid-column: span 12; }
+      .col-credit-1,
+      .col-credit-2,
+      .col-credit-3  { grid-column: span 4; }
     }
 
     @media (max-width: 640px) {
       :root { --grid-padding: 2rem; }
-      .meta-item    { grid-column: span 6; }
-      .credits-cols { grid-template-columns: 1fr; }
+      .col-meta      { grid-column: span 6; }
+      .col-credit-1,
+      .col-credit-2,
+      .col-credit-3  { grid-column: span 12; }
     }
 
   </style>
 </head>
 <body>
 
+  <!-- Nav — col 1–6 wordmark / col 7–12 links -->
   <nav>
-    <a href="index.html" class="nav-wordmark">OPL</a>
-    <div class="nav-links">
-      <a href="about.html" class="nav-link">About</a>
-      <a href="index.html" class="nav-link">← All Projects</a>
+    <div class="container">
+      <div class="grid">
+        <a href="index.html" class="nav-wordmark">OPL</a>
+        <div class="nav-links">
+          <a href="about.html" class="nav-link">About</a>
+          <a href="index.html" class="nav-link">← All Projects</a>
+        </div>
+      </div>
     </div>
   </nav>
 
-  <!-- Hero -->
-  <section id="hero" class="section-wrap">
-    <div class="meta">
-      <div class="meta-item">
-        <span class="meta-label">Category</span>
-        <span class="meta-value">Publication</span>
+  <!-- Hero — meta col 1–2 each / h1 col 1–12 -->
+  <section id="hero">
+    <div class="container">
+      <div class="grid" style="margin-bottom: var(--space-8);">
+        <div class="col-2 col-meta">
+          <span class="meta-label">Category</span>
+          <span class="meta-value">Publication</span>
+        </div>
+        <div class="col-2 col-meta">
+          <span class="meta-label">Year</span>
+          <span class="meta-value">2023 – Present</span>
+        </div>
+        <div class="col-2 col-meta">
+          <span class="meta-label">Role</span>
+          <span class="meta-value">Design</span>
+        </div>
       </div>
-      <div class="meta-item">
-        <span class="meta-label">Year</span>
-        <span class="meta-value">2023 – Present</span>
+      <div class="grid">
+        <h1 class="col-12" style="color: var(--color-ink); margin-bottom: var(--space-8);">Faculty</h1>
+        <div class="hero-rule"></div>
       </div>
-      <div class="meta-item">
-        <span class="meta-label">Role</span>
-        <span class="meta-value">Design</span>
-      </div>
-    </div>
-    <div class="hero-title">
-      <h1>Faculty</h1>
-    </div>
-    <div class="hero-rule"></div>
-  </section>
-
-  <!-- Body -->
-  <section id="body" class="section-wrap">
-    <div class="body-inner">
-      <p class="lead">Faculty 2 was the sophomore issue of the Chicago Graphic Design Club's publication — a beacon of creative voices spanning across disciplines and perspectives.</p>
-      <p class="body-copy">The publication represents a collaborative effort developed alongside Rick Valicenti. The partnership emphasizes shared values in authorship, experimentation, and cultural responsibility, producing work reflecting both content rigor and design's critical potential.</p>
     </div>
   </section>
 
-  <!-- Images -->
-  <section id="images" class="section-wrap">
-    <div class="image-grid">
-      <div class="img-full"></div>
-      <div class="img-half"></div>
-      <div class="img-half"></div>
-      <div class="img-third"></div>
-      <div class="img-third"></div>
-      <div class="img-third"></div>
+  <!-- Body — lead col 1–7 / body copy col 1–5 -->
+  <section id="body">
+    <div class="container">
+      <div class="grid">
+        <p class="lead col-7 col-lead">Faculty 2 was the sophomore issue of the Chicago Graphic Design Club's publication — a beacon of creative voices spanning across disciplines and perspectives.</p>
+        <p class="body-copy col-5 col-body-copy" style="grid-column-start: 1;">The publication represents a collaborative effort developed alongside Rick Valicenti. The partnership emphasizes shared values in authorship, experimentation, and cultural responsibility, producing work reflecting both content rigor and design's critical potential.</p>
+      </div>
     </div>
   </section>
 
-  <!-- Credits -->
-  <section id="credits" class="section-wrap">
-    <div class="credits-inner">
-      <div class="credits-info">
-        <div class="label">Project</div>
-        <p>Chicago Graphic Design Club's publication, available at the link below.</p>
-        <a class="credits-link" href="https://chicagographicdesign.club/faculty-2" target="_blank" rel="noopener">chicagographicdesign.club/faculty-2 ↗</a>
+  <!-- Images — full col 1–12 / half col 6 / third col 4 -->
+  <section id="images">
+    <div class="container">
+      <div class="grid">
+        <div class="col-12 img-placeholder ratio-16-9"></div>
+        <div class="col-6 col-img-half img-placeholder ratio-4-3"></div>
+        <div class="col-6 col-img-half img-placeholder ratio-4-3"></div>
+        <div class="col-4 col-img-third img-placeholder ratio-3-4"></div>
+        <div class="col-4 col-img-third img-placeholder ratio-3-4"></div>
+        <div class="col-4 col-img-third img-placeholder ratio-3-4"></div>
       </div>
-      <div class="credits-cols">
-        <div>
+    </div>
+  </section>
+
+  <!-- Credits — info col 1–4 / credits col 5–12 -->
+  <section id="credits">
+    <div class="container">
+      <div class="grid">
+        <div class="col-4 col-credit-info">
+          <div class="label">Project</div>
+          <p style="margin-top: var(--space-4); font-size: var(--text-sm); color: var(--color-mid); line-height: var(--leading-loose);">Chicago Graphic Design Club's publication, available at the link below.</p>
+          <a class="credits-link" href="https://chicagographicdesign.club/faculty-2" target="_blank" rel="noopener">chicagographicdesign.club/faculty-2 ↗</a>
+        </div>
+        <div class="col-3 col-credit-1">
           <div class="credit-label">Design</div>
           <div class="credit-value">Christian Solorzano</div>
         </div>
-        <div>
+        <div class="col-3 col-credit-2">
           <div class="credit-label">Creative Mentorship</div>
           <div class="credit-value">Rick Valicenti</div>
         </div>
-        <div>
+        <div class="col-2 col-credit-3">
           <div class="credit-label">Fonts</div>
           <div class="credit-value">Okay Type<br>T26<br>Sean Fermoyle</div>
         </div>
@@ -362,7 +316,7 @@
       <div class="next-label">Next Project</div>
       <div class="next-title">Confronting Design</div>
     </div>
-    <div class="next-arrow">→</div>
+    <div>→</div>
   </a>
 
   <script src="grid.js"></script>
