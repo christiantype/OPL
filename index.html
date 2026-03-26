@@ -104,64 +104,60 @@
     #projects {
       position: relative;
       z-index: 10;
-      padding: 0 48px 120px;
-      max-width: 1080px;
-      margin: 0 auto;
+      padding-bottom: 120px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-      letter-spacing: 1px;
-    }
-
-    thead tr {
+    .project-header {
       border-bottom: 1px solid var(--ink);
+      padding-bottom: 10px;
+      margin-bottom: 0;
     }
 
-    thead th {
-      text-transform: uppercase;
+    .project-header span {
+      font-size: 9px;
       font-weight: 700;
       letter-spacing: 2px;
-      font-size: 9px;
+      text-transform: uppercase;
       color: var(--ash);
-      padding: 0 0 10px;
-      text-align: left;
     }
 
-    thead th:last-child {
+    .project-header .col-2 {
       text-align: right;
     }
 
-    tbody tr {
+    .project-row {
       border-bottom: 1px solid var(--fog);
+      padding-top: 12px;
+      padding-bottom: 12px;
+      align-items: baseline;
     }
 
-    tbody tr:last-child {
+    .project-row:last-child {
       border-bottom: none;
     }
 
-    tbody td {
-      padding: 12px 0;
-      vertical-align: top;
-      color: var(--mid);
-    }
-
-    tbody td:first-child {
+    .project-row .col-7 {
+      font-size: 11px;
+      letter-spacing: 1px;
       color: var(--ink);
-      width: 55%;
     }
 
-    tbody td:nth-child(2) {
-      width: 30%;
+    .project-row .col-3 {
+      font-size: 11px;
+      letter-spacing: 1px;
       color: var(--ash);
     }
 
-    tbody td:last-child {
+    .project-row .col-2 {
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--ash);
       text-align: right;
-      width: 15%;
-      color: var(--ash);
+    }
+
+    .project-row a {
+      color: inherit;
+      text-decoration: none;
     }
 
     /* ── Thumbnail ── */
@@ -193,9 +189,15 @@
   </style>
 </head>
 <body>
-  <nav style="position:fixed;top:0;left:0;width:100%;z-index:100;padding:24px 48px;display:flex;justify-content:space-between;align-items:center;">
-    <span style="font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--ink);">OPL</span>
-    <a href="about.html" style="font-size:9px;font-weight:400;letter-spacing:4px;text-transform:uppercase;color:var(--ash);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--ash)'">About</a>
+  <nav style="position:fixed;top:0;left:0;width:100%;z-index:100;padding-top:24px;padding-bottom:24px;">
+    <div class="container">
+      <div class="grid" style="align-items:center;">
+        <span class="col-6" style="font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--ink);">OPL</span>
+        <div class="col-6" style="display:flex;justify-content:flex-end;">
+          <a href="about.html" style="font-size:9px;font-weight:400;letter-spacing:4px;text-transform:uppercase;color:var(--ash);text-decoration:none;" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--ash)'">About</a>
+        </div>
+      </div>
+    </div>
   </nav>
 
   <canvas id="canvas"></canvas>
@@ -220,16 +222,14 @@
   </section>
 
   <section id="projects">
-    <table>
-      <thead>
-        <tr>
-          <th>Project</th>
-          <th>Category</th>
-          <th>Year</th>
-        </tr>
-      </thead>
-      <tbody id="project-rows"></tbody>
-    </table>
+    <div class="container">
+      <div class="grid project-header">
+        <span class="col-7">Project</span>
+        <span class="col-3">Category</span>
+        <span class="col-2">Year</span>
+      </div>
+      <div id="project-rows"></div>
+    </div>
   </section>
 
   <script>
@@ -323,7 +323,7 @@
     const tbody    = document.getElementById('project-rows');
 
     function bindHover() {
-      document.querySelectorAll('tbody tr[data-thumb]').forEach(row => {
+      document.querySelectorAll('.project-row[data-thumb]').forEach(row => {
         row.addEventListener('mouseenter', () => {
           thumbImg.src = row.dataset.thumb;
           thumb.style.opacity = '1';
@@ -338,13 +338,13 @@
       .then(r => r.json())
       .then(data => {
         tbody.innerHTML = data.projects.map(p => `
-          <tr data-thumb="${p.thumb || ''}" ${p.url ? `data-url="${p.url}" style="cursor:pointer"` : ''}>
-            <td>${p.url ? `<a href="${p.url}" style="color:inherit;text-decoration:none;">${p.title}</a>` : p.title}</td>
-            <td>${p.category}</td>
-            <td>${p.year}</td>
-          </tr>`).join('');
+          <div class="grid project-row${p.url ? ' has-link' : ''}" data-thumb="${p.thumb || ''}" ${p.url ? `data-url="${p.url}"` : ''} style="${p.url ? 'cursor:pointer;' : ''}">
+            <div class="col-7">${p.url ? `<a href="${p.url}">${p.title}</a>` : p.title}</div>
+            <div class="col-3">${p.category}</div>
+            <div class="col-2">${p.year}</div>
+          </div>`).join('');
         bindHover();
-        document.querySelectorAll('tbody tr[data-url]').forEach(row => {
+        document.querySelectorAll('.project-row[data-url]').forEach(row => {
           row.addEventListener('click', () => window.location = row.dataset.url);
         });
       });
