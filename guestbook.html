@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guestbook — OPL</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    /*
+    ── SETUP INSTRUCTIONS ────────────────────────────────────────
+    1. Go to supabase.com → New project
+    2. In the SQL editor, run:
+
+        CREATE TABLE guestbook (
+          id bigserial primary key,
+          type text not null,
+          content text not null,
+          created_at timestamptz default now()
+        );
+        ALTER TABLE guestbook ENABLE ROW LEVEL SECURITY;
+        CREATE POLICY "public read"   ON guestbook FOR SELECT USING (true);
+        CREATE POLICY "public insert" ON guestbook FOR INSERT WITH CHECK (true);
+
+    3. Go to Settings → API → copy Project URL and anon key
+    4. Paste them into SUPABASE_URL and SUPABASE_ANON_KEY below
+    ──────────────────────────────────────────────────────────────
+    */
+
+    #guestbook-hero {
+      padding-top: 140px;
+      padding-bottom: 4em;
+      border-bottom: 0.3px solid var(--color-mid);
+    }
+
+    #submit-area {
+      padding-top: 4em;
+      padding-bottom: 4em;
+      border-bottom: 0.3px solid var(--color-mid);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: var(--color-light);
+      cursor: crosshair;
+    }
+
+    #draw-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .canvas-controls {
+      display: flex;
+      gap: 0.75em;
+      margin-top: 1em;
+      align-items: center;
+    }
+
+    .color-swatch {
+      width: 20px;
+      height: 20px;
+      border: none;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .gb-btn {
+      background: none;
+      border: 0.3px solid var(--color-mid);
+      color: var(--color-mid);
+      padding: 0.4em 1em;
+      font-family: inherit;
+      font-size: var(--label);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .gb-btn:hover { border-color: var(--color-light); color: var(--color-light); }
+
+    .gb-btn.primary {
+      background: var(--color-light);
+      color: var(--color-dark);
+      border-color: var(--color-light);
+    }
+
+    .gb-btn.primary:hover { background: var(--color-accent); border-color: var(--color-accent); }
+
+    .word-input {
+      width: 100%;
+      background: none;
+      border: none;
+      border-bottom: 0.3px solid var(--color-mid);
+      color: var(--color-light);
+      font-family: inherit;
+      font-size: ms(3);
+      letter-spacing: -0.04em;
+      padding: 0.25em 0;
+      outline: none;
+      margin-bottom: 1.5em;
+    }
+
+    .word-input::placeholder { color: var(--color-mid); }
+
+    #gallery {
+      padding-top: 4em;
+      padding-bottom: 6em;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--color-mid);
+      margin-top: 2em;
+    }
+
+    .gb-entry {
+      background: var(--color-dark);
+      aspect-ratio: 4 / 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .gb-entry img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .gb-entry.word-entry {
+      font-size: ms(2);
+      letter-spacing: -0.04em;
+      color: var(--color-light);
+      padding: 1em;
+      text-align: center;
+    }
+
+    .gb-entry.word-entry:nth-child(4n+1) { color: var(--color-accent); }
+    .gb-entry.word-entry:nth-child(4n+2) { color: var(--color-accent2); }
+    .gb-entry.word-entry:nth-child(4n+3) { color: var(--color-lime); }
+    .gb-entry.word-entry:nth-child(4n)   { color: var(--color-blue); }
+
+    .status-msg {
+      font-size: var(--label);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-mid);
+      margin-top: 1em;
+      min-height: 1.5em;
+    }
+
+    @media (max-width: 768px) {
+      .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body class="project">
+  <script src="shared/nav.js"></script>
+
+  <section id="guestbook-hero">
+    <div class="container">
+      <div class="grid">
+        <h1 class="col-12">Guestbook<span class="nav-cursor"></span></h1>
+        <h2 class="col-6">Draw something or leave a word.</h2>
+      </div>
+    </div>
+  </section>
+
+  <section id="submit-area">
+    <div class="container">
+      <div class="grid">
+
+        <!-- Drawing -->
+        <div class="col-6">
+          <span class="label" style="display:block;margin-bottom:1em;">Draw</span>
+          <div class="canvas-wrap">
+            <canvas id="draw-canvas"></canvas>
+          </div>
+          <div class="canvas-controls">
+            <button class="color-swatch" style="background:#0D0C0A;" data-color="#0D0C0A"></button>
+            <button class="color-swatch" style="background:#FF69B4;" data-color="#FF69B4"></button>
+            <button class="color-swatch" style="background:#FFED00;" data-color="#FFED00"></button>
+            <button class="color-swatch" style="background:#0000FF;" data-color="#0000FF"></button>
+            <button class="color-swatch" style="background:#FF2200;" data-color="#FF2200"></button>
+            <button class="color-swatch" style="background:#AAFF00;" data-color="#AAFF00"></button>
+            <button class="gb-btn" id="clear-btn">Clear</button>
+            <button class="gb-btn primary" id="submit-drawing">Submit drawing</button>
+          </div>
+        </div>
+
+        <!-- Word -->
+        <div class="col-4 col-offset-2">
+          <span class="label" style="display:block;margin-bottom:1em;">Word</span>
+          <input class="word-input" id="word-input" type="text" placeholder="One word..." maxlength="40">
+          <button class="gb-btn primary" id="submit-word">Submit word</button>
+          <p class="status-msg" id="status"></p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section id="gallery">
+    <div class="container">
+      <div class="grid">
+        <span class="col-12 label">All entries</span>
+      </div>
+      <div class="gallery-grid" id="gallery-grid">
+        <!-- entries injected here -->
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ── CONFIG — paste your Supabase credentials here ──
+    const SUPABASE_URL      = 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    // ───────────────────────────────────────────────────
+
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ── Canvas setup ──
+    const canvas  = document.getElementById('draw-canvas');
+    const ctx     = canvas.getContext('2d');
+    const wrap    = canvas.parentElement;
+    let drawing   = false;
+    let drawColor = '#0D0C0A';
+    let lastX, lastY;
+
+    function resizeCanvas() {
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      canvas.width  = wrap.offsetWidth;
+      canvas.height = wrap.offsetHeight;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.putImageData(data, 0, 0);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function getPos(e) {
+      const r = canvas.getBoundingClientRect();
+      const src = e.touches ? e.touches[0] : e;
+      return [src.clientX - r.left, src.clientY - r.top];
+    }
+
+    canvas.addEventListener('pointerdown', e => {
+      drawing = true;
+      [lastX, lastY] = getPos(e);
+    });
+
+    canvas.addEventListener('pointermove', e => {
+      if (!drawing) return;
+      const [x, y] = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = drawColor;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      [lastX, lastY] = [x, y];
+    });
+
+    canvas.addEventListener('pointerup',   () => drawing = false);
+    canvas.addEventListener('pointerleave', () => drawing = false);
+
+    document.querySelectorAll('.color-swatch').forEach(btn => {
+      btn.addEventListener('click', () => drawColor = btn.dataset.color);
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // ── Status helper ──
+    const status = document.getElementById('status');
+    function setStatus(msg, color) {
+      status.textContent = msg;
+      status.style.color = color || 'var(--color-mid)';
+      if (msg) setTimeout(() => status.textContent = '', 3000);
+    }
+
+    // ── Submit drawing ──
+    document.getElementById('submit-drawing').addEventListener('click', async () => {
+      const content = canvas.toDataURL('image/jpeg', 0.7);
+      const { error } = await db.from('guestbook').insert({ type: 'drawing', content });
+      if (error) { setStatus('Something went wrong.', 'var(--color-red)'); return; }
+      setStatus('Drawing submitted!', 'var(--color-accent)');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      loadEntries();
+    });
+
+    // ── Submit word ──
+    document.getElementById('submit-word').addEventListener('click', async () => {
+      const val = document.getElementById('word-input').value.trim();
+      if (!val) { setStatus('Write something first.'); return; }
+      const { error } = await db.from('guestbook').insert({ type: 'word', content: val });
+      if (error) { setStatus('Something went wrong.', 'var(--color-red)'); return; }
+      setStatus('Word submitted!', 'var(--color-accent)');
+      document.getElementById('word-input').value = '';
+      loadEntries();
+    });
+
+    // ── Load + render entries ──
+    async function loadEntries() {
+      const { data, error } = await db
+        .from('guestbook')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) return;
+
+      const grid = document.getElementById('gallery-grid');
+      grid.innerHTML = data.map(e => {
+        if (e.type === 'drawing') {
+          return `<div class="gb-entry"><img src="${e.content}" alt="drawing"></div>`;
+        } else {
+          return `<div class="gb-entry word-entry">${e.content}</div>`;
+        }
+      }).join('');
+    }
+
+    loadEntries();
+
+    // ── Real-time updates ──
+    db.channel('guestbook')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guestbook' }, loadEntries)
+      .subscribe();
+  </script>
+
+  <script src="shared/footer.js"></script>
+  <script src="shared/grid.js"></script>
+  <script src="shared/cursor.js"></script>
+</body>
+</html>

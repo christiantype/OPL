@@ -14,6 +14,7 @@ const NAV_LOGO_HEIGHT = '100px';
         </a>
         <div class="col-6 nav-links">
           <a href="${base}about.html" class="nav-link">About</a>
+          <a href="${base}guestbook.html" class="nav-link">Guestbook</a>
           ${inProject ? `<a href="${base}index.html" class="nav-link">All Projects</a>` : ''}
         </div>
       </div>
