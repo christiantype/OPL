@@ -1,7 +1,5 @@
 /* ── OPL Custom Cursor — dot + tapering canvas trail ── */
 (function () {
-  const darkColor = getComputedStyle(document.documentElement).getPropertyValue('--color-dark').trim();
-
   /* Hide default cursor */
   document.documentElement.style.cursor = 'none';
 
@@ -14,7 +12,7 @@
     width:         '6px',
     height:        '6px',
     borderRadius:  '50%',
-    background:    'var(--color-dark)',
+    background:    '#0000FF',
     transform:     'translate(-50%, -50%)',
     top:           '-100px',
     left:          '-100px',
@@ -58,12 +56,15 @@
 
     for (let i = 1; i < trail.length; i++) {
       const progress = i / trail.length;
+      // yellow at tail (progress=0) → red at head (progress=1)
+      const r = 255;
+      const g = Math.round(255 * (1 - progress));
       ctx.beginPath();
       ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
       ctx.lineTo(trail[i].x, trail[i].y);
-      ctx.globalAlpha = progress * 0.5 * trailAlpha;
-      ctx.strokeStyle = darkColor;
-      ctx.lineWidth   = progress * 1.1;
+      ctx.globalAlpha = progress * 0.8 * trailAlpha;
+      ctx.strokeStyle = `rgb(${r},${g},0)`;
+      ctx.lineWidth   = progress * 1.5;
       ctx.lineCap     = 'round';
       ctx.lineJoin    = 'round';
       ctx.stroke();
