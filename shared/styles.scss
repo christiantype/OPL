@@ -372,7 +372,7 @@ nav {
   display: inline-block;
   margin-top: var(--space-4);
   color: $accent;
-  border-bottom: 1px solid currentColor;
+  border-bottom: .3px solid currentColor;
   padding-bottom: 2px;
   &:hover { color: $dark; }
 }
@@ -424,4 +424,98 @@ nav {
   .col-credit-1,
   .col-credit-2,
   .col-credit-3 { grid-column: span 12; }
+}
+
+
+// ============================================================
+//   12. INDEX — PROJECT LIST
+// ============================================================
+
+#projects {
+  position: relative;
+  z-index: 10;
+  padding-top: var(--space-32);
+  padding-bottom: var(--space-24);
+}
+
+.project-header {
+  border-bottom: 1px solid $dark;
+  padding-bottom: var(--space-3);
+  margin-bottom: 0;
+
+  .col-2 { text-align: right; }
+}
+
+.project-row {
+  border-bottom: 0.3px solid $mid;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+  align-items: baseline;
+  transition: background 0.4s ease;
+  cursor: default;
+
+  &:last-child { border-bottom: none; }
+
+  &:hover { background: $light; }
+
+  &[data-url] { cursor: pointer; }
+
+  .col-7, .col-3 {
+    font-size: var(--body);
+    color: $dark;
+  }
+
+  .col-2 {
+    font-size: var(--body);
+    color: $dark;
+    text-align: right;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+#thumb {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 480px;
+  height: 360px;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: grayscale(1) contrast(0.9);
+    mix-blend-mode: multiply;
+  }
+}
+
+@media (max-width: 40em) {
+  #projects .container { padding: 0 1.25em; }
+
+  .project-header span,
+  .project-row .col-7,
+  .project-row .col-3,
+  .project-row .col-2 {
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+  }
+
+  .project-header .col-7,
+  .project-row .col-7 { grid-column: span 7 !important; }
+
+  .project-header .col-3,
+  .project-row .col-3 { grid-column: span 3 !important; }
+
+  .project-header .col-2,
+  .project-row .col-2 { grid-column: span 2 !important; }
 }
