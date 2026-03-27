@@ -27,18 +27,19 @@ const NAV_LOGO_HEIGHT = '100px';
   const colors   = ['var(--color-accent)', 'var(--color-accent2)', 'var(--color-blue)', 'var(--color-red)', 'var(--color-lime)'];
 
   // Wrap each letter in a span, preserve line breaks
-  wordmark.childNodes[0].replaceWith(
-    ...text.split('').map(ch => {
-      if (ch === '\n') {
-        const br = document.createElement('br');
-        return br;
-      }
+  const cursor = wordmark.querySelector('.nav-cursor');
+  wordmark.innerHTML = '';
+  text.split('').forEach(ch => {
+    if (ch === '\n') {
+      wordmark.appendChild(document.createElement('br'));
+    } else {
       const s = document.createElement('span');
       s.textContent = ch;
       s.dataset.base = 'true';
-      return s;
-    })
-  );
+      wordmark.appendChild(s);
+    }
+  });
+  wordmark.appendChild(cursor);
 
   const letters = [...wordmark.querySelectorAll('span[data-base]')];
 
