@@ -13,94 +13,65 @@
   hero.id = 'hero';
   hero.innerHTML = `
     <div class="container">
-      <div class="grid" style="margin-bottom: var(--space-8);">
-        <div class="col-2 col-meta">
-          <span class="label">Category</span>
-          <p>${PROJECT.category}</p>
-        </div>
-        <div class="col-2 col-meta">
-          <span class="label">Year</span>
-          <p>${PROJECT.year}</p>
-        </div>
-        <div class="col-2 col-meta">
-          <span class="label">Role</span>
-          <p>${PROJECT.role}</p>
-        </div>
-      </div>
       <div class="grid">
         <h1 class="col-12">${PROJECT.title}</h1>
-        <div class="hero-rule"></div>
+      </div>
+      <div class="grid" style="margin-top: var(--space-8);">
+        <h2 class="col-6">${PROJECT.description}</h2>
       </div>
     </div>
   `;
   document.body.appendChild(hero);
 
-  /* ── Body ── */
-  const body = document.createElement('section');
-  body.id = 'body';
-  body.innerHTML = `
+  /* ── Credits ── */
+  const credits = document.createElement('section');
+  credits.id = 'credits';
+  credits.innerHTML = `
     <div class="container">
-      <div class="grid" style="margin-bottom: var(--space-10);">
-        <p class="lead col-7 col-lead">${PROJECT.lead}</p>
+      <div class="grid">
+        <div class="col-2">
+          <span class="label">Client</span>
+          <p>${PROJECT.client || '—'}</p>
+        </div>
+        <div class="col-2">
+          <span class="label">Medium</span>
+          <p>${PROJECT.medium || '—'}</p>
+        </div>
+        <div class="col-2">
+          <span class="label">Year</span>
+          <p>${PROJECT.year || '—'}</p>
+        </div>
+        <div class="col-2">
+          <span class="label">Credits</span>
+          <p>${PROJECT.credits || '—'}</p>
+        </div>
+        <div class="col-2">
+          <span class="label">Role</span>
+          <p>${PROJECT.role || '—'}</p>
+        </div>
       </div>
-      ${PROJECT.body ? `
-      <div class="grid" style="margin-bottom: var(--space-16);">
-        <p class="col-5 col-body-copy">${PROJECT.body}</p>
-      </div>` : ''}
     </div>
   `;
-  document.body.appendChild(body);
+  document.body.appendChild(credits);
 
   /* ── Images ── */
   const images = document.createElement('section');
   images.id = 'images';
 
   if (PROJECT.images && PROJECT.images.length) {
-    images.innerHTML = `
-      <div class="container">
-        <div class="grid">
-          ${PROJECT.images.map(img => `<img src="${img.src}" alt="${img.alt || ''}" class="${img.class || 'col-12'}">`).join('')}
-        </div>
-      </div>
-    `;
+    images.innerHTML = PROJECT.images.map(img =>
+      `<img class="project-image" src="${img.src}" alt="${img.alt || ''}">`
+    ).join('');
   } else {
     images.innerHTML = `
-      <div class="container">
-        <div class="grid">
-          <div class="col-12 img-placeholder ratio-16-9"></div>
-          <div class="col-6 col-img-half img-placeholder ratio-4-3"></div>
-          <div class="col-6 col-img-half img-placeholder ratio-4-3"></div>
-          <div class="col-4 col-img-third img-placeholder ratio-3-4"></div>
-          <div class="col-4 col-img-third img-placeholder ratio-3-4"></div>
-          <div class="col-4 col-img-third img-placeholder ratio-3-4"></div>
-        </div>
+      <div class="project-image img-placeholder ratio-16-9"></div>
+      <div class="img-placeholder-row">
+        <div class="img-placeholder ratio-4-3"></div>
+        <div class="img-placeholder ratio-4-3"></div>
       </div>
     `;
   }
   document.body.appendChild(images);
-
-  /* ── Credits ── */
-  const creditCols = ['col-credit-1', 'col-credit-2', 'col-credit-3'];
-  const creditsHTML = PROJECT.credits.map((c, i) => `
-    <div class="col-3 ${creditCols[i] || ''}">
-      <span class="label">${c.label}</span>
-      <p>${c.value}</p>
-    </div>`).join('');
-
-  const credits = document.createElement('section');
-  credits.id = 'credits';
-  credits.innerHTML = `
-    <div class="container">
-      <div class="grid">
-        <div class="col-4 col-credit-info">
-          <span class="label">Project</span>
-          <p style="margin-top: var(--space-4);">${PROJECT.description || ''}</p>
-        </div>
-        ${creditsHTML}
-      </div>
-    </div>
-  `;
-  document.body.appendChild(credits);
 
   /* ── Footer stripe ── */
   const stripe = document.createElement('div');
