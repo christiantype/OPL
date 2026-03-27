@@ -3,6 +3,8 @@
 
 (function () {
 
+  document.body.classList.add('project');
+
   /* ── Nav ── */
   const navScript = document.createElement('script');
   navScript.src = '../shared/nav.js';
