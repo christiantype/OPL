@@ -7,14 +7,13 @@
 //   1. Fonts
 //   2. Modular Scale
 //   3. Colors
-//   4. Typography tokens
-//   5. Spacing & Grid
-//   6. Reset
-//   7. Grid System
-//   8. Typography Styles
-//   9. Utility Classes
-//   10. Responsive
-//   11. Nav
+//   4. Grid
+//   5. Reset
+//   6. Grid System
+//   7. Typography Styles
+//   8. Utility Classes
+//   9. Responsive
+//   10. Nav
 // ============================================================
 
 @use 'sass:math';
@@ -41,7 +40,8 @@
 
 // ============================================================
 //   2. MODULAR SCALE  — ratio 1.5, base 16px
-//   Usage: ms(0) = 1em, ms(1) = 1.5em, ms(2) = 2.25em …
+//   ms(0)=16px  ms(1)=24px  ms(2)=36px  ms(3)=54px
+//   ms(4)=81px  ms(5)=122px ms(6)=182px ms(-1)=11px
 // ============================================================
 
 $ms-ratio: 1.5;
@@ -56,75 +56,42 @@ $ms-ratio: 1.5;
 // ============================================================
 
 // Brand
-$blue:   #1A3BCC;   // primary — cobalt
-$red:    #8B2500;   // secondary — burnt sienna
-$yellow: #F0A500;   // accent — amber
+$blue:   #1A3BCC;
+$red:    #8B2500;
+$yellow: #F0A500;
 
 // Neutrals
 $black:  #000000;
-$ink:    #1A1917;   // near-black, body text
-$mid:    #4A4744;   // dark gray
-$ash:    #8C8885;   // medium gray, labels
-$fog:    #C4C0BB;   // light gray, borders
-$cream:  #ffffff;   // background
+$ink:    #1A1917;
+$mid:    #4A4744;
+$ash:    #8C8885;
+$fog:    #C4C0BB;
+$cream:  #ffffff;
 $white:  #FFFFFF;
 
-// Semantic aliases — retheme here
+// Semantic
 $bg:     $cream;
 $text:   $ink;
 $border: $fog;
 $muted:  $ash;
 
-
-// ============================================================
-//   4. TYPOGRAPHY  ← change type scale here
-// ============================================================
-
+// Font stacks
 $font-sans: 'Untitled Sans', system-ui, sans-serif;
 $font-mono: 'Courier New', monospace;
 
-// Weight
-$weight-regular: 400;
-$weight-bold:    700;
-
-// Line height
-$leading-tight:  1.1;
-$leading-normal: 1.5;
-$leading-loose:  1.8;
-
-// Letter spacing
-$tracking-tight:   -0.0625em;
-$tracking-normal:   0em;
-$tracking-wide:     0.09375em;
-$tracking-wider:    0.125em;
-$tracking-widest:   0.25em;
-
 
 // ============================================================
-//   5. SPACING & GRID  ← change layout here
+//   4. GRID  ← change layout here
 // ============================================================
-
-$space-1:   0.25em;
-$space-2:   0.5em;
-$space-3:   0.75em;
-$space-4:   1em;
-$space-6:   1.5em;
-$space-8:   2em;
-$space-10:  2.5em;
-$space-12:  3em;
-$space-16:  4em;
-$space-20:  5em;
-$space-24:  6em;
-$space-32:  8em;
 
 $grid-cols:    12;
-$grid-max:     90em;    // 1440px
-$grid-padding: 10em;   // 160px
-$grid-gap:     1.5em;  //  24px
+$grid-max:     90em;   // 1440px
+$grid-padding: 10em;  // 160px
+$grid-gap:     1.5em; //  24px
 
 
 // ============================================================
-//   6. RESET
+//   5. RESET
 // ============================================================
 
 *, *::before, *::after {
@@ -143,8 +110,8 @@ html {
 body {
   font-family: $font-sans;
   font-size: 1em;
-  font-weight: $weight-regular;
-  line-height: $leading-normal;
+  font-weight: 400;
+  line-height: 1.5;
   color: $text;
   width: 100%;
   overflow-x: hidden;
@@ -160,7 +127,7 @@ input, select, textarea, button {
 
 
 // ============================================================
-//   7. GRID SYSTEM — 12 columns
+//   6. GRID SYSTEM — 12 columns
 // ============================================================
 
 .container {
@@ -176,12 +143,10 @@ input, select, textarea, button {
   gap: $grid-gap;
 }
 
-// Column spans
 @for $i from 1 through 12 {
   .col-#{$i} { grid-column: span $i; }
 }
 
-// Offsets
 .col-offset-1  { grid-column-start: 2; }
 .col-offset-2  { grid-column-start: 3; }
 .col-offset-3  { grid-column-start: 4; }
@@ -191,78 +156,78 @@ input, select, textarea, button {
 
 
 // ============================================================
-//   8. TYPOGRAPHY STYLES
+//   7. TYPOGRAPHY STYLES
 // ============================================================
 
 .display {
   font-family: $font-sans;
   font-size: ms(6);
-  font-weight: $weight-regular;
-  letter-spacing: $tracking-tight;
-  line-height: $leading-tight;
+  font-weight: 400;
+  letter-spacing: -0.0625em;
+  line-height: 1.1;
 }
 
 h1, .h1 {
   font-family: $font-sans;
   font-size: ms(5);
-  font-weight: $weight-regular;
-  letter-spacing: $tracking-tight;
-  line-height: $leading-tight;
+  font-weight: 400;
+  letter-spacing: -0.0625em;
+  line-height: 1.1;
 }
 
 h2, .h2 {
   font-family: $font-sans;
   font-size: ms(4);
-  font-weight: $weight-regular;
-  letter-spacing: $tracking-tight;
-  line-height: $leading-tight;
+  font-weight: 400;
+  letter-spacing: -0.0625em;
+  line-height: 1.1;
 }
 
 h3, .h3 {
   font-family: $font-sans;
   font-size: ms(3);
-  font-weight: $weight-regular;
-  letter-spacing: $tracking-normal;
-  line-height: $leading-tight;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.1;
 }
 
 h4, .h4 {
   font-family: $font-sans;
   font-size: ms(3);
-  font-weight: $weight-bold;
-  letter-spacing: $tracking-normal;
-  line-height: $leading-normal;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.5;
 }
 
 h5, .h5 {
   font-family: $font-sans;
   font-size: ms(2);
-  font-weight: $weight-regular;
-  letter-spacing: $tracking-normal;
-  line-height: $leading-normal;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.5;
 }
 
 h6, .h6 {
   font-family: $font-sans;
   font-size: ms(1);
-  font-weight: $weight-bold;
-  letter-spacing: $tracking-normal;
-  line-height: $leading-normal;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.5;
 }
 
 p, .body {
   font-family: $font-sans;
   font-size: ms(0);
-  font-weight: $weight-regular;
-  line-height: $leading-loose;
+  font-weight: 400;
+  line-height: 1.8;
   color: $mid;
 }
 
 .label {
   font-family: $font-sans;
   font-size: ms(-1);
-  font-weight: $weight-bold;
-  letter-spacing: $tracking-widest;
+  font-weight: 700;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
   color: $ink;
 }
@@ -270,29 +235,29 @@ p, .body {
 .small {
   font-family: $font-sans;
   font-size: ms(0);
-  font-weight: $weight-regular;
-  letter-spacing: $tracking-wide;
-  line-height: $leading-loose;
+  font-weight: 400;
+  letter-spacing: 0.09375em;
+  line-height: 1.8;
 }
 
 .micro {
   font-family: $font-sans;
   font-size: ms(0);
-  font-weight: $weight-regular;
+  font-weight: 400;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  line-height: $leading-loose;
+  line-height: 1.8;
 }
 
 .mono {
   font-family: $font-mono;
   font-size: ms(0);
-  letter-spacing: $tracking-wide;
+  letter-spacing: 0.09375em;
 }
 
 
 // ============================================================
-//   9. UTILITY CLASSES
+//   8. UTILITY CLASSES
 // ============================================================
 
 .text-left    { text-align: left; }
@@ -317,7 +282,7 @@ p, .body {
 
 
 // ============================================================
-//   10. RESPONSIVE
+//   9. RESPONSIVE
 // ============================================================
 
 @media (max-width: 64em) {
@@ -336,7 +301,7 @@ p, .body {
 
 
 // ============================================================
-//   11. NAV
+//   10. NAV
 // ============================================================
 
 nav {
@@ -345,20 +310,20 @@ nav {
   left: 0;
   width: 100%;
   z-index: 100;
-  padding-top: $space-6;
-  padding-bottom: $space-6;
+  padding-top: 1.5em;
+  padding-bottom: 1.5em;
 }
 
 .nav-links {
   display: flex;
   justify-content: flex-end;
-  gap: $space-8;
+  gap: 2em;
 }
 
 .nav-link {
   font-size: ms(0);
-  font-weight: $weight-regular;
-  letter-spacing: $tracking-widest;
+  font-weight: 400;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
   color: $ash;
   text-decoration: none;
