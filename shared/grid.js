@@ -1,8 +1,6 @@
 /* ── OPL Grid Overlay — press G to toggle ── */
 (function () {
-  const COLS   = 12;
-  const COL_BG = 'var(--color-accent)';
-  const COL_BD = 'var(--color-accent)';
+  const COLS = 12;
 
   /* Overlay shell — fixed, full viewport */
   const overlay = document.createElement('div');
@@ -12,7 +10,6 @@
     zIndex:        '9999',
     pointerEvents: 'none',
     display:       'none',
-    opacity:       '0.3',
   });
 
   /* Use the real .container + .grid classes so columns are pixel-identical */
@@ -21,8 +18,9 @@
       <div class="grid" style="height:100%;align-items:stretch;">
         ${ Array.from({length: COLS}, () =>
           `<div class="col-1" style="
-            background:${COL_BG};
-            box-shadow: inset 1px 0 0 ${COL_BD}, inset -1px 0 0 ${COL_BD};
+            background: transparent;
+            box-shadow: inset 1px 0 0 var(--color-accent), inset -1px 0 0 var(--color-accent);
+            opacity: 0.4;
             height:100%;
           "></div>`
         ).join('') }
