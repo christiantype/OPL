@@ -16,7 +16,7 @@
       <div class="grid">
         <h1 class="col-12">${PROJECT.title}</h1>
       </div>
-      <div class="grid" style="margin-top: var(--space-8);">
+      <div class="grid">
         <h2 class="col-6">${PROJECT.description}</h2>
       </div>
     </div>
