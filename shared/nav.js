@@ -44,19 +44,20 @@ const NAV_LOGO_HEIGHT = '100px';
   const letters = [...wordmark.querySelectorAll('span[data-base]')];
 
   function flicker() {
-    // Pick 1–2 random letters, flash a color then reset
-    const count = Math.random() < 0.4 ? 2 : 1;
+    // Pick 3–6 random letters, flash colors then reset
+    const count = 3 + Math.floor(Math.random() * 4);
     const picks = [...letters].sort(() => Math.random() - 0.5).slice(0, count);
-    const color = colors[Math.floor(Math.random() * colors.length)];
 
-    picks.forEach(s => s.style.color = color);
+    picks.forEach(s => {
+      s.style.color = colors[Math.floor(Math.random() * colors.length)];
+    });
 
     setTimeout(() => {
       picks.forEach(s => s.style.color = '');
-    }, 120 + Math.random() * 200);
+    }, 150 + Math.random() * 250);
 
-    // Schedule next flicker between 800ms and 3s
-    setTimeout(flicker, 800 + Math.random() * 2200);
+    // Schedule next flicker around every 2 seconds
+    setTimeout(flicker, 1200 + Math.random() * 1600);
   }
 
   setTimeout(flicker, 1200);
