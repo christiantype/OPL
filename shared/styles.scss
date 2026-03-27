@@ -7,13 +7,14 @@
 //   1. Fonts
 //   2. Modular Scale
 //   3. Colors
-//   4. Grid
-//   5. Reset
-//   6. Grid System
-//   7. Typography Styles
-//   8. Utility Classes
-//   9. Responsive
-//   10. Nav
+//   4. CSS Custom Properties (runtime)
+//   5. Grid config
+//   6. Reset
+//   7. Grid System
+//   8. Typography Styles
+//   9. Utility Classes
+//   10. Responsive
+//   11. Nav
 // ============================================================
 
 @use 'sass:math';
@@ -80,18 +81,83 @@ $font-sans: 'Untitled Sans', system-ui, sans-serif;
 $font-mono: 'Courier New', monospace;
 
 
-// ============================================================
-//   4. GRID  ← change layout here
-// ============================================================
-
 $grid-cols:    12;
-$grid-max:     90em;   // 1440px
-$grid-padding: 10em;  // 160px
-$grid-gap:     1.5em; //  24px
+$grid-max:     90em;
+$grid-padding: 10em;
+$grid-gap:     1.5em;
+
+// ============================================================
+//   4. CSS CUSTOM PROPERTIES
+//   Sass vars are compile-time only. This :root block exposes
+//   them at runtime so HTML inline styles and JS can use var()
+// ============================================================
+
+:root {
+  // Colors
+  --color-blue:    #{$blue};
+  --color-red:     #{$red};
+  --color-yellow:  #{$yellow};
+  --color-black:   #{$black};
+  --color-ink:     #{$ink};
+  --color-mid:     #{$mid};
+  --color-ash:     #{$ash};
+  --color-fog:     #{$fog};
+  --color-cream:   #{$cream};
+  --color-white:   #{$white};
+  --color-bg:      #{$bg};
+  --color-text:    #{$text};
+  --color-border:  #{$border};
+  --color-muted:   #{$muted};
+
+  // Type scale
+  --body:    #{ms(0)};
+  --label:   #{ms(-1)};
+  --h6:      #{ms(1)};
+  --h5:      #{ms(2)};
+  --h4:      #{ms(3)};
+  --h3:      #{ms(3)};
+  --h2:      #{ms(4)};
+  --h1:      #{ms(5)};
+  --display: #{ms(6)};
+
+  // Leading
+  --leading-tight:  1.1;
+  --leading-normal: 1.5;
+  --leading-loose:  1.8;
+
+  // Tracking
+  --tracking-tight:   -0.0625em;
+  --tracking-normal:   0em;
+  --tracking-wide:     0.09375em;
+  --tracking-wider:    0.125em;
+  --tracking-widest:   0.25em;
+
+  // Weight
+  --weight-regular: 400;
+  --weight-bold:    700;
+
+  // Spacing
+  --space-1:  0.25em;
+  --space-2:  0.5em;
+  --space-3:  0.75em;
+  --space-4:  1em;
+  --space-6:  1.5em;
+  --space-8:  2em;
+  --space-10: 2.5em;
+  --space-12: 3em;
+  --space-16: 4em;
+  --space-20: 5em;
+  --space-24: 6em;
+  --space-32: 8em;
+
+  // Grid
+  --grid-padding: #{$grid-padding};
+  --grid-gap:     #{$grid-gap};
+}
 
 
 // ============================================================
-//   5. RESET
+//   6. RESET
 // ============================================================
 
 *, *::before, *::after {
