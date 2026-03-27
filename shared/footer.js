@@ -5,8 +5,12 @@ const FOOTER_COL1 = `Original Practice Lab<br>Since 2026`;
 const FOOTER_COL2 = `hi@opl.design<br>224.443.6415`;
 const FOOTER_COL3 = `1029 Lake St. Oak Park IL 60301<br><a href="https://instagram.com" target="_blank" rel="noopener">Instagram</a>`;
 
+/* Path to the footer wordmark SVG — drop opl-footer.svg at the project root */
+const FOOTER_SVG = 'opl-footer.svg';
+
 (function () {
   const inProject = window.location.pathname.includes('/projects/');
+  const base = inProject ? '../' : '';
 
   /* ── Gradient bar ── */
   const bar = document.createElement('div');
@@ -35,25 +39,9 @@ const FOOTER_COL3 = `1029 Lake St. Oak Park IL 60301<br><a href="https://instagr
   `;
   document.body.appendChild(footer);
 
-  /* ── Wordmark ── */
+  /* ── Wordmark SVG — spans full viewport width ── */
   const wm = document.createElement('div');
-  wm.id = 'footer-wordmark';
-  wm.style.cssText = 'position:relative;z-index:10;overflow:hidden;pointer-events:none;user-select:none;line-height:1;padding:0;margin:0;';
-  wm.innerHTML = `<span id="footer-wm-text" style="display:block;font-weight:400;letter-spacing:-0.02em;text-transform:uppercase;color:#1A1917;white-space:nowrap;line-height:1;opacity:0.08;">Original Practice Lab</span>`;
+  wm.style.cssText = 'position:relative;z-index:10;line-height:0;padding:0;margin:0;opacity:0.08;pointer-events:none;user-select:none;';
+  wm.innerHTML = `<img src="${base}${FOOTER_SVG}" alt="Original Practice Lab" style="display:block;width:100%;height:auto;">`;
   document.body.appendChild(wm);
-
-  /* Scale wordmark to full width after fonts load */
-  document.fonts.ready.then(function () {
-    function fit() {
-      const el = document.getElementById('footer-wm-text');
-      el.style.fontSize   = '100px';
-      el.style.visibility = 'hidden';
-      requestAnimationFrame(function () {
-        el.style.fontSize   = (100 * wm.offsetWidth / el.scrollWidth) + 'px';
-        el.style.visibility = 'visible';
-      });
-    }
-    fit();
-    window.addEventListener('resize', fit);
-  });
 })();
