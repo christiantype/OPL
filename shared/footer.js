@@ -21,7 +21,7 @@ const FOOTER_SVG = 'opl-footer.svg';
   if (!document.getElementById('footer-gradient-style')) {
     const s = document.createElement('style');
     s.id = 'footer-gradient-style';
-    s.textContent = '@keyframes footer-gradient{0%{background-position:0% 0}100%{background-position:100% 0}}';
+    s.textContent = '@keyframes footer-gradient{0%{background-position:100% 0}100%{background-position:0% 0}}';
     document.head.appendChild(s);
   }
 
