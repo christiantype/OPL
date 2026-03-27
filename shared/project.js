@@ -59,9 +59,11 @@
   images.id = 'images';
 
   if (PROJECT.images && PROJECT.images.length) {
-    images.innerHTML = PROJECT.images.map(img =>
-      `<img class="project-image" src="${img.src}" alt="${img.alt || ''}">`
-    ).join('');
+    images.innerHTML = `<div class="container"><div class="grid project-images">` +
+      PROJECT.images.map(img =>
+        `<img class="col-${img.cols || 12} project-image" src="${img.src}" alt="${img.alt || ''}">`
+      ).join('') +
+      `</div></div>`;
   } else {
     images.innerHTML = `
       <div class="project-image img-placeholder ratio-16-9"></div>
