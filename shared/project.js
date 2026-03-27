@@ -77,25 +77,6 @@
   }
   document.body.appendChild(images);
 
-  /* ── Footer stripe ── */
-  const stripe = document.createElement('div');
-  stripe.id = 'footer-stripe';
-  stripe.innerHTML = `<div class="s-dark"></div><div class="s-accent"></div>`;
-  document.body.appendChild(stripe);
-
-  /* ── Next project ── */
-  const next = document.createElement('a');
-  next.id = 'next';
-  next.href = PROJECT.next.url;
-  next.innerHTML = `
-    <div>
-      <span class="label">Next Project</span>
-      <div class="next-title">${PROJECT.next.title}</div>
-    </div>
-    <div>→</div>
-  `;
-  document.body.appendChild(next);
-
   /* ── Shared scripts ── */
   ['../shared/footer.js', '../shared/grid.js', '../shared/cursor.js'].forEach(src => {
     const s = document.createElement('script');
