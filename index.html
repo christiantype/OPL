@@ -7,82 +7,25 @@
   <link rel="stylesheet" href="shared/styles.css">
   <style>
 
-    /* ── Hero ── */
-    #hero {
-      position: relative;
-      z-index: 10;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-4);
-    }
-
-    #wordmark {
-      font-size: var(--body);
-      font-weight: var(--weight-bold);
-      letter-spacing: var(--tracking-widest);
-      text-transform: uppercase;
-      white-space: nowrap;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      color: var(--color-ink);
-    }
-
-    #cursor {
-      display: inline-block;
-      width: 2px;
-      height: 1em;
-      background: #FF69B4;
-      animation: blink 1s step-start infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0; }
-    }
-
-    #rotating-word {
-      font-size: var(--body);
-      font-weight: var(--weight-regular);
-      letter-spacing: var(--tracking-widest);
-      text-transform: uppercase;
-      color: var(--color-ash);
-      opacity: 1;
-      transition: opacity 0.4s ease;
-      user-select: none;
-    }
-
-    #rotating-word.fade { opacity: 0; }
-
     /* ── Projects ── */
     #projects {
       position: relative;
       z-index: 10;
+      padding-top: var(--space-32);
       padding-bottom: var(--space-24);
     }
 
     .project-header {
-      border-bottom: 1px solid var(--color-ink);
+      border-bottom: 1px solid var(--color-dark);
       padding-bottom: var(--space-3);
       margin-bottom: 0;
     }
 
-    .project-header span {
-      font-size: var(--body);
-      font-weight: var(--weight-bold);
-      letter-spacing: var(--tracking-widest);
-      text-transform: uppercase;
-      color: var(--color-ink);
-    }
 
     .project-header .col-2 { text-align: right; }
 
     .project-row {
-      border-bottom: 1px solid var(--color-fog);
+      border-bottom: 1px solid var(--color-mid);
       padding-top: var(--space-3);
       padding-bottom: var(--space-3);
       align-items: baseline;
@@ -93,25 +36,33 @@
     .project-row .col-7 {
       font-size: var(--body);
       letter-spacing: var(--tracking-normal);
-      color: var(--color-ink);
+      color: var(--color-dark);
     }
 
     .project-row .col-3 {
       font-size: var(--body);
       letter-spacing: var(--tracking-normal);
-      color: var(--color-ink);
+      color: var(--color-dark);
     }
 
     .project-row .col-2 {
       font-size: var(--body);
       letter-spacing: var(--tracking-normal);
-      color: var(--color-ink);
+      color: var(--color-dark);
       text-align: right;
     }
 
     .project-row a {
       color: inherit;
       text-decoration: none;
+    }
+
+    .project-row {
+      transition: background 0.4s ease;
+    }
+
+    .project-row:hover {
+      background: var(--color-light);
     }
 
     /* ── Keep project table columns on mobile ── */
@@ -164,40 +115,18 @@
   <script src="shared/nav.js"></script>
   <div id="thumb"><img src="" alt="" /></div>
 
-  <section id="hero">
-    <div id="wordmark">Original Practice Lab<span id="cursor"></span></div>
-    <div id="rotating-word">non-derivative</div>
-  </section>
-
   <section id="projects">
     <div class="container">
       <div class="grid project-header">
-        <span class="col-7">Project</span>
-        <span class="col-3">Category</span>
-        <span class="col-2">Year</span>
+        <span class="col-7 label">Project</span>
+        <span class="col-3 label">Category</span>
+        <span class="col-2 label">Year</span>
       </div>
       <div id="project-rows"></div>
     </div>
   </section>
 
   <script>
-    (function () {
-      const words = ['non-derivative','ongoing','process-based','experimental',
-                     'collaborative','exploratory','opalescent','mindful',
-                     'boundless','aware','heartfelt','direct','precise',
-                     'vast','connected'];
-      let i = 0;
-      const el = document.getElementById('rotating-word');
-      setInterval(() => {
-        el.classList.add('fade');
-        setTimeout(() => {
-          i = (i + 1) % words.length;
-          el.textContent = words[i];
-          el.classList.remove('fade');
-        }, 400);
-      }, 2000);
-    })();
-
     const thumb    = document.getElementById('thumb');
     const thumbImg = thumb.querySelector('img');
     const tbody    = document.getElementById('project-rows');

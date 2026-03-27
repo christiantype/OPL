@@ -1,8 +1,8 @@
 /* ── OPL Grid Overlay — press G to toggle ── */
 (function () {
   const COLS   = 12;
-  const COL_BG = 'rgba(255, 40, 40, 0.08)';
-  const COL_BD = 'rgba(255, 40, 40, 0.18)';
+  const COL_BG = 'var(--color-accent)';
+  const COL_BD = 'var(--color-accent)';
 
   /* Overlay shell — fixed, full viewport */
   const overlay = document.createElement('div');
@@ -40,9 +40,9 @@
     zIndex:         '10000',
     width:          '28px',
     height:         '28px',
-    background:     'transparent',
-    border:         '1px solid rgba(140,136,133,0.4)',
-    color:          '#8C8885',
+    background:     'var(--color-light)',
+    border:         '1px solid var(--color-mid)',
+    color:          'var(--color-mid)',
     fontSize:       '9px',
     fontFamily:     'inherit',
     letterSpacing:  '1px',
@@ -57,8 +57,8 @@
   function toggle() {
     visible = !visible;
     overlay.style.display      = visible ? 'block' : 'none';
-    btn.style.borderColor      = visible ? 'rgba(255,40,40,0.6)' : 'rgba(140,136,133,0.4)';
-    btn.style.color            = visible ? 'rgba(255,40,40,0.9)' : '#8C8885';
+    btn.style.borderColor      = visible ? 'var(--color-accent)' : 'var(--color-mid)';
+    btn.style.color            = visible ? 'var(--color-accent)' : 'var(--color-mid)';
   }
 
   btn.addEventListener('click', toggle);

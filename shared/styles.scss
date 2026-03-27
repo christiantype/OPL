@@ -56,25 +56,10 @@ $ms-ratio: 1.5;
 //   3. COLORS  ← change colors here
 // ============================================================
 
-// Brand
-$blue:   #1A3BCC;
-$red:    #8B2500;
-$yellow: #F0A500;
-
-// Neutrals
-$black:  #000000;
-$ink:    #1A1917;
-$mid:    #4A4744;
-$ash:    #8C8885;
-$fog:    #C4C0BB;
-$cream:  #ffffff;
-$white:  #FFFFFF;
-
-// Semantic
-$bg:     $cream;
-$text:   $ink;
-$border: $fog;
-$muted:  $ash;
+$dark:   #0D0C0A;
+$light:  #FFFFFF;
+$mid:    #888580;
+$accent: #FF69B4;
 
 // Font stacks
 $font-sans: 'Untitled Sans', system-ui, sans-serif;
@@ -94,20 +79,10 @@ $grid-gap:     1.5em;
 
 :root {
   // Colors
-  --color-blue:    #{$blue};
-  --color-red:     #{$red};
-  --color-yellow:  #{$yellow};
-  --color-black:   #{$black};
-  --color-ink:     #{$ink};
-  --color-mid:     #{$mid};
-  --color-ash:     #{$ash};
-  --color-fog:     #{$fog};
-  --color-cream:   #{$cream};
-  --color-white:   #{$white};
-  --color-bg:      #{$bg};
-  --color-text:    #{$text};
-  --color-border:  #{$border};
-  --color-muted:   #{$muted};
+  --color-dark:       #{$dark};
+  --color-light:      #{$light};
+  --color-mid:        #{$mid};
+  --color-accent:     #{$accent};
 
   // Type scale
   --body:    #{ms(0)};
@@ -168,7 +143,7 @@ $grid-gap:     1.5em;
 
 html {
   font-size: 16px;
-  background: $bg;
+  background: $light;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -178,7 +153,7 @@ body {
   font-size: 1em;
   font-weight: 400;
   line-height: 1.5;
-  color: $text;
+  color: $dark;
   width: 100%;
   overflow-x: hidden;
 }
@@ -289,14 +264,6 @@ p, .body {
   color: $mid;
 }
 
-.label {
-  font-family: $font-sans;
-  font-size: ms(-1);
-  font-weight: 700;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: $ink;
-}
 
 .small {
   font-family: $font-sans;
@@ -330,18 +297,15 @@ p, .body {
 .text-center  { text-align: center; }
 .text-right   { text-align: right; }
 
-.text-blue    { color: $blue; }
-.text-red     { color: $red; }
-.text-yellow  { color: $yellow; }
-.text-muted   { color: $muted; }
-.text-white   { color: $white; }
+.text-dark    { color: $dark; }
+.text-light   { color: $light; }
+.text-mid     { color: $mid; }
+.text-accent  { color: $accent; }
 
-.bg-blue      { background: $blue; }
-.bg-red       { background: $red; }
-.bg-yellow    { background: $yellow; }
-.bg-cream     { background: $cream; }
-.bg-black     { background: $black; }
-.bg-white     { background: $white; }
+.bg-dark      { background: $dark; }
+.bg-light     { background: $light; }
+.bg-mid       { background: $mid; }
+.bg-accent    { background: $accent; }
 
 .mt-auto  { margin-top: auto; }
 .mb-auto  { margin-bottom: auto; }
@@ -386,14 +350,138 @@ nav {
   gap: 2em;
 }
 
-.nav-link {
-  font-size: ms(0);
-  font-weight: 400;
+.nav-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 0.8em;
+  background: $dark;
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: nav-blink 1s step-start infinite;
+}
+
+@keyframes nav-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.nav-link, .label {
+  font-size: ms(-1);
+  font-weight: 700;
   letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: $ash;
+  color: $mid;
   text-decoration: none;
+  display: block;
   transition: color 0.2s;
 
-  &:hover { color: $ink; }
+  &:hover { color: $dark; }
+}
+
+
+// ============================================================
+//   11. PROJECT TEMPLATE
+// ============================================================
+
+#hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-top: 120px;
+  padding-bottom: var(--space-12);
+}
+
+#hero h1 { margin-bottom: var(--space-8); }
+
+.hero-rule {
+  height: 1px;
+  background: $mid;
+  grid-column: span 12;
+  margin-top: var(--space-8);
+}
+
+#body {
+  padding-top: var(--space-16);
+  padding-bottom: var(--space-16);
+}
+
+#images { padding-bottom: var(--space-16); }
+
+.lead {
+  font-size: ms(2);
+  line-height: 1.8;
+  color: $dark;
+}
+
+.img-placeholder {
+  background: $mid;
+  width: 100%;
+  &.ratio-16-9 { aspect-ratio: 16/9; }
+  &.ratio-4-3  { aspect-ratio: 4/3;  }
+  &.ratio-3-4  { aspect-ratio: 3/4;  }
+}
+
+#credits {
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-24);
+  border-top: 1px solid $mid;
+}
+
+.credits-link {
+  display: inline-block;
+  margin-top: var(--space-4);
+  color: $accent;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+  &:hover { color: $dark; }
+}
+
+#footer-stripe {
+  display: flex;
+  height: 3px;
+  .s-dark   { flex: 1; background: $dark; }
+  .s-accent { flex: 1; background: $accent; }
+}
+
+#next {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-16) var(--grid-padding);
+  background: $dark;
+  color: $light;
+  text-decoration: none;
+  transition: background 0.3s;
+  &:hover { background: $accent; }
+}
+
+.next-title {
+  font-size: ms(3);
+  letter-spacing: -0.0625em;
+}
+
+@media (max-width: 1024px) {
+  .col-lead      { grid-column: span 10; }
+  .col-body-copy { grid-column: span 7; }
+}
+
+@media (max-width: 768px) {
+  .col-meta        { grid-column: span 4; }
+  .col-lead        { grid-column: span 12; }
+  .col-body-copy   { grid-column: span 12; }
+  .col-img-half    { grid-column: span 12; }
+  .col-img-third   { grid-column: span 12; }
+  .col-credit-info { grid-column: span 12; }
+  .col-credit-1,
+  .col-credit-2,
+  .col-credit-3  { grid-column: span 4; }
+}
+
+@media (max-width: 640px) {
+  :root { --grid-padding: 2rem; }
+  .col-meta     { grid-column: span 6; }
+  .col-credit-1,
+  .col-credit-2,
+  .col-credit-3 { grid-column: span 12; }
 }

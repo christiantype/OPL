@@ -14,7 +14,7 @@ const FOOTER_SVG = 'opl-footer.svg';
 
   /* ── Gradient bar ── */
   const bar = document.createElement('div');
-  bar.style.cssText = 'position:relative;z-index:10;height:1px;background:linear-gradient(90deg,#000,#FF69B4,#fff,#000,#FF69B4,#fff,#000);background-size:300% 100%;animation:footer-gradient 8s linear infinite;';
+  bar.style.cssText = 'position:relative;z-index:10;height:1px;background:linear-gradient(90deg,var(--color-dark),var(--color-accent),var(--color-light),var(--color-dark),var(--color-accent),var(--color-light),var(--color-dark));background-size:300% 100%;animation:footer-gradient 8s linear infinite;';
   document.body.appendChild(bar);
 
   /* Inject keyframe once */
@@ -31,9 +31,9 @@ const FOOTER_SVG = 'opl-footer.svg';
   footer.innerHTML = `
     <div class="container">
       <div class="grid" style="align-items:start;">
-        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:var(--color-ink);">${FOOTER_COL1}</div>
-        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:var(--color-ink);">${FOOTER_COL2}</div>
-        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:var(--color-ink);">${FOOTER_COL3}</div>
+        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:var(--color-dark);">${FOOTER_COL1}</div>
+        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:var(--color-dark);">${FOOTER_COL2}</div>
+        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:var(--color-dark);">${FOOTER_COL3}</div>
       </div>
     </div>
   `;
