@@ -12,6 +12,7 @@
     zIndex:        '9999',
     pointerEvents: 'none',
     display:       'none',
+    opacity:       '0.3',
   });
 
   /* Use the real .container + .grid classes so columns are pixel-identical */
