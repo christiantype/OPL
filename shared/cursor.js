@@ -3,20 +3,24 @@
   /* Hide default cursor */
   document.documentElement.style.cursor = 'none';
 
-  /* Small dot that tracks the pointer */
+  /* Cross cursor that tracks the pointer */
   const dot = document.createElement('div');
   Object.assign(dot.style, {
     position:      'fixed',
     pointerEvents: 'none',
     zIndex:        '99999',
-    width:         '6px',
-    height:        '6px',
-    borderRadius:  '50%',
-    background:    '#0000FF',
+    width:         '14px',
+    height:        '14px',
     transform:     'translate(-50%, -50%)',
     top:           '-100px',
     left:          '-100px',
   });
+  dot.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
+      <line x1="7" y1="0" x2="7" y2="14" stroke="#0000FF" stroke-width="1.5"/>
+      <line x1="0" y1="7" x2="14" y2="7" stroke="#0000FF" stroke-width="1.5"/>
+    </svg>
+  `;
   document.body.appendChild(dot);
 
   /* Full-page canvas for the trail */
