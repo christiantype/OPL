@@ -1,0 +1,380 @@
+// ============================================================
+//   OPL — Design System
+//   Original Practice Lab
+// ============================================================
+//
+//   TABLE OF CONTENTS
+//   1. Fonts
+//   2. Modular Scale
+//   3. Colors
+//   4. Typography tokens
+//   5. Spacing & Grid
+//   6. Reset
+//   7. Grid System
+//   8. Typography Styles
+//   9. Utility Classes
+//   10. Responsive
+//   11. Nav
+// ============================================================
+
+@use 'sass:math';
+
+
+// ============================================================
+//   1. FONTS
+// ============================================================
+
+@font-face {
+  font-family: 'Untitled Sans';
+  src: url('fonts/UntitledSans-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Untitled Sans';
+  src: url('fonts/UntitledSans-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+
+// ============================================================
+//   2. MODULAR SCALE  — ratio 1.5, base 16px
+//   Usage: ms(0) = 1em, ms(1) = 1.5em, ms(2) = 2.25em …
+// ============================================================
+
+$ms-ratio: 1.5;
+
+@function ms($n) {
+  @return math.pow($ms-ratio, $n) * 1em;
+}
+
+
+// ============================================================
+//   3. COLORS  ← change colors here
+// ============================================================
+
+// Brand
+$blue:   #1A3BCC;   // primary — cobalt
+$red:    #8B2500;   // secondary — burnt sienna
+$yellow: #F0A500;   // accent — amber
+
+// Neutrals
+$black:  #000000;
+$ink:    #1A1917;   // near-black, body text
+$mid:    #4A4744;   // dark gray
+$ash:    #8C8885;   // medium gray, labels
+$fog:    #C4C0BB;   // light gray, borders
+$cream:  #ffffff;   // background
+$white:  #FFFFFF;
+
+// Semantic aliases — retheme here
+$bg:     $cream;
+$text:   $ink;
+$border: $fog;
+$muted:  $ash;
+
+
+// ============================================================
+//   4. TYPOGRAPHY  ← change type scale here
+// ============================================================
+
+$font-sans: 'Untitled Sans', system-ui, sans-serif;
+$font-mono: 'Courier New', monospace;
+
+// Modular scale steps → semantic names
+// Adjust the ms() number to remap any size
+$label:   ms(-1);  // 10.7px
+$body:    ms(0);   // 16.0px
+$h6:      ms(1);   // 24.0px
+$h5:      ms(2);   // 36.0px
+$h4:      ms(3);   // 54.0px
+$h3:      ms(3);   // 54.0px
+$h2:      ms(4);   // 81.0px
+$h1:      ms(5);   // 121.5px
+$display: ms(6);   // 182.3px
+
+// Weight
+$weight-regular: 400;
+$weight-bold:    700;
+
+// Line height
+$leading-tight:  1.1;
+$leading-normal: 1.5;
+$leading-loose:  1.8;
+
+// Letter spacing
+$tracking-tight:   -0.0625em;
+$tracking-normal:   0em;
+$tracking-wide:     0.09375em;
+$tracking-wider:    0.125em;
+$tracking-widest:   0.25em;
+
+
+// ============================================================
+//   5. SPACING & GRID  ← change layout here
+// ============================================================
+
+$space-1:   0.25em;
+$space-2:   0.5em;
+$space-3:   0.75em;
+$space-4:   1em;
+$space-6:   1.5em;
+$space-8:   2em;
+$space-10:  2.5em;
+$space-12:  3em;
+$space-16:  4em;
+$space-20:  5em;
+$space-24:  6em;
+$space-32:  8em;
+
+$grid-cols:    12;
+$grid-max:     90em;    // 1440px
+$grid-padding: 10em;   // 160px
+$grid-gap:     1.5em;  //  24px
+
+
+// ============================================================
+//   6. RESET
+// ============================================================
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  background: $bg;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: $font-sans;
+  font-size: 1em;
+  font-weight: $weight-regular;
+  line-height: $leading-normal;
+  color: $text;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+img { display: block; max-width: 100%; }
+a   { color: inherit; text-decoration: none; }
+
+input, select, textarea, button {
+  font-family: inherit;
+  border-radius: 0;
+}
+
+
+// ============================================================
+//   7. GRID SYSTEM — 12 columns
+// ============================================================
+
+.container {
+  width: 100%;
+  max-width: $grid-max;
+  margin: 0 auto;
+  padding: 0 $grid-padding;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat($grid-cols, 1fr);
+  gap: $grid-gap;
+}
+
+// Column spans
+@for $i from 1 through 12 {
+  .col-#{$i} { grid-column: span $i; }
+}
+
+// Offsets
+.col-offset-1  { grid-column-start: 2; }
+.col-offset-2  { grid-column-start: 3; }
+.col-offset-3  { grid-column-start: 4; }
+.col-offset-4  { grid-column-start: 5; }
+.col-offset-5  { grid-column-start: 6; }
+.col-offset-6  { grid-column-start: 7; }
+
+
+// ============================================================
+//   8. TYPOGRAPHY STYLES
+// ============================================================
+
+.display {
+  font-family: $font-sans;
+  font-size: $display;
+  font-weight: $weight-regular;
+  letter-spacing: $tracking-tight;
+  line-height: $leading-tight;
+}
+
+h1, .h1 {
+  font-family: $font-sans;
+  font-size: $h1;
+  font-weight: $weight-regular;
+  letter-spacing: $tracking-tight;
+  line-height: $leading-tight;
+}
+
+h2, .h2 {
+  font-family: $font-sans;
+  font-size: $h2;
+  font-weight: $weight-regular;
+  letter-spacing: $tracking-tight;
+  line-height: $leading-tight;
+}
+
+h3, .h3 {
+  font-family: $font-sans;
+  font-size: $h3;
+  font-weight: $weight-regular;
+  letter-spacing: $tracking-normal;
+  line-height: $leading-tight;
+}
+
+h4, .h4 {
+  font-family: $font-sans;
+  font-size: $h4;
+  font-weight: $weight-bold;
+  letter-spacing: $tracking-normal;
+  line-height: $leading-normal;
+}
+
+h5, .h5 {
+  font-family: $font-sans;
+  font-size: $h5;
+  font-weight: $weight-regular;
+  letter-spacing: $tracking-normal;
+  line-height: $leading-normal;
+}
+
+h6, .h6 {
+  font-family: $font-sans;
+  font-size: $h6;
+  font-weight: $weight-bold;
+  letter-spacing: $tracking-normal;
+  line-height: $leading-normal;
+}
+
+p, .body {
+  font-family: $font-sans;
+  font-size: $body;
+  font-weight: $weight-regular;
+  line-height: $leading-loose;
+  color: $mid;
+}
+
+.label {
+  font-family: $font-sans;
+  font-size: $label;
+  font-weight: $weight-bold;
+  letter-spacing: $tracking-widest;
+  text-transform: uppercase;
+  color: $ink;
+}
+
+.small {
+  font-family: $font-sans;
+  font-size: $body;
+  font-weight: $weight-regular;
+  letter-spacing: $tracking-wide;
+  line-height: $leading-loose;
+}
+
+.micro {
+  font-family: $font-sans;
+  font-size: $body;
+  font-weight: $weight-regular;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  line-height: $leading-loose;
+}
+
+.mono {
+  font-family: $font-mono;
+  font-size: $body;
+  letter-spacing: $tracking-wide;
+}
+
+
+// ============================================================
+//   9. UTILITY CLASSES
+// ============================================================
+
+.text-left    { text-align: left; }
+.text-center  { text-align: center; }
+.text-right   { text-align: right; }
+
+.text-blue    { color: $blue; }
+.text-red     { color: $red; }
+.text-yellow  { color: $yellow; }
+.text-muted   { color: $muted; }
+.text-white   { color: $white; }
+
+.bg-blue      { background: $blue; }
+.bg-red       { background: $red; }
+.bg-yellow    { background: $yellow; }
+.bg-cream     { background: $cream; }
+.bg-black     { background: $black; }
+.bg-white     { background: $white; }
+
+.mt-auto  { margin-top: auto; }
+.mb-auto  { margin-bottom: auto; }
+
+
+// ============================================================
+//   10. RESPONSIVE
+// ============================================================
+
+@media (max-width: 64em) {
+  .container { padding: 0 4em; }
+  .col-3 { grid-column: span 6; }
+  .col-4 { grid-column: span 6; }
+}
+
+@media (max-width: 40em) {
+  .container { padding: 0 1.25em; }
+  .grid      { gap: 1em; }
+
+  [class^="col-"] { grid-column: span 12; }
+  nav .col-6      { grid-column: span 6 !important; }
+}
+
+
+// ============================================================
+//   11. NAV
+// ============================================================
+
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+  padding-top: $space-6;
+  padding-bottom: $space-6;
+}
+
+.nav-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-8;
+}
+
+.nav-link {
+  font-size: $body;
+  font-weight: $weight-regular;
+  letter-spacing: $tracking-widest;
+  text-transform: uppercase;
+  color: $ash;
+  text-decoration: none;
+  transition: color 0.2s;
+
+  &:hover { color: $ink; }
+}
