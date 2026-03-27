@@ -31,7 +31,7 @@
 
   /* Toggle button */
   const btn = document.createElement('button');
-  btn.textContent = 'G';
+  btn.innerHTML = `<svg width="14" height="12" viewBox="0 0 14 12" xmlns="http://www.w3.org/2000/svg"><line x1="2" y1="0" x2="2" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="7" y1="0" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="0" x2="12" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>`;
   Object.assign(btn.style, {
     position:       'fixed',
     bottom:         '24px',
