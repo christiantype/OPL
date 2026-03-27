@@ -19,8 +19,8 @@
         ${ Array.from({length: COLS}, () =>
           `<div class="col-1" style="
             background: transparent;
-            box-shadow: inset 1px 0 0 var(--color-accent), inset -1px 0 0 var(--color-accent);
-            opacity: 0.4;
+            box-shadow: inset 0.3px 0 0 var(--color-mid), inset -0.3px 0 0 var(--color-mid);
+            opacity: 0.3;
             height:100%;
           "></div>`
         ).join('') }
@@ -51,7 +51,8 @@
   });
   document.body.appendChild(btn);
 
-  let visible = false;
+  let visible = true;
+  overlay.style.display = 'block';
 
   function toggle() {
     visible = !visible;
