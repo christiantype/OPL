@@ -31,23 +31,23 @@
   credits.innerHTML = `
     <div class="container">
       <div class="grid">
-        <div class="col-2">
+        <div class="col-3">
           <span class="label">Client</span>
           <p>${PROJECT.client || '—'}</p>
         </div>
-        <div class="col-2">
+        <div class="col-3">
           <span class="label">Medium</span>
           <p>${PROJECT.medium || '—'}</p>
         </div>
-        <div class="col-2">
+        <div class="col-3">
           <span class="label">Year</span>
           <p>${PROJECT.year || '—'}</p>
         </div>
-        <div class="col-2">
+        <div class="col-3">
           <span class="label">Credits</span>
           <p>${PROJECT.credits || '—'}</p>
         </div>
-        <div class="col-2">
+        <div class="col-3">
           <span class="label">Role</span>
           <p>${PROJECT.role || '—'}</p>
         </div>
