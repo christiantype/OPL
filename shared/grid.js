@@ -1,6 +1,27 @@
 /* ── OPL Grid Overlay — press G to toggle ── */
 (function () {
-  const COLS = 12;
+  const MOBILE_BP = 640;
+
+  function colCount() {
+    return window.innerWidth <= MOBILE_BP ? 6 : 12;
+  }
+
+  function colStyle(n) {
+    const gridCols = n === 6 ? 'repeat(6,1fr)' : 'repeat(12,1fr)';
+    return `
+      <div class="container" style="height:100%;">
+        <div style="display:grid;grid-template-columns:${gridCols};gap:var(--grid-gap);height:100%;align-items:stretch;">
+          ${ Array.from({length: n}, () =>
+            `<div style="
+              background:transparent;
+              box-shadow:inset 0.3px 0 0 var(--color-mid),inset -0.3px 0 0 var(--color-mid);
+              opacity:0.3;
+              height:100%;
+            "></div>`
+          ).join('') }
+        </div>
+      </div>`;
+  }
 
   /* Overlay shell — fixed, full viewport */
   const overlay = document.createElement('div');
@@ -12,20 +33,11 @@
     display:       'none',
   });
 
-  /* Use the real .container + .grid classes so columns are pixel-identical */
-  overlay.innerHTML = `
-    <div class="container" style="height:100%;">
-      <div class="grid" style="height:100%;align-items:stretch;">
-        ${ Array.from({length: COLS}, () =>
-          `<div class="col-1" style="
-            background: transparent;
-            box-shadow: inset 0.3px 0 0 var(--color-mid), inset -0.3px 0 0 var(--color-mid);
-            opacity: 0.3;
-            height:100%;
-          "></div>`
-        ).join('') }
-      </div>
-    </div>`;
+  overlay.innerHTML = colStyle(colCount());
+
+  window.addEventListener('resize', () => {
+    overlay.innerHTML = colStyle(colCount());
+  });
 
   document.body.appendChild(overlay);
 
