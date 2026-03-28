@@ -273,7 +273,6 @@ p, .body {
   .container { padding: 0 4em; }
   .col-3 { grid-column: span 6; }
   .col-4 { grid-column: span 6; }
-  .nav-menu-btn { right: 4em; }
 }
 
 @media (max-width: 40em) {
@@ -282,7 +281,6 @@ p, .body {
 
   [class^="col-"] { grid-column: span 6; }
   nav .col-6      { grid-column: span 3 !important; }
-  .nav-menu-btn   { right: 1.25em; }
 }
 
 
@@ -300,19 +298,25 @@ nav {
   padding-bottom: 1.5em;
 }
 
+.nav-menu-wrap {
+  position: relative;
+}
+
 .nav-links {
   display: none;
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  top: calc(100% + 0.75em);
+  right: 0;
   background: $light;
+  border: 0.3px solid $mid;
+  padding: 1em 1.5em;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2.5em;
+  gap: 0.75em;
   z-index: 99;
+  white-space: nowrap;
 
   .nav-link {
-    font-size: ms(1);
+    font-size: ms(0);
     color: $dark;
     &:hover { color: $accent; }
   }
@@ -349,18 +353,12 @@ nav {
 }
 
 .nav-menu-btn {
-  display: block;
-  position: absolute;
-  top: 50%;
-  right: $grid-padding;
-  transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
   color: $mid;
   padding: 0;
   line-height: 0;
-  z-index: 101;
   transition: color 0.2s;
 
   &:hover { color: $dark; }
@@ -548,8 +546,9 @@ body.project {
 
   .nav-menu-btn { color: $mid; &:hover { color: $light; } }
 
-  .nav-links.nav-links--open {
+  .nav-links {
     background: $dark;
+    border-color: $mid;
     .nav-link { color: $mid; &:hover { color: $light; } }
   }
 
