@@ -281,6 +281,29 @@ p, .body {
 
   [class^="col-"] { grid-column: span 6; }
   nav .col-6      { grid-column: span 3 !important; }
+
+  // Mobile menu
+  .nav-menu-btn { display: block; }
+
+  .nav-links {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: $light;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.5em;
+    z-index: 99;
+
+    .nav-link {
+      font-size: ms(1);
+      color: $dark;
+      &:hover { color: $accent; }
+    }
+
+    &.nav-links--open { display: flex; }
+  }
 }
 
 
@@ -327,6 +350,24 @@ nav {
   color: $mid;
   text-decoration: none;
   display: block;
+  transition: color 0.2s;
+
+  &:hover { color: $dark; }
+}
+
+.nav-menu-btn {
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: 1.25em;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: $mid;
+  padding: 0;
+  line-height: 0;
+  z-index: 101;
   transition: color 0.2s;
 
   &:hover { color: $dark; }
@@ -511,6 +552,13 @@ body.project {
   color: $light;
 
   .nav-cursor { background: $light; }
+
+  .nav-menu-btn { color: $mid; &:hover { color: $light; } }
+
+  .nav-links.nav-links--open {
+    background: $dark;
+    .nav-link { color: $mid; &:hover { color: $light; } }
+  }
 
   .nav-link, .label {
     color: $mid;
