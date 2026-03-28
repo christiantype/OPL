@@ -19,7 +19,7 @@
         <h1 class="col-12">${PROJECT.title}</h1>
       </div>
       <div class="grid">
-        <h2 class="col-6">${PROJECT.description}</h2>
+        <h2 class="col-9">${PROJECT.description}</h2>
       </div>
     </div>
   `;
