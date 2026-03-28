@@ -279,8 +279,16 @@ p, .body {
   .container { padding: 0 1.25em; }
   .grid      { grid-template-columns: repeat(6, 1fr); gap: 1em; }
 
-  [class^="col-"] { grid-column: span 6; }
-  nav .col-6      { grid-column: span 3 !important; }
+  [class^="col-"]    { grid-column: span 6; }
+  [class*="col-offset-"] { grid-column-start: auto; } // reset offsets
+
+  nav .col-6         { grid-column: span 3 !important; }
+
+  // Credits: 2 per row (span 3 in 6-col grid)
+  #credits .col-2    { grid-column: span 3; }
+
+  // About members: 2 per row
+  #members .col-4    { grid-column: span 3; }
 }
 
 
@@ -444,13 +452,8 @@ nav {
   letter-spacing: -0.0625em;
 }
 
-@media (max-width: 768px) {
-  #credits .col-2 { grid-column: span 4; }
-}
-
 @media (max-width: 640px) {
   :root { --grid-padding: 2rem; }
-  #credits .col-2 { grid-column: span 6; }
 }
 
 
