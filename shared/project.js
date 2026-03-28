@@ -56,24 +56,42 @@
   `;
   document.body.appendChild(credits);
 
-  /* ── Images ── */
+  /* ── Images ──
+     Each image in PROJECT.images can have:
+       cols: 'full'  → full viewport width (default)
+       cols: 6       → 6 columns within the grid
+       cols: 12      → 12 columns within the grid (container width)
+  ── */
   const images = document.createElement('section');
   images.id = 'images';
 
   if (PROJECT.images && PROJECT.images.length) {
-    images.innerHTML = `<div class="container"><div class="grid project-images">` +
-      PROJECT.images.map(img =>
-        `<img class="col-${img.cols || 12} project-image" src="${img.src}" alt="${img.alt || ''}">`
-      ).join('') +
-      `</div></div>`;
-  } else {
-    images.innerHTML = `
-      <div class="project-image img-placeholder ratio-16-9"></div>
-      <div class="img-placeholder-row">
-        <div class="img-placeholder ratio-4-3"></div>
-        <div class="img-placeholder ratio-4-3"></div>
-      </div>
-    `;
+    // Group consecutive grid images so they share a .grid row
+    const groups = [];
+    let gridGroup = null;
+    PROJECT.images.forEach(img => {
+      const isFull = !img.cols || img.cols === 'full';
+      if (isFull) {
+        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
+        groups.push({ type: 'full', img });
+      } else {
+        if (!gridGroup) { gridGroup = { type: 'grid', imgs: [] }; }
+        gridGroup.imgs.push(img);
+      }
+    });
+    if (gridGroup) groups.push(gridGroup);
+
+    images.innerHTML = groups.map(g => {
+      if (g.type === 'full') {
+        return `<img class="project-image project-image--full" src="${g.img.src}" alt="${g.img.alt || ''}">`;
+      } else {
+        return `<div class="container"><div class="grid project-images">` +
+          g.imgs.map(img =>
+            `<img class="col-${img.cols} project-image" src="${img.src}" alt="${img.alt || ''}">`
+          ).join('') +
+          `</div></div>`;
+      }
+    }).join('');
   }
   document.body.appendChild(images);
 
