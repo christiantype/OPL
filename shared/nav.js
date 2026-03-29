@@ -56,7 +56,7 @@ const NAV_LOGO_HEIGHT = '100px';
 
   /* ── Letter alternation ── */
   const wordmark = nav.querySelector('.nav-wordmark');
-  const text     = 'Original\nPractice\nLab';
+  const text     = 'Original\nPractice\nA— \nLab';
   const colors   = ['var(--color-accent)', 'var(--color-accent2)', 'var(--color-blue)', 'var(--color-red)', 'var(--color-lime)'];
 
   // Wrap each letter in a span, preserve line breaks
