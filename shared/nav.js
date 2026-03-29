@@ -60,26 +60,31 @@ const NAV_LOGO_HEIGHT = '100px';
   const colors   = ['var(--color-accent)', 'var(--color-accent2)', 'var(--color-blue)', 'var(--color-red)', 'var(--color-lime)'];
 
   // Wrap each letter in a span, preserve line breaks
+  // Mark the first letter of each line (O, P, A, L) with data-opal
   const cursor = wordmark.querySelector('.nav-cursor');
   wordmark.innerHTML = '';
+  let newLine = true;
   text.split('').forEach(ch => {
     if (ch === '\n') {
       wordmark.appendChild(document.createElement('br'));
+      newLine = true;
     } else {
       const s = document.createElement('span');
       s.textContent = ch;
       s.dataset.base = 'true';
+      if (newLine) { s.dataset.opal = 'true'; newLine = false; }
       wordmark.appendChild(s);
     }
   });
   wordmark.appendChild(cursor);
 
-  const letters = [...wordmark.querySelectorAll('span[data-base]')];
+  // Only O, P, A, L flicker
+  const opalLetters = [...wordmark.querySelectorAll('span[data-opal]')];
 
   function flicker() {
-    // Pick 3–6 random letters, flash colors then reset
-    const count = 3 + Math.floor(Math.random() * 4);
-    const picks = [...letters].sort(() => Math.random() - 0.5).slice(0, count);
+    // Pick 1–4 of the OPAL letters, flash a color then reset
+    const count = 1 + Math.floor(Math.random() * opalLetters.length);
+    const picks = [...opalLetters].sort(() => Math.random() - 0.5).slice(0, count);
 
     picks.forEach(s => {
       s.style.color = colors[Math.floor(Math.random() * colors.length)];
