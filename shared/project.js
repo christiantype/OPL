@@ -96,7 +96,7 @@
   document.body.appendChild(images);
 
   /* ── Shared scripts ── */
-  ['../shared/footer.js', '../shared/grid.js', '../shared/cursor.js'].forEach(src => {
+  ['../shared/footer.js', '../shared/grid.js', '../shared/cursor.js', '../shared/animate.js'].forEach(src => {
     const s = document.createElement('script');
     s.src = src;
     document.body.appendChild(s);
