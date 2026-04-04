@@ -44,7 +44,7 @@
           <p>${PROJECT.year || '—'}</p>
         </div>
         <div class="col-3">
-          <span class="label">Credits</span>
+          <span class="label">Acknowledgements</span>
           <p>${PROJECT.credits || '—'}</p>
         </div>
         <div class="col-3">

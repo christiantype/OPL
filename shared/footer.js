@@ -41,7 +41,7 @@ const FOOTER_SVG = 'opl-footer.svg';
 
   /* ── Wordmark SVG — spans full viewport width ── */
   const wm = document.createElement('div');
-  wm.style.cssText = 'position:relative;z-index:10;line-height:0;padding:0;margin:0;opacity:0.08;pointer-events:none;user-select:none;';
+  wm.style.cssText = 'position:relative;z-index:10;line-height:0;padding:0;margin:0;opacity:1;pointer-events:none;user-select:none;';
   wm.innerHTML = `<img src="${base}${FOOTER_SVG}" alt="Original Practice Lab" style="display:block;width:100%;height:auto;">`;
   document.body.appendChild(wm);
 })();

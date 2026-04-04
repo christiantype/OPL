@@ -5,22 +5,20 @@ const NAV_LOGO_HEIGHT = '100px';
   const inProject = window.location.pathname.includes('/projects/');
   const base = inProject ? '../' : '';
 
-  // Eye icon SVG
-  const menuSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="36" height="36" fill="currentColor"><ellipse cx="500" cy="500" rx="161.97" ry="134.98"/><path d="M500,254.29c-225.72,0-408.7,110-408.7,245.71s182.98,245.71,408.7,245.71,408.7-110,408.7-245.71-182.99-245.71-408.7-245.71ZM843.09,572.07c-17.28,24.56-42.58,46.96-75.19,66.57-34.1,20.51-74.11,36.68-118.9,48.07-47.09,11.97-97.22,18.04-148.99,18.04s-101.9-6.07-148.99-18.04c-44.79-11.39-84.79-27.56-118.9-48.07-32.61-19.61-57.91-42.01-75.19-66.57-16.36-23.26-24.66-47.5-24.66-72.07s8.3-48.82,24.66-72.07c17.28-24.56,42.58-46.96,75.19-66.57,34.1-20.51,74.11-36.68,118.9-48.07,47.09-11.97,97.22-18.04,148.99-18.04s101.9,6.07,148.99,18.04c44.79,11.39,84.79,27.56,118.91,48.07,32.61,19.61,57.91,42.01,75.19,66.57,16.36,23.26,24.66,47.5,24.66,72.07s-8.3,48.82-24.66,72.07h0Z"/></svg>`;
+  const menuSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112.7 424.58" width="36" height="72" fill="currentColor"><path d="M45.76,72h22.02c16.09,0,28.38-13.13,28.38-28.8v-14.4c0-15.67-12.28-28.8-28.38-28.8h-22.02c-16.09,0-29.22,13.13-29.22,28.8v14.4c0,15.67,13.13,28.8,29.22,28.8Z"/><polygon points="92.18 272.55 0 424.58 20.51 424.58 112.7 272.55 92.18 272.55"/></svg>`;
 
   const nav = document.createElement('nav');
   nav.innerHTML = `
     <div class="container">
       <div class="grid" style="align-items:center;">
         <a href="${base}index.html" class="col-6">
-          <div class="nav-wordmark">Original<br>Practice<br>Lab<span class="nav-cursor"></span></div>
+          <div class="nav-wordmark">O<br>P<br>/<br>A<br>L</div>
         </a>
         <div class="col-6" style="display:flex;justify-content:flex-end;">
           <div class="nav-menu-wrap">
             <button class="nav-menu-btn" id="nav-menu-btn" aria-label="Toggle menu">${menuSVG}</button>
             <div class="nav-links" id="nav-links">
               <a href="${base}about.html" class="nav-link">About</a>
-              <a href="${base}guestbook.html" class="nav-link">Guestbook</a>
               ${inProject ? `<a href="${base}index.html" class="nav-link">All Projects</a>` : ''}
             </div>
           </div>
@@ -56,12 +54,12 @@ const NAV_LOGO_HEIGHT = '100px';
 
   /* ── Letter alternation ── */
   const wordmark = nav.querySelector('.nav-wordmark');
-  const text     = 'Original\nPractice of\nApplied\nLearning';
+  const text     = 'O\nP\n/\nA\nL';
   const colors   = ['var(--color-accent)', 'var(--color-accent2)', 'var(--color-blue)', 'var(--color-red)', 'var(--color-lime)'];
 
   // Wrap each letter in a span, preserve line breaks
   // Mark the first letter of each line (O, P, A, L) with data-opal
-  const cursor = wordmark.querySelector('.nav-cursor');
+
   wordmark.innerHTML = '';
   let newLine = true;
   text.split('').forEach(ch => {
@@ -72,11 +70,11 @@ const NAV_LOGO_HEIGHT = '100px';
       const s = document.createElement('span');
       s.textContent = ch;
       s.dataset.base = 'true';
-      if (newLine) { s.dataset.opal = 'true'; newLine = false; }
+      if (newLine && ch !== '/') { s.dataset.opal = 'true'; newLine = false; }
+      else { newLine = false; }
       wordmark.appendChild(s);
     }
   });
-  wordmark.appendChild(cursor);
 
   // Only O, P, A, L flicker
   const opalLetters = [...wordmark.querySelectorAll('span[data-opal]')];
@@ -99,4 +97,29 @@ const NAV_LOGO_HEIGHT = '100px';
   }
 
   setTimeout(flicker, 1200);
+
+  /* ── / weight cycle every 2 seconds ── */
+  const slashWeights = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+  let slashIndex = 0;
+  const slashSpan = [...wordmark.querySelectorAll('span[data-base]')].find(s => s.textContent === '/');
+  if (slashSpan) {
+    slashSpan.style.fontFamily = 'Sidepiece-HoneyNugget, sans-serif';
+    slashSpan.style.fontSize = 'var(--h1)';
+    setInterval(() => {
+      slashIndex = (slashIndex + 1) % slashWeights.length;
+      slashSpan.style.fontWeight = slashWeights[slashIndex];
+    }, 2000);
+  }
+
+  /* ── Page transitions ── */
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href]');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    // Skip external links, hash-only links, and new-tab links
+    if (!href || href.startsWith('http') || href.startsWith('#') || a.target === '_blank') return;
+    e.preventDefault();
+    document.body.classList.add('page-leaving');
+    setTimeout(() => { window.location.href = href; }, 260);
+  });
 })();

@@ -38,6 +38,20 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'Sidepiece-HoneyDrip';
+  src: url('fonts/Sidepiece-HoneyDrip.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Sidepiece-HoneyNugget';
+  src: url('fonts/Sidepiece-HoneyNugget.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+
 
 // ============================================================
 //   2. MODULAR SCALE  — ratio 1.5, base 16px
@@ -59,11 +73,11 @@ $ms-ratio: 1.5;
 $dark:    #0D0C0A;
 $light:   #FFFFFF;
 $mid:     #888580;
-$accent:  #FF69B4;
+$accent:  #ff94c9;
 $accent2: #FFED00;
-$blue:    #2a2a99;
-$red:     #922818;
-$lime:    #AAFF00;
+$blue:    #79c7f1;
+$red:     #fcc1b8;
+$lime:    #bbff34;
 
 // Font stacks
 $font-sans: 'Sidepiece', system-ui, sans-serif;
@@ -211,24 +225,30 @@ input, select, textarea, button {
 
 h1, .h1 {
   font-family: $font-sans;
-  font-size: ms(3);
+  font-size: ms(0);
   font-weight: 400;
   letter-spacing: -0.0625em;
   line-height: 1.1;
 }
 
+h2 strong {
+  font-family: 'Sidepiece-HoneyDrip', $font-sans;
+  font-weight: inherit;
+  font-feature-settings: "ss01" 1, "ss02" 1, "ss03" 1;
+}
+
 h2, h2 {
-  font-family: $font-sans;
-  font-size: ms(2);
-  font-weight: 400;
-  letter-spacing: -0.0625em;
-  line-height: 1.1;
+  font-family: 'Sidepiece-HoneyDrip', $font-sans;
+  font-size: ms(1);
+  font-weight: 200;
+  letter-spacing: 0px;
+  line-height: 1.5;
   margin-bottom: 2em;
 }
 
 h3, .h3 {
   font-family: $font-sans;
-  font-size: ms(1);
+  font-size: ms(0);
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1.1;
@@ -335,6 +355,11 @@ nav {
   &.nav-links--open { display: flex; }
 }
 
+.nav-wordmark {
+  line-height: 1.25;
+  font-size: ms(1);
+}
+
 .nav-cursor {
   display: inline-block;
   width: 2px;
@@ -351,7 +376,7 @@ nav {
 }
 
 .nav-link, .label {
-  font-size: ms(-1);
+  font-size: ms(0);
   font-weight: 700;
   letter-spacing: 0.25em;
   text-transform: uppercase;
@@ -448,7 +473,7 @@ nav {
 }
 
 .next-title {
-  font-size: ms(3);
+  font-size: ms(0);
   letter-spacing: -0.0625em;
 }
 
@@ -474,7 +499,11 @@ nav {
   margin-bottom: 0;
 
   .col-2 { text-align: right; }
+
+  .col-7 { grid-column: 2 / span 6; }
 }
+
+.project-row .col-7 { grid-column: 2 / span 6; }
 
 @keyframes row-in {
   from {
@@ -613,12 +642,36 @@ body.project {
 //   $accent (pink)     + $dark  → 4.6:1  ✓
 // ────────────────────────────────────────────────────────────
 
+// ============================================================
+//   PAGE TRANSITIONS
+// ============================================================
+
+body {
+  animation: page-fade-in 0.35s ease forwards;
+}
+
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+body.page-leaving {
+  animation: page-fade-out 0.25s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes page-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+
 body.about {
   .nav-link, .label { color: inherit; }
   .nav-cursor       { background: currentColor; }
 }
 
-#intro, #manifesto, #members, #apply { text-align: center; }
+#intro, #manifesto, #members, #apply { text-align: left; }
 
 .section-name {
   display: block;
@@ -628,7 +681,7 @@ body.about {
 
 #intro {
   background: $accent2;
-  color: $blue;
+  color: $dark;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -636,13 +689,25 @@ body.about {
   padding-top: 120px;
   padding-bottom: 6em;
 
-  h1 { margin-bottom: 0.5em; }
+  h1 {
+    margin-bottom: 0.5em;
+    font-size: ms(0);
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    font-weight: 400;
+    white-space: nowrap;
+  }
   h2 { font-weight: 400; }
+
+  .intro-slash {
+    letter-spacing: 0;
+    margin: 0 0.4em 0 0.1em;
+  }
 }
 
 #manifesto {
   background: $red;
-  color: $light;
+  color: $dark;
   padding-top: 8em;
   padding-bottom: 8em;
 
@@ -674,5 +739,12 @@ body.about {
   padding-bottom: 8em;
 
   .members-row { margin-bottom: 4em; }
+  .member-photo-placeholder {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    background: $blue;
+    opacity: 0.15;
+    margin-bottom: 1.25em;
+  }
   .member-name { color: $blue; margin-bottom: 0.25em; }
 }
