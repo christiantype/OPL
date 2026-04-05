@@ -21,6 +21,7 @@
       <div class="grid">
         <h2 class="col-9">${PROJECT.description}</h2>
       </div>
+      ${PROJECT.body ? `<div class="grid"><p class="col-9">${PROJECT.body}</p></div>` : ''}
     </div>
   `;
   document.body.appendChild(hero);
