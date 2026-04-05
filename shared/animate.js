@@ -36,3 +36,32 @@
 
   els.forEach(el => observer.observe(el));
 })();
+
+/* ── Colored periods ── */
+(function () {
+  const colors = ['#ff94c9', '#FFED00', '#79c7f1', '#fcc1b8', '#bbff34'];
+  const skip = new Set(['SCRIPT', 'STYLE', 'svg', 'path']);
+
+  function colorPeriods(node) {
+    if (skip.has(node.nodeName)) return;
+    const punctRe = /([.,\-–—:;!?()[\]{}"'\/\\&@#])/;
+    if (node.nodeType === Node.TEXT_NODE && punctRe.test(node.textContent)) {
+      const frag = document.createDocumentFragment();
+      node.textContent.split(punctRe).forEach(part => {
+        if (punctRe.test(part) && part.length === 1) {
+          const s = document.createElement('span');
+          s.textContent = part;
+          s.style.color = colors[Math.floor(Math.random() * colors.length)];
+          frag.appendChild(s);
+        } else if (part) {
+          frag.appendChild(document.createTextNode(part));
+        }
+      });
+      node.parentNode.replaceChild(frag, node);
+      return;
+    }
+    node.childNodes.forEach(colorPeriods);
+  }
+
+  colorPeriods(document.body);
+})();
