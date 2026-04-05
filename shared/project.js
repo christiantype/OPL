@@ -57,47 +57,88 @@
   `;
   document.body.appendChild(credits);
 
-  /* ── Images ──
-     Each image in PROJECT.images can have:
-       cols: 'full'  → full viewport width (default)
-       cols: 6       → 6 columns within the grid
-       cols: 12      → 12 columns within the grid (container width)
-  ── */
+  /* ── Media (Images + Videos) ── */
   const images = document.createElement('section');
   images.id = 'images';
 
   if (PROJECT.images && PROJECT.images.length) {
-    // Group consecutive grid images so they share a .grid row
+
     const groups = [];
     let gridGroup = null;
-    PROJECT.images.forEach(img => {
-      const isFull = !img.cols || img.cols === 'full';
+
+    PROJECT.images.forEach(item => {
+      const isFull = !item.cols || item.cols === 'full';
+
       if (isFull) {
-        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
-        groups.push({ type: 'full', img });
+        if (gridGroup) {
+          groups.push(gridGroup);
+          gridGroup = null;
+        }
+        groups.push({ type: 'full', item });
       } else {
-        if (!gridGroup) { gridGroup = { type: 'grid', imgs: [] }; }
-        gridGroup.imgs.push(img);
+        if (!gridGroup) gridGroup = { type: 'grid', items: [] };
+        gridGroup.items.push(item);
       }
     });
+
     if (gridGroup) groups.push(gridGroup);
+
+    const renderMedia = (item) => {
+      const mediaType = item.type || 'image';
+
+      const className =
+        item.cols && item.cols !== 'full'
+          ? `col-${item.cols} project-image`
+          : 'project-image project-image--full';
+
+      if (mediaType === 'video') {
+        return `
+          <video
+            class="${className}"
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="auto"
+          >
+            <source src="${item.src}" type="video/mp4">
+          </video>
+        `;
+      }
+
+      return `
+        <img
+          class="${className}"
+          src="${item.src}"
+          alt="${item.alt || ''}"
+        >
+      `;
+    };
 
     images.innerHTML = groups.map(g => {
       if (g.type === 'full') {
-        return `<img class="project-image project-image--full" src="${g.img.src}" alt="${g.img.alt || ''}">`;
+        return renderMedia(g.item);
       } else {
-        return `<div class="container"><div class="grid project-images">` +
-          g.imgs.map(img =>
-            `<img class="col-${img.cols} project-image" src="${img.src}" alt="${img.alt || ''}">`
-          ).join('') +
-          `</div></div>`;
+        return `
+          <div class="container">
+            <div class="grid project-images">
+              ${g.items.map(item => renderMedia(item)).join('')}
+            </div>
+          </div>
+        `;
       }
     }).join('');
   }
+
   document.body.appendChild(images);
 
   /* ── Shared scripts ── */
-  ['../shared/footer.js', '../shared/grid.js', '../shared/cursor.js', '../shared/animate.js'].forEach(src => {
+  [
+    '../shared/footer.js',
+    '../shared/grid.js',
+    '../shared/cursor.js',
+    '../shared/animate.js'
+  ].forEach(src => {
     const s = document.createElement('script');
     s.src = src;
     document.body.appendChild(s);
