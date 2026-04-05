@@ -10,17 +10,15 @@
   const nav = document.createElement('nav');
   nav.innerHTML = `
     <div class="container">
-      <div class="grid" style="align-items:center;">
-        <a href="${base}index.html" class="col-4" style="grid-column: 1 / span 4;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <a href="${base}index.html" class="nav-logo-link">
           ${logoSVG}
         </a>
-        <div class="col-8" style="display:flex;justify-content:flex-end;">
-          <div class="nav-menu-wrap">
-            <button class="nav-menu-btn" id="nav-menu-btn" aria-label="Toggle menu">${menuSVG}</button>
-            <div class="nav-links" id="nav-links">
-              <a href="${base}about.html" class="nav-link">About</a>
-              ${inProject ? `<a href="${base}index.html" class="nav-link">All Projects</a>` : ''}
-            </div>
+        <div class="nav-menu-wrap">
+          <button class="nav-menu-btn" id="nav-menu-btn" aria-label="Toggle menu">${menuSVG}</button>
+          <div class="nav-links" id="nav-links">
+            <a href="${base}about.html" class="nav-link">About</a>
+            ${inProject ? `<a href="${base}index.html" class="nav-link">All Projects</a>` : ''}
           </div>
         </div>
       </div>
