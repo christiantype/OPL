@@ -21,6 +21,7 @@
       <div class="grid">
         <h2 class="col-9">${PROJECT.description}</h2>
       </div>
+      ${PROJECT.role ? `<div class="grid"><p class="col-9 label">${PROJECT.role}</p></div>` : ''}
       ${PROJECT.body ? `<div class="grid"><p class="col-9">${PROJECT.body}</p></div>` : ''}
     </div>
   `;
@@ -46,11 +47,9 @@
         </div>
         <div class="col-3">
           <span class="label">Acknowledgements</span>
-          <p>${PROJECT.credits || '—'}</p>
-        </div>
-        <div class="col-3">
-          <span class="label">Role</span>
-          <p>${PROJECT.role || '—'}</p>
+          ${Array.isArray(PROJECT.credits)
+            ? PROJECT.credits.map(c => `<p>${c.name}<br><span class="text-mid">${c.title}</span></p>`).join('')
+            : `<p>${PROJECT.credits || '—'}</p>`}
         </div>
       </div>
     </div>

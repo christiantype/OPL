@@ -14,40 +14,11 @@
         <a href="${base}index.html" class="nav-logo-link">
           ${logoSVG}
         </a>
-        <div class="nav-menu-wrap">
-          <button class="nav-menu-btn" id="nav-menu-btn" aria-label="Toggle menu">${menuSVG}</button>
-          <div class="nav-links" id="nav-links">
-            <a href="${base}about.html" class="nav-link">About</a>
-            ${inProject ? `<a href="${base}index.html" class="nav-link">All Projects</a>` : ''}
-          </div>
-        </div>
+        <a href="${base}about.html" class="nav-menu-btn" aria-label="About">${menuSVG}</a>
       </div>
     </div>
   `;
   document.body.prepend(nav);
-
-  /* ── Mobile menu toggle ── */
-  const menuBtn  = nav.querySelector('#nav-menu-btn');
-  const navLinks = nav.querySelector('#nav-links');
-
-  menuBtn.addEventListener('click', () => {
-    const isOpen = navLinks.classList.toggle('nav-links--open');
-    menuBtn.classList.toggle('nav-menu-btn--open', isOpen);
-  });
-
-  navLinks.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', () => {
-      navLinks.classList.remove('nav-links--open');
-      menuBtn.classList.remove('nav-menu-btn--open');
-    });
-  });
-
-  document.addEventListener('click', e => {
-    if (!menuBtn.contains(e.target) && !navLinks.contains(e.target)) {
-      navLinks.classList.remove('nav-links--open');
-      menuBtn.classList.remove('nav-menu-btn--open');
-    }
-  });
 
   /* ── Page transitions ── */
   document.addEventListener('click', e => {
