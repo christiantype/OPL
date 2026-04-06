@@ -27,14 +27,14 @@
     const tbody    = document.getElementById('project-rows');
 
     function bindHover() {
-      // thumbnail hover hidden — re-enable by uncommenting the block below
-      // document.querySelectorAll('.project-row[data-thumb]').forEach(row => {
-      //   row.addEventListener('mouseenter', () => {
-      //     thumbImg.src = row.dataset.thumb;
-      //     thumb.style.opacity = '1';
-      //   });
-      //   row.addEventListener('mouseleave', () => { thumb.style.opacity = '0'; });
-      // });
+      document.querySelectorAll('.project-row[data-thumb]').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+          if (!row.dataset.thumb) return;
+          thumbImg.src = row.dataset.thumb;
+          thumb.style.opacity = '1';
+        });
+        row.addEventListener('mouseleave', () => { thumb.style.opacity = '0'; });
+      });
     }
 
     fetch('projects.json')
