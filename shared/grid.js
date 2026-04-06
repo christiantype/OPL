@@ -13,10 +13,8 @@
         <div style="display:grid;grid-template-columns:${gridCols};gap:var(--grid-gap);height:100%;align-items:stretch;">
           ${ Array.from({length: n}, () =>
             `<div style="
-              background:transparent;
-              box-shadow:inset 0.3px 0 0 var(--color-mid),inset -0.3px 0 0 var(--color-mid);
-              opacity:0.3;
               height:100%;
+              box-shadow: inset 0.3px 0 0 rgba(180,180,180,0.5), inset -0.3px 0 0 rgba(180,180,180,0.5);
             "></div>`
           ).join('') }
         </div>
@@ -43,7 +41,7 @@
 
   /* Toggle button */
   const btn = document.createElement('button');
-  btn.innerHTML = `<svg width="14" height="12" viewBox="0 0 14 12" xmlns="http://www.w3.org/2000/svg"><line x1="2" y1="0" x2="2" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="7" y1="0" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="0" x2="12" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>`;
+  btn.innerHTML = `/`;
   Object.assign(btn.style, {
     position:       'fixed',
     bottom:         '24px',
@@ -54,7 +52,7 @@
     background:     'var(--color-light)',
     border:         '1px solid var(--color-mid)',
     color:          'var(--color-mid)',
-    fontSize:       '9px',
+    fontSize:       '14px',
     fontFamily:     'inherit',
     letterSpacing:  '1px',
     cursor:         'pointer',
@@ -63,8 +61,7 @@
   });
   document.body.appendChild(btn);
 
-  let visible = true;
-  overlay.style.display = 'block';
+  let visible = false;
 
   function toggle() {
     visible = !visible;
