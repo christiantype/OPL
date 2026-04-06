@@ -1,8 +1,8 @@
 /* ── OPL Shared Footer ── */
 /* Edit contact info, address, and social links here */
 
-const FOOTER_COL1 = `Original Practice Lab<br>Since 2026`;
-const FOOTER_COL2 = `hi@opl.design<br>224.443.6415`;
+const FOOTER_COL1 = `More than Design<br>Since 2026`;
+const FOOTER_COL2 = `hi@opal.design<br>224.443.6415`;
 const FOOTER_COL3 = `1029 Lake St. Oak Park IL 60301<br><a href="https://instagram.com" target="_blank" rel="noopener">Instagram</a>`;
 
 /* Path to the footer wordmark SVG — drop opl-footer.svg at the project root */
