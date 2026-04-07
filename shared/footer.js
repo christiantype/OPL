@@ -14,7 +14,7 @@ const FOOTER_SVG = 'opl-footer.svg';
 
   /* ── Gradient bar ── */
   const bar = document.createElement('div');
-  bar.style.cssText = 'position:relative;z-index:10;height:1px;background:linear-gradient(90deg,var(--color-dark),var(--color-accent),var(--color-light),var(--color-dark),var(--color-accent),var(--color-light),var(--color-dark));background-size:300% 100%;animation:footer-gradient 8s linear infinite;';
+  bar.style.cssText = 'position:relative;z-index:10;height:1.5px;background:linear-gradient(90deg,var(--color-dark),var(--color-accent),var(--color-light),var(--color-dark),var(--color-accent),var(--color-light),var(--color-dark));background-size:300% 100%;animation:footer-gradient 8s linear infinite;';
   document.body.appendChild(bar);
 
   /* Inject keyframe once */
