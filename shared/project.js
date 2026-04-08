@@ -84,34 +84,26 @@
 
     const renderMedia = (item) => {
       const mediaType = item.type || 'image';
+      const isFull = !item.cols || item.cols === 'full';
 
-      const className =
-        item.cols && item.cols !== 'full'
-          ? `col-${item.cols} project-image`
-          : 'project-image project-image--full';
+      // When wrapped in a figure, the figure owns the col class
+      const mediaClass = item.caption
+        ? (isFull ? 'project-image project-image--full' : 'project-image')
+        : (isFull ? 'project-image project-image--full' : `col-${item.cols} project-image`);
 
+      let media;
       if (mediaType === 'video') {
-        return `
-          <video
-            class="${className}"
-            autoplay
-            muted
-            loop
-            playsinline
-            preload="auto"
-          >
-            <source src="${item.src}" type="video/mp4">
-          </video>
-        `;
+        media = `<video class="${mediaClass}" autoplay muted loop playsinline preload="auto"><source src="${item.src}" type="video/mp4"></video>`;
+      } else {
+        media = `<img class="${mediaClass}" src="${item.src}" alt="${item.alt || ''}">`;
       }
 
-      return `
-        <img
-          class="${className}"
-          src="${item.src}"
-          alt="${item.alt || ''}"
-        >
-      `;
+      if (item.caption) {
+        const figClass = isFull ? 'project-figure project-figure--full' : `col-${item.cols} project-figure`;
+        return `<figure class="${figClass}">${media}<figcaption class="project-caption">${item.caption}</figcaption></figure>`;
+      }
+
+      return media;
     };
 
     images.innerHTML = groups.map(g => {
