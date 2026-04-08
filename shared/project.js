@@ -14,7 +14,7 @@
     : null;
   const ogImage = firstImg
     ? base + '/images/' + firstImg.src.replace(/^.*\/images\//, '')
-    : base + '/images/Faculty-01.webp';
+    : base + '/images/opal-open-graph.webp';
 
   document.title = `${PROJECT.title} — O.P/A.L`;
 
