@@ -73,7 +73,6 @@
         <h2 class="col-9">${PROJECT.description}</h2>
       </div>
       ${PROJECT.body ? `<div class="grid"><p class="col-9">${PROJECT.body}</p></div>` : ''}
-      ${PROJECT.role ? `<div class="grid"><div class="col-9"><span class="label">Role</span><p>${PROJECT.role}</p></div></div>` : ''}
     </div>
   `;
   document.body.appendChild(hero);
