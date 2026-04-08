@@ -5,6 +5,57 @@
 
   document.body.classList.add('project');
 
+  /* ── SEO Meta Tags ── */
+  const base     = 'https://more-than.design';
+  const pagePath = window.location.pathname.replace(/^\/OPL/, '');
+  const canonical = base + pagePath;
+  const firstImg  = PROJECT.images && PROJECT.images.length
+    ? PROJECT.images.find(i => !i.type || i.type === 'image')
+    : null;
+  const ogImage = firstImg
+    ? base + '/images/' + firstImg.src.replace(/^.*\/images\//, '')
+    : base + '/images/Faculty-01.webp';
+
+  document.title = `${PROJECT.title} — O.P/A.L`;
+
+  [
+    { name: 'description',       content: PROJECT.description },
+    { property: 'og:type',       content: 'website' },
+    { property: 'og:site_name',  content: 'O.P/A.L' },
+    { property: 'og:title',      content: `${PROJECT.title} — O.P/A.L` },
+    { property: 'og:description', content: PROJECT.description },
+    { property: 'og:image',      content: ogImage },
+    { property: 'og:url',        content: canonical },
+    { name: 'twitter:card',      content: 'summary_large_image' },
+    { name: 'twitter:title',     content: `${PROJECT.title} — O.P/A.L` },
+    { name: 'twitter:description', content: PROJECT.description },
+    { name: 'twitter:image',     content: ogImage },
+  ].forEach(attrs => {
+    const m = document.createElement('meta');
+    Object.entries(attrs).forEach(([k, v]) => m.setAttribute(k, v));
+    document.head.appendChild(m);
+  });
+
+  const canonicalLink = document.createElement('link');
+  canonicalLink.rel  = 'canonical';
+  canonicalLink.href = canonical;
+  document.head.appendChild(canonicalLink);
+
+  const jsonLd = document.createElement('script');
+  jsonLd.type = 'application/ld+json';
+  jsonLd.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: PROJECT.title,
+    description: PROJECT.description,
+    image: ogImage,
+    url: canonical,
+    author: { '@type': 'Person', name: 'Christian Solorzano' },
+    ...(PROJECT.client ? { client: PROJECT.client } : {}),
+    ...(PROJECT.year   ? { dateCreated: PROJECT.year } : {}),
+  });
+  document.head.appendChild(jsonLd);
+
   /* ── Nav ── */
   const navScript = document.createElement('script');
   navScript.src = '../shared/nav.js';
