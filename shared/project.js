@@ -85,11 +85,12 @@
     const renderMedia = (item) => {
       const mediaType = item.type || 'image';
       const isFull = !item.cols || item.cols === 'full';
+      const framed = item.frame || PROJECT.imageFrame ? ' project-image--framed' : '';
 
       // When wrapped in a figure, the figure owns the col class
       const mediaClass = item.caption
-        ? (isFull ? 'project-image project-image--full' : 'project-image')
-        : (isFull ? 'project-image project-image--full' : `col-${item.cols} project-image`);
+        ? (isFull ? `project-image project-image--full${framed}` : `project-image${framed}`)
+        : (isFull ? `project-image project-image--full${framed}` : `col-${item.cols} project-image${framed}`);
 
       let media;
       if (mediaType === 'video') {
