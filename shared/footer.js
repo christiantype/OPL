@@ -3,7 +3,7 @@
 
 const FOOTER_COL1 = `More than Design<br>Since 2026`;
 const FOOTER_COL2 = `hi<span style="color:var(--color-accent);">@</span>opal.design<br>224.443.6415`;
-const FOOTER_COL3 = `1029 Lake St. Oak Park IL 60301<br><a href="https://instagram.com" target="_blank" rel="noopener">Instagram</a>`;
+const FOOTER_COL3 = `1029 Lake St. Oak Park IL 60301`;
 
 /* Path to the footer wordmark SVG — drop opl-footer.svg at the project root */
 const FOOTER_SVG = 'opl-footer.svg';
