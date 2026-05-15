@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ZLMC Social — OP/AL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ZLMC/shared/opal.css" />
+<script src="/ZLMC/shared/gate.js"></script>
+</head>
+<body>
+<script src="/ZLMC/shared/opal.js"></script>
+<script>Opal.mountTopbar({ product: 'ZLMC Social' });</script>
+
+<div class="opal-app">
+  <aside class="opal-sidebar">
+    <h1 class="opal-h1">Social Studio</h1>
+    <div class="opal-sub">Zen Life &amp; Meditation Center</div>
+
+    <label class="opal-label">Template</label>
+    <div class="opal-segments" id="tpl-seg">
+      <button data-tpl="smz" class="active">Sunday Morning Zen</button>
+      <button data-tpl="quote">Aspirational Quote</button>
+    </div>
+
+    <div id="fields-smz">
+      <label class="opal-label">Title (top-left)</label>
+      <input class="opal-input" type="text" id="f-title" value="Sunday Morning Zen" />
+
+      <div class="opal-row">
+        <div>
+          <label class="opal-label">Date</label>
+          <input class="opal-input" type="text" id="f-date1" value="May 3rd" />
+        </div>
+        <div>
+          <label class="opal-label">Time</label>
+          <input class="opal-input" type="text" id="f-date2" value="10 AM" />
+        </div>
+      </div>
+
+      <label class="opal-label">Center heading</label>
+      <input class="opal-input" type="text" id="f-heading" value="Dharma Talk" />
+
+      <label class="opal-label">Speaker line</label>
+      <input class="opal-input" type="text" id="f-speaker" value="Dharma Talk by Rev. Kelly Junmei Good" />
+    </div>
+
+    <div id="fields-quote" style="display:none">
+      <label class="opal-label">Quote</label>
+      <textarea class="opal-textarea" id="q-text">The only way out is through.</textarea>
+
+      <label class="opal-label">Attribution</label>
+      <input class="opal-input" type="text" id="q-author" value="— Robert Frost" />
+    </div>
+
+    <label class="opal-label">Background image</label>
+    <input type="file" id="bg-upload" accept="image/*" />
+    <div class="opal-hint">Photo fills the canvas. Drag the canvas to reposition.</div>
+
+    <div class="opal-row" style="margin-top:8px">
+      <div>
+        <label class="opal-label">Zoom</label>
+        <input type="range" id="bg-zoom" min="0.5" max="3" step="0.01" value="1" />
+      </div>
+      <div>
+        <label class="opal-label">Overlay opacity</label>
+        <input type="range" id="ov-opacity" min="0" max="1" step="0.01" value="0.35" />
+      </div>
+    </div>
+
+    <label class="opal-label">Overlay</label>
+    <div class="opal-segments" id="ov-mode">
+      <button data-mode="none">None</button>
+      <button data-mode="solid" class="active">Solid</button>
+      <button data-mode="gradient">Gradient ↓</button>
+    </div>
+
+    <div class="opal-row" style="margin-top:10px">
+      <div>
+        <label class="opal-label" id="ov-c1-label">Color</label>
+        <input type="color" id="ov-c1" value="#000000" style="width:100%; height:36px; border:1px solid var(--opal-line); border-radius:4px; padding:2px; background:var(--opal-bg);" />
+      </div>
+      <div id="ov-c2-wrap" style="opacity:.35; pointer-events:none;">
+        <label class="opal-label">Bottom</label>
+        <input type="color" id="ov-c2" value="#ffffff" style="width:100%; height:36px; border:1px solid var(--opal-line); border-radius:4px; padding:2px; background:var(--opal-bg);" />
+      </div>
+    </div>
+
+    <details class="opal-section">
+      <summary>Brand footer</summary>
+      <label class="opal-label">Line 1</label>
+      <input class="opal-input" type="text" id="brand1" value="Zen Life and" />
+      <label class="opal-label">Line 2</label>
+      <input class="opal-input" type="text" id="brand2" value="Meditation Center" />
+    </details>
+
+    <details class="opal-section">
+      <summary>Export</summary>
+      <label class="opal-label">Format</label>
+      <select class="opal-select" id="exp-size">
+        <option value="1080x1350">Portrait 4:5 (1080×1350)</option>
+        <option value="1080x1080">Square (1080×1080)</option>
+        <option value="1080x1920">Story 9:16 (1080×1920)</option>
+      </select>
+    </details>
+
+    <div style="height:18px"></div>
+    <button class="opal-btn" id="download">Download PNG</button>
+    <div style="height:8px"></div>
+    <button class="opal-btn secondary" id="reset-pos">Reset photo position</button>
+  </aside>
+
+  <main class="opal-main">
+    <div class="opal-canvas-wrap">
+      <canvas id="c" width="1080" height="1350"></canvas>
+    </div>
+  </main>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+const state = {
+  template: 'smz',
+  bgImage: null,
+  bgX: 0.5, bgY: 0.5, bgZoom: 1,
+  overlayMode: 'solid',     // 'none' | 'solid' | 'gradient'
+  overlayOpacity: 0.35,
+  overlayC1: '#000000',     // top (or solid) color
+  overlayC2: '#000000',     // bottom color (gradient only)
+  size: '1080x1350',
+};
+
+function hexToRgba(hex, a) {
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+const $ = id => document.getElementById(id);
+const v = id => $(id).value;
+
+function setSize() {
+  const [w,h] = state.size.split('x').map(Number);
+  canvas.width = w; canvas.height = h;
+}
+
+function drawBackground() {
+  ctx.fillStyle = '#efeae3';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  if (!state.bgImage) return;
+  const { dx, dy, dw, dh } = Opal.fitCover(state.bgImage, canvas.width, canvas.height, state.bgZoom, state.bgX, state.bgY);
+  ctx.drawImage(state.bgImage, dx, dy, dw, dh);
+  drawOverlay();
+}
+
+function drawOverlay() {
+  const w = canvas.width, h = canvas.height;
+  if (state.overlayMode === 'none' || state.overlayOpacity <= 0) return;
+  if (state.overlayMode === 'solid') {
+    ctx.fillStyle = hexToRgba(state.overlayC1, state.overlayOpacity);
+  } else {
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, hexToRgba(state.overlayC1, state.overlayOpacity));
+    grad.addColorStop(1, hexToRgba(state.overlayC2, state.overlayOpacity));
+    ctx.fillStyle = grad;
+  }
+  ctx.fillRect(0, 0, w, h);
+}
+
+function drawSMZ() {
+  const w = canvas.width, h = canvas.height;
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'top';
+
+  const lines = v('f-title').split(/\s+/);
+  const baseSize = w * 0.058;
+  let y = h * 0.05;
+  const x = w * 0.06;
+  ctx.textAlign = 'left';
+  lines.forEach((word, i) => {
+    const isMid = i === 1 && lines.length >= 3;
+    const size = isMid ? baseSize * 1.7 : baseSize;
+    ctx.font = isMid
+      ? `600 ${size}px "Playfair Display", serif`
+      : `italic 400 ${size}px "Playfair Display", serif`;
+    ctx.fillText(word, x, y);
+    y += size * 0.95;
+  });
+
+  ctx.textAlign = 'right';
+  ctx.font = `400 ${w*0.028}px Inter, sans-serif`;
+  ctx.fillText(v('f-date1'), w - w*0.06, h*0.055);
+  ctx.fillText(v('f-date2'), w - w*0.06, h*0.055 + w*0.034);
+
+  ctx.textAlign = 'center';
+  ctx.font = `italic 500 ${w*0.085}px "Playfair Display", serif`;
+  ctx.fillText(v('f-heading'), w/2, h*0.62);
+
+  ctx.font = `500 ${w*0.022}px Inter, sans-serif`;
+  ctx.fillText(v('f-speaker'), w/2, h*0.84);
+
+  drawBrand();
+}
+
+function drawQuote() {
+  const w = canvas.width, h = canvas.height;
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+
+  const fontSize = w * 0.062;
+  ctx.font = `italic 500 ${fontSize}px "Playfair Display", serif`;
+  const wrapped = Opal.wrapText(ctx, v('q-text'), w * 0.82);
+  const lineHeight = fontSize * 1.18;
+  let y = h/2 - (wrapped.length * lineHeight)/2 + lineHeight/2 - h*0.04;
+  wrapped.forEach(line => { ctx.fillText(line, w/2, y); y += lineHeight; });
+
+  ctx.font = `400 ${w*0.026}px Inter, sans-serif`;
+  ctx.fillText(v('q-author'), w/2, y + lineHeight*0.4);
+
+  drawBrand();
+}
+
+function drawBrand() {
+  const w = canvas.width, h = canvas.height;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `400 ${w*0.026}px "Playfair Display", serif`;
+  ctx.fillText(v('brand1'), w/2, h - h*0.06);
+  ctx.font = `600 ${w*0.034}px "Playfair Display", serif`;
+  ctx.fillText(v('brand2').toUpperCase(), w/2, h - h*0.025);
+}
+
+function render() {
+  drawBackground();
+  if (state.template === 'smz') drawSMZ(); else drawQuote();
+}
+
+document.querySelectorAll('#tpl-seg button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#tpl-seg button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.template = btn.dataset.tpl;
+    $('fields-smz').style.display = state.template==='smz' ? '' : 'none';
+    $('fields-quote').style.display = state.template==='quote' ? '' : 'none';
+    render();
+  });
+});
+
+document.querySelectorAll('input, textarea, select').forEach(el => {
+  el.addEventListener('input', () => {
+    if (el.id === 'exp-size') { state.size = el.value; setSize(); }
+    if (el.id === 'bg-zoom') state.bgZoom = parseFloat(el.value);
+    if (el.id === 'ov-opacity') state.overlayOpacity = parseFloat(el.value);
+    if (el.id === 'ov-c1') state.overlayC1 = el.value;
+    if (el.id === 'ov-c2') state.overlayC2 = el.value;
+    render();
+  });
+});
+
+function setOverlayMode(mode) {
+  state.overlayMode = mode;
+  document.querySelectorAll('#ov-mode button').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
+  const c2 = document.getElementById('ov-c2-wrap');
+  const c1Label = document.getElementById('ov-c1-label');
+  const enableC2 = mode === 'gradient';
+  c2.style.opacity = enableC2 ? '1' : '.35';
+  c2.style.pointerEvents = enableC2 ? 'auto' : 'none';
+  c1Label.textContent = enableC2 ? 'Top' : 'Color';
+  render();
+}
+document.querySelectorAll('#ov-mode button').forEach(btn => {
+  btn.addEventListener('click', () => setOverlayMode(btn.dataset.mode));
+});
+
+$('bg-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const img = new Image();
+  img.onload = () => { state.bgImage = img; render(); };
+  img.src = URL.createObjectURL(file);
+});
+
+Opal.attachDrag(canvas, state, render);
+
+$('reset-pos').addEventListener('click', () => {
+  state.bgX = 0.5; state.bgY = 0.5; state.bgZoom = 1;
+  $('bg-zoom').value = 1;
+  render();
+});
+
+$('download').addEventListener('click', () => {
+  const stamp = new Date().toISOString().slice(0,10);
+  const tag = state.template === 'smz' ? 'SMZ' : 'Quote';
+  Opal.downloadCanvas(canvas, `ZLMC-${tag}-${stamp}.png`);
+});
+
+setSize();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+else render();
+</script>
+</body>
+</html>

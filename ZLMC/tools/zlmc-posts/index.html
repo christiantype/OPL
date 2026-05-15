@@ -1,0 +1,1562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ZLMC Posts — OP/AL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ZLMC/shared/opal.css" />
+<script src="/ZLMC/shared/gate.js"></script>
+<style>
+  /* === UI FONT === */
+  @font-face {
+    font-family: 'OpalUI';
+    src: url('/ZLMC/Assets/Sidepiece-HoneyButter.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  /* White, minimal — override OP/AL tokens for this tool. */
+  :root {
+    --opal-bg: #ffffff;
+    --opal-panel: #ffffff;
+    --opal-line: #ececec;
+    --opal-muted: #8a8a8a;
+    --opal-ink: #111111;
+    --opal-radius: 2px;
+    --opal-font-sans: 'OpalUI', 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  body { background: #ffffff; }
+  .opal-topbar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--opal-line);
+    padding: 16px 28px;
+  }
+  .opal-topbar .opal-product { font-style: normal; font-weight: 500; }
+  .opal-sidebar {
+    padding: 28px 26px;
+    border-right: 1px solid var(--opal-line);
+  }
+  .opal-app { grid-template-columns: 360px 1fr; }
+  .opal-h1 { font-size: 22px; font-weight: 500; letter-spacing: -.01em; }
+  .opal-sub { color: var(--opal-muted); font-size: 12px; margin-bottom: 22px; }
+  .opal-label {
+    font-size: 10px;
+    color: var(--opal-muted);
+    letter-spacing: .12em;
+    font-weight: 500;
+    margin: 16px 0 6px;
+  }
+  .opal-input, .opal-select, .opal-textarea {
+    background: #ffffff;
+    border: 1px solid #e6e6e6;
+    border-radius: var(--opal-radius);
+    padding: 9px 10px;
+  }
+  .opal-input:focus, .opal-select:focus, .opal-textarea:focus {
+    background: #ffffff;
+    border-color: var(--opal-ink);
+  }
+  .opal-textarea { min-height: 70px; }
+  .opal-segments {
+    border: 1px solid var(--opal-line);
+    border-radius: var(--opal-radius);
+  }
+  .opal-segments button { color: #8a8a8a; padding: 9px 8px; font-size: 11px; letter-spacing: .04em; }
+  .opal-segments button.active { background: var(--opal-ink); color: #fff; }
+  .opal-btn {
+    background: var(--opal-ink);
+    border-radius: var(--opal-radius);
+    font-weight: 500;
+    letter-spacing: .04em;
+    font-size: 12px;
+    padding: 12px 14px;
+  }
+  .opal-btn.secondary {
+    background: #ffffff;
+    border: 1px solid var(--opal-line);
+    color: var(--opal-ink);
+  }
+
+  .opal-main { padding: 36px 40px; background: #ffffff; }
+  .opal-canvas-wrap {
+    background: #ffffff;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+  .opal-canvas-wrap canvas {
+    border: 1px solid #f0f0f0;
+    background: #ffffff;
+  }
+
+  .opal-canvas-stage { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; }
+  .opal-size-row { display: flex; align-items: center; gap: 14px; }
+  .opal-size-row .opal-segments { width: 220px; }
+  .opal-size-row .size-meta {
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--opal-muted);
+  }
+
+  .field-group { display: none; }
+  .field-group.active { display: block; }
+
+  input[type=color] {
+    width: 100%; height: 32px;
+    border: 1px solid #e6e6e6;
+    border-radius: var(--opal-radius);
+    padding: 2px; background: #ffffff; cursor: pointer;
+  }
+  .swatch-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .preset-row button {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1px solid #ececec; cursor: pointer; padding: 0;
+    transition: transform .12s ease;
+  }
+  .preset-row button:hover { transform: scale(1.12); }
+
+  .download-feedback {
+    font-size: 10px; color: var(--opal-muted);
+    margin-top: 10px; text-align: center;
+    min-height: 14px; letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  details.opal-section {
+    border-top: 1px solid #f2f2f2;
+  }
+
+  /* Selection / nudge panel */
+  .sel-panel {
+    margin-top: 22px;
+    padding: 14px 14px 16px;
+    border: 1px solid #f0f0f0;
+    border-radius: var(--opal-radius);
+    background: #fafafa;
+  }
+  .sel-empty {
+    font-size: 11px;
+    color: var(--opal-muted);
+    line-height: 1.55;
+  }
+  .sel-active { display: none; }
+  .sel-active.on { display: block; }
+  .sel-empty.off { display: none; }
+  .sel-name {
+    font-size: 14px;
+    color: var(--opal-ink);
+    margin-top: 2px;
+    margin-bottom: 10px;
+  }
+  .nudge-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .nudge-row .opal-btn { padding: 9px 8px; font-size: 11px; }
+  .canvas-hint {
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--opal-muted);
+    margin-top: 8px;
+    text-align: center;
+  }
+  .opal-canvas-wrap canvas { cursor: pointer; }
+</style>
+</head>
+<body>
+<script src="/ZLMC/shared/opal.js"></script>
+<script>Opal.mountTopbar({ product: 'ZLMC Posts' });</script>
+
+<div class="opal-app">
+  <aside class="opal-sidebar">
+    <h1 class="opal-h1">Post Maker</h1>
+    <div class="opal-sub">Zen Life &amp; Meditation Center</div>
+
+    <label class="opal-label">Template</label>
+    <select class="opal-select" id="tpl-select">
+      <option value="smz">Sunday Morning Zen</option>
+      <option value="teaching">Zen Teaching</option>
+      <option value="promo">Class Promotion</option>
+      <option value="photo">Photograph</option>
+      <option value="substack">Substack Quote</option>
+    </select>
+
+    <details class="opal-section">
+      <summary>Border (Post only)</summary>
+      <div class="opal-row" style="margin-top:10px">
+        <div>
+          <label class="opal-label">Border</label>
+          <select class="opal-select" id="border-toggle">
+            <option value="off">Off</option>
+            <option value="on">On</option>
+          </select>
+        </div>
+        <div>
+          <label class="opal-label">Color</label>
+          <input type="color" id="border-color" value="#ffffff" />
+        </div>
+      </div>
+      <label class="opal-label">Width</label>
+      <input type="range" id="border-width" min="2" max="60" step="2" value="10" />
+      <div class="opal-hint">Applied to the 4:5 Post export only — Stories stay borderless.</div>
+    </details>
+
+    <details class="opal-section">
+      <summary>Margin <span id="padding-value" style="color:var(--opal-muted); font-weight:400; margin-left:6px;">7%</span></summary>
+      <label class="opal-label">Outer margin</label>
+      <input type="range" id="padding-slider" min="0" max="15" step="1" value="7" />
+      <div class="opal-hint">Lower = wider content. 0% lets text run edge-to-edge.</div>
+    </details>
+
+    <!-- ============== SUNDAY MORNING ZEN ============== -->
+    <div class="field-group active" id="fg-smz">
+      <label class="opal-label">Top Title</label>
+      <input class="opal-input" type="text" data-k="smz.title" value="Sunday Morning Zen" />
+
+      <div class="opal-row">
+        <div>
+          <label class="opal-label">Date</label>
+          <input class="opal-input" type="text" data-k="smz.date" value="May 17" />
+        </div>
+        <div>
+          <label class="opal-label">Time</label>
+          <input class="opal-input" type="text" data-k="smz.time" value="10 AM" />
+        </div>
+      </div>
+
+      <label class="opal-label">Talk Title (italic, big)</label>
+      <textarea class="opal-textarea" data-k="smz.talkTitle" rows="2">Escape this Crazy Life of Tears</textarea>
+
+      <label class="opal-label">Speaker line</label>
+      <textarea class="opal-textarea" data-k="smz.speaker" rows="2">Dharma Talk by
+Roshi June Ryushin Tanoue</textarea>
+
+      <label class="opal-label">Portrait photo</label>
+      <input type="file" data-photo="smz" accept="image/*" />
+      <div class="opal-hint">Photo fills the right side. Drag the canvas to reposition.</div>
+      <label class="opal-label">Photo Zoom</label>
+      <input type="range" data-k="smz.zoom" min="0.5" max="3" step="0.01" value="1" />
+
+      <details class="opal-section" open>
+        <summary>Background</summary>
+        <div class="opal-segments bg-mode-seg" data-tpl="smz" style="margin-top:8px">
+          <button data-mode="solid" class="active">Solid</button>
+          <button data-mode="gradient">Gradient</button>
+        </div>
+        <div class="swatch-row" style="margin-top:10px">
+          <div>
+            <label class="opal-label">Color 1</label>
+            <input type="color" data-k="smz.bgC1" value="#ead7bc" />
+          </div>
+          <div>
+            <label class="opal-label">Color 2</label>
+            <input type="color" data-k="smz.bgC2" value="#f4e2c8" />
+          </div>
+        </div>
+        <div class="opal-row" style="margin-top:6px">
+          <div>
+            <label class="opal-label">Direction</label>
+            <select class="opal-select" data-k="smz.bgAngle">
+              <option value="0">↓ Down</option>
+              <option value="45">↘ Down-right</option>
+              <option value="90">→ Right</option>
+              <option value="135">↗ Up-right</option>
+              <option value="180">↑ Up</option>
+              <option value="225">↖ Up-left</option>
+              <option value="270">← Left</option>
+              <option value="315">↙ Down-left</option>
+            </select>
+          </div>
+          <div>
+            <label class="opal-label">Style</label>
+            <select class="opal-select" data-k="smz.bgRadial">
+              <option value="off">Linear</option>
+              <option value="on">Radial</option>
+            </select>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- ============== ZEN TEACHING ============== -->
+    <div class="field-group" id="fg-teaching">
+      <label class="opal-label">Quote / Teaching</label>
+      <textarea class="opal-textarea" data-k="teaching.quote" rows="8">With bodhichitta, the heart or chitta comes first, and bodhi comes later: the heart awakens. So we begin by developing a particular kind of heart, one that is not connected with personal longevity, personal entertainment, or egotism. First, we develop heart, and then we develop what heart is all about, or enlightened heart.</textarea>
+
+      <label class="opal-label">Attribution</label>
+      <input class="opal-input" type="text" data-k="teaching.attribution" value="~ Chogyam Trungpa Rinpoche" />
+
+      <label class="opal-label">Text color</label>
+      <input type="color" data-k="teaching.text" value="#ffffff" />
+
+      <details class="opal-section" open>
+        <summary>Background</summary>
+        <div class="opal-segments bg-mode-seg" data-tpl="teaching" style="margin-top:8px">
+          <button data-mode="gradient" class="active">Gradient</button>
+          <button data-mode="solid">Solid</button>
+          <button data-mode="photo">Photo</button>
+        </div>
+        <div class="swatch-row" style="margin-top:10px">
+          <div>
+            <label class="opal-label">Color 1</label>
+            <input type="color" data-k="teaching.bgC1" value="#d96f1f" />
+          </div>
+          <div>
+            <label class="opal-label">Color 2</label>
+            <input type="color" data-k="teaching.bgC2" value="#f3b659" />
+          </div>
+        </div>
+        <div class="preset-row" id="teaching-presets"></div>
+        <div class="opal-row" style="margin-top:6px">
+          <div>
+            <label class="opal-label">Direction</label>
+            <select class="opal-select" data-k="teaching.bgAngle">
+              <option value="0">↓ Down</option>
+              <option value="45">↘ Down-right</option>
+              <option value="90">→ Right</option>
+              <option value="135">↗ Up-right</option>
+              <option value="180">↑ Up</option>
+              <option value="225">↖ Up-left</option>
+              <option value="270">← Left</option>
+              <option value="315">↙ Down-left</option>
+            </select>
+          </div>
+          <div>
+            <label class="opal-label">Style</label>
+            <select class="opal-select" data-k="teaching.bgRadial">
+              <option value="off">Linear</option>
+              <option value="on">Radial</option>
+            </select>
+          </div>
+        </div>
+        <label class="opal-label">Photo (if mode = Photo)</label>
+        <input type="file" data-photo="teaching" accept="image/*" />
+      </details>
+
+      <details class="opal-section">
+        <summary>Show ZLMC mark</summary>
+        <div class="opal-row" style="margin-top:8px">
+          <div>
+            <label class="opal-label">Logo</label>
+            <select class="opal-select" data-k="teaching.logo">
+              <option value="on">On</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <div>
+            <label class="opal-label">Color</label>
+            <select class="opal-select" data-k="teaching.logoColor">
+              <option value="light">Light (on dark bg)</option>
+              <option value="dark">Dark (on light bg)</option>
+            </select>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- ============== CLASS PROMOTION ============== -->
+    <div class="field-group" id="fg-promo">
+      <label class="opal-label">Eyebrow (small caps)</label>
+      <input class="opal-input" type="text" data-k="promo.eyebrow" value="In Conversation With" />
+
+      <label class="opal-label">Main name / title</label>
+      <textarea class="opal-textarea" data-k="promo.name" rows="2">Roshi Joshin Althouse</textarea>
+
+      <label class="opal-label">Subtitle</label>
+      <textarea class="opal-textarea" data-k="promo.subtitle" rows="2">Abbot of the Zen Life
+&amp; Meditation Center</textarea>
+
+      <label class="opal-label">Date / time</label>
+      <input class="opal-input" type="text" data-k="promo.date" value="May 20  Wednesday 6 PM" />
+
+      <label class="opal-label">CTA / location</label>
+      <input class="opal-input" type="text" data-k="promo.cta" value="Live on Substack" />
+
+      <div class="swatch-row" style="margin-top:10px">
+        <div>
+          <label class="opal-label">Text color</label>
+          <input type="color" data-k="promo.text" value="#3a2a1e" />
+        </div>
+        <div>
+          <label class="opal-label">Accent color</label>
+          <input type="color" data-k="promo.accent" value="#7a4a2e" />
+        </div>
+      </div>
+
+      <details class="opal-section" open>
+        <summary>Background</summary>
+        <div class="opal-segments bg-mode-seg" data-tpl="promo" style="margin-top:8px">
+          <button data-mode="gradient" class="active">Gradient</button>
+          <button data-mode="solid">Solid</button>
+          <button data-mode="photo">Photo</button>
+        </div>
+        <div class="swatch-row" style="margin-top:10px">
+          <div>
+            <label class="opal-label">Color 1</label>
+            <input type="color" data-k="promo.bgC1" value="#eef3d2" />
+          </div>
+          <div>
+            <label class="opal-label">Color 2</label>
+            <input type="color" data-k="promo.bgC2" value="#e95cae" />
+          </div>
+        </div>
+        <div class="preset-row" id="promo-presets"></div>
+        <div class="opal-row" style="margin-top:6px">
+          <div>
+            <label class="opal-label">Direction</label>
+            <select class="opal-select" data-k="promo.bgAngle">
+              <option value="0">↓ Down</option>
+              <option value="45">↘ Down-right</option>
+              <option value="90">→ Right</option>
+              <option value="135">↗ Up-right</option>
+              <option value="180">↑ Up</option>
+              <option value="225">↖ Up-left</option>
+              <option value="270">← Left</option>
+              <option value="315">↙ Down-left</option>
+            </select>
+          </div>
+          <div>
+            <label class="opal-label">Style</label>
+            <select class="opal-select" data-k="promo.bgRadial">
+              <option value="off">Linear</option>
+              <option value="on">Radial</option>
+            </select>
+          </div>
+        </div>
+        <label class="opal-label">Photo (if mode = Photo)</label>
+        <input type="file" data-photo="promo" accept="image/*" />
+      </details>
+    </div>
+
+    <!-- ============== PHOTOGRAPH ============== -->
+    <div class="field-group" id="fg-photo">
+      <label class="opal-label">Eyebrow (small caps, multi-line ok)</label>
+      <textarea class="opal-textarea" data-k="photo.eyebrow" rows="2">New Blog Post
+Now on Substack</textarea>
+
+      <label class="opal-label">Headline</label>
+      <textarea class="opal-textarea" data-k="photo.headline" rows="4">ICHIGO ICHIE is a Japanese phrase that translates as "one time, one meeting" or "once in a lifetime encounter."</textarea>
+
+      <label class="opal-label">Byline</label>
+      <input class="opal-input" type="text" data-k="photo.byline" value="by Roshi Robert" />
+
+      <details class="opal-section" open>
+        <summary>Background</summary>
+        <div class="opal-segments bg-mode-seg" data-tpl="photo" style="margin-top:8px">
+          <button data-mode="photo" class="active">Photo</button>
+          <button data-mode="gradient">Gradient</button>
+          <button data-mode="solid">Solid</button>
+        </div>
+
+        <label class="opal-label" style="margin-top:10px">Photo</label>
+        <input type="file" data-photo="photo" accept="image/*" />
+        <div class="opal-hint">Photo fills the canvas. Drag to reposition.</div>
+        <div class="opal-row" style="margin-top:6px">
+          <div>
+            <label class="opal-label">Photo Zoom</label>
+            <input type="range" data-k="photo.zoom" min="0.5" max="3" step="0.01" value="1" />
+          </div>
+          <div>
+            <label class="opal-label">Darken</label>
+            <input type="range" data-k="photo.darken" min="0" max="0.8" step="0.01" value="0.15" />
+          </div>
+        </div>
+
+        <div class="swatch-row" style="margin-top:10px">
+          <div>
+            <label class="opal-label">Color 1</label>
+            <input type="color" data-k="photo.bgC1" value="#1a1a1a" />
+          </div>
+          <div>
+            <label class="opal-label">Color 2</label>
+            <input type="color" data-k="photo.bgC2" value="#3a3530" />
+          </div>
+        </div>
+        <div class="opal-row" style="margin-top:6px">
+          <div>
+            <label class="opal-label">Direction</label>
+            <select class="opal-select" data-k="photo.bgAngle">
+              <option value="0">↓ Down</option>
+              <option value="45">↘ Down-right</option>
+              <option value="90">→ Right</option>
+              <option value="135">↗ Up-right</option>
+              <option value="180">↑ Up</option>
+              <option value="225">↖ Up-left</option>
+              <option value="270">← Left</option>
+              <option value="315">↙ Down-left</option>
+            </select>
+          </div>
+          <div>
+            <label class="opal-label">Style</label>
+            <select class="opal-select" data-k="photo.bgRadial">
+              <option value="off">Linear</option>
+              <option value="on">Radial</option>
+            </select>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- ============== SUBSTACK QUOTE ============== -->
+    <div class="field-group" id="fg-substack">
+      <label class="opal-label">Title (small caps, top)</label>
+      <input class="opal-input" type="text" data-k="substack.title" value="True Life" />
+
+      <label class="opal-label">Body — blank lines make paragraphs</label>
+      <textarea class="opal-textarea" data-k="substack.body" rows="14">In Zen, we are trying
+to see the world whole.
+
+When you say something,
+the opposite is always included.
+
+If you say, 'I am alive',
+'I am dead' is also included.
+
+This is called the
+nonduality of duality.
+
+True life is more important
+than any one aspect of life.
+
+To live this way
+is to end suffering.</textarea>
+
+      <label class="opal-label">Attribution line 1</label>
+      <input class="opal-input" type="text" data-k="substack.attr1" value="Roshi Robert Althouse" />
+
+      <label class="opal-label">Attribution line 2</label>
+      <input class="opal-input" type="text" data-k="substack.attr2" value="Abbot, ZLMC" />
+
+      <details class="opal-section" open>
+        <summary>Background</summary>
+        <div class="opal-segments bg-mode-seg" data-tpl="substack" style="margin-top:8px">
+          <button data-mode="photo" class="active">Photo</button>
+          <button data-mode="gradient">Gradient</button>
+          <button data-mode="solid">Solid</button>
+        </div>
+
+        <label class="opal-label" style="margin-top:10px">Photo</label>
+        <input type="file" data-photo="substack" accept="image/*" />
+        <div class="opal-row" style="margin-top:6px">
+          <div>
+            <label class="opal-label">Photo Zoom</label>
+            <input type="range" data-k="substack.zoom" min="0.5" max="3" step="0.01" value="1" />
+          </div>
+          <div>
+            <label class="opal-label">Darken</label>
+            <input type="range" data-k="substack.darken" min="0" max="0.95" step="0.01" value="0.6" />
+          </div>
+        </div>
+
+        <div class="swatch-row" style="margin-top:10px">
+          <div>
+            <label class="opal-label">Color 1</label>
+            <input type="color" data-k="substack.bgC1" value="#1a1a1a" />
+          </div>
+          <div>
+            <label class="opal-label">Color 2</label>
+            <input type="color" data-k="substack.bgC2" value="#3a3530" />
+          </div>
+        </div>
+        <div class="opal-row" style="margin-top:6px">
+          <div>
+            <label class="opal-label">Direction</label>
+            <select class="opal-select" data-k="substack.bgAngle">
+              <option value="0">↓ Down</option>
+              <option value="45">↘ Down-right</option>
+              <option value="90">→ Right</option>
+              <option value="135">↗ Up-right</option>
+              <option value="180">↑ Up</option>
+              <option value="225">↖ Up-left</option>
+              <option value="270">← Left</option>
+              <option value="315">↙ Down-left</option>
+            </select>
+          </div>
+          <div>
+            <label class="opal-label">Style</label>
+            <select class="opal-select" data-k="substack.bgRadial">
+              <option value="off">Linear</option>
+              <option value="on">Radial</option>
+            </select>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="sel-panel" id="sel-panel">
+      <div class="sel-empty" id="sel-empty">Click any text on the post to select it. Then nudge position with ↑ / ↓ (50&nbsp;px each), and resize with Shift + ↑ / ↓ or + / − keys.</div>
+      <div class="sel-active" id="sel-active">
+        <label class="opal-label">Selected</label>
+        <div class="sel-name" id="sel-name">—</div>
+
+        <label class="opal-label" style="margin-top:4px">Position</label>
+        <div class="nudge-row">
+          <button class="opal-btn secondary" id="nudge-up">↑ Up 50 px</button>
+          <button class="opal-btn secondary" id="nudge-down">↓ Down 50 px</button>
+        </div>
+        <div style="height:4px"></div>
+        <button class="opal-btn secondary" id="nudge-reset">Reset position</button>
+
+        <label class="opal-label" style="margin-top:12px">Type size</label>
+        <div class="nudge-row">
+          <button class="opal-btn secondary" id="size-down">A−</button>
+          <button class="opal-btn secondary" id="size-up">A+</button>
+        </div>
+        <div style="height:4px"></div>
+        <button class="opal-btn secondary" id="size-reset">Reset size</button>
+      </div>
+    </div>
+
+    <div style="height: 18px"></div>
+    <button class="opal-btn" id="download">Download Post + Story</button>
+    <div class="download-feedback" id="download-feedback"></div>
+    <div style="height: 6px"></div>
+    <button class="opal-btn secondary" id="reset-pos">Reset photo position</button>
+  </aside>
+
+  <main class="opal-main">
+    <div class="opal-canvas-stage">
+      <div class="opal-size-row">
+        <div class="opal-segments" id="size-seg">
+          <button data-size="1080x1350" class="active">Post 4:5</button>
+          <button data-size="1080x1920">Story 9:16</button>
+        </div>
+        <div class="size-meta" id="size-label">1080 × 1350</div>
+      </div>
+      <div class="opal-canvas-wrap">
+        <canvas id="c" width="1080" height="1350"></canvas>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* =========================================================================
+   ZLMC Posts — OP/AL
+   Single-canvas social post generator with 5 templates, exports IG square
+   (1080×1080) and IG story (1080×1920) in one click.
+   ========================================================================= */
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+const NUDGE_STEP = 50;
+const SIZE_RATIO = 1.125;     // Major-second scale (per A+/A− step)
+const SIZE_STEP_MAX = 6;       // Clamp to ±6 steps (≈ 0.53× to 1.90×)
+const DEFAULT_PADDING = 0.07;  // Default outer margin (7% of canvas width)
+
+const state = {
+  template: 'smz',
+  size: '1080x1350',
+  // Photo objects per template
+  photos: { smz: null, teaching: null, promo: null, photo: null, substack: null },
+  // Photo positioning (shared — applies to active template's photo)
+  bgX: 0.5, bgY: 0.5,
+  // Per-template field values, hydrated from data-k inputs
+  fields: {},
+  // Per-template per-element y-offset (in canvas px).
+  offsets: { smz: {}, teaching: {}, promo: {}, photo: {}, substack: {} },
+  // Per-template per-element font-size step (integer; size = base * RATIO^step)
+  sizeOffsets: { smz: {}, teaching: {}, promo: {}, photo: {}, substack: {} },
+  // Boxes registered during each render — used for hit-testing on click.
+  boxes: [],
+  // Currently selected element: { template, id, name } | null
+  selected: null,
+  // Optional border (Posts / 4:5 only).
+  border: { on: false, color: '#ffffff', width: 10 },
+  // Global outer margin (fraction of canvas width).
+  padding: DEFAULT_PADDING,
+};
+
+let logoLight = null, logoDark = null;
+
+/* ---------- helpers ---------- */
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return Array.from(document.querySelectorAll(sel)); }
+function hexToRgba(hex, a) {
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function get(path) {
+  return path.split('.').reduce((o, k) => o && o[k], state.fields);
+}
+function setField(path, value) {
+  const parts = path.split('.');
+  let o = state.fields;
+  for (let i = 0; i < parts.length - 1; i++) {
+    o[parts[i]] = o[parts[i]] || {};
+    o = o[parts[i]];
+  }
+  o[parts[parts.length - 1]] = value;
+}
+
+/* ---------- text helpers ---------- */
+function wrapLine(ctx, text, maxWidth) {
+  const words = text.split(/\s+/);
+  const out = []; let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxWidth && line) { out.push(line); line = w; }
+    else { line = test; }
+  }
+  if (line) out.push(line);
+  return out;
+}
+function drawWrapped(ctx, text, x, y, maxWidth, lineHeight, align) {
+  ctx.textAlign = align || 'left';
+  const lines = wrapLine(ctx, text, maxWidth);
+  lines.forEach((ln, i) => ctx.fillText(ln, x, y + i * lineHeight));
+  return y + lines.length * lineHeight;
+}
+// Hard line breaks + word wrap. Returns final y.
+function drawMultiline(ctx, text, x, y, maxWidth, lineHeight, align) {
+  const hardLines = text.split('\n');
+  let cy = y;
+  hardLines.forEach(hl => {
+    if (hl === '') { cy += lineHeight * 0.5; return; }
+    cy = drawWrapped(ctx, hl, x, cy, maxWidth, lineHeight, align);
+  });
+  return cy;
+}
+// Paragraphs separated by blank lines; preserves single newlines as soft breaks.
+function drawParagraphs(ctx, text, x, y, maxWidth, lineHeight, paragraphGap, align) {
+  const paragraphs = text.split(/\n\s*\n/);
+  let cy = y;
+  paragraphs.forEach((p, i) => {
+    if (i > 0) cy += paragraphGap;
+    cy = drawMultiline(ctx, p, x, cy, maxWidth, lineHeight, align);
+  });
+  return cy;
+}
+// Measure how tall a paragraph block would be without drawing.
+function measureParagraphs(ctx, text, maxWidth, lineHeight, paragraphGap) {
+  const paragraphs = text.split(/\n\s*\n/);
+  let h = 0;
+  paragraphs.forEach((p, i) => {
+    if (i > 0) h += paragraphGap;
+    const hardLines = p.split('\n');
+    hardLines.forEach(hl => {
+      if (hl === '') { h += lineHeight * 0.5; return; }
+      h += wrapLine(ctx, hl, maxWidth).length * lineHeight;
+    });
+  });
+  return h;
+}
+
+/* ---------- logo loading ---------- */
+async function loadLogo(color) {
+  const res = await fetch('/ZLMC/Assets/zlmc-logo.svg');
+  let svg = await res.text();
+  // The ZLMC SVG uses `.st0 { fill: #fff; }` CSS — swap the fill value.
+  svg = svg.replace(/fill:\s*#fff/gi, `fill: ${color}`);
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.src = url;
+  });
+}
+function drawZlmcLogo(ctx, w, h, opts = {}) {
+  const variant = opts.color === 'dark' ? logoDark : logoLight;
+  if (!variant) return;
+  const targetW = opts.width || w * 0.34;
+  const ratio = variant.height / variant.width;
+  const drawW = targetW;
+  const drawH = drawW * ratio;
+  const x = opts.x != null ? opts.x : (w - drawW) / 2;
+  const y = opts.y != null ? opts.y : h - drawH - h * 0.05;
+  ctx.drawImage(variant, x, y, drawW, drawH);
+}
+
+/* ---------- background helpers ---------- */
+function fillBg(ctx, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, w, h);
+}
+function fillGradient(ctx, w, h, c1, c2, angle = 0, radial = false) {
+  let g;
+  if (radial) {
+    const cx = w / 2, cy = h / 2;
+    const r = Math.max(w, h) * 0.78;
+    g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  } else {
+    // angle: 0 = top→bottom, 90 = left→right, 180 = bottom→top, 270 = right→left
+    const a = (angle || 0) * Math.PI / 180;
+    const dx = Math.sin(a), dy = Math.cos(a);
+    const cx = w / 2, cy = h / 2;
+    const halfLen = Math.abs(w * dx / 2) + Math.abs(h * dy / 2);
+    g = ctx.createLinearGradient(
+      cx - dx * halfLen, cy - dy * halfLen,
+      cx + dx * halfLen, cy + dy * halfLen
+    );
+  }
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+}
+
+/* Unified background dispatcher — every template now supports
+   solid / gradient / photo modes. Photo zoom uses each template's
+   own f.zoom field if present. */
+const DEFAULT_BG_MODE = { smz: 'solid', teaching: 'gradient', promo: 'gradient', photo: 'photo', substack: 'photo' };
+function applyBg(ctx, w, h, tpl) {
+  const f = state.fields[tpl];
+  const mode = f.bgMode || DEFAULT_BG_MODE[tpl];
+  if (mode === 'photo' && state.photos[tpl]) {
+    drawPhotoCover(ctx, state.photos[tpl], 0, 0, w, h, f.zoom || 1, state.bgX, state.bgY);
+    return mode;
+  }
+  const c1 = f.bgC1 || '#000';
+  const c2 = f.bgC2 || c1;
+  if (mode === 'solid') {
+    fillBg(ctx, w, h, c1);
+  } else {
+    const angle = parseFloat(f.bgAngle || 0);
+    const radial = f.bgRadial === 'on' || f.bgRadial === true;
+    fillGradient(ctx, w, h, c1, c2, angle, radial);
+  }
+  return mode;
+}
+
+/* Optional border — Posts (4:5) only. */
+function drawBorder(ctx, w, h) {
+  if (!state.border.on) return;
+  if (state.size !== '1080x1350') return;
+  const bw = state.border.width;
+  ctx.fillStyle = state.border.color;
+  ctx.fillRect(0, 0, w, bw);
+  ctx.fillRect(0, h - bw, w, bw);
+  ctx.fillRect(0, 0, bw, h);
+  ctx.fillRect(w - bw, 0, bw, h);
+}
+function drawPhotoCover(ctx, img, x, y, w, h, zoom, ax, ay) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  const f = Opal.fitCover(img, w, h, zoom, ax, ay);
+  ctx.drawImage(img, x + f.dx, y + f.dy, f.dw, f.dh);
+  ctx.restore();
+}
+function drawDarken(ctx, w, h, alpha) {
+  if (alpha <= 0) return;
+  ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+  ctx.fillRect(0, 0, w, h);
+}
+
+/* ---------- selection / nudge helpers ---------- */
+// Get y-offset (in canvas px) for a movable element in the active template.
+function offY(id) {
+  return (state.offsets[state.template] || {})[id] || 0;
+}
+// Register a hit-test box for a movable element. Called after drawing each
+// element with the bounding box of what was just rendered.
+function track(id, name, x, y, w, h) {
+  state.boxes.push({ id, name, x, y, w, h });
+}
+function hitTest(x, y) {
+  // Iterate in reverse so the most-recently-drawn (topmost) wins.
+  for (let i = state.boxes.length - 1; i >= 0; i--) {
+    const b = state.boxes[i];
+    if (x >= b.x - 12 && x <= b.x + b.w + 12 &&
+        y >= b.y - 12 && y <= b.y + b.h + 12) return b;
+  }
+  return null;
+}
+function drawSelectionOutline() {
+  if (!state.selected || state.selected.template !== state.template) return;
+  const box = state.boxes.find(b => b.id === state.selected.id);
+  if (!box) return;
+  const pad = Math.max(10, canvas.width * 0.012);
+  const x = box.x - pad, y = box.y - pad;
+  const w = box.w + pad * 2, h = box.h + pad * 2;
+  ctx.save();
+  // White underlay for contrast on any background.
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.lineWidth = Math.max(3, canvas.width * 0.004);
+  ctx.setLineDash([]);
+  ctx.strokeRect(x, y, w, h);
+  // Dark dashed top stroke.
+  ctx.strokeStyle = 'rgba(17,17,17,0.95)';
+  ctx.lineWidth = Math.max(2, canvas.width * 0.0025);
+  ctx.setLineDash([16, 10]);
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+}
+function nudgeSelected(dy) {
+  if (!state.selected) return;
+  const { template, id } = state.selected;
+  state.offsets[template] = state.offsets[template] || {};
+  state.offsets[template][id] = (state.offsets[template][id] || 0) + dy;
+  render();
+}
+function resetSelectedPosition() {
+  if (!state.selected) return;
+  const { template, id } = state.selected;
+  if (state.offsets[template]) delete state.offsets[template][id];
+  render();
+}
+
+/* ---------- font-size scaling (per-element, major-second scale) ---------- */
+function sizeStep(id) {
+  return (state.sizeOffsets[state.template] || {})[id] || 0;
+}
+function scaledSize(base, id) {
+  return base * Math.pow(SIZE_RATIO, sizeStep(id));
+}
+function nudgeSelectedSize(delta) {
+  if (!state.selected) return;
+  const { template, id } = state.selected;
+  state.sizeOffsets[template] = state.sizeOffsets[template] || {};
+  const next = (state.sizeOffsets[template][id] || 0) + delta;
+  state.sizeOffsets[template][id] = Math.max(-SIZE_STEP_MAX, Math.min(SIZE_STEP_MAX, next));
+  render();
+}
+function resetSelectedSize() {
+  if (!state.selected) return;
+  const { template, id } = state.selected;
+  if (state.sizeOffsets[template]) delete state.sizeOffsets[template][id];
+  render();
+}
+function updateSelectionUI() {
+  const empty = document.getElementById('sel-empty');
+  const active = document.getElementById('sel-active');
+  const name = document.getElementById('sel-name');
+  if (state.selected) {
+    empty.classList.add('off');
+    active.classList.add('on');
+    const off = (state.offsets[state.selected.template] || {})[state.selected.id] || 0;
+    const step = (state.sizeOffsets[state.selected.template] || {})[state.selected.id] || 0;
+    const parts = [];
+    if (off !== 0) parts.push(`${off > 0 ? '↓' : '↑'} ${Math.abs(off)} px`);
+    if (step !== 0) parts.push(`A${step > 0 ? '+' : '−'}${Math.abs(step)}`);
+    name.textContent = `${state.selected.name}${parts.length ? '  (' + parts.join(' · ') + ')' : ''}`;
+  } else {
+    empty.classList.remove('off');
+    active.classList.remove('on');
+  }
+}
+
+/* =========================================================================
+   TEMPLATE DRAW FUNCTIONS
+   Each receives (ctx, w, h). They read from state.fields.
+   ========================================================================= */
+
+/* ---------- SUNDAY MORNING ZEN ---------- */
+function drawSMZ(ctx, w, h) {
+  const f = state.fields.smz;
+  const isStory = h / w > 1.5;
+
+  // Background — solid / gradient via the unified dispatcher.
+  applyBg(ctx, w, h, 'smz');
+
+  const pad = w * state.padding;
+  const hasPhoto = !!state.photos.smz;
+  const photoRegion = isStory
+    ? { x: 0, y: h * 0.45, w: w, h: h * 0.55 }
+    : { x: w * 0.55, y: 0, w: w * 0.45, h: h };
+  // Text spans the full padded width when no portrait is uploaded.
+  // When a portrait is uploaded, the column shrinks so the photo gets the
+  // right ~45% of the canvas (matching the reference).
+  const textRegion = isStory
+    ? { x: pad, y: pad, w: w - 2 * pad }
+    : { x: pad, y: pad, w: (hasPhoto ? w * 0.55 : w) - 2 * pad };
+
+  if (state.photos.smz) {
+    drawPhotoCover(ctx, state.photos.smz,
+      photoRegion.x, photoRegion.y, photoRegion.w, photoRegion.h,
+      f.zoom, state.bgX, state.bgY);
+  }
+
+  ctx.fillStyle = '#1a1a1a';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+
+  // Top title
+  const titleSize = scaledSize(isStory ? w * 0.085 : w * 0.072, 'title');
+  ctx.font = `italic 500 ${titleSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  const titleY = textRegion.y + offY('title');
+  const titleEnd = drawWrapped(ctx, f.title, textRegion.x, titleY, textRegion.w, titleSize * 1.0, 'left');
+  track('title', 'Top Title', textRegion.x, titleY, textRegion.w, titleEnd - titleY);
+
+  // Date · time
+  const dateSize = scaledSize(w * 0.032, 'date');
+  const dateBase = isStory ? titleEnd + h * 0.04 : h * 0.40;
+  const dateY = dateBase + offY('date');
+  ctx.font = `400 ${dateSize}px Inter, sans-serif`;
+  const dt = `${f.date} • ${f.time}`;
+  ctx.fillText(dt, textRegion.x, dateY);
+  track('date', 'Date · Time', textRegion.x, dateY, textRegion.w, dateSize * 1.4);
+
+  // Talk title
+  const talkSize = scaledSize(isStory ? w * 0.078 : w * 0.07, 'talkTitle');
+  ctx.font = `italic 500 ${talkSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  ctx.fillStyle = '#fff9ee';
+  const talkBase = dateY + dateSize * 1.8;
+  const talkY = talkBase + offY('talkTitle');
+  const talkEnd = drawMultiline(ctx, f.talkTitle, textRegion.x, talkY, textRegion.w, talkSize * 1.0, 'left');
+  track('talkTitle', 'Talk Title', textRegion.x, talkY, textRegion.w, talkEnd - talkY);
+
+  // Speaker
+  const spSize = scaledSize(w * 0.030, 'speaker');
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = `400 ${spSize}px Inter, sans-serif`;
+  const spBase = talkEnd + w * 0.04;
+  const spY = spBase + offY('speaker');
+  const spEnd = drawMultiline(ctx, f.speaker, textRegion.x, spY, textRegion.w, spSize * 1.35, 'left');
+  track('speaker', 'Speaker Line', textRegion.x, spY, textRegion.w, spEnd - spY);
+}
+
+/* ---------- ZEN TEACHING ---------- */
+function drawTeaching(ctx, w, h) {
+  const f = state.fields.teaching;
+
+  // Background — unified dispatcher (solid / gradient / photo)
+  const mode = applyBg(ctx, w, h, 'teaching');
+  if (mode === 'photo') drawDarken(ctx, w, h, 0.2);
+
+  const pad = w * state.padding;
+  const maxW = w - 2 * pad;
+
+  // Centered quote
+  ctx.fillStyle = f.text;
+  ctx.textBaseline = 'top';
+  const fontSize = scaledSize(h / w > 1.5 ? w * 0.058 : w * 0.052, 'quote');
+  ctx.font = `400 ${fontSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  const lineHeight = fontSize * 1.18;
+  const quoteH = measureParagraphs(ctx, f.quote, maxW, lineHeight, lineHeight * 0.6);
+  const attributionGap = fontSize * 2.2;
+  const attrSize = scaledSize(w * 0.038, 'attribution');
+  const totalH = quoteH + attributionGap + attrSize * 1.5;
+  const quoteBase = (h - totalH) / 2;
+  const quoteY = quoteBase + offY('quote');
+  const quoteEnd = drawParagraphs(ctx, f.quote, w / 2, quoteY, maxW, lineHeight, lineHeight * 0.6, 'center');
+  track('quote', 'Quote', pad, quoteY, maxW, quoteEnd - quoteY);
+
+  // Attribution
+  ctx.font = `400 ${attrSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  const attrBase = quoteEnd + attributionGap - lineHeight;
+  const attrY = attrBase + offY('attribution');
+  ctx.fillText(f.attribution, w / 2, attrY);
+  track('attribution', 'Attribution', pad, attrY, maxW, attrSize * 1.4);
+
+  // Optional ZLMC logo
+  if (f.logo === 'on') {
+    const logoW = w * 0.30;
+    const logoH = logoW * 0.34;
+    const logoBaseY = h - logoH - pad;
+    const logoY = logoBaseY + offY('logo');
+    drawZlmcLogo(ctx, w, h, { color: f.logoColor, width: logoW, y: logoY });
+    track('logo', 'ZLMC Mark', (w - logoW) / 2, logoY, logoW, logoH);
+  }
+}
+
+/* ---------- CLASS PROMOTION ---------- */
+function drawPromo(ctx, w, h) {
+  const f = state.fields.promo;
+
+  applyBg(ctx, w, h, 'promo');
+
+  // All text is centered
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  const pad = w * state.padding;
+  const maxW = w - 2 * pad;
+  const isStory = h / w > 1.5;
+  const topY = isStory ? h * 0.27 : h * 0.16;
+
+  // Eyebrow
+  const ebSize = scaledSize(w * 0.030, 'eyebrow');
+  const ebY = topY + offY('eyebrow');
+  ctx.fillStyle = f.text;
+  ctx.font = `500 ${ebSize}px Inter, sans-serif`;
+  drawTracked(ctx, (f.eyebrow || '').toUpperCase(), w / 2, ebY, 0.16 * ebSize);
+  track('eyebrow', 'Eyebrow', pad, ebY, maxW, ebSize * 1.6);
+  let yCursor = ebY + ebSize * 2.3;
+
+  // Big name
+  const nameSize = scaledSize(isStory ? w * 0.090 : w * 0.080, 'name');
+  const nameY = yCursor + offY('name');
+  ctx.fillStyle = f.accent;
+  ctx.font = `500 ${nameSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  const nameEnd = drawMultiline(ctx, f.name, w / 2, nameY, maxW, nameSize * 1.05, 'center');
+  track('name', 'Name', pad, nameY, maxW, nameEnd - nameY);
+
+  // Subtitle
+  const subSize = scaledSize(w * 0.038, 'subtitle');
+  const subBase = nameEnd + subSize * 0.6;
+  const subY = subBase + offY('subtitle');
+  ctx.fillStyle = f.text;
+  ctx.font = `400 ${subSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  const subEnd = drawMultiline(ctx, f.subtitle, w / 2, subY, maxW, subSize * 1.3, 'center');
+  track('subtitle', 'Subtitle', pad, subY, maxW, subEnd - subY);
+
+  // Date (accent)
+  const dateSize = scaledSize(w * 0.042, 'date');
+  const dateBase = subEnd + subSize * 1.8;
+  const dateY = dateBase + offY('date');
+  ctx.fillStyle = f.accent;
+  ctx.font = `400 ${dateSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  ctx.fillText(f.date, w / 2, dateY);
+  track('date', 'Date', pad, dateY, maxW, dateSize * 1.4);
+
+  // CTA
+  const ctaSize = scaledSize(w * 0.038, 'cta');
+  const ctaBase = dateY + dateSize * 1.6;
+  const ctaY = ctaBase + offY('cta');
+  ctx.fillStyle = f.text;
+  ctx.font = `400 ${ctaSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  ctx.fillText(f.cta, w / 2, ctaY);
+  track('cta', 'CTA', pad, ctaY, maxW, ctaSize * 1.4);
+
+  // ZLMC logo at bottom
+  const logoW = w * 0.30;
+  const logoH = logoW * 0.34;
+  const logoBaseY = h - logoH - pad;
+  const logoY = logoBaseY + offY('logo');
+  drawZlmcLogo(ctx, w, h, { color: 'dark', width: logoW, y: logoY });
+  track('logo', 'ZLMC Mark', (w - logoW) / 2, logoY, logoW, logoH);
+}
+
+// Manual letter-spaced text (canvas has no letter-spacing).
+function drawTracked(ctx, text, cx, y, spacing) {
+  // Measure total width with spacing.
+  const chars = text.split('');
+  let total = 0;
+  chars.forEach((c, i) => {
+    total += ctx.measureText(c).width;
+    if (i < chars.length - 1) total += spacing;
+  });
+  let x = cx - total / 2;
+  chars.forEach((c, i) => {
+    ctx.textAlign = 'left';
+    ctx.fillText(c, x, y);
+    x += ctx.measureText(c).width + spacing;
+  });
+}
+
+/* ---------- PHOTOGRAPH ---------- */
+function drawPhoto(ctx, w, h) {
+  const f = state.fields.photo;
+
+  const mode = applyBg(ctx, w, h, 'photo');
+  if (mode === 'photo') drawDarken(ctx, w, h, f.darken);
+
+  // Text on the right, anchored to bottom-right of canvas
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'right';
+
+  const padX = w * state.padding;
+  const maxW = w * 0.62;
+  const rightEdge = w - padX;
+
+  // Headline metrics
+  const hlSize = scaledSize(h / w > 1.5 ? w * 0.062 : w * 0.054, 'headline');
+  const hlLineHeight = hlSize * 1.08;
+
+  // Eyebrow — small caps
+  const ebSize = scaledSize(w * 0.026, 'eyebrow');
+  const ebLines = f.eyebrow.split('\n');
+
+  // Block anchor
+  const blockTopY = h / w > 1.5 ? h * 0.55 : h * 0.45;
+
+  // Eyebrow
+  const ebY = blockTopY + offY('eyebrow');
+  ctx.font = `500 ${ebSize}px Inter, sans-serif`;
+  let ey = ebY;
+  ebLines.forEach(line => {
+    drawTrackedRight(ctx, line.toUpperCase(), rightEdge, ey, 0.18 * ebSize);
+    ey += ebSize * 1.6;
+  });
+  track('eyebrow', 'Eyebrow', rightEdge - maxW, ebY, maxW, ey - ebY);
+
+  // Headline
+  const hlBase = ey + ebSize * 0.8;
+  const hlY = hlBase + offY('headline');
+  ctx.font = `400 ${hlSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  ctx.textAlign = 'right';
+  const hlEnd = drawParagraphs(ctx, f.headline, rightEdge, hlY, maxW, hlLineHeight, hlLineHeight * 0.4, 'right');
+  track('headline', 'Headline', rightEdge - maxW, hlY, maxW, hlEnd - hlY);
+
+  // Byline — bottom-right
+  const blSize = scaledSize(w * 0.026, 'byline');
+  const blBase = h - padX - blSize * 1.4;
+  const blY = blBase + offY('byline');
+  ctx.font = `400 ${blSize}px "Playfair Display", "Cormorant Garamond", serif`;
+  ctx.fillText(f.byline, rightEdge, blY);
+  track('byline', 'Byline', rightEdge - maxW, blY, maxW, blSize * 1.4);
+
+  // ZLMC logo bottom-left
+  const logoW = w * 0.26;
+  const logoH = logoW * 0.34;
+  const logoBaseY = h - logoH - padX;
+  const logoY = logoBaseY + offY('logo');
+  drawZlmcLogo(ctx, w, h, { color: 'light', width: logoW, x: padX, y: logoY });
+  track('logo', 'ZLMC Mark', padX, logoY, logoW, logoH);
+}
+
+function drawTrackedRight(ctx, text, rightX, y, spacing) {
+  const chars = text.split('');
+  let total = 0;
+  chars.forEach((c, i) => { total += ctx.measureText(c).width; if (i < chars.length - 1) total += spacing; });
+  let x = rightX - total;
+  chars.forEach((c) => {
+    ctx.textAlign = 'left';
+    ctx.fillText(c, x, y);
+    x += ctx.measureText(c).width + spacing;
+  });
+}
+
+/* ---------- SUBSTACK QUOTE ---------- */
+function drawSubstack(ctx, w, h) {
+  const f = state.fields.substack;
+
+  const mode = applyBg(ctx, w, h, 'substack');
+  if (mode === 'photo') drawDarken(ctx, w, h, f.darken);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'top';
+
+  const pad = w * state.padding;
+  const maxW = w - 2 * pad;
+
+  // Top title — small caps tracked
+  const titleSize = scaledSize(w * 0.030, 'title');
+  ctx.font = `500 ${titleSize}px Inter, sans-serif`;
+  ctx.textAlign = 'center';
+  const titleBase = pad;
+  const titleY = titleBase + offY('title');
+  drawTracked(ctx, (f.title || '').toUpperCase(), w / 2, titleY, 0.22 * titleSize);
+  track('title', 'Title', pad, titleY, maxW, titleSize * 1.6);
+
+  // Centered body
+  const bodySize = scaledSize(h / w > 1.5 ? w * 0.046 : w * 0.042, 'body');
+  ctx.font = `400 ${bodySize}px "Playfair Display", "Cormorant Garamond", serif`;
+  const lh = bodySize * 1.35;
+  const gap = bodySize * 0.9;
+  const bodyH = measureParagraphs(ctx, f.body, maxW, lh, gap);
+  const bodyBase = (h - bodyH) / 2;
+  const bodyY = bodyBase + offY('body');
+  drawParagraphs(ctx, f.body, w / 2, bodyY, maxW, lh, gap, 'center');
+  track('body', 'Body', pad, bodyY, maxW, bodyH);
+
+  // Attribution — anchored to bottom padding
+  const attrSize = scaledSize(w * 0.028, 'attribution');
+  ctx.font = `500 ${attrSize}px Inter, sans-serif`;
+  const a1 = (f.attr1 || '').toUpperCase();
+  const a2 = (f.attr2 || '').toUpperCase();
+  const attrTotalH = attrSize * 1.7 + attrSize * 1.4;
+  const attrBase = h - pad - attrTotalH;
+  const attrY = attrBase + offY('attribution');
+  drawTracked(ctx, a1, w / 2, attrY, 0.22 * attrSize);
+  drawTracked(ctx, a2, w / 2, attrY + attrSize * 1.7, 0.22 * attrSize);
+  track('attribution', 'Attribution', pad, attrY, maxW, attrTotalH);
+}
+
+/* =========================================================================
+   ROUTER
+   ========================================================================= */
+function render(opts = {}) {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  state.boxes = [];
+  switch (state.template) {
+    case 'smz': drawSMZ(ctx, w, h); break;
+    case 'teaching': drawTeaching(ctx, w, h); break;
+    case 'promo': drawPromo(ctx, w, h); break;
+    case 'photo': drawPhoto(ctx, w, h); break;
+    case 'substack': drawSubstack(ctx, w, h); break;
+  }
+  // Border on top of all content — Posts (4:5) only.
+  drawBorder(ctx, w, h);
+  // Selection outline is excluded from exports.
+  if (!opts.forExport) drawSelectionOutline();
+  updateSelectionUI();
+}
+
+/* =========================================================================
+   STATE HYDRATION + EVENTS
+   ========================================================================= */
+function hydrateFromInputs() {
+  $$('[data-k]').forEach(el => {
+    const k = el.dataset.k;
+    let v = el.value;
+    if (el.type === 'range') v = parseFloat(v);
+    setField(k, v);
+  });
+}
+
+function bindInputs() {
+  $$('[data-k]').forEach(el => {
+    el.addEventListener('input', () => {
+      let v = el.value;
+      if (el.type === 'range') v = parseFloat(v);
+      setField(el.dataset.k, v);
+      render();
+    });
+  });
+}
+
+function bindPhotoUploads() {
+  $$('[data-photo]').forEach(input => {
+    input.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const img = new Image();
+      img.onload = () => {
+        state.photos[input.dataset.photo] = img;
+        state.bgX = 0.5; state.bgY = 0.5;
+        render();
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  });
+}
+
+function setTemplate(tpl) {
+  state.template = tpl;
+  $$('.field-group').forEach(g => g.classList.remove('active'));
+  document.getElementById('fg-' + tpl).classList.add('active');
+  state.bgX = 0.5; state.bgY = 0.5;
+  state.selected = null;
+  render();
+}
+
+/* ---------- canvas click → select element ---------- */
+function bindCanvasClick() {
+  let downX = 0, downY = 0, downT = 0;
+  canvas.addEventListener('pointerdown', (e) => {
+    downX = e.clientX; downY = e.clientY; downT = Date.now();
+  });
+  canvas.addEventListener('pointerup', (e) => {
+    const dt = Date.now() - downT;
+    const dx = Math.abs(e.clientX - downX);
+    const dy = Math.abs(e.clientY - downY);
+    // Treat as click only if pointer barely moved (dragging is handled by
+    // Opal.attachDrag for photo positioning).
+    if (dx > 6 || dy > 6 || dt > 600) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const hit = hitTest(x, y);
+    state.selected = hit ? { template: state.template, id: hit.id, name: hit.name } : null;
+    render();
+  });
+}
+
+/* ---------- keyboard → nudge selected ---------- */
+function bindKeyboard() {
+  document.addEventListener('keydown', (e) => {
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT')) return;
+    if (!state.selected && e.key !== 'Escape') return;
+    if (e.key === 'ArrowUp') {
+      if (e.shiftKey) nudgeSelectedSize(+1); else nudgeSelected(-NUDGE_STEP);
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      if (e.shiftKey) nudgeSelectedSize(-1); else nudgeSelected(NUDGE_STEP);
+      e.preventDefault();
+    } else if (e.key === '=' || e.key === '+') {
+      nudgeSelectedSize(+1); e.preventDefault();
+    } else if (e.key === '-' || e.key === '_') {
+      nudgeSelectedSize(-1); e.preventDefault();
+    } else if (e.key === 'Escape') {
+      state.selected = null; render();
+    }
+  });
+}
+
+function setSize(size) {
+  state.size = size;
+  const [w, h] = size.split('x').map(Number);
+  canvas.width = w; canvas.height = h;
+  document.getElementById('size-label').textContent = `${w} × ${h}`;
+  $$('#size-seg button').forEach(b =>
+    b.classList.toggle('active', b.dataset.size === size));
+  render();
+}
+
+function setBgMode(tpl, mode) {
+  setField(`${tpl}.bgMode`, mode);
+  $$(`.bg-mode-seg[data-tpl="${tpl}"] button`).forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
+  render();
+}
+
+/* ---------- color presets ---------- */
+const TEACHING_PRESETS = [
+  { c1: '#d96f1f', c2: '#f3b659', name: 'Sunrise orange' },
+  { c1: '#3a3530', c2: '#6e5b48', name: 'Tea bowl' },
+  { c1: '#7c1f1f', c2: '#e2a06b', name: 'Cinnabar' },
+  { c1: '#1e2a3a', c2: '#5e7892', name: 'Twilight blue' },
+  { c1: '#2c4a36', c2: '#8aa37b', name: 'Pine' },
+  { c1: '#3b2a4a', c2: '#a787c1', name: 'Iris' },
+];
+const PROMO_PRESETS = [
+  { c1: '#eef3d2', c2: '#e95cae', name: 'Spring bloom' },
+  { c1: '#fdebd2', c2: '#ec8fa6', name: 'Peach blossom' },
+  { c1: '#e6efe2', c2: '#7fa885', name: 'Sage' },
+  { c1: '#f4f1e8', c2: '#c9a36b', name: 'Sand' },
+  { c1: '#f2eaff', c2: '#8b7bb8', name: 'Lavender' },
+  { c1: '#fff7e8', c2: '#e2a06b', name: 'Honey' },
+];
+function buildPresets(containerId, presets, c1Key, c2Key) {
+  const wrap = document.getElementById(containerId);
+  presets.forEach(p => {
+    const btn = document.createElement('button');
+    btn.title = p.name;
+    btn.style.background = `linear-gradient(180deg, ${p.c1}, ${p.c2})`;
+    btn.addEventListener('click', () => {
+      const c1Input = document.querySelector(`[data-k="${c1Key}"]`);
+      const c2Input = document.querySelector(`[data-k="${c2Key}"]`);
+      c1Input.value = p.c1; c2Input.value = p.c2;
+      setField(c1Key, p.c1); setField(c2Key, p.c2);
+      render();
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+/* =========================================================================
+   DOWNLOAD — exports both 1080×1080 and 1080×1920 in one click
+   ========================================================================= */
+async function downloadBoth() {
+  const fb = document.getElementById('download-feedback');
+  fb.textContent = 'Rendering...';
+  const originalSize = state.size;
+  const stamp = new Date().toISOString().slice(0, 10);
+  const tag = ({
+    smz: 'SundayMorningZen', teaching: 'ZenTeaching',
+    promo: 'ClassPromotion', photo: 'Photograph', substack: 'SubstackQuote'
+  })[state.template];
+
+  // Hide selection outline during export
+  const savedSelection = state.selected;
+  state.selected = null;
+
+  // Post (4:5)
+  setSize('1080x1350');
+  await new Promise(r => requestAnimationFrame(r));
+  render({ forExport: true });
+  Opal.downloadCanvas(canvas, `ZLMC-${tag}-Post-${stamp}.png`);
+
+  // Story (9:16)
+  await new Promise(r => setTimeout(r, 150));
+  setSize('1080x1920');
+  await new Promise(r => requestAnimationFrame(r));
+  render({ forExport: true });
+  Opal.downloadCanvas(canvas, `ZLMC-${tag}-Story-${stamp}.png`);
+
+  // Restore selection
+  state.selected = savedSelection;
+
+  // Restore
+  await new Promise(r => setTimeout(r, 150));
+  setSize(originalSize);
+  fb.textContent = 'Two PNGs saved to Downloads.';
+  setTimeout(() => { if (fb.textContent.startsWith('Two')) fb.textContent = ''; }, 3500);
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+async function init() {
+  // Hydrate state from defaults in the DOM
+  hydrateFromInputs();
+
+  // Set bg-mode defaults per template (matches each template's design intent)
+  Object.entries(DEFAULT_BG_MODE).forEach(([tpl, mode]) => {
+    if (!state.fields[tpl].bgMode) setField(`${tpl}.bgMode`, mode);
+  });
+  setField('teaching.logo', 'on');
+  setField('teaching.logoColor', 'light');
+
+  bindInputs();
+  bindPhotoUploads();
+
+  document.getElementById('tpl-select').addEventListener('change', e => setTemplate(e.target.value));
+
+  $$('#size-seg button').forEach(b =>
+    b.addEventListener('click', () => setSize(b.dataset.size)));
+
+  // Wire up every template's bg-mode segments via a single delegated handler
+  $$('.bg-mode-seg').forEach(seg => {
+    const tpl = seg.dataset.tpl;
+    seg.querySelectorAll('button').forEach(btn => {
+      // Set initial active state from state
+      if (btn.dataset.mode === state.fields[tpl].bgMode) btn.classList.add('active');
+      else btn.classList.remove('active');
+      btn.addEventListener('click', () => setBgMode(tpl, btn.dataset.mode));
+    });
+  });
+
+  document.getElementById('reset-pos').addEventListener('click', () => {
+    state.bgX = 0.5; state.bgY = 0.5; render();
+  });
+  document.getElementById('download').addEventListener('click', downloadBoth);
+
+  // Selection — position + size controls
+  document.getElementById('nudge-up').addEventListener('click', () => nudgeSelected(-NUDGE_STEP));
+  document.getElementById('nudge-down').addEventListener('click', () => nudgeSelected(NUDGE_STEP));
+  document.getElementById('nudge-reset').addEventListener('click', resetSelectedPosition);
+  document.getElementById('size-up').addEventListener('click', () => nudgeSelectedSize(+1));
+  document.getElementById('size-down').addEventListener('click', () => nudgeSelectedSize(-1));
+  document.getElementById('size-reset').addEventListener('click', resetSelectedSize);
+  bindCanvasClick();
+  bindKeyboard();
+
+  // Border (Posts only) controls
+  const bToggle = document.getElementById('border-toggle');
+  const bColor = document.getElementById('border-color');
+  const bWidth = document.getElementById('border-width');
+  bToggle.addEventListener('change', () => { state.border.on = bToggle.value === 'on'; render(); });
+  bColor.addEventListener('input', () => { state.border.color = bColor.value; render(); });
+  bWidth.addEventListener('input', () => { state.border.width = parseInt(bWidth.value, 10); render(); });
+
+  // Margin slider — global outer padding
+  const padSlider = document.getElementById('padding-slider');
+  const padValue = document.getElementById('padding-value');
+  padSlider.addEventListener('input', () => {
+    const pct = parseInt(padSlider.value, 10);
+    state.padding = pct / 100;
+    padValue.textContent = `${pct}%`;
+    render();
+  });
+
+  buildPresets('teaching-presets', TEACHING_PRESETS, 'teaching.bgC1', 'teaching.bgC2');
+  buildPresets('promo-presets', PROMO_PRESETS, 'promo.bgC1', 'promo.bgC2');
+
+  // Photo drag uses Opal helper (binds to state.bgX/bgY)
+  Opal.attachDrag(canvas, state, render);
+
+  // Load logos asynchronously
+  try {
+    [logoLight, logoDark] = await Promise.all([
+      loadLogo('#ffffff'),
+      loadLogo('#1a1a1a'),
+    ]);
+  } catch (e) {
+    console.warn('Logo load failed:', e);
+  }
+
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
