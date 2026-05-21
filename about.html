@@ -34,6 +34,43 @@
       color: #000;
     }
 
+    /* ── ASCII hero ── */
+    #ascii-hero {
+      position: relative;
+      height: 100vh;
+      height: 100svh;   /* full viewport, stable on mobile (no address-bar jump) */
+      min-height: 560px;
+      overflow: hidden;
+      background: #000;
+    }
+    /* Plain hero text (no frosted plate) over a very faint cone — for legibility */
+    #ascii-hero .inv-title { color: #fff; }
+    #ascii-hero .inv-sub  { color: #cfcfcd; }
+    #ascii-hero .stmt     { color: #cfcfcd; margin-top: 1em; }
+    /* Nav stays legible over the dark hero and the light sections below it */
+    body.about nav { mix-blend-mode: difference; }
+    body.about nav svg { fill: #fff; }
+    #ascii-field {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      user-select: none;
+      pointer-events: none;
+    }
+    .ascii-hero-text {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 2;
+      padding-bottom: 8em;
+      pointer-events: none;   /* let the cursor reach the cone behind the text */
+    }
+    @media (max-width: 40em) {
+      #ascii-field { font-size: 9px; }
+      .ascii-hero-text { padding-bottom: 4.5em; }
+    }
+
     /* ── Uniform type — everything 1em ── */
     #invocation {
       padding-top: 18em;
@@ -49,7 +86,7 @@
     .inv-sub {
       font-size: 1em;
       line-height: 1.8;
-      color: #b6b6b5;
+      color: #000;
     }
 
     /* ── Sections ── */
@@ -86,7 +123,7 @@
     }
 
     .principle-rhs {
-      color: #b6b6b5;
+      color: #000;
       text-align: right;
     }
 
@@ -111,7 +148,7 @@
       font-size: 0.667em;
       letter-spacing: 2px;
       text-transform: uppercase;
-      color: #b6b6b5;
+      color: #000;
       display: block;
       margin-bottom: 0.6em;
       line-height: 1;
@@ -126,7 +163,17 @@
     .team-bio {
       font-size: 1em;
       line-height: 1.8;
-      color: #b6b6b5;
+      color: #000;
+    }
+
+    .team-name a {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: color 0.2s;
+    }
+
+    .team-name a:hover {
+      color: #ff94c9;
     }
 
     /* ── Apply ── */
@@ -196,70 +243,18 @@
   <script src="shared/nav.js"></script>
 
   <!-- ════════════════════════════
-       1. INVOCATION
+       1. ASCII HERO
   ════════════════════════════ -->
-  <section id="invocation">
-    <div class="container">
-      <div class="grid">
-        <div class="col-8 fade-up">
-          <p class="inv-title">Original Practice/Applied Learning</p>
-          <p class="inv-sub">We work in the space before language — where meaning forms before it has a name.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ════════════════════════════
-       2. STATEMENT BLOCK
-  ════════════════════════════ -->
-  <section id="statement">
-    <div class="container">
-      <div class="grid">
-        <div class="col-8 fade-up">
-          <p class="stmt">We build bridges<br>between what is<br>and what refuses to arrive quietly.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ════════════════════════════
-       3. PRINCIPLES
-  ════════════════════════════ -->
-  <section id="principles">
-    <div class="container">
-      <div class="grid">
-        <div class="col-8 fade-up">
-          <div class="principle">
-            <span class="principle-lhs">Craft</span>
-            <span class="principle-rhs">restraint</span>
+  <section id="ascii-hero">
+    <canvas id="ascii-field" aria-hidden="true"></canvas>
+    <div class="ascii-hero-text">
+      <div class="container">
+        <div class="grid">
+          <div class="col-8">
+            <p class="inv-title">Original Practice/Applied Learning</p>
+            <p class="inv-sub">We work in the space before language — where meaning forms before it has a name.</p>
+            <p class="stmt">We build bridges<br>between what is<br>and what refuses to arrive quietly.</p>
           </div>
-          <div class="principle">
-            <span class="principle-lhs">Clarity</span>
-            <span class="principle-rhs">courage</span>
-          </div>
-          <div class="principle">
-            <span class="principle-lhs">Synthesis</span>
-            <span class="principle-rhs">understanding</span>
-          </div>
-          <div class="principle">
-            <span class="principle-lhs">Dialogue</span>
-            <span class="principle-rhs">presence</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ════════════════════════════
-       4. DESIGN STATEMENTS
-  ════════════════════════════ -->
-  <section id="design-stmts">
-    <div class="container">
-      <div class="grid">
-        <div class="col-8 fade-up">
-          <span class="ds-line">Design as inquiry</span>
-          <span class="ds-line">Design as consciousness</span>
-          <span class="ds-line">Design as transformation</span>
         </div>
       </div>
     </div>
@@ -280,12 +275,12 @@
       <div class="grid" style="row-gap: 4em;">
         <div class="col-4 fade-up">
           <span class="team-role-label">Founder</span>
-          <p class="team-name">Christian Solorzano</p>
+          <p class="team-name"><a href="https://christiansolorzano.com/" target="_blank" rel="noopener">Christian Solorzano</a></p>
           <p class="team-bio">Founder of O.P/A.L and the Chicago Graphic Design Club. Teaches graphic design at DePaul University. Holds a certification in Zen and meditation practice. His work spans editorial, identity, and cultural production.</p>
         </div>
         <div class="col-4 fade-up">
           <span class="team-role-label">Administrative</span>
-          <p class="team-name">Saied</p>
+          <p class="team-name"><a href="https://substack.com/@theverticaleye" target="_blank" rel="noopener">Saied</a></p>
           <p class="team-bio">Brings a background in business and business administration to O.P/A.L. Oversees the organizational and operational infrastructure that allows the practice to run with clarity and intention.</p>
         </div>
         <div class="col-4 fade-up">
@@ -330,6 +325,189 @@
   <script src="shared/animate.js"></script>
 
   <script>
+    /* ── ASCII hero — cone in the brand font on canvas, shifting side/front views ── */
+    (function asciiHero(){
+      const cv = document.getElementById('ascii-field');
+      if (!cv || !cv.getContext) return;
+      const ctx = cv.getContext('2d');
+      const CHARS = 'MORETHANDESIGN';      // cone filled with the brand phrase, shuffled
+      const FONT = '"Sidepiece-HoneyDrip", monospace';
+      const CW = 9, CH = 11, FONTPX = 13;   // tighter grid + slightly oversized glyphs → solid fill
+      let cols = 0, rows = 0, cx = 0, cy = 0, aspect = 0.8, dpr = 1;
+      let zbuf = new Float32Array(0), cellCi = new Uint8Array(0);   // per-cell depth + char
+      let cR = new Uint8Array(0), cG = new Uint8Array(0), cB = new Uint8Array(0);   // per-cell colour
+      let pts = [];                        // cone surface letters (model space); removed ones stay gone
+      const particles = [];                // letters currently falling away
+      const H = 2.7, R = 1.25, K2 = 5.6;   // cone length (along X) + base radius
+
+      function measure(){
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = cv.clientWidth, h = cv.clientHeight;
+        cv.width = Math.max(1, Math.round(w * dpr));
+        cv.height = Math.max(1, Math.round(h * dpr));
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        cols = Math.max(1, Math.floor(w / CW));
+        rows = Math.max(1, Math.floor(h / CH));
+        cx = cols / 2; cy = rows / 2;
+        aspect = CW / CH;
+        zbuf = new Float32Array(cols * rows);
+        cellCi = new Uint8Array(cols * rows);
+        cR = new Uint8Array(cols * rows); cG = new Uint8Array(cols * rows); cB = new Uint8Array(cols * rows);
+        particles.length = 0;
+        buildCone();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = FONTPX + 'px ' + FONT;
+      }
+
+      // Build the cone once as a cloud of surface "letters" (model space). Each can be
+      // knocked out permanently, so the cone depletes and never regrows.
+      // red → yellow → blue → white, echoing the homepage word colours
+      function grad(t){
+        const s = [[255,42,42],[255,212,0],[31,107,255],[240,240,240]];
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        const seg = t * (s.length - 1), i = Math.min(s.length - 2, seg | 0), f = seg - i, a = s[i], b = s[i+1];
+        return [a[0]+(b[0]-a[0])*f | 0, a[1]+(b[1]-a[1])*f | 0, a[2]+(b[2]-a[2])*f | 0];
+      }
+      function buildCone(){
+        pts = [];
+        const nV = 70, nT = 124;
+        for (let iv = 0; iv <= nV; iv++){
+          const v = iv / nV, ax = -H / 2 + v * H, r = R * (1 - v), col = grad(v);
+          for (let it = 0; it < nT; it++){
+            const th = it / nT * 6.2832, ct = Math.cos(th), st = Math.sin(th);
+            const nx = R, ny = H * ct, nz = H * st, nl = Math.hypot(nx, ny, nz);
+            pts.push({ x: ax, y: r * ct, z: r * st, nx: nx/nl, ny: ny/nl, nz: nz/nl,
+                       ci: (Math.random() * CHARS.length) | 0, cr: col[0], cg: col[1], cb: col[2],
+                       alive: true, sx: -1, sy: -1 });
+          }
+        }
+        const nR = 16, col0 = grad(0);   // base cap (widest end) → start of the gradient
+        for (let ir = 1; ir <= nR; ir++){
+          const r = R * ir / nR, nt = Math.max(10, Math.round(nT * ir / nR));
+          for (let it = 0; it < nt; it++){
+            const th = it / nt * 6.2832;
+            pts.push({ x: -H / 2, y: r * Math.cos(th), z: r * Math.sin(th), nx: -1, ny: 0, nz: 0,
+                       ci: (Math.random() * CHARS.length) | 0, cr: col0[0], cg: col0[1], cb: col0[2],
+                       alive: true, sx: -1, sy: -1 });
+          }
+        }
+      }
+
+      // Sporadic orientation — random yaw + pitch each shift (left, right, top, bottom, angles).
+      let curP = -0.3, curT = 0.15, tgtP = curP, tgtT = curT, nextShift = 0, easeK = 0.04;
+
+      function render(time){
+        // Hold a perspective, then ease to the next every few seconds.
+        if (time > nextShift){
+          let np = (Math.random() * 2 - 1) * Math.PI;        // any yaw direction
+          while (np - curP > Math.PI) np -= 2 * Math.PI;      // take the shortest way round
+          while (np - curP < -Math.PI) np += 2 * Math.PI;
+          tgtP = np;
+          tgtT = (Math.random() * 2 - 1) * 1.05;              // pitch: look from top or bottom too
+          easeK = 0.02 + Math.random() * 0.04;                // varied turn speed (less mechanical)
+          nextShift = time + 2200 + Math.random() * 3500;     // sporadic cadence ~2.2–5.7s
+        }
+        curP += (tgtP - curP) * easeK;
+        curT += (tgtT - curT) * easeK;
+        const cosP = Math.cos(curP), sinP = Math.sin(curP), cosT = Math.cos(curT), sinT = Math.sin(curT);
+
+        zbuf.fill(0);
+        const K1 = Math.min(0.50 * cols * K2 / (H / 2), 0.70 * rows * K2 / (R * aspect));
+        let Lx = -0.55, Ly = 0.45, Lz = -0.70; const Ll = Math.hypot(Lx, Ly, Lz); Lx/=Ll; Ly/=Ll; Lz/=Ll;
+
+        // project every surviving cone letter into the cell grid (nearest wins)
+        for (let k = 0; k < pts.length; k++){
+          const p = pts[k];
+          if (!p.alive){ p.sx = -1; continue; }
+          const x1 = p.x*cosP + p.z*sinP, z1 = -p.x*sinP + p.z*cosP;
+          const y2 = p.y*cosT - z1*sinT, z2 = p.y*sinT + z1*cosT, x2 = x1;
+          const nx1 = p.nx*cosP + p.nz*sinP, nz1 = -p.nx*sinP + p.nz*cosP;
+          const ny2 = p.ny*cosT - nz1*sinT, nz2 = p.ny*sinT + nz1*cosT, nx2 = nx1;
+          const ooz = 1 / (z2 + K2);
+          const sx = Math.round(cx + K1 * ooz * x2);
+          const sy = Math.round(cy - K1 * ooz * y2 * aspect);
+          p.sx = sx; p.sy = sy;
+          if (sx < 0 || sx >= cols || sy < 0 || sy >= rows) continue;
+          const i = sy * cols + sx;
+          if (ooz > zbuf[i]){
+            zbuf[i] = ooz;
+            const lum = nx2*Lx + ny2*Ly + nz2*Lz;
+            const f = 0.08 + 0.22 * ((lum + 1) / 2);   // very faint on black (recedes for legibility)
+            cR[i] = p.cr * f; cG[i] = p.cg * f; cB[i] = p.cb * f;
+            cellCi[i] = p.ci;
+          }
+        }
+        // draw the surviving cone
+        ctx.clearRect(0, 0, cv.clientWidth, cv.clientHeight);
+        ctx.font = FONTPX + 'px ' + FONT;
+        for (let yy = 0; yy < rows; yy++){
+          const py = yy * CH + CH / 2, b = yy * cols;
+          for (let xx = 0; xx < cols; xx++){
+            const i = b + xx;
+            if (zbuf[i] === 0) continue;
+            ctx.fillStyle = 'rgb(' + cR[i] + ',' + cG[i] + ',' + cB[i] + ')';
+            ctx.fillText(CHARS[cellCi[i]], xx * CW + CW / 2, py);
+          }
+        }
+        // falling letters: gravity, then off the bottom and gone (nothing stays)
+        const fh = cv.clientHeight + CH * 2;
+        for (let k = particles.length - 1; k >= 0; k--){
+          const p = particles[k];
+          p.vy += 0.45; p.y += p.vy;
+          if (p.y > fh){ particles.splice(k, 1); continue; }
+          ctx.fillStyle = 'rgb(' + p.cr + ',' + p.cg + ',' + p.cb + ')';
+          ctx.fillText(CHARS[p.ci], p.x, p.y);
+        }
+      }
+
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      measure();
+      render(performance.now());
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { measure(); render(performance.now()); });
+      if (!reduce){
+        let last = 0;
+        (function loop(time){
+          requestAnimationFrame(loop);
+          if (time - last < 33) return;   // ~30fps
+          last = time;
+          render(time);
+        })(performance.now());
+      }
+      let rt;
+      window.addEventListener('resize', () => {
+        clearTimeout(rt);
+        rt = setTimeout(() => { measure(); render(performance.now()); }, 150);
+      });
+
+      // Cursor permanently knocks letters off the cone — they fall away and never return,
+      // so mousing around slowly empties the canvas. The hit area is organic, not a circle.
+      window.addEventListener('pointermove', (e) => {
+        if (!pts.length) return;
+        const rect = cv.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        if (mx < 0 || my < 0 || mx > rect.width || my > rect.height) return;
+        const mc = mx / CW, mr = my / CH;
+        const RMAX = 5.5;                 // max reach in cells
+        const ph = e.timeStamp * 0.002;  // slowly drifting lobes
+        for (let k = 0; k < pts.length; k++){
+          const p = pts[k];
+          if (!p.alive || p.sx < 0) continue;
+          const ddx = p.sx - mc, ddy = p.sy - mr;
+          const d = Math.hypot(ddx, ddy);
+          if (d > RMAX) continue;
+          const ang = Math.atan2(ddy, ddx);
+          // wobbly, lobed effective radius + distance-weighted randomness = ragged edge
+          const reff = RMAX * (0.5 + 0.32 * Math.sin(ang * 3 + ph) + 0.18 * Math.sin(ang * 5 - ph * 1.7));
+          if (d > reff) continue;
+          const t = 1 - d / reff;                 // 1 center .. 0 edge
+          if (Math.random() > t * 0.8 + 0.12) continue;
+          p.alive = false;
+          particles.push({ x: p.sx * CW + CW / 2, y: p.sy * CH + CH / 2, vy: Math.random() * 1.2, ci: p.ci, cr: (p.cr * 0.4) | 0, cg: (p.cg * 0.4) | 0, cb: (p.cb * 0.4) | 0 });
+        }
+      }, { passive: true });
+    })();
+
     const io = new IntersectionObserver(entries => {
       entries.forEach(e => {
         if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
@@ -337,11 +515,6 @@
     }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
 
     document.querySelectorAll('.fade-up').forEach(el => io.observe(el));
-
-    /* Auto-enable grid overlay on this page */
-    window.addEventListener('load', () => {
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'g', bubbles: true }));
-    });
   </script>
 </body>
 </html>
