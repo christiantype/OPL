@@ -36,10 +36,81 @@
   </script>
 
   <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    #hero-canvas {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    #hero-canvas iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+    /* Keep the nav icons legible over both the dark hero and the light content
+       below: difference blend paints them as the inverse of whatever's behind. */
+    nav { mix-blend-mode: difference; }
+    nav svg { fill: #fff; }
+    /* Dead-center rotating tagline — "A {word} studio": black uppercase text on a
+       white pill, centered over the hero. */
+    #hero-tagline {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.85em;
+      pointer-events: none;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .tagline-pill {
+      background: #fff;
+      color: #000;
+      padding: 0.62em 1.1em 0.5em;
+      font-size: clamp(0.8rem, 1.1vw, 1rem);
+      line-height: 1;
+      letter-spacing: 2px;
+      text-indent: 2px;        /* offset the trailing tracking so it reads centered */
+      text-transform: uppercase;
+    }
+    .tagline-sub {
+      color: #fff;
+      mix-blend-mode: difference;
+      font-size: clamp(0.6rem, 0.85vw, 0.78rem);
+      line-height: 1.4;
+      letter-spacing: 1px;
+      text-indent: 1px;
+    }
+    #hero-word {
+      display: inline-block;
+      margin: 0 0.3em;
+      transition: opacity 0.4s ease;
+    }
+    #hero-tagline.is-swapping #hero-word,
+    #hero-tagline.is-swapping #hero-article { opacity: 0; }
+    #hero-article { transition: opacity 0.4s ease; }
+  </style>
 </head>
 <body>
   <script src="shared/nav.js"></script>
   <div id="thumb"><img src="" alt="" /></div>
+
+  <section id="hero-canvas">
+    <iframe src="/scene/" title="O.P/A.L" loading="eager" scrolling="no"></iframe>
+    <p id="hero-tagline" aria-live="polite">
+      <span class="tagline-pill"><span id="hero-article">A</span> <span id="hero-word">mindful</span> studio</span>
+      <span class="tagline-sub">original practice / applied learning</span>
+    </p>
+  </section>
 
   <section id="projects">
     <div class="container">
@@ -80,6 +151,30 @@
           row.addEventListener('click', () => window.location = row.dataset.url);
         });
       });
+
+    /* Rotating hero tagline — words migrated from opal.design */
+    (function rotateTagline() {
+      const words = ['mindful', 'boundless', 'open', 'aware', 'heartfelt',
+        'practical', 'honest', 'aspirational', 'direct', 'precise', 'vast',
+        'connected', 'opalescent'];
+      const tag  = document.getElementById('hero-tagline');
+      const word = document.getElementById('hero-word');
+      const art  = document.getElementById('hero-article');
+      if (!tag || !word || !art) return;
+      const article = w => /^[aeiou]/i.test(w) ? 'An' : 'A';
+      let i = 0;
+      art.textContent = article(words[0]);
+      word.textContent = words[0];
+      setInterval(() => {
+        tag.classList.add('is-swapping');           // fade out
+        setTimeout(() => {
+          i = (i + 1) % words.length;
+          word.textContent = words[i];
+          art.textContent  = article(words[i]);
+          tag.classList.remove('is-swapping');       // fade in
+        }, 400);
+      }, 2600);
+    })();
   </script>
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script src="shared/footer.js"></script>

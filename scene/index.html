@@ -1,0 +1,2728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>O.P/A.L</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  /* ===== HERO MODE: hide all tool UI, show only the canvas ===== */
+  .opl-topbar, #panel, #title, #busy,
+  #objectControls, #objectControlsPark { display: none !important; }
+  #app { cursor: grab; }
+  #app:active { cursor: grabbing; }
+  /* ===== end hero mode ===== */
+  html, body { margin: 0; height: 100%; background: #ffffff; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; color: #1a1a1c; }
+  #app { position: fixed; inset: 0; background: #ffffff; }
+  #app canvas { position: absolute; }
+  /* OPL-style topbar matching the rest of the AI-Tools suite */
+  .opl-topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; background: #ffffff;
+    border-bottom: 1px solid #ececec; z-index: 50;
+  }
+  .opl-topbar .opl-brand { display: flex; align-items: center; gap: 14px; color: #1a1a1a; text-decoration: none; }
+  .opl-topbar .opl-brand svg { display: block; height: 18px; width: auto; }
+  .opl-topbar .opl-menu { color: #1a1a1a; line-height: 0; text-decoration: none; }
+  .opl-topbar .opl-product { color: #8a8a8a; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+
+  #panel {
+    position: fixed; top: 68px; right: 12px; width: 300px;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(8px);
+    border: 1px solid #d8d8dc; border-radius: 10px; padding: 12px 14px;
+    font-size: 12px; line-height: 1.4; max-height: calc(100vh - 80px); overflow-y: auto;
+    z-index: 10; color: #1a1a1c;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+  }
+  #panel h3 { margin: 10px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #555; border-bottom: 1px solid #e5e5e8; padding-bottom: 4px; cursor: pointer; user-select: none; display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  #panel h3:first-child { margin-top: 0; }
+  #panel h3:hover { color: #1a1a1c; }
+  #panel h3 .chev { font-size: 10px; color: #999; transition: transform 0.15s ease; }
+  #panel h3.collapsed .chev { transform: rotate(-90deg); }
+  .row { display: grid; grid-template-columns: 90px 1fr 36px; gap: 6px; align-items: center; margin: 4px 0; }
+  .row label { color: #444; }
+  .row input[type=range] { width: 100%; }
+  .row .val { text-align: right; color: #777; font-variant-numeric: tabular-nums; }
+  .row input[type=color] { width: 100%; height: 22px; border: 1px solid #d8d8dc; background: none; padding: 0; border-radius: 4px; }
+  .row select, .row input[type=number] { background:#fff; color:#1a1a1c; border:1px solid #c8c8cc; border-radius:4px; padding:2px 4px; }
+  #ringList { margin-top: 6px; }
+  .ring-item { display:block; margin: 3px 0; padding: 4px 6px; background:#f3f3f5; border-radius: 5px; }
+  .ring-row { display:flex; gap:6px; align-items:center; }
+  .ring-item.active { outline: 1px solid #4a90e2; background:#eaf2fc; }
+  .ring-item .name { flex: 1; cursor: pointer; }
+  .ring-item input[type=checkbox] { accent-color: #4a90e2; }
+  .ring-item.linked { background:#e8eef9; }
+  .ring-controls { margin-top: 6px; padding-top: 6px; border-top: 1px dashed #cfd2d8; }
+  .subhead { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: .06em; margin: 8px 0 4px; padding-bottom: 2px; border-bottom: 1px solid #ececef; }
+  .subhead:first-child { margin-top: 0; }
+  .word-group { margin: 6px 0; padding: 6px 8px; background:#f7f7f9; border:1px solid #e5e5e8; border-radius:6px; border-left:3px solid #888; }
+  .word-row { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+  .word-row .word-text { flex:1; padding:3px 6px; background:#fff; border:1px solid #c8c8cc; border-radius:4px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:12px; color:#1a1a1c; }
+  .word-row .word-color { width:28px; height:22px; border:1px solid #c8c8cc; padding:0; border-radius:4px; cursor:pointer; }
+  .word-row .word-regen, .word-row .word-del { background:transparent; border:0; color:#777; cursor:pointer; padding:0 5px; font-size:13px; }
+  .word-row .word-regen:hover { color:#1a1a1c; }
+  .word-row .word-del:hover { color:#c0392b; }
+  .word-group .row { margin: 2px 0; grid-template-columns: 70px 1fr 30px; }
+  .word-tag { display:inline-block; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:600; letter-spacing:.04em; color:#fff; vertical-align:middle; margin-left:4px; }
+  .link-tag { font-size: 9px; color: #4a78c4; letter-spacing: .05em; }
+  .btn { background:#f4f4f6; color:#1a1a1c; border:1px solid #c8c8cc; border-radius:5px; padding: 5px 10px; cursor:pointer; font-size: 11px; }
+  .btn:hover { background:#e9e9ec; border-color:#b6b6ba; }
+  .btn-row { display:flex; gap:6px; margin-top: 6px; }
+  #title { display: none; }
+  .row.two { grid-template-columns: 90px 1fr 1fr; }
+  .row.two input[type=number] { width: 100%; }
+  #busy { position: fixed; inset: 0; background: rgba(255,255,255,0.85); display: none; align-items: center; justify-content: center; z-index: 100; color: #111; font-size: 14px; }
+</style>
+</head>
+<body>
+<header class="opl-topbar">
+  <a href="/AI-TOOLS/" class="opl-brand" aria-label="AI-Tools home">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="154.5 212.9 1274.6 186.2" fill="currentColor"><path d="M1356.2,353.2h72.1v-13h-59.1v-100.6h-13v113.5ZM1077.3,313.7l13.5-61.1h10.6l13.3,61.1h-37.5ZM1055.3,353.2h13.3l5.8-26.5h43.3l5.8,26.5h13.3l-25.2-113.5h-30.6l-25.6,113.5ZM723.6,398.3h37.2l111.9-184.5h-37.2l-111.9,184.5ZM478.1,296.2v-43.6h28.1c5.9,0,8.3.9,13,4.7,5.2,4.3,5.9,6.1,5.9,10.6v13c0,4.5-.7,6.3-5.9,10.6-4.7,3.8-7,4.7-13,4.7h-28.1ZM465.1,353.2h13v-44h28.1c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-14.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-41.1v113.5ZM199.1,340.2h-11.9c-5.9,0-8.3-.9-13-4.7-5.2-4.3-5.9-6.1-5.9-10.6v-57c0-4.5.7-6.3,5.9-10.6,4.7-3.8,7-4.7,13-4.7h11.9c5.9,0,8.5.9,13.2,4.7,5,4.1,5.8,6.1,5.8,10.6v57c0,4.5-.7,6.5-5.8,10.6-4.7,3.8-7.2,4.7-13.2,4.7M187.2,353.2h11.9c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-58.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-11.9c-9.4,0-14.2,2-22.5,9-8.3,7-9.4,10.3-9.4,18.6v58.4c0,8.3,1.1,11.5,9.4,18.6,8.3,7,13.2,9,22.5,9"/></svg>
+    <span class="opl-product">More-Than-Design</span>
+  </a>
+  <a href="/AI-TOOLS/" class="opl-menu" aria-label="Back to AI-Tools">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 79.7 72" width="17" height="17" fill="currentColor"><path d="M29.3,72h22c16.1,0,28.4-13.1,28.4-28.8v-14.4C79.7,13.1,67.4,0,51.3,0h-22C13.2,0,0,13.1,0,28.8v14.4c0,15.7,13.1,28.8,29.2,28.8h0Z"/></svg>
+  </a>
+</header>
+<div id="app"></div>
+<div id="title"><span style="color:#2aa83a;font-weight:600">◎ OPAL</span> &nbsp;Ring Poster Studio</div>
+<div id="busy">Rendering high-res PDF…</div>
+<div id="panel">
+
+  <h3>Lighting & Environment</h3>
+  <div class="row"><label>Environment</label>
+    <select id="envPreset">
+      <option value="studio">Studio</option>
+      <option value="sunset">Sunset</option>
+      <option value="city">City Night</option>
+      <option value="dawn">Dawn</option>
+      <option value="black">Black Void</option>
+    </select><span></span>
+  </div>
+  <div class="row"><label>Env Intensity</label><input type="range" id="envI" min="0" max="8" step="0.01"/><span class="val" id="envIV"></span></div>
+  <div class="row"><label>Key Light</label><input type="range" id="keyI" min="0" max="25" step="0.05"/><span class="val" id="keyIV"></span></div>
+  <div class="row"><label>Key Color</label><input type="color" id="keyC"/><span class="val"></span></div>
+  <div class="row"><label>Fill Light</label><input type="range" id="fillI" min="0" max="15" step="0.05"/><span class="val" id="fillIV"></span></div>
+  <div class="row"><label>Fill Color</label><input type="color" id="fillC"/><span class="val"></span></div>
+  <div class="row"><label>Rim Light</label><input type="range" id="rimI" min="0" max="15" step="0.05"/><span class="val" id="rimIV"></span></div>
+  <div class="row"><label>Rim Color</label><input type="color" id="rimC"/><span class="val"></span></div>
+  <div class="row"><label>Ambient</label><input type="range" id="ambI" min="0" max="5" step="0.01"/><span class="val" id="ambIV"></span></div>
+  <div class="row"><label>Background</label><input type="color" id="bg"/><span class="val"></span></div>
+  <div class="row"><label>Exposure</label><input type="range" id="expo" min="0.1" max="6" step="0.01"/><span class="val" id="expoV"></span></div>
+  <div class="row"><label>Auto Rotate</label><input type="range" id="autoR" min="0" max="2" step="0.01"/><span class="val" id="autoRV"></span></div>
+  <div class="subhead" style="margin-top:10px">Extra Lights</div>
+  <div class="row"><label>Light A</label><input type="range" id="extraAI" min="0" max="30" step="0.05" value="0"/><span class="val" id="extraAIV">0.00</span></div>
+  <div class="row"><label>A Color</label><input type="color" id="extraAC" value="#ff5577"/><span class="val"></span></div>
+  <div class="row two"><label>A Position X/Y</label>
+    <input type="number" id="extraAX" value="-3" step="0.1"/>
+    <input type="number" id="extraAY" value="2" step="0.1"/>
+  </div>
+  <div class="row"><label>A Z</label><input type="range" id="extraAZ" min="-10" max="10" step="0.1" value="3"/><span class="val" id="extraAZV">3.0</span></div>
+  <div class="row"><label>A Distance</label><input type="range" id="extraAD" min="0" max="40" step="0.1" value="0"/><span class="val" id="extraADV">0.0</span></div>
+  <div class="row"><label>Light B</label><input type="range" id="extraBI" min="0" max="30" step="0.05" value="0"/><span class="val" id="extraBIV">0.00</span></div>
+  <div class="row"><label>B Color</label><input type="color" id="extraBC" value="#55aaff"/><span class="val"></span></div>
+  <div class="row two"><label>B Position X/Y</label>
+    <input type="number" id="extraBX" value="3" step="0.1"/>
+    <input type="number" id="extraBY" value="-1" step="0.1"/>
+  </div>
+  <div class="row"><label>B Z</label><input type="range" id="extraBZ" min="-10" max="10" step="0.1" value="3"/><span class="val" id="extraBZV">3.0</span></div>
+  <div class="row"><label>B Distance</label><input type="range" id="extraBD" min="0" max="40" step="0.1" value="0"/><span class="val" id="extraBDV">0.0</span></div>
+  <div style="font-size:10px;color:#666;margin: 2px 0 6px 0;">Two extra point lights with their own colors + positions. Bright colored point lights right behind glass create the strongest prism rainbow refractions. Set Intensity &gt; 0 to enable.</div>
+
+  <h3>Physics</h3>
+  <div class="btn-row">
+    <button class="btn" id="physToggle">Enable Physics</button>
+    <button class="btn" id="physBurst">Burst!</button>
+    <button class="btn" id="physReset">Reset Pose</button>
+  </div>
+  <div class="row"><label>Gravity Y</label><input type="range" id="physGrav" min="-20" max="20" step="0.1" value="0"/><span class="val" id="physGravV">0.0</span></div>
+  <div class="row"><label>Bounciness</label><input type="range" id="physBounce" min="0" max="1.5" step="0.01" value="0.85"/><span class="val" id="physBounceV">0.85</span></div>
+  <div class="row"><label>Friction</label><input type="range" id="physFric" min="0" max="1" step="0.01" value="0.05"/><span class="val" id="physFricV">0.05</span></div>
+  <div class="row"><label>Damping</label><input type="range" id="physDamp" min="0" max="0.5" step="0.005" value="0.01"/><span class="val" id="physDampV">0.010</span></div>
+  <div class="row"><label>Init Speed</label><input type="range" id="physInit" min="0" max="10" step="0.1" value="3"/><span class="val" id="physInitV">3.0</span></div>
+  <div class="row"><label>Depth</label><input type="range" id="physDepth" min="1" max="12" step="0.1" value="4"/><span class="val" id="physDepthV">4.0</span></div>
+  <div class="row"><label>Wall Pad</label><input type="range" id="physPad" min="-1" max="2" step="0.05" value="0"/><span class="val" id="physPadV">0.00</span></div>
+  <div class="row"><label>Walls</label>
+    <select id="physWalls">
+      <option value="canvas" selected>Canvas (matches poster)</option>
+      <option value="floor">Floor only</option>
+      <option value="none">No walls</option>
+    </select><span></span>
+  </div>
+  <div style="font-size:10px;color:#888;margin: 2px 0 6px 0;">Walls auto-fit to the poster crop. Shapes stay inside the canvas.</div>
+
+  <div class="btn-row" style="margin-top:8px">
+    <button class="btn" id="physVortex" title="Swirl the shapes around a vertical axis like a tornado">Enable Vortex</button>
+  </div>
+  <div class="row"><label>Vortex Spin</label><input type="range" id="vortSpin" min="0" max="60" step="0.5" value="22"/><span class="val" id="vortSpinV">22.0</span></div>
+  <div class="row"><label>Vortex Pull</label><input type="range" id="vortPull" min="0" max="40" step="0.5" value="10"/><span class="val" id="vortPullV">10.0</span></div>
+  <div class="row"><label>Vortex Lift</label><input type="range" id="vortLift" min="-10" max="30" step="0.5" value="12"/><span class="val" id="vortLiftV">12.0</span></div>
+  <div class="row"><label>Funnel</label><input type="range" id="vortFunnel" min="0" max="1" step="0.01" value="0.6"/><span class="val" id="vortFunnelV">0.60</span></div>
+  <div style="font-size:10px;color:#888;margin: 2px 0 6px 0;">Tornado mode: shapes orbit the center axis, get pulled inward (stronger near the floor) and lifted upward.</div>
+
+  <h3>Typography (Custom Font)</h3>
+  <div class="row"><label>Font File</label>
+    <input type="file" id="fontFile" accept=".ttf,.otf,.woff" style="font-size:10px"/>
+    <span></span>
+  </div>
+  <div id="fontStatus" style="font-size:10px;color:#888;margin: 2px 0 6px 0;">No font loaded — defaults to system font (extruded path).</div>
+
+  <h3>Word Groups</h3>
+  <div id="wordGroupsList"></div>
+  <div class="btn-row">
+    <button class="btn" id="addWordGroup">+ Add Word</button>
+    <button class="btn" id="regenAllWords">Regenerate All</button>
+  </div>
+  <div style="font-size:10px;color:#666;margin: 2px 0 6px 0;">Each word is a group of glass letters with its own color and layout. Edit individual letters in the Objects list below; changing the word's color updates every letter in that group.</div>
+
+  <h3>Apply to All Shapes</h3>
+  <div class="btn-row">
+    <button class="btn" id="applyMatAll" title="Copy this ring's chrome/glass material to every ring">Material → All</button>
+    <button class="btn" id="applyShapeAll" title="Copy shape type + character to every ring">Shape → All</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="applyTransformAll" title="Copy tilt + spin + orbit to every ring">Transform → All</button>
+    <button class="btn" id="applySizeAll" title="Copy radius + tube to every ring">Size → All</button>
+  </div>
+
+  <h3>Canvas / Poster</h3>
+  <div class="row"><label>Preset</label>
+    <select id="paperPreset">
+      <option value="custom">Custom</option>
+      <option value="11x17">Tabloid 11×17 in</option>
+      <option value="13x19">Super B 13×19 in</option>
+      <option value="18x24" selected>Poster 18×24 in</option>
+      <option value="24x36">Poster 24×36 in</option>
+      <option value="a4">A4 (210×297mm)</option>
+      <option value="a3">A3 (297×420mm)</option>
+      <option value="a2">A2 (420×594mm)</option>
+      <option value="square">Square 1:1</option>
+      <option value="story">9:16 Story</option>
+    </select><span></span>
+  </div>
+  <div class="row two"><label>W × H (in)</label>
+    <input type="number" id="paperW" min="1" step="0.1"/>
+    <input type="number" id="paperH" min="1" step="0.1"/>
+  </div>
+  <div class="row"><label>Orientation</label>
+    <select id="paperOrient">
+      <option value="portrait">Portrait</option>
+      <option value="landscape">Landscape</option>
+    </select><span></span>
+  </div>
+  <div class="row"><label>Export DPI</label>
+    <select id="dpi">
+      <option value="150">150 (draft)</option>
+      <option value="300" selected>300 (print)</option>
+      <option value="450">450 (fine)</option>
+      <option value="600">600 (max)</option>
+    </select><span></span>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="exportPdf">Save High-Res PDF</button>
+    <button class="btn" id="exportPng">PNG</button>
+  </div>
+
+  <h3>Presets</h3>
+  <div class="btn-row">
+    <button class="btn" id="presetAxis">Axis Mundi</button>
+    <button class="btn" id="presetOrbits">Orbits</button>
+  </div>
+
+  <h3>My Saved Designs</h3>
+  <div class="row"><label>Load</label>
+    <select id="savedList"><option value="">— select —</option></select>
+    <span></span>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="saveDesign">Save…</button>
+    <button class="btn" id="overwriteDesign">Update</button>
+    <button class="btn" id="deleteDesign">Delete</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="exportJson">Export JSON</button>
+    <button class="btn" id="importJson">Import JSON</button>
+  </div>
+  <input type="file" id="importFile" accept=".json" style="display:none"/>
+
+
+  <h3>Objects</h3>
+  <div id="ringList"></div>
+  <div class="btn-row">
+    <button class="btn" id="addRing">+ Add Object</button>
+    <button class="btn" id="removeRing">– Remove</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="addSvgBtn" title="Upload an SVG and extrude it as a glass object">+ Add SVG…</button>
+    <input type="file" id="addSvgFile" accept=".svg,image/svg+xml" style="display:none"/>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="linkChain" title="Interlock selected objects as a vertical chain">Link as Chain</button>
+    <button class="btn" id="linkBorr" title="3 selected objects → Borromean">Borromean</button>
+    <button class="btn" id="unlinkBtn">Unlink</button>
+  </div>
+  <div class="row"><label>Group Spin</label><input type="range" id="grpSpin" min="-2" max="2" step="0.01" value="0.3"/><span class="val" id="grpSpinV">0.30</span></div>
+  <div class="row"><label>Link Spacing</label><input type="range" id="linkSpace" min="0.5" max="2.5" step="0.01" value="1.4"/><span class="val" id="linkSpaceV">1.40</span></div>
+
+  <div class="btn-row">
+    <button class="btn" id="reset">Reset Scene</button>
+  </div>
+</div>
+
+<!-- Per-object controls — re-parented under the active list item by JS -->
+<div id="objectControlsPark" style="display:none"></div>
+<div id="objectControls" style="display:none">
+  <div class="subhead">Shape</div>
+  <div class="row"><label>Shape</label>
+    <select id="shapeType">
+      <option value="ring">Ring (torus)</option>
+      <option value="glyph">Letter / Glyph</option>
+      <option value="svg">SVG (uploaded)</option>
+    </select><span></span>
+  </div>
+  <div class="row"><label>Character</label>
+    <input type="text" id="glyphChar" maxlength="3" value="O" style="width:100%"/>
+    <span></span>
+  </div>
+  <div class="row"><label>Extrude</label><input type="range" id="extrude" min="0.02" max="1.5" step="0.01" value="0.2"/><span class="val" id="extrudeV">0.20</span></div>
+  <div class="row"><label>Bevel</label><input type="range" id="bevel" min="0" max="0.2" step="0.005" value="0.02"/><span class="val" id="bevelV">0.02</span></div>
+  <div class="row"><label>Radius</label><input type="range" id="radius" min="0.3" max="4" step="0.01"/><span class="val" id="radiusV"></span></div>
+  <div class="row"><label>Tube</label><input type="range" id="tube" min="0.02" max="0.6" step="0.005"/><span class="val" id="tubeV"></span></div>
+  <div class="row"><label>Orbit Radius</label><input type="range" id="orbitR" min="0" max="6" step="0.01"/><span class="val" id="orbitRV"></span></div>
+  <div class="row"><label>Orbit Speed</label><input type="range" id="orbitS" min="-2" max="2" step="0.01"/><span class="val" id="orbitSV"></span></div>
+  <div class="row"><label>Spin Speed</label><input type="range" id="spinS" min="-3" max="3" step="0.01"/><span class="val" id="spinSV"></span></div>
+  <div class="row"><label>Tilt X</label><input type="range" id="tiltX" min="-180" max="180" step="1"/><span class="val" id="tiltXV"></span></div>
+  <div class="row"><label>Tilt Y</label><input type="range" id="tiltY" min="-180" max="180" step="1"/><span class="val" id="tiltYV"></span></div>
+  <div class="row"><label>Tilt Z</label><input type="range" id="tiltZ" min="-180" max="180" step="1"/><span class="val" id="tiltZV"></span></div>
+
+  <div class="subhead">Material</div>
+  <div class="row"><label>Color</label><input type="color" id="color"/><span class="val"></span></div>
+  <div class="row"><label>Metalness</label><input type="range" id="metal" min="0" max="1" step="0.01"/><span class="val" id="metalV"></span></div>
+  <div class="row"><label>Roughness</label><input type="range" id="rough" min="0" max="1" step="0.01"/><span class="val" id="roughV"></span></div>
+  <div class="row"><label>Clearcoat</label><input type="range" id="cc" min="0" max="1" step="0.01"/><span class="val" id="ccV"></span></div>
+  <div class="row"><label>CC Rough</label><input type="range" id="ccr" min="0" max="1" step="0.01"/><span class="val" id="ccrV"></span></div>
+  <div class="row"><label>Anisotropy</label><input type="range" id="aniso" min="0" max="1" step="0.01"/><span class="val" id="anisoV"></span></div>
+  <div class="row"><label>Transmission</label><input type="range" id="trans" min="0" max="1" step="0.01"/><span class="val" id="transV"></span></div>
+  <div class="row"><label>Opacity</label><input type="range" id="opac" min="0" max="1" step="0.01"/><span class="val" id="opacV"></span></div>
+  <div class="row"><label>IOR</label><input type="range" id="ior" min="1" max="2.5" step="0.01"/><span class="val" id="iorV"></span></div>
+  <div class="row"><label>Thickness</label><input type="range" id="thick" min="0" max="3" step="0.01"/><span class="val" id="thickV"></span></div>
+  <div class="row"><label>Atten. Color</label><input type="color" id="attC"/><span class="val"></span></div>
+  <div class="row"><label>Atten. Dist</label><input type="range" id="attD" min="0.1" max="20" step="0.1"/><span class="val" id="attDV"></span></div>
+  <div class="row"><label>Glow</label><input type="range" id="emissiveI" min="0" max="3" step="0.05"/><span class="val" id="emissiveIV"></span></div>
+  <div class="row"><label>Dispersion</label><input type="range" id="dispersion" min="0" max="20" step="0.1"/><span class="val" id="dispersionV"></span></div>
+  <div class="row"><label>Iridescence</label><input type="range" id="iridescence" min="0" max="1" step="0.01"/><span class="val" id="iridescenceV"></span></div>
+  <div class="row"><label>Irid. IOR</label><input type="range" id="iridescenceIOR" min="1" max="2.5" step="0.01"/><span class="val" id="iridescenceIORV"></span></div>
+
+  <div class="subhead">Render Style</div>
+  <div class="row"><label>Mode</label>
+    <select id="renderMode">
+      <option value="filled">Filled</option>
+      <option value="outlined">Outlined</option>
+      <option value="both">Both</option>
+    </select>
+    <span></span>
+  </div>
+  <div class="row"><label>Outline Color</label><input type="color" id="outlineColor"/><span class="val"></span></div>
+  <div class="row"><label>Outline Width</label><input type="range" id="outlineWidth" min="0.5" max="20" step="0.1"/><span class="val" id="outlineWidthV"></span></div>
+  <div class="row"><label>Edge Threshold</label><input type="range" id="outlineThreshold" min="1" max="89" step="1"/><span class="val" id="outlineThresholdV"></span></div>
+
+  <div class="subhead">Trail / Motion Blur</div>
+  <div class="row"><label>Enable</label>
+    <input type="checkbox" id="trailEnable"/>
+    <span></span>
+  </div>
+  <div class="row"><label>Color</label><input type="color" id="trailColor" value="#888888"/><span class="val"></span></div>
+  <div class="row"><label>Length</label><input type="range" id="trailLife" min="0.05" max="2.0" step="0.05" value="0.7"/><span class="val" id="trailLifeV">0.70</span></div>
+  <div class="row"><label>Strength</label><input type="range" id="trailOpacity" min="0.05" max="1.0" step="0.01" value="0.5"/><span class="val" id="trailOpacityV">0.50</span></div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/",
+  "jspdf": "https://esm.sh/jspdf@2.5.1",
+  "opentype.js": "https://esm.sh/opentype.js@1.3.4",
+  "cannon-es": "https://esm.sh/cannon-es@0.20.0"
+}}
+</script>
+
+<script>
+window.__errs = [];
+window.addEventListener('error', e => window.__errs.push((e.message||'')+' @ '+(e.filename||'')+':'+(e.lineno||'')));
+window.addEventListener('unhandledrejection', e => window.__errs.push('PROMISE: ' + (e.reason?.stack || e.reason?.message || String(e.reason))));
+</script>
+<!-- Embedded default font (works on file:// where fetch is blocked) -->
+<script src="assets/font-data.js"></script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { jsPDF } from 'jspdf';
+import opentype from 'opentype.js';
+import * as CANNON from 'cannon-es';
+
+try {
+const app = document.getElementById('app');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#ffffff');
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+camera.position.set(0, 2, 9);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.autoRotate = false;
+controls.autoRotateSpeed = 0.5;
+
+// Lights
+const ambient = new THREE.AmbientLight(0xffffff, 0.2);
+scene.add(ambient);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
+keyLight.position.set(5, 6, 4);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x88aaff, 0.8);
+fillLight.position.set(-5, 2, 3);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffaa66, 1.2);
+rimLight.position.set(0, 4, -6);
+scene.add(rimLight);
+
+// Extra controllable point lights (color, position, distance/falloff)
+const extraA = new THREE.PointLight(0xff5577, 0, 0, 2);
+extraA.position.set(-3, 2, 3);
+scene.add(extraA);
+const extraB = new THREE.PointLight(0x55aaff, 0, 0, 2);
+extraB.position.set(3, -1, 3);
+scene.add(extraB);
+
+// Environment
+const pmrem = new THREE.PMREMGenerator(renderer);
+function setEnv(name) {
+  let env;
+  if (name === 'black') {
+    scene.environment = null;
+    return;
+  }
+  // Build a simple gradient/colored environment via RoomEnvironment + tint
+  const roomScene = new RoomEnvironment();
+  // Tint by adjusting RoomEnvironment children colors
+  const tints = {
+    studio: { a: 0xffffff, b: 0x444444 },
+    sunset: { a: 0xff8855, b: 0x331144 },
+    city:   { a: 0x224466, b: 0x110022 },
+    dawn:   { a: 0xffccaa, b: 0x223355 },
+  }[name] || { a: 0xffffff, b: 0x222222 };
+  roomScene.traverse(o => {
+    if (o.isMesh && o.material) {
+      if (o.material.color) o.material.color.setHex(tints.a);
+      if (o.material.emissive) o.material.emissive.setHex(tints.b);
+    }
+  });
+  env = pmrem.fromScene(roomScene, 0.04).texture;
+  scene.environment = env;
+}
+setEnv('studio');
+
+// Rings
+const orbitRoot = new THREE.Group();
+scene.add(orbitRoot);
+
+const rings = [];
+let selectedIdx = 0;
+
+function makeRing(opts = {}) {
+  const o = Object.assign({
+    radius: 1.2,
+    tube: 0.12,
+    orbitRadius: 0,
+    orbitSpeed: 0.3,
+    spinSpeed: 0.6,
+    tiltX: 70, tiltY: 0, tiltZ: 0,
+    color: '#ffffff',
+    metalness: 0.0,
+    roughness: 0.05,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.02,
+    anisotropy: 0.0,
+    transmission: 1.0,
+    opacity: 1.0,
+    ior: 1.5,
+    thickness: 0.6,
+    attenuationColor: '#ffffff',
+    attenuationDistance: 6.0,
+    orbitPhase: Math.random() * Math.PI * 2,
+    shape: 'ring',
+    char: 'O',
+    extrude: 0.25,
+    bevel: 0.12,
+    trailEnabled: false,
+    trailColor: '#888888',
+    trailLife: 0.7,
+    trailOpacity: 0.5,
+    emissiveIntensity: 0.55,
+    dispersion: 5.0,
+    iridescence: 0.0,
+    iridescenceIOR: 1.3,
+    renderMode: 'filled',          // 'filled' | 'outlined' | 'both'
+    outlineColor: '#ffffff',
+    outlineWidth: 2.0,             // pixels (shader line)
+    outlineThreshold: 25,          // degrees — feature-edge angle threshold for EdgesGeometry
+  }, opts);
+
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: o.color,
+    metalness: o.metalness,
+    roughness: o.roughness,
+    clearcoat: o.clearcoat,
+    clearcoatRoughness: o.clearcoatRoughness,
+    anisotropy: o.anisotropy,
+    transmission: o.transmission,
+    opacity: o.opacity,
+    transparent: o.opacity < 1.0 || o.transmission > 0,
+    ior: o.ior,
+    thickness: o.thickness,
+    attenuationColor: new THREE.Color(o.attenuationColor),
+    attenuationDistance: o.attenuationDistance,
+    emissive: new THREE.Color(o.color),
+    emissiveIntensity: o.emissiveIntensity,
+    dispersion: o.dispersion,
+    iridescence: o.iridescence,
+    iridescenceIOR: o.iridescenceIOR,
+    envMapIntensity: 1.0,
+    side: THREE.DoubleSide,
+  });
+  // Lazy-rehydrate SVG shapes from text on restore (autosave only stores the SVG source)
+  if (o.shape === 'svg' && (!o._svgShapes || !o._svgShapes.length) && o._svgText) {
+    try { o._svgShapes = shapesFromSvgText(o._svgText); } catch (e) { console.warn('SVG re-parse failed:', e); }
+  }
+  const geo = (o.shape === 'glyph') ? buildGlyphGeometry(o)
+            : (o.shape === 'svg')   ? buildSvgGeometry(o)
+            : new THREE.TorusGeometry(o.radius, o.tube, 64, 256);
+  const mesh = new THREE.Mesh(geo, mat);
+  const pivot = new THREE.Group();
+  pivot.add(mesh);
+
+  // Outline overlay — silhouette + bevel edges via LineSegments2 (shader-drawn thick lines)
+  const lineGeo = new LineSegmentsGeometry();
+  const lineMat = new LineMaterial({
+    color: o.outlineColor,
+    linewidth: o.outlineWidth,
+    worldUnits: false,
+    resolution: getLineResolution(),
+    transparent: true,
+    depthWrite: false,
+  });
+  const lineSegs = new LineSegments2(lineGeo, lineMat);
+  lineSegs.renderOrder = 2; // draw on top of the glass
+  pivot.add(lineSegs);
+
+  orbitRoot.add(pivot);
+
+  const ring = { opts: o, mesh, mat, pivot, lineSegs, lineMat };
+  rings.push(ring);
+  rebuildOutlineGeometry(ring);
+  applyRenderMode(ring);
+  return ring;
+}
+
+// ----- OUTLINE / RENDER MODE -----
+const _lineRes = new THREE.Vector2(window.innerWidth, window.innerHeight);
+function getLineResolution() {
+  renderer && renderer.getSize(_lineRes);
+  if (renderer) _lineRes.multiplyScalar(renderer.getPixelRatio());
+  if (_lineRes.x < 1 || _lineRes.y < 1) _lineRes.set(window.innerWidth, window.innerHeight);
+  return _lineRes.clone();
+}
+function refreshAllLineResolutions() {
+  const r = getLineResolution();
+  rings.forEach(ring => { if (ring.lineMat) ring.lineMat.resolution.copy(r); });
+}
+
+function rebuildOutlineGeometry(ring) {
+  if (!ring.lineSegs) return;
+  const threshold = ring.opts.outlineThreshold ?? 25;
+  const edges = new THREE.EdgesGeometry(ring.mesh.geometry, threshold);
+  const positions = edges.attributes.position.array;
+  ring.lineSegs.geometry.setPositions(Array.from(positions));
+  edges.dispose();
+}
+
+function applyRenderMode(ring) {
+  const mode = ring.opts.renderMode || 'filled';
+  ring.mesh.visible = (mode !== 'outlined');
+  ring.lineSegs.visible = (mode === 'outlined' || mode === 'both');
+  ring.lineMat.color.set(ring.opts.outlineColor || '#ffffff');
+  ring.lineMat.linewidth = ring.opts.outlineWidth ?? 2.0;
+  ring.lineMat.needsUpdate = true;
+}
+
+// Custom font (uploaded by user) and a fallback set
+let userFont = null; // opentype.Font
+const fontStatus = () => $('fontStatus');
+
+async function decodeFontBuffer(buf, name='font') {
+  // Try direct parse (TTF/OTF/WOFF1)
+  try { return opentype.parse(buf); } catch (e) {
+    const isWoff2 = name.toLowerCase().endsWith('.woff2') ||
+      (new Uint8Array(buf, 0, 4).join(',') === '119,79,70,50'); // 'wOF2'
+    if (!isWoff2) throw e;
+  }
+  // WOFF2 → decompress with wawoff2, then parse
+  const w2 = await import('https://esm.sh/wawoff2@2.0.1');
+  const compressed = new Uint8Array(buf);
+  const ttf = await w2.default.decompress(compressed);
+  return opentype.parse(ttf.buffer.slice(ttf.byteOffset, ttf.byteOffset + ttf.byteLength));
+}
+
+async function loadFontFromFile(file) {
+  const buf = await file.arrayBuffer();
+  try {
+    userFont = await decodeFontBuffer(buf, file.name);
+    fontStatus().textContent = `Loaded: ${file.name}`;
+    fontStatus().style.color = '#5cea4a';
+    rings.forEach(r => { if (r.opts.shape === 'glyph') rebuildGeometry(r); });
+  } catch (e) {
+    fontStatus().textContent = 'Font load failed: ' + e.message;
+    fontStatus().style.color = '#f55';
+    console.error(e);
+  }
+}
+
+async function loadDefaultFont() {
+  // Prefer the embedded data URL (works on file:// origin where fetch of local files is blocked).
+  // Fall back to the assets file when served via http/https.
+  const sources = [];
+  if (window.SIDEPIECE_FONT_DATA_URL) sources.push(window.SIDEPIECE_FONT_DATA_URL);
+  sources.push('/AI-TOOLS/tools/more-than-design/assets/Sidepiece-HoneyButter.woff2');
+  for (const src of sources) {
+    try {
+      const res = await fetch(src);
+      if (!res.ok) throw new Error('fetch failed: ' + res.status);
+      const buf = await res.arrayBuffer();
+      userFont = await decodeFontBuffer(buf, 'Sidepiece-HoneyButter.woff2');
+      fontStatus().textContent = 'Loaded: Sidepiece HoneyButter (default)';
+      fontStatus().style.color = '#2aa83a';
+      rings.forEach(r => { if (r.opts.shape === 'glyph') rebuildGeometry(r); });
+      return;
+    } catch (e) {
+      console.warn('Font source failed:', src, e);
+    }
+  }
+  fontStatus().textContent = 'Default font missing — upload one above.';
+  fontStatus().style.color = '#c0392b';
+}
+
+function buildGlyphGeometry(opts) {
+  // Returns ExtrudeGeometry for the character(s), centered at origin
+  const char = (opts.char || 'O');
+  const fontSize = (opts.radius || 1) * 2; // approximate
+  let path;
+  if (userFont) {
+    path = userFont.getPath(char, 0, 0, fontSize * 100);
+  } else {
+    // Fallback: approximate using a temporary canvas + text
+    path = approximateSystemGlyphPath(char, fontSize * 100);
+  }
+  const shapes = pathToThreeShapes(path);
+  if (shapes.length === 0) return new THREE.BoxGeometry(0.1,0.1,0.1);
+  const depth = opts.extrude ?? 0.2;
+  const bevel = Math.min(opts.bevel ?? 0.02, depth * 0.4);
+  const geo = new THREE.ExtrudeGeometry(shapes, {
+    depth, bevelEnabled: bevel > 0.001,
+    bevelSegments: 4, bevelSize: bevel, bevelThickness: bevel, curveSegments: 24,
+  });
+  // Scale down (opentype works in font units, we asked for fontSize*100 pixels) and center
+  geo.scale(1/100, 1/100, 1);
+  geo.computeBoundingBox();
+  const b = geo.boundingBox;
+  geo.translate(-(b.min.x+b.max.x)/2, -(b.min.y+b.max.y)/2, -(b.min.z+b.max.z)/2);
+  return geo;
+}
+
+function approximateSystemGlyphPath(char, size) {
+  // Draw to OffscreenCanvas via Canvas2D path, then convert to opentype-like commands
+  const c = document.createElement('canvas'); c.width = size*2; c.height = size*2;
+  const ctx = c.getContext('2d');
+  ctx.font = `${size}px serif`;
+  ctx.textBaseline = 'alphabetic';
+  // Use Path2D-less approach: measure and draw a giant text, then sample isn't reliable.
+  // Instead, use SVG text → bbox-based simple rectangle stand-in if no font. Pragmatic fallback.
+  const m = ctx.measureText(char);
+  const w = m.width || size*0.6, h = size;
+  return {
+    commands: [
+      { type: 'M', x: 0, y: 0 },
+      { type: 'L', x: w, y: 0 },
+      { type: 'L', x: w, y: -h },
+      { type: 'L', x: 0, y: -h },
+      { type: 'Z' },
+    ],
+    _fallback: true,
+  };
+}
+
+function pathToThreeShapes(path) {
+  // Split commands into subpaths by Move
+  const subs = [];
+  let cur = null;
+  for (const c of path.commands) {
+    if (c.type === 'M') { cur = []; cur.push(c); subs.push(cur); }
+    else if (cur) cur.push(c);
+  }
+  // Convert each to THREE.Path with points sampled (for area calc)
+  const polys = subs.map(cmds => {
+    const pts = [];
+    let lx = 0, ly = 0;
+    for (const c of cmds) {
+      if (c.type === 'M') { pts.push([c.x, -c.y]); lx=c.x; ly=c.y; }
+      else if (c.type === 'L') { pts.push([c.x, -c.y]); lx=c.x; ly=c.y; }
+      else if (c.type === 'C') {
+        // sample bezier
+        const steps = 12;
+        for (let i = 1; i <= steps; i++) {
+          const t = i/steps;
+          const mt = 1-t;
+          const x = mt*mt*mt*lx + 3*mt*mt*t*c.x1 + 3*mt*t*t*c.x2 + t*t*t*c.x;
+          const y = mt*mt*mt*ly + 3*mt*mt*t*c.y1 + 3*mt*t*t*c.y2 + t*t*t*c.y;
+          pts.push([x, -y]);
+        }
+        lx=c.x; ly=c.y;
+      } else if (c.type === 'Q') {
+        const steps = 10;
+        for (let i = 1; i <= steps; i++) {
+          const t = i/steps; const mt = 1-t;
+          const x = mt*mt*lx + 2*mt*t*c.x1 + t*t*c.x;
+          const y = mt*mt*ly + 2*mt*t*c.y1 + t*t*c.y;
+          pts.push([x, -y]);
+        }
+        lx=c.x; ly=c.y;
+      }
+    }
+    return { cmds, pts };
+  });
+  // Compute signed area for winding
+  function area(pts) {
+    let a = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const [x1,y1] = pts[i], [x2,y2] = pts[(i+1)%pts.length];
+      a += x1*y2 - x2*y1;
+    }
+    return a/2;
+  }
+  // Outer (positive area in our flipped Y) = shape; negative = hole; assign holes to nearest containing shape
+  const shapes = []; // array of THREE.Shape
+  const holesQueue = [];
+  for (const p of polys) {
+    const a = area(p.pts);
+    if (a >= 0) {
+      const s = makeThreeShapeOrPath(p.cmds, true);
+      shapes.push({ shape: s, pts: p.pts });
+    } else {
+      holesQueue.push(p);
+    }
+  }
+  // Assign each hole to the shape whose first point contains hole's first point (simple test)
+  function pointInPoly(pt, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+      if (((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi + 1e-12) + xi)) inside = !inside;
+    }
+    return inside;
+  }
+  for (const h of holesQueue) {
+    const hp = h.pts[0];
+    let parent = shapes.find(s => pointInPoly(hp, s.pts));
+    if (!parent && shapes.length) parent = shapes[0];
+    if (parent) {
+      const holePath = makeThreeShapeOrPath(h.cmds, false);
+      parent.shape.holes.push(holePath);
+    }
+  }
+  return shapes.map(s => s.shape);
+}
+
+function makeThreeShapeOrPath(cmds, asShape) {
+  const obj = asShape ? new THREE.Shape() : new THREE.Path();
+  for (const c of cmds) {
+    if (c.type === 'M') obj.moveTo(c.x, -c.y);
+    else if (c.type === 'L') obj.lineTo(c.x, -c.y);
+    else if (c.type === 'C') obj.bezierCurveTo(c.x1, -c.y1, c.x2, -c.y2, c.x, -c.y);
+    else if (c.type === 'Q') obj.quadraticCurveTo(c.x1, -c.y1, c.x, -c.y);
+    else if (c.type === 'Z') {/* close */}
+  }
+  return obj;
+}
+
+function rebuildGeometry(ring) {
+  ring.mesh.geometry.dispose();
+  if (ring.opts.shape === 'glyph') {
+    ring.mesh.geometry = buildGlyphGeometry(ring.opts);
+  } else if (ring.opts.shape === 'svg') {
+    ring.mesh.geometry = buildSvgGeometry(ring.opts);
+  } else {
+    ring.mesh.geometry = new THREE.TorusGeometry(ring.opts.radius, ring.opts.tube, 64, 256);
+  }
+  if (typeof destroyTrailPool === 'function') destroyTrailPool(ring);
+  if (typeof rebuildOutlineGeometry === 'function') rebuildOutlineGeometry(ring);
+}
+
+// ----- SVG SHAPE LOADER -----
+const _svgLoader = new SVGLoader();
+
+function shapesFromSvgText(svgText) {
+  const data = _svgLoader.parse(svgText);
+  const shapes = [];
+  data.paths.forEach(path => {
+    const created = SVGLoader.createShapes(path);
+    created.forEach(s => shapes.push(s));
+  });
+  return shapes;
+}
+
+function buildSvgGeometry(opts) {
+  const shapes = opts._svgShapes;
+  if (!shapes || !shapes.length) return new THREE.BoxGeometry(0.4, 0.4, 0.05);
+  const depth = opts.extrude ?? 0.25;
+  const bevel = Math.min(opts.bevel ?? 0.04, depth * 0.4);
+  const geo = new THREE.ExtrudeGeometry(shapes, {
+    depth, bevelEnabled: bevel > 0.001,
+    bevelSegments: 4, bevelSize: bevel, bevelThickness: bevel, curveSegments: 24,
+  });
+  // SVG uses Y-down; flip to Y-up so the shape isn't upside-down on screen
+  geo.scale(1, -1, 1);
+  // Normalize so the longest XY dimension equals (radius * 2), matching glyph sizing
+  geo.computeBoundingBox();
+  const b = geo.boundingBox;
+  const w = b.max.x - b.min.x;
+  const h = b.max.y - b.min.y;
+  const maxDim = Math.max(w, h);
+  if (maxDim > 0) {
+    const target = (opts.radius || 1) * 2;
+    const s = target / maxDim;
+    geo.scale(s, s, 1);
+    geo.computeBoundingBox();
+  }
+  // Center on origin
+  const b2 = geo.boundingBox;
+  geo.translate(-(b2.min.x+b2.max.x)/2, -(b2.min.y+b2.max.y)/2, -(b2.min.z+b2.max.z)/2);
+  return geo;
+}
+
+function deleteRing(idx) {
+  const r = rings[idx];
+  if (!r) return;
+  if (r._linkGroup) {
+    const lg = r._linkGroup;
+    lg.group.remove(r.pivot);
+    lg.rings = lg.rings.filter(x => x !== r);
+    if (lg.rings.length === 0) {
+      orbitRoot.remove(lg.group);
+      const i = linkGroups.indexOf(lg); if (i>=0) linkGroups.splice(i,1);
+    }
+  } else {
+    orbitRoot.remove(r.pivot);
+  }
+  if (typeof destroyTrailPool === 'function') destroyTrailPool(r);
+  if (r.lineSegs) { r.lineSegs.geometry.dispose(); r.lineMat.dispose(); }
+  r.mesh.geometry.dispose();
+  r.mat.dispose();
+  rings.splice(idx, 1);
+  if (selectedIdx >= rings.length) selectedIdx = rings.length - 1;
+}
+
+// UI
+const $ = id => document.getElementById(id);
+const ringListEl = $('ringList');
+
+function defaultScene() {
+  while (rings.length) deleteRing(0);
+  wordGroups.length = 0;
+  nextWordId = 1;
+  // Prism-glass defaults — clear glass, diamond-like IOR, glow off so chromatic dispersion is the dominant visual.
+  // Edges are the visual hook: chunky bevel + max clearcoat + razor-sharp clearcoat roughness + thick glass + high dispersion.
+  const prism = {
+    metalness: 0.0,
+    roughness: 0.04,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.0,
+    anisotropy: 0.4,
+    transmission: 1.0,
+    opacity: 0.96,
+    ior: 2.5,
+    thickness: 1.5,
+    attenuationColor: '#ffffff',
+    attenuationDistance: 0.1,
+    emissiveIntensity: 0.0,
+    dispersion: 14.0,
+    iridescence: 0.75,
+    iridescenceIOR: 1.3,
+    bevel: 0.12,
+  };
+  createWordGroup({ ...prism, word: 'MORE',   color: '#ff2a2a', direction: 40, xOffset: 0, yOffset:  1.1, spread: 4.4, size: 1.0  });
+  createWordGroup({ ...prism, word: 'THAN',   color: '#ffd400', direction: 40, xOffset: 0, yOffset: -0.7, spread: 4.9, size: 1.0  });
+  createWordGroup({ ...prism, word: 'DESIGN', color: '#1f6bff', direction: 40, xOffset: 0, yOffset: -2.6, spread: 5.5, size: 0.95 });
+  if (typeof refreshWordGroupsList === 'function') refreshWordGroupsList();
+  wordGroups.forEach(g => spawnLettersForGroup(g));
+  // Apply default physics + vortex slider values (sliders may already exist with HTML defaults; sync displays)
+  const setPhys = (id, v, digits = 2) => { const el = $(id); if (!el) return; el.value = v; setVal(id, v, digits); };
+  setPhys('physGrav',    0.2, 1);
+  setPhys('physBounce',  0.17, 2);
+  setPhys('physFric',    0.60, 2);
+  setPhys('physDamp',    0.120, 3);
+  setPhys('physInit',    4.5,  1);
+  setPhys('physDepth',   5.1,  1);
+  setPhys('physPad',     2.00, 2);
+  setPhys('vortSpin',    22.0, 1);
+  setPhys('vortPull',    10.0, 1);
+  setPhys('vortLift',    12.0, 1);
+  setPhys('vortFunnel',  0.60, 2);
+  if (typeof applyPhysParams === 'function') applyPhysParams();
+  selectedIdx = 0;
+  refreshRingList();
+  syncControls();
+}
+
+function refreshRingList() {
+  // Park the per-object controls before clearing the list, so listeners survive
+  const oc = $('objectControls');
+  const park = $('objectControlsPark');
+  if (oc && park && oc.parentElement !== park) park.appendChild(oc);
+  ringListEl.innerHTML = '';
+  rings.forEach((r, i) => {
+    const div = document.createElement('div');
+    const linked = r._linkGroup;
+    div.className = 'ring-item' + (i === selectedIdx ? ' active' : '') + (linked ? ' linked' : '');
+    const tag = linked ? `<span class="link-tag">${linked.type.toUpperCase()}</span>` : '';
+    const wg = r.opts.wordId ? findWordGroup(r.opts.wordId) : null;
+    const wgTag = wg ? `<span class="word-tag" style="background:${wg.color}">${wg.word}</span>` : '';
+    const label = (r.opts.shape === 'glyph') ? `Object ${i+1} · ${r.opts.char || ''}` : `Object ${i+1}`;
+    const row = document.createElement('div');
+    row.className = 'ring-row';
+    row.innerHTML = `<input type="checkbox" ${r._selected?'checked':''}/><span class="name">${label}</span>${wgTag}${tag}`;
+    row.querySelector('.name').addEventListener('click', () => {
+      selectedIdx = i; refreshRingList(); syncControls();
+    });
+    row.querySelector('input').addEventListener('change', e => {
+      r._selected = e.target.checked;
+    });
+    div.appendChild(row);
+    if (i === selectedIdx) {
+      const ctrl = document.createElement('div');
+      ctrl.className = 'ring-controls';
+      if (r.opts.wordId) {
+        const wg2 = findWordGroup(r.opts.wordId);
+        ctrl.innerHTML = `<div style="font-size:11px;color:#666;padding:4px 2px;line-height:1.45">This letter is part of word <b style="color:${wg2 ? wg2.color : '#1a1a1c'}">${wg2 ? wg2.word : '(?)'}</b>. Edit shape, material, and trail in the <b>Word Groups</b> section above.</div>`;
+      } else if (oc) {
+        oc.style.display = '';
+        ctrl.appendChild(oc);
+      }
+      div.appendChild(ctrl);
+    }
+    ringListEl.appendChild(div);
+  });
+}
+
+function setVal(id, v, digits = 2) {
+  const el = $(id + 'V');
+  if (el) el.textContent = (typeof v === 'number') ? v.toFixed(digits) : v;
+}
+
+function syncControls() {
+  const r = rings[selectedIdx];
+  if (!r) return;
+  const o = r.opts;
+  $('radius').value = o.radius; setVal('radius', o.radius);
+  $('tube').value = o.tube; setVal('tube', o.tube);
+  $('orbitR').value = o.orbitRadius; setVal('orbitR', o.orbitRadius);
+  $('orbitS').value = o.orbitSpeed; setVal('orbitS', o.orbitSpeed);
+  $('spinS').value = o.spinSpeed; setVal('spinS', o.spinSpeed);
+  $('tiltX').value = o.tiltX; setVal('tiltX', o.tiltX, 0);
+  $('tiltY').value = o.tiltY; setVal('tiltY', o.tiltY, 0);
+  $('tiltZ').value = o.tiltZ; setVal('tiltZ', o.tiltZ, 0);
+  $('color').value = o.color;
+  $('metal').value = o.metalness; setVal('metal', o.metalness);
+  $('rough').value = o.roughness; setVal('rough', o.roughness);
+  $('cc').value = o.clearcoat; setVal('cc', o.clearcoat);
+  $('ccr').value = o.clearcoatRoughness; setVal('ccr', o.clearcoatRoughness);
+  $('aniso').value = o.anisotropy; setVal('aniso', o.anisotropy);
+  $('trans').value = o.transmission; setVal('trans', o.transmission);
+  $('opac').value = o.opacity; setVal('opac', o.opacity);
+  $('ior').value = o.ior; setVal('ior', o.ior);
+  $('thick').value = o.thickness; setVal('thick', o.thickness);
+  $('attC').value = o.attenuationColor;
+  $('attD').value = o.attenuationDistance; setVal('attD', o.attenuationDistance, 1);
+  $('shapeType').value = o.shape || 'ring';
+  $('glyphChar').value = o.char || 'O';
+  $('extrude').value = o.extrude ?? 0.2; setVal('extrude', o.extrude ?? 0.2);
+  $('bevel').value = o.bevel ?? 0.02; setVal('bevel', o.bevel ?? 0.02, 3);
+  $('trailEnable').checked = !!o.trailEnabled;
+  $('trailColor').value = o.trailColor || '#888888';
+  $('trailLife').value = o.trailLife ?? 0.7; setVal('trailLife', o.trailLife ?? 0.7);
+  $('trailOpacity').value = o.trailOpacity ?? 0.5; setVal('trailOpacity', o.trailOpacity ?? 0.5);
+  $('emissiveI').value      = o.emissiveIntensity ?? 0.55; setVal('emissiveI', o.emissiveIntensity ?? 0.55);
+  $('dispersion').value     = o.dispersion ?? 5.0;        setVal('dispersion', o.dispersion ?? 5.0, 1);
+  $('iridescence').value    = o.iridescence ?? 0.0;        setVal('iridescence', o.iridescence ?? 0.0);
+  $('iridescenceIOR').value = o.iridescenceIOR ?? 1.3;     setVal('iridescenceIOR', o.iridescenceIOR ?? 1.3);
+  $('renderMode').value     = o.renderMode || 'filled';
+  $('outlineColor').value   = o.outlineColor || '#ffffff';
+  $('outlineWidth').value   = o.outlineWidth ?? 2.0; setVal('outlineWidth', o.outlineWidth ?? 2.0, 1);
+  $('outlineThreshold').value = o.outlineThreshold ?? 25; setVal('outlineThreshold', o.outlineThreshold ?? 25, 0);
+}
+
+function bindRange(id, key, transform = v => parseFloat(v), digits = 2, onChange) {
+  $(id).addEventListener('input', e => {
+    const r = rings[selectedIdx]; if (!r) return;
+    const v = transform(e.target.value);
+    r.opts[key] = v;
+    setVal(id, v, digits);
+    if (onChange) onChange(r, v);
+  });
+}
+
+bindRange('radius', 'radius', v => parseFloat(v), 2, (r) => rebuildGeometry(r));
+bindRange('tube', 'tube', v => parseFloat(v), 3, (r) => rebuildGeometry(r));
+bindRange('orbitR', 'orbitRadius');
+bindRange('orbitS', 'orbitSpeed');
+bindRange('spinS', 'spinSpeed');
+bindRange('tiltX', 'tiltX', v => parseFloat(v), 0);
+bindRange('tiltY', 'tiltY', v => parseFloat(v), 0);
+bindRange('tiltZ', 'tiltZ', v => parseFloat(v), 0);
+
+$('color').addEventListener('input', e => {
+  const r = rings[selectedIdx]; if (!r) return;
+  r.opts.color = e.target.value; r.mat.color.set(e.target.value); r.mat.emissive.set(e.target.value);
+});
+bindRange('metal', 'metalness', v => parseFloat(v), 2, (r,v) => r.mat.metalness = v);
+bindRange('rough', 'roughness', v => parseFloat(v), 2, (r,v) => r.mat.roughness = v);
+bindRange('cc', 'clearcoat', v => parseFloat(v), 2, (r,v) => r.mat.clearcoat = v);
+bindRange('ccr', 'clearcoatRoughness', v => parseFloat(v), 2, (r,v) => r.mat.clearcoatRoughness = v);
+bindRange('aniso', 'anisotropy', v => parseFloat(v), 2, (r,v) => r.mat.anisotropy = v);
+bindRange('trans', 'transmission', v => parseFloat(v), 2, (r,v) => { r.mat.transmission = v; r.mat.transparent = v > 0 || r.mat.opacity < 1; r.mat.needsUpdate = true; });
+bindRange('opac', 'opacity', v => parseFloat(v), 2, (r,v) => { r.mat.opacity = v; r.mat.transparent = v < 1 || r.mat.transmission > 0; r.mat.needsUpdate = true; });
+bindRange('ior', 'ior', v => parseFloat(v), 2, (r,v) => r.mat.ior = v);
+bindRange('thick', 'thickness', v => parseFloat(v), 2, (r,v) => r.mat.thickness = v);
+$('attC').addEventListener('input', e => {
+  const r = rings[selectedIdx]; if (!r) return;
+  r.opts.attenuationColor = e.target.value; r.mat.attenuationColor.set(e.target.value);
+});
+bindRange('attD', 'attenuationDistance', v => parseFloat(v), 1, (r,v) => r.mat.attenuationDistance = v);
+bindRange('emissiveI',      'emissiveIntensity', v => parseFloat(v), 2, (r,v) => r.mat.emissiveIntensity = v);
+bindRange('dispersion',     'dispersion',        v => parseFloat(v), 1, (r,v) => { if ('dispersion' in r.mat)     r.mat.dispersion = v; });
+bindRange('iridescence',    'iridescence',       v => parseFloat(v), 2, (r,v) => { if ('iridescence' in r.mat)    r.mat.iridescence = v; });
+bindRange('iridescenceIOR', 'iridescenceIOR',    v => parseFloat(v), 2, (r,v) => { if ('iridescenceIOR' in r.mat) r.mat.iridescenceIOR = v; });
+
+// Render-style controls (per-object)
+$('renderMode').addEventListener('change', e => {
+  const r = rings[selectedIdx]; if (!r) return;
+  r.opts.renderMode = e.target.value;
+  applyRenderMode(r);
+});
+$('outlineColor').addEventListener('input', e => {
+  const r = rings[selectedIdx]; if (!r) return;
+  r.opts.outlineColor = e.target.value;
+  applyRenderMode(r);
+});
+bindRange('outlineWidth', 'outlineWidth', v => parseFloat(v), 1, (r) => applyRenderMode(r));
+bindRange('outlineThreshold', 'outlineThreshold', v => parseFloat(v), 0, (r) => { rebuildOutlineGeometry(r); });
+
+// Shape (ring vs glyph)
+$('shapeType').addEventListener('change', e => {
+  const r = rings[selectedIdx]; if (!r) return;
+  r.opts.shape = e.target.value;
+  rebuildGeometry(r);
+});
+$('glyphChar').addEventListener('input', e => {
+  const r = rings[selectedIdx]; if (!r) return;
+  r.opts.char = e.target.value || 'O';
+  if (r.opts.shape === 'glyph') rebuildGeometry(r);
+});
+bindRange('extrude', 'extrude', v => parseFloat(v), 2, (r) => { if (r.opts.shape === 'glyph') rebuildGeometry(r); });
+bindRange('bevel', 'bevel', v => parseFloat(v), 3, (r) => { if (r.opts.shape === 'glyph') rebuildGeometry(r); });
+
+// ----- TRAIL / MOTION BLUR -----
+const TRAIL_POOL_SIZE = 32;
+const TRAIL_RATE = 30; // ghosts per second
+
+function ensureTrailPool(r) {
+  if (r._trail) return;
+  const pool = [];
+  for (let i = 0; i < TRAIL_POOL_SIZE; i++) {
+    const m = new THREE.MeshBasicMaterial({
+      color: r.opts.trailColor || '#888888',
+      transparent: true, opacity: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const ghost = new THREE.Mesh(r.mesh.geometry, m);
+    ghost.matrixAutoUpdate = false;
+    ghost.visible = false;
+    scene.add(ghost);
+    pool.push({ mesh: ghost, age: Infinity });
+  }
+  r._trail = { pool, idx: 0, accum: 0 };
+}
+
+function destroyTrailPool(r) {
+  if (!r._trail) return;
+  r._trail.pool.forEach(g => { scene.remove(g.mesh); g.mesh.material.dispose(); });
+  r._trail = null;
+}
+
+function applyTrailColor(r) {
+  if (!r._trail) return;
+  r._trail.pool.forEach(g => g.mesh.material.color.set(r.opts.trailColor));
+}
+
+function stepTrails(dt) {
+  rings.forEach(r => {
+    if (!r.opts.trailEnabled) {
+      if (r._trail) destroyTrailPool(r);
+      return;
+    }
+    ensureTrailPool(r);
+    const tr = r._trail;
+    const life = Math.max(0.05, r.opts.trailLife ?? 0.7);
+    tr.accum += dt;
+    const interval = 1 / TRAIL_RATE;
+    while (tr.accum >= interval) {
+      tr.accum -= interval;
+      r.mesh.updateMatrixWorld(true);
+      const slot = tr.pool[tr.idx % tr.pool.length];
+      tr.idx = (tr.idx + 1) % tr.pool.length;
+      slot.mesh.matrix.copy(r.mesh.matrixWorld);
+      slot.mesh.visible = true;
+      slot.age = 0;
+    }
+    const baseOpacity = r.opts.trailOpacity ?? 0.5;
+    tr.pool.forEach(g => {
+      g.age += dt;
+      const t = g.age / life;
+      if (t >= 1) g.mesh.visible = false;
+      else g.mesh.material.opacity = (1 - t) * baseOpacity;
+    });
+  });
+}
+
+$('trailEnable').addEventListener('change', e => {
+  const r = rings[selectedIdx]; if (!r) return;
+  r.opts.trailEnabled = e.target.checked;
+});
+$('trailColor').addEventListener('input', e => {
+  const r = rings[selectedIdx]; if (!r) return;
+  r.opts.trailColor = e.target.value;
+  applyTrailColor(r);
+});
+bindRange('trailLife', 'trailLife', v => parseFloat(v), 2);
+bindRange('trailOpacity', 'trailOpacity', v => parseFloat(v), 2);
+
+// Font upload
+$('fontFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (f) loadFontFromFile(f);
+});
+
+// Apply to All
+function copyKeys(src, dst, keys) { keys.forEach(k => dst[k] = src[k]); }
+
+$('applyMatAll').addEventListener('click', () => {
+  const src = rings[selectedIdx]; if (!src) return;
+  const matKeys = ['color','metalness','roughness','clearcoat','clearcoatRoughness','anisotropy','transmission','opacity','ior','thickness','attenuationColor','attenuationDistance'];
+  rings.forEach(r => {
+    if (r === src) return;
+    copyKeys(src.opts, r.opts, matKeys);
+    r.mat.color.set(r.opts.color);
+    r.mat.metalness = r.opts.metalness;
+    r.mat.roughness = r.opts.roughness;
+    r.mat.clearcoat = r.opts.clearcoat;
+    r.mat.clearcoatRoughness = r.opts.clearcoatRoughness;
+    r.mat.anisotropy = r.opts.anisotropy;
+    r.mat.transmission = r.opts.transmission;
+    r.mat.opacity = r.opts.opacity;
+    r.mat.transparent = r.opts.opacity < 1 || r.opts.transmission > 0;
+    r.mat.ior = r.opts.ior;
+    r.mat.thickness = r.opts.thickness;
+    r.mat.attenuationColor.set(r.opts.attenuationColor);
+    r.mat.attenuationDistance = r.opts.attenuationDistance;
+    r.mat.needsUpdate = true;
+  });
+});
+
+$('applyShapeAll').addEventListener('click', () => {
+  const src = rings[selectedIdx]; if (!src) return;
+  rings.forEach(r => {
+    if (r === src) return;
+    r.opts.shape = src.opts.shape;
+    r.opts.char = src.opts.char;
+    r.opts.extrude = src.opts.extrude;
+    r.opts.bevel = src.opts.bevel;
+    rebuildGeometry(r);
+  });
+});
+
+$('applyTransformAll').addEventListener('click', () => {
+  const src = rings[selectedIdx]; if (!src) return;
+  rings.forEach(r => {
+    if (r === src) return;
+    copyKeys(src.opts, r.opts, ['tiltX','tiltY','tiltZ','spinSpeed','orbitRadius','orbitSpeed']);
+  });
+});
+
+$('applySizeAll').addEventListener('click', () => {
+  const src = rings[selectedIdx]; if (!src) return;
+  rings.forEach(r => {
+    if (r === src) return;
+    r.opts.radius = src.opts.radius;
+    r.opts.tube = src.opts.tube;
+    rebuildGeometry(r);
+  });
+});
+
+$('addRing').addEventListener('click', () => {
+  const r = makeRing({
+    radius: 0.5 + Math.random()*1.2,
+    tube: 0.04 + Math.random()*0.1,
+    orbitRadius: Math.random() * 3,
+    orbitSpeed: (Math.random()-0.5) * 1.2,
+    spinSpeed: (Math.random()-0.5) * 2,
+    tiltX: Math.random()*180, tiltY: Math.random()*180, tiltZ: Math.random()*180,
+  });
+  selectedIdx = rings.length - 1;
+  refreshRingList(); syncControls();
+});
+$('removeRing').addEventListener('click', () => {
+  if (rings.length <= 1) return;
+  deleteRing(selectedIdx);
+  refreshRingList(); syncControls();
+});
+
+// SVG upload — extrudes the SVG paths as a glass object with the same prism material
+$('addSvgBtn').addEventListener('click', () => $('addSvgFile').click());
+$('addSvgFile').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const shapes = shapesFromSvgText(text);
+    if (!shapes.length) throw new Error('No drawable paths found in SVG.');
+    const r = makeRing({
+      shape: 'svg',
+      _svgText: text,
+      _svgShapes: shapes,
+      _svgName: file.name,
+      radius: 1.6,
+      // Shape defaults matching the word-group prism look (chunky bevel for shiny edges)
+      extrude: 0.30,
+      bevel: 0.12,
+      tiltX: 0, tiltY: 0, tiltZ: 0,
+      orbitRadius: 0, orbitSpeed: 0, spinSpeed: 0,
+      // Material — clear prism glass (Glow 0, max clearcoat for crisp edge highlights)
+      color: '#ffffff',
+      metalness: 0.0,
+      roughness: 0.04,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.0,
+      anisotropy: 0.4,
+      transmission: 1.0,
+      opacity: 0.96,
+      ior: 2.5,
+      thickness: 1.5,
+      attenuationColor: '#ffffff',
+      attenuationDistance: 0.1,
+      emissiveIntensity: 0.0,
+      dispersion: 14.0,
+      iridescence: 0.75,
+      iridescenceIOR: 1.3,
+    });
+    selectedIdx = rings.length - 1;
+    refreshRingList(); syncControls();
+  } catch (err) {
+    alert('Failed to load SVG: ' + (err.message || err));
+    console.error(err);
+  }
+});
+
+// ----- WORD GROUPS -----
+const wordGroups = [];
+let nextWordId = 1;
+
+function createWordGroup(opts = {}) {
+  const g = Object.assign({
+    id: 'w' + (nextWordId++),
+    word: 'WORD',
+    // Layout (in scene units; X-Y plane, camera looks down -Z)
+    layoutMode: 'linear',  // 'linear' (line of letters) or 'orbit' (ring around an axis)
+    direction: 0,          // degrees: 0 = left-to-right (+X), 90 = bottom-to-top (+Y)
+    spread: 4.0,           // total span along the direction
+    xOffset: 0.0,
+    yOffset: 0.0,
+    // Orbit-mode params — letters arrange in a circle around (xOffset, yOffset)
+    orbitRadius: 3.0,
+    orbitSpeed: 0,         // degrees/sec — animated rotation around the axis
+    orbitPhase: 0,         // starting angle in degrees
+    orbitArc: 360,         // 360 = full ring, less = partial arc
+    orbitTiltX: 70,        // tilt the orbital plane toward camera (Saturn-rings effect)
+    orbitTiltZ: 0,         // roll the orbital plane left/right
+    // Shape (applied to every letter)
+    size: 1.0,
+    extrude: 0.3,
+    bevel: 0.05,
+    tiltX: 0, tiltY: 0, tiltZ: 0,
+    spinSpeed: 0,
+    // Material (prism-glass defaults — clear, high-IOR, no glow so dispersion dominates)
+    color: '#888888',
+    metalness: 0.0,
+    roughness: 0.04,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.0,
+    anisotropy: 0.4,
+    transmission: 1.0,
+    opacity: 0.96,
+    ior: 2.5,
+    thickness: 1.5,
+    attenuationColor: '#ffffff',
+    attenuationDistance: 0.1,
+    emissiveIntensity: 0.0,
+    dispersion: 14.0,
+    iridescence: 0.75,
+    iridescenceIOR: 1.3,
+    // Render style
+    renderMode: 'filled',
+    outlineColor: '#ffffff',
+    outlineWidth: 2.0,
+    outlineThreshold: 25,
+    // Trail (applied to every letter)
+    trailEnabled: false,
+    trailColor: '#888888',
+    trailLife: 0.7,
+    trailOpacity: 0.5,
+    // UI
+    _uiExpanded: false,
+  }, opts);
+  wordGroups.push(g);
+  return g;
+}
+
+function findWordGroup(id) { return wordGroups.find(g => g.id === id); }
+
+function deleteRingsForWord(id) {
+  for (let i = rings.length - 1; i >= 0; i--) {
+    if (rings[i].opts.wordId === id) deleteRing(i);
+  }
+}
+
+function spawnLettersForGroup(g) {
+  const wasPhys = physEnabled;
+  const wasVortex = vortexEnabled;
+  if (wasPhys) stopPhysics();
+  deleteRingsForWord(g.id);
+  const chars = [...(g.word || '')].filter(c => c.trim().length > 0);
+  const N = chars.length;
+  const dirRad = (g.direction || 0) * Math.PI / 180;
+  const dx = Math.cos(dirRad), dy = Math.sin(dirRad);
+  chars.forEach((ch, i) => {
+    const offset = N > 1 ? (i - (N - 1) / 2) * (g.spread / (N - 1)) : 0;
+    const x = g.xOffset + dx * offset;
+    const y = g.yOffset + dy * offset;
+    const ring = makeRing({
+      shape: 'glyph',
+      char: ch,
+      radius: g.size,
+      tube: 0.08,
+      extrude: g.extrude,
+      bevel: g.bevel,
+      tiltX: g.tiltX, tiltY: g.tiltY, tiltZ: g.tiltZ,
+      orbitRadius: 0, orbitSpeed: 0,
+      spinSpeed: g.spinSpeed,
+      color: g.color,
+      metalness: g.metalness,
+      roughness: g.roughness,
+      clearcoat: g.clearcoat,
+      clearcoatRoughness: g.clearcoatRoughness,
+      anisotropy: g.anisotropy,
+      transmission: g.transmission,
+      opacity: g.opacity,
+      ior: g.ior,
+      thickness: g.thickness,
+      attenuationColor: g.attenuationColor,
+      attenuationDistance: g.attenuationDistance,
+      emissiveIntensity: g.emissiveIntensity,
+      dispersion: g.dispersion,
+      iridescence: g.iridescence,
+      iridescenceIOR: g.iridescenceIOR,
+      renderMode: g.renderMode,
+      outlineColor: g.outlineColor,
+      outlineWidth: g.outlineWidth,
+      outlineThreshold: g.outlineThreshold,
+      trailEnabled: g.trailEnabled,
+      trailColor: g.trailColor,
+      trailLife: g.trailLife,
+      trailOpacity: g.trailOpacity,
+      wordId: g.id,
+      wordIndex: i,
+    });
+    ring.opts._fixedX = x;
+    ring.opts._fixedY = y;
+    ring.opts._fixedZ = 0;
+    ring.pivot.position.set(x, y, 0);
+  });
+  refreshRingList(); syncControls();
+  if (wasPhys) {
+    startPhysics();
+    if (wasVortex) { vortexEnabled = true; setVortexButton(); }
+  }
+}
+
+function eachRingInGroup(g, fn) {
+  rings.forEach(r => { if (r.opts.wordId === g.id) fn(r); });
+}
+
+function applyGroupLayout(g, t = 0) {
+  const groupRings = rings.filter(r => r.opts.wordId === g.id);
+  if (g.layoutMode === 'orbit') return layoutOrbit(g, groupRings, t);
+  return layoutLinear(g, groupRings);
+}
+
+function layoutLinear(g, groupRings) {
+  const N = groupRings.length;
+  const dirRad = (g.direction || 0) * Math.PI / 180;
+  const dx = Math.cos(dirRad), dy = Math.sin(dirRad);
+  groupRings.forEach((r, i) => {
+    const offset = N > 1 ? (i - (N - 1) / 2) * (g.spread / Math.max(1, N - 1)) : 0;
+    const x = g.xOffset + dx * offset;
+    const y = g.yOffset + dy * offset;
+    r.opts._fixedX = x;
+    r.opts._fixedY = y;
+    r.opts._fixedZ = 0;
+    r.pivot.position.set(x, y, 0);
+    r.pivot.quaternion.identity();
+  });
+}
+
+// Reusable temps for orbit math (avoid GC pressure each frame)
+const _orbitV = new THREE.Vector3();
+const _orbitOut = new THREE.Vector3();
+const _orbitTiltQ = new THREE.Quaternion();
+const _orbitTiltE = new THREE.Euler();
+const _orbitMat = new THREE.Matrix4();
+const _orbitUp = new THREE.Vector3(0, 1, 0);
+const _orbitTargetWorld = new THREE.Vector3();
+const _orbitQ = new THREE.Quaternion();
+
+function layoutOrbit(g, groupRings, t = 0) {
+  const N = groupRings.length;
+  if (N === 0) return;
+  const radius = g.orbitRadius || 3;
+  const arcDeg = (g.orbitArc != null) ? g.orbitArc : 360;
+  const arcRad = arcDeg * Math.PI / 180;
+  const phaseRad = ((g.orbitPhase || 0) + (g.orbitSpeed || 0) * t) * Math.PI / 180;
+  const fullRing = Math.abs(arcDeg - 360) < 0.5;
+
+  _orbitTiltE.set(
+    THREE.MathUtils.degToRad(g.orbitTiltX || 0),
+    0,
+    THREE.MathUtils.degToRad(g.orbitTiltZ || 0),
+    'XZY'
+  );
+  _orbitTiltQ.setFromEuler(_orbitTiltE);
+
+  groupRings.forEach((r, i) => {
+    // Even spacing — full circle uses i/N (no doubling at endpoints); partial arc centers around 0.
+    const frac = fullRing
+      ? (N > 0 ? i / N : 0)
+      : (N > 1 ? (i / (N - 1) - 0.5) : 0);
+    const angle = phaseRad + frac * (fullRing ? Math.PI * 2 : arcRad);
+
+    // Untilted orbit lives in the XZ plane (so tilt around X swings it toward the camera).
+    _orbitV.set(radius * Math.cos(angle), 0, radius * Math.sin(angle));
+    _orbitV.applyQuaternion(_orbitTiltQ);
+    _orbitV.x += g.xOffset || 0;
+    _orbitV.y += g.yOffset || 0;
+
+    r.opts._fixedX = _orbitV.x;
+    r.opts._fixedY = _orbitV.y;
+    r.opts._fixedZ = _orbitV.z;
+    r.pivot.position.copy(_orbitV);
+
+    // Letter facing: +Z (the extruded face) points outward from the orbit axis.
+    // Object3D.lookAt aims local -Z at the target, so we look at the inward direction.
+    _orbitOut.set(Math.cos(angle), 0, Math.sin(angle)).applyQuaternion(_orbitTiltQ);
+    _orbitTargetWorld.copy(_orbitV).sub(_orbitOut);
+    _orbitMat.lookAt(_orbitV, _orbitTargetWorld, _orbitUp);
+    _orbitQ.setFromRotationMatrix(_orbitMat);
+    r.pivot.quaternion.copy(_orbitQ);
+  });
+}
+
+function applyGroupShape(g, geomChanged = false) {
+  eachRingInGroup(g, r => {
+    r.opts.tiltX = g.tiltX;
+    r.opts.tiltY = g.tiltY;
+    r.opts.tiltZ = g.tiltZ;
+    r.opts.spinSpeed = g.spinSpeed;
+    if (geomChanged) {
+      r.opts.radius = g.size;
+      r.opts.extrude = g.extrude;
+      r.opts.bevel = g.bevel;
+      rebuildGeometry(r);
+    }
+  });
+}
+
+function applyGroupMaterial(g) {
+  eachRingInGroup(g, r => {
+    r.opts.color = g.color;
+    r.opts.metalness = g.metalness;
+    r.opts.roughness = g.roughness;
+    r.opts.clearcoat = g.clearcoat;
+    r.opts.clearcoatRoughness = g.clearcoatRoughness;
+    r.opts.anisotropy = g.anisotropy;
+    r.opts.transmission = g.transmission;
+    r.opts.opacity = g.opacity;
+    r.opts.ior = g.ior;
+    r.opts.thickness = g.thickness;
+    r.opts.attenuationColor = g.attenuationColor;
+    r.opts.attenuationDistance = g.attenuationDistance;
+    r.opts.emissiveIntensity = g.emissiveIntensity;
+    r.opts.dispersion = g.dispersion;
+    r.opts.iridescence = g.iridescence;
+    r.opts.iridescenceIOR = g.iridescenceIOR;
+    r.mat.color.set(g.color);
+    r.mat.metalness = g.metalness;
+    r.mat.roughness = g.roughness;
+    r.mat.clearcoat = g.clearcoat;
+    r.mat.clearcoatRoughness = g.clearcoatRoughness;
+    r.mat.anisotropy = g.anisotropy;
+    r.mat.transmission = g.transmission;
+    r.mat.opacity = g.opacity;
+    r.mat.transparent = g.opacity < 1.0 || g.transmission > 0;
+    r.mat.ior = g.ior;
+    r.mat.thickness = g.thickness;
+    r.mat.attenuationColor.set(g.attenuationColor);
+    r.mat.attenuationDistance = g.attenuationDistance;
+    r.mat.emissive.set(g.color);
+    r.mat.emissiveIntensity = g.emissiveIntensity;
+    if ('dispersion' in r.mat)      r.mat.dispersion      = g.dispersion;
+    if ('iridescence' in r.mat)     r.mat.iridescence     = g.iridescence;
+    if ('iridescenceIOR' in r.mat)  r.mat.iridescenceIOR  = g.iridescenceIOR;
+    r.mat.needsUpdate = true;
+  });
+}
+
+function applyGroupTrail(g) {
+  eachRingInGroup(g, r => {
+    r.opts.trailEnabled = g.trailEnabled;
+    r.opts.trailColor = g.trailColor;
+    r.opts.trailLife = g.trailLife;
+    r.opts.trailOpacity = g.trailOpacity;
+    if (typeof applyTrailColor === 'function') applyTrailColor(r);
+  });
+}
+
+function applyGroupRenderStyle(g, geomChanged = false) {
+  eachRingInGroup(g, r => {
+    r.opts.renderMode      = g.renderMode;
+    r.opts.outlineColor    = g.outlineColor;
+    r.opts.outlineWidth    = g.outlineWidth;
+    r.opts.outlineThreshold = g.outlineThreshold;
+    if (geomChanged) rebuildOutlineGeometry(r);
+    applyRenderMode(r);
+  });
+}
+
+function deleteWordGroup(g) {
+  deleteRingsForWord(g.id);
+  const idx = wordGroups.indexOf(g);
+  if (idx >= 0) wordGroups.splice(idx, 1);
+  refreshWordGroupsList();
+  refreshRingList(); syncControls();
+}
+
+function refreshWordGroupsList() {
+  const list = $('wordGroupsList');
+  list.innerHTML = '';
+  wordGroups.forEach(g => {
+    const card = document.createElement('div');
+    card.className = 'word-group';
+    card.style.borderLeftColor = g.color;
+    const expanded = !!g._uiExpanded;
+    card.innerHTML = `
+      <div class="word-row">
+        <span class="word-toggle" title="Show/hide details">${expanded ? '▾' : '▸'}</span>
+        <input type="text" class="word-text" value="${g.word}" maxlength="24"/>
+        <input type="color" class="word-color" value="${g.color}"/>
+        <button class="word-regen" title="Regenerate this word's letters">↻</button>
+        <button class="word-del" title="Delete this word group">✕</button>
+      </div>
+      <div class="subhead">Layout</div>
+      <div class="row"><label>Mode</label>
+        <select class="g-layoutMode">
+          <option value="linear" ${g.layoutMode==='linear'?'selected':''}>Linear (line)</option>
+          <option value="orbit"  ${g.layoutMode==='orbit' ?'selected':''}>Orbit (ring)</option>
+        </select>
+        <span></span>
+      </div>
+      <div class="row"><label>X Offset</label><input type="range" class="g-xOffset" min="-6" max="6" step="0.1" value="${g.xOffset}"/><span class="val g-xOffsetV">${g.xOffset.toFixed(1)}</span></div>
+      <div class="row"><label>Y Offset</label><input type="range" class="g-yOffset" min="-6" max="6" step="0.1" value="${g.yOffset}"/><span class="val g-yOffsetV">${g.yOffset.toFixed(1)}</span></div>
+      <div class="g-linear-only" style="display:${g.layoutMode==='orbit'?'none':''}">
+        <div class="row"><label>Direction</label><input type="range" class="g-direction" min="0" max="360" step="1" value="${g.direction}"/><span class="val g-directionV">${Math.round(g.direction)}°</span></div>
+        <div class="row"><label>Spread</label><input type="range" class="g-spread" min="0" max="10" step="0.1" value="${g.spread}"/><span class="val g-spreadV">${g.spread.toFixed(1)}</span></div>
+      </div>
+      <div class="g-orbit-only" style="display:${g.layoutMode==='orbit'?'':'none'}">
+        <div class="row"><label>Radius</label><input type="range" class="g-orbitRadius" min="0.2" max="10" step="0.05" value="${g.orbitRadius}"/><span class="val g-orbitRadiusV">${g.orbitRadius.toFixed(2)}</span></div>
+        <div class="row"><label>Speed</label><input type="range" class="g-orbitSpeed" min="-180" max="180" step="0.5" value="${g.orbitSpeed}"/><span class="val g-orbitSpeedV">${g.orbitSpeed.toFixed(1)}°/s</span></div>
+        <div class="row"><label>Phase</label><input type="range" class="g-orbitPhase" min="0" max="360" step="1" value="${g.orbitPhase}"/><span class="val g-orbitPhaseV">${Math.round(g.orbitPhase)}°</span></div>
+        <div class="row"><label>Arc</label><input type="range" class="g-orbitArc" min="20" max="360" step="1" value="${g.orbitArc}"/><span class="val g-orbitArcV">${Math.round(g.orbitArc)}°</span></div>
+        <div class="row"><label>Tilt X</label><input type="range" class="g-orbitTiltX" min="-180" max="180" step="1" value="${g.orbitTiltX}"/><span class="val g-orbitTiltXV">${Math.round(g.orbitTiltX)}°</span></div>
+        <div class="row"><label>Tilt Z</label><input type="range" class="g-orbitTiltZ" min="-180" max="180" step="1" value="${g.orbitTiltZ}"/><span class="val g-orbitTiltZV">${Math.round(g.orbitTiltZ)}°</span></div>
+      </div>
+      <div class="word-details" style="display:${expanded ? '' : 'none'}">
+        <div class="subhead">Shape</div>
+        <div class="row"><label>Size</label><input type="range" class="g-size" min="0.3" max="2.5" step="0.05" value="${g.size}"/><span class="val g-sizeV">${g.size.toFixed(2)}</span></div>
+        <div class="row"><label>Extrude</label><input type="range" class="g-extrude" min="0.02" max="1.5" step="0.01" value="${g.extrude}"/><span class="val g-extrudeV">${g.extrude.toFixed(2)}</span></div>
+        <div class="row"><label>Bevel</label><input type="range" class="g-bevel" min="0" max="0.2" step="0.005" value="${g.bevel}"/><span class="val g-bevelV">${g.bevel.toFixed(3)}</span></div>
+        <div class="row"><label>Tilt X</label><input type="range" class="g-tiltX" min="-180" max="180" step="1" value="${g.tiltX}"/><span class="val g-tiltXV">${Math.round(g.tiltX)}</span></div>
+        <div class="row"><label>Tilt Y</label><input type="range" class="g-tiltY" min="-180" max="180" step="1" value="${g.tiltY}"/><span class="val g-tiltYV">${Math.round(g.tiltY)}</span></div>
+        <div class="row"><label>Tilt Z</label><input type="range" class="g-tiltZ" min="-180" max="180" step="1" value="${g.tiltZ}"/><span class="val g-tiltZV">${Math.round(g.tiltZ)}</span></div>
+        <div class="row"><label>Spin Speed</label><input type="range" class="g-spinSpeed" min="-3" max="3" step="0.01" value="${g.spinSpeed}"/><span class="val g-spinSpeedV">${g.spinSpeed.toFixed(2)}</span></div>
+        <div class="subhead">Material</div>
+        <div class="row"><label>Metalness</label><input type="range" class="g-metalness" min="0" max="1" step="0.01" value="${g.metalness}"/><span class="val g-metalnessV">${g.metalness.toFixed(2)}</span></div>
+        <div class="row"><label>Roughness</label><input type="range" class="g-roughness" min="0" max="1" step="0.01" value="${g.roughness}"/><span class="val g-roughnessV">${g.roughness.toFixed(2)}</span></div>
+        <div class="row"><label>Clearcoat</label><input type="range" class="g-clearcoat" min="0" max="1" step="0.01" value="${g.clearcoat}"/><span class="val g-clearcoatV">${g.clearcoat.toFixed(2)}</span></div>
+        <div class="row"><label>CC Rough</label><input type="range" class="g-clearcoatRoughness" min="0" max="1" step="0.01" value="${g.clearcoatRoughness}"/><span class="val g-clearcoatRoughnessV">${g.clearcoatRoughness.toFixed(2)}</span></div>
+        <div class="row"><label>Anisotropy</label><input type="range" class="g-anisotropy" min="0" max="1" step="0.01" value="${g.anisotropy}"/><span class="val g-anisotropyV">${g.anisotropy.toFixed(2)}</span></div>
+        <div class="row"><label>Transmission</label><input type="range" class="g-transmission" min="0" max="1" step="0.01" value="${g.transmission}"/><span class="val g-transmissionV">${g.transmission.toFixed(2)}</span></div>
+        <div class="row"><label>Opacity</label><input type="range" class="g-opacity" min="0" max="1" step="0.01" value="${g.opacity}"/><span class="val g-opacityV">${g.opacity.toFixed(2)}</span></div>
+        <div class="row"><label>IOR</label><input type="range" class="g-ior" min="1" max="2.5" step="0.01" value="${g.ior}"/><span class="val g-iorV">${g.ior.toFixed(2)}</span></div>
+        <div class="row"><label>Thickness</label><input type="range" class="g-thickness" min="0" max="3" step="0.01" value="${g.thickness}"/><span class="val g-thicknessV">${g.thickness.toFixed(2)}</span></div>
+        <div class="row"><label>Atten. Color</label><input type="color" class="g-attenuationColor" value="${g.attenuationColor}"/><span></span></div>
+        <div class="row"><label>Atten. Dist</label><input type="range" class="g-attenuationDistance" min="0.1" max="20" step="0.1" value="${g.attenuationDistance}"/><span class="val g-attenuationDistanceV">${g.attenuationDistance.toFixed(1)}</span></div>
+        <div class="row"><label>Glow</label><input type="range" class="g-emissiveIntensity" min="0" max="3" step="0.05" value="${g.emissiveIntensity}"/><span class="val g-emissiveIntensityV">${g.emissiveIntensity.toFixed(2)}</span></div>
+        <div class="row"><label>Dispersion</label><input type="range" class="g-dispersion" min="0" max="20" step="0.1" value="${g.dispersion}"/><span class="val g-dispersionV">${g.dispersion.toFixed(1)}</span></div>
+        <div class="row"><label>Iridescence</label><input type="range" class="g-iridescence" min="0" max="1" step="0.01" value="${g.iridescence}"/><span class="val g-iridescenceV">${g.iridescence.toFixed(2)}</span></div>
+        <div class="row"><label>Irid. IOR</label><input type="range" class="g-iridescenceIOR" min="1" max="2.5" step="0.01" value="${g.iridescenceIOR}"/><span class="val g-iridescenceIORV">${g.iridescenceIOR.toFixed(2)}</span></div>
+        <div class="subhead">Render Style</div>
+        <div class="row"><label>Mode</label>
+          <select class="g-renderMode">
+            <option value="filled"   ${g.renderMode==='filled'   ?'selected':''}>Filled</option>
+            <option value="outlined" ${g.renderMode==='outlined' ?'selected':''}>Outlined</option>
+            <option value="both"     ${g.renderMode==='both'     ?'selected':''}>Both</option>
+          </select>
+          <span></span>
+        </div>
+        <div class="row"><label>Outline Color</label><input type="color" class="g-outlineColor" value="${g.outlineColor}"/><span></span></div>
+        <div class="row"><label>Outline Width</label><input type="range" class="g-outlineWidth" min="0.5" max="20" step="0.1" value="${g.outlineWidth}"/><span class="val g-outlineWidthV">${g.outlineWidth.toFixed(1)}</span></div>
+        <div class="row"><label>Edge Threshold</label><input type="range" class="g-outlineThreshold" min="1" max="89" step="1" value="${g.outlineThreshold}"/><span class="val g-outlineThresholdV">${Math.round(g.outlineThreshold)}°</span></div>
+        <div class="subhead">Trail / Motion Blur</div>
+        <div class="row"><label>Enable</label><input type="checkbox" class="g-trailEnabled" ${g.trailEnabled ? 'checked' : ''}/><span></span></div>
+        <div class="row"><label>Color</label><input type="color" class="g-trailColor" value="${g.trailColor}"/><span></span></div>
+        <div class="row"><label>Length</label><input type="range" class="g-trailLife" min="0.05" max="2.0" step="0.05" value="${g.trailLife}"/><span class="val g-trailLifeV">${g.trailLife.toFixed(2)}</span></div>
+        <div class="row"><label>Strength</label><input type="range" class="g-trailOpacity" min="0.05" max="1.0" step="0.01" value="${g.trailOpacity}"/><span class="val g-trailOpacityV">${g.trailOpacity.toFixed(2)}</span></div>
+      </div>
+    `;
+
+    const wordIn = card.querySelector('.word-text');
+    const commitWord = () => { g.word = wordIn.value; spawnLettersForGroup(g); };
+    wordIn.addEventListener('change', commitWord);
+    wordIn.addEventListener('keydown', e => { if (e.key === 'Enter') { commitWord(); wordIn.blur(); } });
+
+    const colorIn = card.querySelector('.word-color');
+    colorIn.addEventListener('input', () => {
+      g.color = colorIn.value;
+      card.style.borderLeftColor = g.color;
+      applyGroupMaterial(g);
+    });
+
+    card.querySelector('.word-regen').addEventListener('click', () => spawnLettersForGroup(g));
+    card.querySelector('.word-del').addEventListener('click', () => {
+      if (confirm(`Delete word "${g.word}"?`)) deleteWordGroup(g);
+    });
+
+    const toggleEl = card.querySelector('.word-toggle');
+    toggleEl.addEventListener('click', () => {
+      g._uiExpanded = !g._uiExpanded;
+      const details = card.querySelector('.word-details');
+      details.style.display = g._uiExpanded ? '' : 'none';
+      toggleEl.textContent = g._uiExpanded ? '▾' : '▸';
+    });
+
+    const bindRange = (sel, key, digits, applyFn, suffix = '') => {
+      const s = card.querySelector(sel);
+      const v = card.querySelector(sel + 'V');
+      s.addEventListener('input', () => {
+        g[key] = parseFloat(s.value);
+        if (v) v.textContent = (digits === 0 ? Math.round(g[key]) : g[key].toFixed(digits)) + suffix;
+        applyFn();
+      });
+    };
+    const bindColorInput = (sel, key, applyFn) => {
+      card.querySelector(sel).addEventListener('input', e => {
+        g[key] = e.target.value;
+        applyFn();
+      });
+    };
+    const bindCheck = (sel, key, applyFn) => {
+      card.querySelector(sel).addEventListener('change', e => {
+        g[key] = e.target.checked;
+        applyFn();
+      });
+    };
+
+    // Layout mode toggle — show/hide the right control sub-block, then re-layout
+    const layoutSel = card.querySelector('.g-layoutMode');
+    layoutSel.addEventListener('change', () => {
+      g.layoutMode = layoutSel.value;
+      card.querySelector('.g-linear-only').style.display = (g.layoutMode === 'orbit') ? 'none' : '';
+      card.querySelector('.g-orbit-only').style.display  = (g.layoutMode === 'orbit') ? '' : 'none';
+      applyGroupLayout(g);
+    });
+
+    // Layout — live position update only
+    bindRange('.g-xOffset',   'xOffset',   1, () => applyGroupLayout(g));
+    bindRange('.g-yOffset',   'yOffset',   1, () => applyGroupLayout(g));
+    bindRange('.g-direction', 'direction', 0, () => applyGroupLayout(g), '°');
+    bindRange('.g-spread',    'spread',    1, () => applyGroupLayout(g));
+    // Orbit-mode sliders — same applyGroupLayout drives both modes
+    bindRange('.g-orbitRadius', 'orbitRadius', 2, () => applyGroupLayout(g));
+    bindRange('.g-orbitSpeed',  'orbitSpeed',  1, () => applyGroupLayout(g), '°/s');
+    bindRange('.g-orbitPhase',  'orbitPhase',  0, () => applyGroupLayout(g), '°');
+    bindRange('.g-orbitArc',    'orbitArc',    0, () => applyGroupLayout(g), '°');
+    bindRange('.g-orbitTiltX',  'orbitTiltX',  0, () => applyGroupLayout(g), '°');
+    bindRange('.g-orbitTiltZ',  'orbitTiltZ',  0, () => applyGroupLayout(g), '°');
+
+    // Shape — geometry rebuild for size/extrude/bevel; runtime for tilts/spin
+    bindRange('.g-size',      'size',      2, () => applyGroupShape(g, true));
+    bindRange('.g-extrude',   'extrude',   2, () => applyGroupShape(g, true));
+    bindRange('.g-bevel',     'bevel',     3, () => applyGroupShape(g, true));
+    bindRange('.g-tiltX',     'tiltX',     0, () => applyGroupShape(g));
+    bindRange('.g-tiltY',     'tiltY',     0, () => applyGroupShape(g));
+    bindRange('.g-tiltZ',     'tiltZ',     0, () => applyGroupShape(g));
+    bindRange('.g-spinSpeed', 'spinSpeed', 2, () => applyGroupShape(g));
+
+    // Material
+    bindRange('.g-metalness',           'metalness',           2, () => applyGroupMaterial(g));
+    bindRange('.g-roughness',           'roughness',           2, () => applyGroupMaterial(g));
+    bindRange('.g-clearcoat',           'clearcoat',           2, () => applyGroupMaterial(g));
+    bindRange('.g-clearcoatRoughness',  'clearcoatRoughness',  2, () => applyGroupMaterial(g));
+    bindRange('.g-anisotropy',          'anisotropy',          2, () => applyGroupMaterial(g));
+    bindRange('.g-transmission',        'transmission',        2, () => applyGroupMaterial(g));
+    bindRange('.g-opacity',             'opacity',             2, () => applyGroupMaterial(g));
+    bindRange('.g-ior',                 'ior',                 2, () => applyGroupMaterial(g));
+    bindRange('.g-thickness',           'thickness',           2, () => applyGroupMaterial(g));
+    bindColorInput('.g-attenuationColor', 'attenuationColor',     () => applyGroupMaterial(g));
+    bindRange('.g-attenuationDistance', 'attenuationDistance', 1, () => applyGroupMaterial(g));
+    bindRange('.g-emissiveIntensity',   'emissiveIntensity',   2, () => applyGroupMaterial(g));
+    bindRange('.g-dispersion',          'dispersion',          1, () => applyGroupMaterial(g));
+    bindRange('.g-iridescence',         'iridescence',         2, () => applyGroupMaterial(g));
+    bindRange('.g-iridescenceIOR',      'iridescenceIOR',      2, () => applyGroupMaterial(g));
+
+    // Render style
+    const renderSel = card.querySelector('.g-renderMode');
+    renderSel.addEventListener('change', () => {
+      g.renderMode = renderSel.value;
+      applyGroupRenderStyle(g);
+    });
+    bindColorInput('.g-outlineColor',    'outlineColor',           () => applyGroupRenderStyle(g));
+    bindRange('.g-outlineWidth',         'outlineWidth',        1, () => applyGroupRenderStyle(g));
+    bindRange('.g-outlineThreshold',     'outlineThreshold',    0, () => applyGroupRenderStyle(g, true), '°');
+
+    // Trail
+    bindCheck('.g-trailEnabled', 'trailEnabled', () => applyGroupTrail(g));
+    bindColorInput('.g-trailColor', 'trailColor', () => applyGroupTrail(g));
+    bindRange('.g-trailLife',    'trailLife',    2, () => applyGroupTrail(g));
+    bindRange('.g-trailOpacity', 'trailOpacity', 2, () => applyGroupTrail(g));
+
+    list.appendChild(card);
+  });
+}
+
+$('addWordGroup').addEventListener('click', () => {
+  const g = createWordGroup({ word: 'WORD', color: '#888888', yOffset: 0 });
+  refreshWordGroupsList();
+  spawnLettersForGroup(g);
+});
+$('regenAllWords').addEventListener('click', () => {
+  wordGroups.forEach(g => spawnLettersForGroup(g));
+});
+
+// Lighting controls
+function bindLight(id, fn, digits = 2) {
+  $(id).addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    setVal(id, v, digits);
+    fn(v);
+  });
+}
+function bindColor(id, fn) {
+  $(id).addEventListener('input', e => fn(e.target.value));
+}
+
+bindLight('envI', v => { rings.forEach(r => r.mat.envMapIntensity = v); });
+bindLight('keyI', v => keyLight.intensity = v);
+bindColor('keyC', v => keyLight.color.set(v));
+bindLight('fillI', v => fillLight.intensity = v);
+bindColor('fillC', v => fillLight.color.set(v));
+bindLight('rimI', v => rimLight.intensity = v);
+bindColor('rimC', v => rimLight.color.set(v));
+bindLight('ambI', v => ambient.intensity = v);
+bindColor('bg', v => scene.background = new THREE.Color(v));
+bindLight('expo', v => renderer.toneMappingExposure = v);
+bindLight('autoR', v => { controls.autoRotate = v > 0.01; controls.autoRotateSpeed = v * 2; });
+
+// Extra point lights
+function bindExtraLight(prefix, light) {
+  bindLight(prefix + 'I', v => light.intensity = v);
+  bindColor(prefix + 'C', v => light.color.set(v));
+  bindLight(prefix + 'Z', v => light.position.z = v, 1);
+  bindLight(prefix + 'D', v => light.distance = v, 1);
+  $(prefix + 'X').addEventListener('input', e => { light.position.x = parseFloat(e.target.value || 0); });
+  $(prefix + 'Y').addEventListener('input', e => { light.position.y = parseFloat(e.target.value || 0); });
+}
+bindExtraLight('extraA', extraA);
+bindExtraLight('extraB', extraB);
+
+$('envPreset').addEventListener('change', e => setEnv(e.target.value));
+
+$('exportPng').addEventListener('click', () => exportImage('png'));
+$('exportPdf').addEventListener('click', () => exportImage('pdf'));
+$('reset').addEventListener('click', () => {
+  defaultScene();
+  initLightUI();
+});
+
+// ----- PHYSICS (cannon-es) -----
+const physWorld = new CANNON.World({ gravity: new CANNON.Vec3(0, 0, 0) });
+physWorld.broadphase = new CANNON.NaiveBroadphase();
+physWorld.solver.iterations = 12;
+physWorld.allowSleep = false;
+const physMat = new CANNON.Material('shape');
+const contact = new CANNON.ContactMaterial(physMat, physMat, { restitution: 0.85, friction: 0.05 });
+physWorld.addContactMaterial(contact);
+physWorld.defaultContactMaterial = contact;
+
+let physEnabled = false;
+let physWalls = []; // Body[]
+const tmpV = new THREE.Vector3();
+const tmpQ = new THREE.Quaternion();
+const tmpE = new THREE.Euler();
+
+function applyPhysParams() {
+  const g = parseFloat($('physGrav').value);
+  physWorld.gravity.set(0, g, 0);
+  contact.restitution = parseFloat($('physBounce').value);
+  contact.friction = parseFloat($('physFric').value);
+  const d = parseFloat($('physDamp').value);
+  // Update bodies
+  function eachBody(fn) {
+    rings.forEach(r => { if (r._body) fn(r._body); });
+    linkGroups.forEach(lg => { if (lg._body) fn(lg._body); });
+  }
+  eachBody(b => { b.linearDamping = d; b.angularDamping = d; });
+}
+
+function buildRingShape(opts) {
+  const N = 16;
+  const major = opts.radius;
+  const minor = opts.tube * 1.6;
+  const shapes = [];
+  for (let i = 0; i < N; i++) {
+    const a = i * Math.PI * 2 / N;
+    shapes.push({ shape: new CANNON.Sphere(minor),
+                  offset: new CANNON.Vec3(Math.cos(a)*major, Math.sin(a)*major, 0),
+                  orient: new CANNON.Quaternion(0,0,0,1) });
+  }
+  return shapes;
+}
+
+function buildGlyphShape(mesh) {
+  // Use bounding sphere for simplicity
+  mesh.geometry.computeBoundingSphere();
+  const r = Math.max(0.2, mesh.geometry.boundingSphere.radius);
+  return [{ shape: new CANNON.Sphere(r), offset: new CANNON.Vec3(0,0,0), orient: new CANNON.Quaternion(0,0,0,1) }];
+}
+
+function attachBody(target, shapes, worldPos, worldQuat, mass=1) {
+  const body = new CANNON.Body({ mass, material: physMat });
+  shapes.forEach(s => body.addShape(s.shape, s.offset, s.orient));
+  body.position.set(worldPos.x, worldPos.y, worldPos.z);
+  body.quaternion.set(worldQuat.x, worldQuat.y, worldQuat.z, worldQuat.w);
+  body.linearDamping = parseFloat($('physDamp').value);
+  body.angularDamping = parseFloat($('physDamp').value);
+  physWorld.addBody(body);
+  target._body = body;
+  return body;
+}
+
+function getCanvasBounds() {
+  // Visible width/height at z=0 from current camera, matching the poster aspect.
+  const dist = camera.position.length();
+  const visH = 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const visW = visH * (poster.wIn / poster.hIn);
+  const pad = parseFloat($('physPad').value || 0);
+  const depth = parseFloat($('physDepth').value || 4);
+  return {
+    halfW: visW/2 + pad,
+    halfH: visH/2 + pad,
+    halfD: depth/2,
+  };
+}
+
+function buildWalls() {
+  physWalls.forEach(b => physWorld.removeBody(b));
+  physWalls = [];
+  const mode = $('physWalls').value;
+  if (mode === 'none') return;
+  const { halfW, halfH, halfD } = getCanvasBounds();
+  // Each side: {normal pointing INTO the volume, offset (signed distance from origin to wall along that normal)}
+  const sides = mode === 'floor'
+    ? [{ n: new CANNON.Vec3(0,1,0), pos: new THREE.Vector3(0, -halfH, 0) }]
+    : [
+        { n: new CANNON.Vec3(0,1,0),  pos: new THREE.Vector3(0, -halfH, 0) }, // floor
+        { n: new CANNON.Vec3(0,-1,0), pos: new THREE.Vector3(0,  halfH, 0) }, // ceiling
+        { n: new CANNON.Vec3(1,0,0),  pos: new THREE.Vector3(-halfW, 0, 0) }, // left
+        { n: new CANNON.Vec3(-1,0,0), pos: new THREE.Vector3( halfW, 0, 0) }, // right
+        { n: new CANNON.Vec3(0,0,1),  pos: new THREE.Vector3(0, 0, -halfD) }, // back
+        { n: new CANNON.Vec3(0,0,-1), pos: new THREE.Vector3(0, 0,  halfD) }, // front
+      ];
+  sides.forEach(({n, pos}) => {
+    const b = new CANNON.Body({ mass: 0, material: physMat });
+    b.addShape(new CANNON.Plane());
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0,0,1), new THREE.Vector3(n.x, n.y, n.z));
+    b.quaternion.set(q.x, q.y, q.z, q.w);
+    b.position.set(pos.x, pos.y, pos.z);
+    physWorld.addBody(b);
+    physWalls.push(b);
+  });
+}
+
+function clampInsideCanvas() {
+  const { halfW, halfH, halfD } = getCanvasBounds();
+  const inset = 0.5;
+  function clampBody(body, radius=0.5) {
+    body.position.x = Math.max(-halfW + inset + radius, Math.min(halfW - inset - radius, body.position.x));
+    body.position.y = Math.max(-halfH + inset + radius, Math.min(halfH - inset - radius, body.position.y));
+    body.position.z = Math.max(-halfD + inset + radius, Math.min(halfD - inset - radius, body.position.z));
+  }
+  rings.forEach(r => { if (r._body) clampBody(r._body, r.opts.radius + r.opts.tube); });
+  linkGroups.forEach(lg => { if (lg._body) clampBody(lg._body, 1.5); });
+}
+
+function startPhysics() {
+  // Build a body for each non-linked ring; one combined body per linked group
+  rings.forEach(r => {
+    if (r._linkGroup) return; // handled per group
+    const shapes = (r.opts.shape === 'glyph') ? buildGlyphShape(r.mesh) : buildRingShape(r.opts);
+    // Compose pivot world transforms
+    r.pivot.updateMatrixWorld(true);
+    r.pivot.getWorldPosition(tmpV);
+    // Combine pivot rotation with mesh tilt
+    tmpE.set(THREE.MathUtils.degToRad(r.opts.tiltX), THREE.MathUtils.degToRad(r.opts.tiltY), THREE.MathUtils.degToRad(r.opts.tiltZ));
+    tmpQ.setFromEuler(tmpE);
+    const body = attachBody(r, shapes, tmpV, tmpQ, 1);
+    // Initial random velocity
+    const v = parseFloat($('physInit').value);
+    body.velocity.set((Math.random()-0.5)*v, (Math.random()-0.5)*v, (Math.random()-0.5)*v);
+    body.angularVelocity.set((Math.random()-0.5)*2, (Math.random()-0.5)*2, (Math.random()-0.5)*2);
+  });
+  linkGroups.forEach(lg => {
+    // Combined compound body for the entire link group, in group-local coords
+    const shapes = [];
+    lg.rings.forEach(r => {
+      const ss = (r.opts.shape === 'glyph') ? buildGlyphShape(r.mesh) : buildRingShape(r.opts);
+      const offBase = new CANNON.Vec3(r.pivot.position.x, r.pivot.position.y, r.pivot.position.z);
+      const ringQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+        THREE.MathUtils.degToRad(r.opts.tiltX),
+        THREE.MathUtils.degToRad(r.opts.tiltY),
+        THREE.MathUtils.degToRad(r.opts.tiltZ)
+      ));
+      const cQ = new CANNON.Quaternion(ringQ.x, ringQ.y, ringQ.z, ringQ.w);
+      ss.forEach(s => {
+        // Rotate the local sphere offset by the ring's orientation, then add ring's local position
+        const off = cQ.vmult(s.offset).vadd(offBase);
+        shapes.push({ shape: s.shape, offset: off, orient: cQ });
+      });
+    });
+    lg.group.updateMatrixWorld(true);
+    lg.group.getWorldPosition(tmpV);
+    lg.group.getWorldQuaternion(tmpQ);
+    const body = attachBody(lg, shapes, tmpV, tmpQ, lg.rings.length);
+    const v = parseFloat($('physInit').value);
+    body.velocity.set((Math.random()-0.5)*v, (Math.random()-0.5)*v, (Math.random()-0.5)*v);
+    body.angularVelocity.set((Math.random()-0.5)*2, (Math.random()-0.5)*2, (Math.random()-0.5)*2);
+  });
+  buildWalls();
+  clampInsideCanvas();
+  physEnabled = true;
+  $('physToggle').textContent = 'Disable Physics';
+  $('physToggle').style.background = '#2d6b1f';
+}
+
+function stopPhysics() {
+  physEnabled = false;
+  rings.forEach(r => { if (r._body) { physWorld.removeBody(r._body); r._body = null; } });
+  linkGroups.forEach(lg => { if (lg._body) { physWorld.removeBody(lg._body); lg._body = null; } });
+  physWalls.forEach(b => physWorld.removeBody(b));
+  physWalls = [];
+  $('physToggle').textContent = 'Enable Physics';
+  $('physToggle').style.background = '';
+}
+
+function physBurst() {
+  if (!physEnabled) startPhysics();
+  const v = parseFloat($('physInit').value);
+  rings.forEach(r => {
+    if (!r._body) return;
+    r._body.velocity.set((Math.random()-0.5)*v*2, (Math.random()-0.5)*v*2, (Math.random()-0.5)*v*2);
+    r._body.angularVelocity.set((Math.random()-0.5)*4, (Math.random()-0.5)*4, (Math.random()-0.5)*4);
+  });
+  linkGroups.forEach(lg => {
+    if (!lg._body) return;
+    lg._body.velocity.set((Math.random()-0.5)*v*2, (Math.random()-0.5)*v*2, (Math.random()-0.5)*v*2);
+    lg._body.angularVelocity.set((Math.random()-0.5)*4, (Math.random()-0.5)*4, (Math.random()-0.5)*4);
+  });
+}
+
+$('physToggle').addEventListener('click', () => physEnabled ? stopPhysics() : startPhysics());
+$('physBurst').addEventListener('click', physBurst);
+$('physReset').addEventListener('click', () => { stopPhysics(); vortexEnabled = false; $('physVortex').textContent = 'Enable Vortex'; $('physVortex').style.background = ''; refreshRingList(); });
+
+// ----- VORTEX (tornado) -----
+let vortexEnabled = false;
+function setVortexButton() {
+  $('physVortex').textContent = vortexEnabled ? 'Disable Vortex' : 'Enable Vortex';
+  $('physVortex').style.background = vortexEnabled ? '#2d6b1f' : '';
+}
+$('physVortex').addEventListener('click', () => {
+  vortexEnabled = !vortexEnabled;
+  if (vortexEnabled && !physEnabled) startPhysics();
+  setVortexButton();
+});
+['vortSpin','vortPull','vortLift','vortFunnel'].forEach(id => {
+  const digits = (id === 'vortFunnel') ? 2 : 1;
+  setVal(id, parseFloat($(id).value), digits);
+  $(id).addEventListener('input', e => setVal(id, parseFloat(e.target.value), digits));
+});
+
+function applyVortexForces(dt) {
+  if (!vortexEnabled) return;
+  const spin = parseFloat($('vortSpin').value);
+  const pull = parseFloat($('vortPull').value);
+  const lift = parseFloat($('vortLift').value);
+  const funnel = parseFloat($('vortFunnel').value);
+  const { halfH } = getCanvasBounds();
+  const span = halfH * 2 + 1e-6;
+  const apply = (b) => {
+    const dx = b.position.x;
+    const dz = b.position.z;
+    const r = Math.sqrt(dx*dx + dz*dz) || 0.001;
+    const tx = -dz / r, tz =  dx / r; // tangential (CCW from above)
+    const ix = -dx / r, iz = -dz / r; // inward
+    const yNorm = Math.min(1, Math.max(0, (b.position.y + halfH) / span));
+    const pullFactor = 1 - funnel * yNorm;          // tighter at the bottom
+    const spinFactor = Math.min(2.5, 1 + 1.2 / Math.max(0.5, r)); // faster near axis
+    b.velocity.x += (tx * spin * spinFactor + ix * pull * pullFactor) * dt;
+    b.velocity.z += (tz * spin * spinFactor + iz * pull * pullFactor) * dt;
+    b.velocity.y += lift * dt;
+    b.angularVelocity.y += 0.4 * dt;
+  };
+  rings.forEach(r => { if (r._body) apply(r._body); });
+  linkGroups.forEach(lg => { if (lg._body) apply(lg._body); });
+}
+['physGrav','physBounce','physFric','physDamp','physInit','physDepth','physPad'].forEach(id => {
+  $(id).addEventListener('input', e => {
+    setVal(id, parseFloat(e.target.value), id==='physDamp'?3:(id==='physBounce'||id==='physFric'||id==='physPad'?2:1));
+    applyPhysParams();
+    if (physEnabled && (id === 'physDepth' || id === 'physPad')) buildWalls();
+  });
+});
+$('physWalls').addEventListener('change', () => { if (physEnabled) buildWalls(); });
+
+// Rebuild walls when the poster aspect or layout changes
+const _oldLayoutPoster = layoutPoster;
+layoutPoster = function() { _oldLayoutPoster(); if (physEnabled) buildWalls(); };
+
+
+// Poster canvas state
+const poster = { wIn: 18, hIn: 24, dpi: 300 };
+const PAPER = {
+  '11x17': [11,17], '13x19':[13,19], '18x24':[18,24], '24x36':[24,36],
+  'a4':[8.27,11.69], 'a3':[11.69,16.54], 'a2':[16.54,23.39],
+  'square':[20,20], 'story':[18,32],
+};
+
+function applyPaperPreset(key) {
+  if (key === 'custom') return;
+  const [w,h] = PAPER[key];
+  poster.wIn = w; poster.hIn = h;
+  applyOrientation();
+  $('paperW').value = poster.wIn.toFixed(2);
+  $('paperH').value = poster.hIn.toFixed(2);
+  layoutPoster();
+}
+function applyOrientation() {
+  const o = $('paperOrient').value;
+  if (o === 'landscape' && poster.hIn > poster.wIn) [poster.wIn, poster.hIn] = [poster.hIn, poster.wIn];
+  if (o === 'portrait' && poster.wIn > poster.hIn) [poster.wIn, poster.hIn] = [poster.hIn, poster.wIn];
+}
+
+$('paperPreset').addEventListener('change', e => applyPaperPreset(e.target.value));
+$('paperOrient').addEventListener('change', () => { applyOrientation(); $('paperW').value = poster.wIn.toFixed(2); $('paperH').value = poster.hIn.toFixed(2); layoutPoster(); });
+$('paperW').addEventListener('input', e => { poster.wIn = Math.max(1, parseFloat(e.target.value)||1); $('paperPreset').value='custom'; layoutPoster(); });
+$('paperH').addEventListener('input', e => { poster.hIn = Math.max(1, parseFloat(e.target.value)||1); $('paperPreset').value='custom'; layoutPoster(); });
+$('dpi').addEventListener('change', e => poster.dpi = parseInt(e.target.value));
+
+function layoutPoster() {
+  // HERO MODE: the canvas is a full-bleed 100vw × 100vh background. The standalone
+  // studio cropped the canvas to a poster frame (60px margins + a 320px side panel),
+  // which left the embedded scene offset and letterboxed. Here we fill the whole
+  // viewport from the origin instead.
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  const c = renderer.domElement;
+  c.style.width = w + 'px'; c.style.height = h + 'px';
+  c.style.left = '0px'; c.style.top = '0px';
+  if (typeof refreshAllLineResolutions === 'function') refreshAllLineResolutions();
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+// Initialize poster fields
+$('paperW').value = poster.wIn;
+$('paperH').value = poster.hIn;
+
+async function exportImage(format) {
+  const busy = $('busy');
+  busy.textContent = format === 'pdf' ? 'Rendering high-res PDF…' : 'Rendering PNG…';
+  busy.style.display = 'flex';
+  await new Promise(r => setTimeout(r, 30));
+  try {
+    const pxW = Math.round(poster.wIn * poster.dpi);
+    const pxH = Math.round(poster.hIn * poster.dpi);
+    // Cap to a GPU-safe max. We use the WebGL context's reported max framebuffer dimension
+    // so we don't ask for an allocation the device can't fulfil (which can leave half the
+    // framebuffer blank → white strips in the export). Hard ceiling stays at 8192.
+    const gl = renderer.getContext();
+    const gpuMax = (gl.getParameter && gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)) || 8192;
+    const HARD_MAX = 8192;
+    const MAX = Math.max(2048, Math.min(HARD_MAX, gpuMax) - 32); // small safety margin
+    let scale = 1;
+    if (pxW > MAX || pxH > MAX) scale = Math.min(MAX/pxW, MAX/pxH);
+    const renderW = Math.round(pxW * scale);
+    const renderH = Math.round(pxH * scale);
+
+    const oldSize = new THREE.Vector2(); renderer.getSize(oldSize);
+    const oldPR = renderer.getPixelRatio();
+    const oldAutoRotate = controls.autoRotate;
+    const oldClearColor = renderer.getClearColor(new THREE.Color());
+    const oldClearAlpha = renderer.getClearAlpha();
+    controls.autoRotate = false;
+
+    renderer.setPixelRatio(1);
+    renderer.setSize(renderW, renderH, false);
+    renderer.setViewport(0, 0, renderW, renderH);
+    // Update LineMaterial resolution for the export render so outlines stay the same visual width
+    if (typeof refreshAllLineResolutions === 'function') refreshAllLineResolutions();
+    // Force the renderer to clear to the scene background so any pixel the scene
+    // doesn't draw to is the same color as the void (instead of transparent → white in PDF).
+    if (scene.background && scene.background.isColor) {
+      renderer.setClearColor(scene.background, 1);
+    }
+    camera.aspect = poster.wIn / poster.hIn;
+    camera.updateProjectionMatrix();
+    renderer.clear();
+    renderer.render(scene, camera);
+
+    // Composite: pre-fill with the scene background so any blank pixels from the WebGL render
+    // are filled with the same color (no more white bands at the page edges).
+    const compose = document.createElement('canvas');
+    compose.width = renderW; compose.height = renderH;
+    const cx = compose.getContext('2d');
+    if (scene.background && scene.background.isColor) {
+      cx.fillStyle = '#' + scene.background.getHexString();
+      cx.fillRect(0, 0, renderW, renderH);
+    }
+    cx.drawImage(renderer.domElement, 0, 0, renderW, renderH);
+    const dataUrl = compose.toDataURL('image/png');
+
+    // Restore preview size
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(oldClearColor, oldClearAlpha);
+    controls.autoRotate = oldAutoRotate;
+    layoutPoster();
+    if (typeof refreshAllLineResolutions === 'function') refreshAllLineResolutions();
+
+    if (format === 'png') {
+      const a = document.createElement('a');
+      a.href = dataUrl; a.download = `opal-${pxW}x${pxH}.png`; a.click();
+    } else {
+      const orient = poster.wIn > poster.hIn ? 'landscape' : 'portrait';
+      const pdf = new jsPDF({ orientation: orient, unit: 'in', format: [poster.wIn, poster.hIn], compress: true });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, poster.wIn, poster.hIn, undefined, 'FAST');
+      pdf.save(`opal-${poster.wIn}x${poster.hIn}in-${poster.dpi}dpi.pdf`);
+    }
+  } catch (e) {
+    alert('Export failed: ' + e.message);
+    console.error(e);
+  } finally {
+    busy.style.display = 'none';
+  }
+}
+
+// Presets
+$('presetOrbits').addEventListener('click', () => { defaultScene(); });
+$('presetAxis').addEventListener('click', () => {
+  while (rings.length) deleteRing(0);
+  // Stack of concentric, slowly precessing rings on a vertical column
+  const N = 9;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    const y = (t - 0.5) * 5.5;
+    const r = 1.6 - Math.abs(t - 0.5) * 1.4;
+    const r2 = makeRing({
+      radius: Math.max(0.25, r),
+      tube: 0.05 + (1 - Math.abs(t-0.5)*2) * 0.05,
+      orbitRadius: 0,
+      orbitSpeed: 0,
+      spinSpeed: (i % 2 === 0 ? 1 : -1) * (0.15 + t * 0.2),
+      tiltX: 90, tiltY: i * 12, tiltZ: 0,
+      color: i === Math.floor(N/2) ? '#fff2c8' : '#e6ecf2',
+    });
+    r2.pivot.position.y = y;
+    r2.opts._fixedY = y;
+  }
+  // Camera framed for vertical poster
+  camera.position.set(0, 0, 8);
+  camera.lookAt(0,0,0);
+  controls.target.set(0,0,0);
+  // Match poster to a tall format
+  $('paperPreset').value = '18x24';
+  applyPaperPreset('18x24');
+  selectedIdx = 0;
+  refreshRingList();
+  syncControls();
+});
+
+function initLightUI() {
+  $('envI').value = 2.82; setVal('envI', 2.82);
+  $('keyI').value = 10.0; setVal('keyI', 10.0); $('keyC').value = '#ffffff'; keyLight.color.set('#ffffff'); keyLight.intensity = 10.0;
+  $('fillI').value = 5.0;  setVal('fillI', 5.0);  $('fillC').value = '#ffffff'; fillLight.color.set('#ffffff'); fillLight.intensity = 5.0;
+  $('rimI').value = 4.75;  setVal('rimI', 4.75);  $('rimC').value = '#ffffff';  rimLight.color.set('#ffffff');  rimLight.intensity = 4.75;
+  $('ambI').value = 2.0;   setVal('ambI', 2.0);   ambient.intensity = 2.0;
+  $('bg').value = '#000000'; scene.background = new THREE.Color('#000000');
+  $('expo').value = 2.78;  setVal('expo', 2.78);  renderer.toneMappingExposure = 2.78;
+  $('autoR').value = 1.42; setVal('autoR', 1.42); controls.autoRotate = true; controls.autoRotateSpeed = 1.42 * 2;
+  $('envPreset').value = 'black'; setEnv('black');
+  rings.forEach(r => r.mat.envMapIntensity = 2.82);
+  // Extra point lights — start dim, but pre-positioned so user just turns up Intensity
+  const initExtra = (prefix, light, ix, iy, iz, color) => {
+    $(prefix + 'I').value = 0;     setVal(prefix + 'I', 0);
+    $(prefix + 'C').value = color; light.color.set(color); light.intensity = 0;
+    $(prefix + 'X').value = ix;    light.position.x = ix;
+    $(prefix + 'Y').value = iy;    light.position.y = iy;
+    $(prefix + 'Z').value = iz;    setVal(prefix + 'Z', iz, 1); light.position.z = iz;
+    $(prefix + 'D').value = 0;     setVal(prefix + 'D', 0,  1); light.distance = 0;
+  };
+  initExtra('extraA', extraA, -3,  2, 3, '#ff5577');
+  initExtra('extraB', extraB,  3, -1, 3, '#55aaff');
+}
+initLightUI();
+
+window.addEventListener('resize', () => { layoutPoster(); });
+layoutPoster();
+
+// ----- LINK GROUPS (chain / borromean) -----
+const linkGroups = [];
+let linkSpacing = 1.4;
+let groupSpinDefault = 0.3;
+
+function getSelected() { return rings.filter(r => r._selected); }
+
+function unlinkRing(r) {
+  if (!r._linkGroup) return;
+  const lg = r._linkGroup;
+  lg.group.remove(r.pivot);
+  // Reset transforms
+  r.pivot.position.set(0,0,0);
+  r.pivot.rotation.set(0,0,0);
+  orbitRoot.add(r.pivot);
+  r._linkGroup = null;
+  r._linkSlot = null;
+  lg.rings = lg.rings.filter(x => x !== r);
+  if (lg.rings.length === 0) {
+    orbitRoot.remove(lg.group);
+    const idx = linkGroups.indexOf(lg); if (idx >= 0) linkGroups.splice(idx,1);
+  }
+}
+
+function linkAsChain(selected) {
+  if (selected.length < 2) { alert('Select 2+ rings (use checkboxes) to link.'); return; }
+  // First, fully unlink any selected from existing groups
+  selected.forEach(unlinkRing);
+  const avgR = selected.reduce((s,r)=>s+r.opts.radius,0) / selected.length;
+  const avgT = selected.reduce((s,r)=>s+r.opts.tube,0) / selected.length;
+  selected.forEach(r => {
+    r.opts.radius = avgR; r.opts.tube = avgT; rebuildGeometry(r);
+  });
+  const group = new THREE.Group();
+  orbitRoot.add(group);
+  const lg = { group, rings: [], type: 'chain', spinSpeed: groupSpinDefault };
+  selected.forEach((r, i) => {
+    orbitRoot.remove(r.pivot);
+    group.add(r.pivot);
+    r._linkGroup = lg;
+    r._linkSlot = i;
+    // Center the chain on group origin
+    r.opts._fixedY = (i - (selected.length - 1) / 2) * avgR * linkSpacing;
+    r.opts.tiltX = 0;
+    r.opts.tiltY = (i % 2) * 90;
+    r.opts.tiltZ = 0;
+    r.opts.spinSpeed = 0;
+    r.opts.orbitRadius = 0;
+    lg.rings.push(r);
+  });
+  linkGroups.push(lg);
+  selected.forEach(r => r._selected = false);
+  refreshRingList(); syncControls();
+}
+
+function linkAsBorromean(selected) {
+  if (selected.length < 3) { alert('Select 3 rings for Borromean.'); return; }
+  selected = selected.slice(0,3);
+  selected.forEach(unlinkRing);
+  const avgR = selected.reduce((s,r)=>s+r.opts.radius,0) / selected.length;
+  const avgT = selected.reduce((s,r)=>s+r.opts.tube,0) / selected.length;
+  selected.forEach(r => { r.opts.radius = avgR; r.opts.tube = avgT; rebuildGeometry(r); });
+  const group = new THREE.Group();
+  orbitRoot.add(group);
+  const lg = { group, rings: [], type: 'borromean', spinSpeed: groupSpinDefault };
+  const a = avgR * 0.55;
+  selected.forEach((r, i) => {
+    orbitRoot.remove(r.pivot);
+    group.add(r.pivot);
+    r._linkGroup = lg;
+    r._linkSlot = i;
+    const ang = i * Math.PI * 2 / 3;
+    r.opts._fixedX = Math.cos(ang) * a;
+    r.opts._fixedY = Math.sin(ang) * a;
+    r.opts._fixedZ = 0;
+    r.opts.tiltX = 0;
+    r.opts.tiltY = 0;
+    r.opts.tiltZ = (ang * 180 / Math.PI) + 90;
+    r.opts.spinSpeed = 0;
+    r.opts.orbitRadius = 0;
+    lg.rings.push(r);
+  });
+  linkGroups.push(lg);
+  selected.forEach(r => r._selected = false);
+  refreshRingList(); syncControls();
+}
+
+function unlinkSelected() {
+  const sel = getSelected();
+  const targets = sel.length ? sel : (rings[selectedIdx] ? [rings[selectedIdx]] : []);
+  targets.forEach(r => {
+    if (r._linkGroup) {
+      // Unlink the entire group
+      [...r._linkGroup.rings].forEach(unlinkRing);
+    }
+    r.opts._fixedX = r.opts._fixedY = r.opts._fixedZ = undefined;
+    r._selected = false;
+  });
+  refreshRingList(); syncControls();
+}
+
+$('linkChain').addEventListener('click', () => linkAsChain(getSelected()));
+$('linkBorr').addEventListener('click', () => linkAsBorromean(getSelected()));
+$('unlinkBtn').addEventListener('click', unlinkSelected);
+$('grpSpin').addEventListener('input', e => {
+  const v = parseFloat(e.target.value); setVal('grpSpin', v);
+  groupSpinDefault = v;
+  // Apply to the link group of the currently selected ring (or all)
+  const r = rings[selectedIdx];
+  if (r && r._linkGroup) r._linkGroup.spinSpeed = v;
+  else linkGroups.forEach(lg => lg.spinSpeed = v);
+});
+$('linkSpace').addEventListener('input', e => {
+  linkSpacing = parseFloat(e.target.value); setVal('linkSpace', linkSpacing);
+  // Re-space existing chains
+  linkGroups.filter(lg => lg.type === 'chain').forEach(lg => {
+    const avgR = lg.rings.reduce((s,r)=>s+r.opts.radius,0) / lg.rings.length;
+    lg.rings.forEach((r, i) => {
+      r.opts._fixedY = (i - (lg.rings.length - 1) / 2) * avgR * linkSpacing;
+    });
+  });
+});
+
+// ----- PERSISTENCE -----
+const STORAGE_KEY = 'opal.presets';
+const AUTO_KEY = 'opal.autosave';
+
+function serializeState() {
+  const ringIndex = new Map();
+  rings.forEach((r, i) => ringIndex.set(r, i));
+  return {
+    version: 1,
+    poster: { wIn: poster.wIn, hIn: poster.hIn, dpi: poster.dpi },
+    paperPreset: $('paperPreset').value,
+    paperOrient: $('paperOrient').value,
+    rings: rings.map(r => {
+      const o = {...r.opts};
+      // strip transient runtime keys
+      delete o._fixedX; delete o._fixedY; delete o._fixedZ;
+      // _svgShapes contains THREE.Shape objects (not JSON-safe). The SVG source
+      // lives in _svgText and is re-parsed on restore inside makeRing.
+      delete o._svgShapes;
+      return o;
+    }),
+    linkGroups: linkGroups.map(lg => ({
+      type: lg.type,
+      spinSpeed: lg.spinSpeed,
+      ringIdx: lg.rings.map(r => ringIndex.get(r)),
+    })),
+    linkSpacing,
+    wordGroups: wordGroups.map(g => { const c = {...g}; delete c._uiExpanded; return c; }),
+    lighting: {
+      envPreset: $('envPreset').value,
+      envI: parseFloat($('envI').value),
+      keyI: keyLight.intensity, keyC: '#'+keyLight.color.getHexString(),
+      fillI: fillLight.intensity, fillC: '#'+fillLight.color.getHexString(),
+      rimI: rimLight.intensity, rimC: '#'+rimLight.color.getHexString(),
+      ambI: ambient.intensity,
+      bg: '#'+scene.background.getHexString(),
+      expo: renderer.toneMappingExposure,
+      autoR: parseFloat($('autoR').value),
+    },
+    camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z,
+              tx: controls.target.x, ty: controls.target.y, tz: controls.target.z },
+  };
+}
+
+function restoreState(s) {
+  if (!s || !s.rings) return;
+  // Wipe scene
+  while (rings.length) deleteRing(0);
+  while (linkGroups.length) {
+    const lg = linkGroups.pop();
+    orbitRoot.remove(lg.group);
+  }
+  // Poster
+  if (s.poster) { poster.wIn = s.poster.wIn; poster.hIn = s.poster.hIn; poster.dpi = s.poster.dpi; }
+  if (s.paperPreset) $('paperPreset').value = s.paperPreset;
+  if (s.paperOrient) $('paperOrient').value = s.paperOrient;
+  $('paperW').value = poster.wIn; $('paperH').value = poster.hIn;
+  $('dpi').value = poster.dpi;
+  // Word groups (must be restored before rings so wordId tags line up)
+  wordGroups.length = 0;
+  let maxId = 0;
+  // Use createWordGroup once to harvest the current default-shape so old autosaves
+  // missing fields (direction, transmission, emissiveIntensity, etc.) fill in safely.
+  const defaultsTemplate = createWordGroup({});
+  wordGroups.length = 0; // discard the template; we just needed its shape
+  (s.wordGroups || []).forEach(g => {
+    const merged = Object.assign({}, defaultsTemplate, g);
+    delete merged._uiExpanded;
+    wordGroups.push(merged);
+    const num = parseInt((g.id || '').replace(/\D/g,''), 10);
+    if (!isNaN(num) && num > maxId) maxId = num;
+  });
+  nextWordId = Math.max(nextWordId, maxId + 1);
+  refreshWordGroupsList();
+  // Rings
+  s.rings.forEach(o => makeRing(o));
+  // Lighting
+  const L = s.lighting || {};
+  if (L.envPreset) { $('envPreset').value = L.envPreset; setEnv(L.envPreset); }
+  if (L.envI != null) { $('envI').value = L.envI; setVal('envI', L.envI); rings.forEach(r => r.mat.envMapIntensity = L.envI); }
+  if (L.keyI != null) { $('keyI').value = L.keyI; setVal('keyI', L.keyI); keyLight.intensity = L.keyI; }
+  if (L.keyC) { $('keyC').value = L.keyC; keyLight.color.set(L.keyC); }
+  if (L.fillI != null) { $('fillI').value = L.fillI; setVal('fillI', L.fillI); fillLight.intensity = L.fillI; }
+  if (L.fillC) { $('fillC').value = L.fillC; fillLight.color.set(L.fillC); }
+  if (L.rimI != null) { $('rimI').value = L.rimI; setVal('rimI', L.rimI); rimLight.intensity = L.rimI; }
+  if (L.rimC) { $('rimC').value = L.rimC; rimLight.color.set(L.rimC); }
+  if (L.ambI != null) { $('ambI').value = L.ambI; setVal('ambI', L.ambI); ambient.intensity = L.ambI; }
+  if (L.bg) { $('bg').value = L.bg; scene.background = new THREE.Color(L.bg); }
+  if (L.expo != null) { $('expo').value = L.expo; setVal('expo', L.expo); renderer.toneMappingExposure = L.expo; }
+  if (L.autoR != null) { $('autoR').value = L.autoR; setVal('autoR', L.autoR); controls.autoRotate = L.autoR > 0.01; controls.autoRotateSpeed = L.autoR * 2; }
+  // Camera
+  if (s.camera) {
+    camera.position.set(s.camera.x, s.camera.y, s.camera.z);
+    controls.target.set(s.camera.tx, s.camera.ty, s.camera.tz);
+  }
+  // Link groups
+  if (s.linkSpacing) { linkSpacing = s.linkSpacing; $('linkSpace').value = linkSpacing; setVal('linkSpace', linkSpacing); }
+  (s.linkGroups || []).forEach(lgData => {
+    const sel = lgData.ringIdx.map(i => rings[i]).filter(Boolean);
+    if (sel.length < 2) return;
+    sel.forEach(r => r._selected = true);
+    if (lgData.type === 'borromean') linkAsBorromean(sel); else linkAsChain(sel);
+    const lg = linkGroups[linkGroups.length - 1];
+    if (lg && lgData.spinSpeed != null) lg.spinSpeed = lgData.spinSpeed;
+  });
+  selectedIdx = 0;
+  refreshRingList();
+  syncControls();
+  layoutPoster();
+}
+
+function getPresets() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch { return {}; }
+}
+function setPresets(p) { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }
+
+function refreshSavedList() {
+  const sel = $('savedList');
+  const cur = sel.value;
+  const presets = getPresets();
+  sel.innerHTML = '<option value="">— select —</option>';
+  Object.keys(presets).sort().forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    sel.appendChild(o);
+  });
+  if (cur && presets[cur]) sel.value = cur;
+}
+
+$('saveDesign').addEventListener('click', () => {
+  const name = prompt('Name this design:');
+  if (!name) return;
+  const presets = getPresets();
+  if (presets[name] && !confirm(`Overwrite "${name}"?`)) return;
+  presets[name] = serializeState();
+  setPresets(presets);
+  refreshSavedList();
+  $('savedList').value = name;
+});
+$('overwriteDesign').addEventListener('click', () => {
+  const name = $('savedList').value;
+  if (!name) { alert('Pick a saved design first.'); return; }
+  const presets = getPresets();
+  presets[name] = serializeState();
+  setPresets(presets);
+  alert(`Updated "${name}".`);
+});
+$('deleteDesign').addEventListener('click', () => {
+  const name = $('savedList').value;
+  if (!name) return;
+  if (!confirm(`Delete "${name}"?`)) return;
+  const presets = getPresets();
+  delete presets[name];
+  setPresets(presets);
+  refreshSavedList();
+});
+$('savedList').addEventListener('change', e => {
+  const name = e.target.value;
+  if (!name) return;
+  const presets = getPresets();
+  if (presets[name]) restoreState(presets[name]);
+});
+$('exportJson').addEventListener('click', () => {
+  const data = JSON.stringify({ presets: getPresets(), current: serializeState() }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'opal-presets.json'; a.click();
+});
+$('importJson').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const text = await file.text();
+  try {
+    const data = JSON.parse(text);
+    if (data.presets) {
+      const merged = Object.assign(getPresets(), data.presets);
+      setPresets(merged);
+      refreshSavedList();
+      alert(`Imported ${Object.keys(data.presets).length} preset(s).`);
+    }
+    if (data.current) restoreState(data.current);
+    else if (data.rings) restoreState(data); // raw state
+  } catch (err) { alert('Import failed: ' + err.message); }
+  e.target.value = '';
+});
+
+// Load default font (Sidepiece-HoneyButter)
+loadDefaultFont();
+
+// Autosave on changes (debounced) and before unload
+let autoTimer = null;
+function autosave() {
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(() => {
+    try { localStorage.setItem(AUTO_KEY, JSON.stringify(serializeState())); } catch {}
+  }, 600);
+}
+document.addEventListener('input', autosave, true);
+document.addEventListener('change', autosave, true);
+defaultScene();
+
+// ===== HERO MODE boot: auto-rotate, full-viewport, auto-fit, no persistence =====
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.6;
+// Drag to rotate only — no wheel-zoom (so page scroll isn't trapped) and no pan.
+controls.enableZoom = false;
+controls.enablePan = false;
+
+// Frame the whole composition so it fills the viewport (composition-agnostic,
+// so it keeps working when a different scene is published).
+function fitCameraToScene(margin = 1.18){
+  const box = new THREE.Box3().setFromObject(orbitRoot);
+  if (box.isEmpty()) return;
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const fov = camera.fov * Math.PI / 180;
+  const fitH = (size.y / 2) / Math.tan(fov / 2);
+  const fitW = (size.x / 2) / (Math.tan(fov / 2) * camera.aspect);
+  const dist = Math.max(fitH, fitW, 0.1) * margin;
+  controls.target.copy(center);
+  camera.position.set(center.x, center.y, center.z + dist);
+  camera.near = Math.max(dist / 100, 0.01);
+  camera.far  = dist * 100;
+  camera.updateProjectionMatrix();
+  controls.update();
+}
+
+function heroResize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  const c = renderer.domElement;
+  c.style.width = w + 'px'; c.style.height = h + 'px';
+  c.style.left = '0px'; c.style.top = '0px';
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  if (typeof refreshAllLineResolutions === 'function') refreshAllLineResolutions();
+  fitCameraToScene();
+}
+window.addEventListener('resize', heroResize);
+heroResize();
+// ===== end hero boot =====
+
+// ----- COLLAPSIBLE PANEL SECTIONS -----
+(function setupCollapsibleSections() {
+  const COLLAPSE_KEY = 'opal.collapsedSections.v1';
+  let collapsed = {};
+  try { collapsed = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}'); } catch {}
+  const headers = document.querySelectorAll('#panel h3');
+  headers.forEach(h => {
+    const key = h.textContent.trim();
+    const chev = document.createElement('span');
+    chev.className = 'chev';
+    chev.textContent = '▾';
+    h.appendChild(chev);
+    const apply = (isCollapsed) => {
+      h.classList.toggle('collapsed', isCollapsed);
+      let n = h.nextElementSibling;
+      while (n && n.tagName !== 'H3') {
+        n.style.display = isCollapsed ? 'none' : '';
+        n = n.nextElementSibling;
+      }
+    };
+    apply(!!collapsed[key]);
+    h.addEventListener('click', () => {
+      const next = !h.classList.contains('collapsed');
+      apply(next);
+      collapsed[key] = next;
+      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapsed)); } catch {}
+    });
+  });
+})();
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  const t = clock.elapsedTime;
+
+  if (physEnabled) {
+    applyVortexForces(Math.min(dt, 1/30));
+    physWorld.step(1/60, dt, 3);
+    rings.forEach(r => {
+      if (r._linkGroup) return;
+      if (!r._body) return;
+      const p = r._body.position, q = r._body.quaternion;
+      r.pivot.position.set(p.x, p.y, p.z);
+      r.pivot.quaternion.set(q.x, q.y, q.z, q.w);
+      // Reset mesh rotation to identity (body holds the orientation)
+      r.mesh.rotation.set(0,0,0);
+      if (r.lineSegs) r.lineSegs.rotation.copy(r.mesh.rotation);
+    });
+    linkGroups.forEach(lg => {
+      if (!lg._body) return;
+      const p = lg._body.position, q = lg._body.quaternion;
+      lg.group.position.set(p.x, p.y, p.z);
+      lg.group.quaternion.set(q.x, q.y, q.z, q.w);
+      // Children keep their local poses set at link-time; clear runtime tilt overrides
+      lg.rings.forEach(r => {
+        r.mesh.rotation.set(
+          THREE.MathUtils.degToRad(r.opts.tiltX),
+          THREE.MathUtils.degToRad(r.opts.tiltY),
+          THREE.MathUtils.degToRad(r.opts.tiltZ)
+        );
+        if (r.lineSegs) r.lineSegs.rotation.copy(r.mesh.rotation);
+      });
+    });
+  } else {
+    // First, position any word groups in orbit mode (animated each frame)
+    wordGroups.forEach(g => { if (g.layoutMode === 'orbit') applyGroupLayout(g, t); });
+
+    rings.forEach(r => {
+      const o = r.opts;
+      if (r._linkGroup) return; // linked rings handled by group below
+      const wg = o.wordId ? findWordGroup(o.wordId) : null;
+      const inOrbitWord = wg && wg.layoutMode === 'orbit';
+      if (!inOrbitWord) {
+        if (o._fixedX !== undefined || o._fixedY !== undefined || o._fixedZ !== undefined) {
+          r.pivot.position.set(o._fixedX || 0, o._fixedY || 0, o._fixedZ || 0);
+        } else {
+          const ang = t * o.orbitSpeed + o.orbitPhase;
+          r.pivot.position.set(Math.cos(ang) * o.orbitRadius, Math.sin(ang * 0.7) * o.orbitRadius * 0.3, Math.sin(ang) * o.orbitRadius);
+        }
+        r.pivot.quaternion.identity();
+      }
+      // Mesh-local tilt + spin still apply (relative to pivot's orientation)
+      r.mesh.rotation.x = THREE.MathUtils.degToRad(o.tiltX);
+      r.mesh.rotation.y = THREE.MathUtils.degToRad(o.tiltY) + t * o.spinSpeed;
+      r.mesh.rotation.z = THREE.MathUtils.degToRad(o.tiltZ);
+      if (r.lineSegs) r.lineSegs.rotation.copy(r.mesh.rotation);
+    });
+    linkGroups.forEach(lg => {
+      lg.group.position.set(0,0,0);
+      lg.group.quaternion.identity();
+      lg.group.rotation.y = t * lg.spinSpeed;
+      lg.rings.forEach(r => {
+        const o = r.opts;
+        r.pivot.position.set(o._fixedX || 0, o._fixedY || 0, o._fixedZ || 0);
+        r.mesh.rotation.x = THREE.MathUtils.degToRad(o.tiltX);
+        r.mesh.rotation.y = THREE.MathUtils.degToRad(o.tiltY);
+        r.mesh.rotation.z = THREE.MathUtils.degToRad(o.tiltZ);
+      });
+    });
+  }
+
+  stepTrails(Math.min(dt, 1/30));
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+} catch (e) { window.__errs.push('INIT: ' + (e.stack || e.message)); console.error(e); }
+</script>
+</body>
+</html>
