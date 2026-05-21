@@ -10,63 +10,56 @@ This folder powers the full-bleed 3D scene embedded on the homepage
 | `/scene/` | Clean, full-bleed hero. All controls hidden. This is what the homepage shows. |
 | `/scene/?edit` | The **full studio UI** — lighting, motion, words, physics/vortex, materials, objects. Zoom/pan enabled. |
 
-## Statements
+## The workflow: you compose, Claude publishes
 
-A **statement** is a published, named scene — a visual message you can revisit,
-re-publish, and enhance over time. They live in `scene/statements/`:
-
-```
-scene/statements/
-  manifest.json        ← the list of statements + which one is "active" (live)
-  boundless.json       ← one statement (a full serialized scene)
-  mindful.json         ← another …
-```
-
-`manifest.json` looks like:
-
-```json
-{
-  "active": "boundless",
-  "items": [
-    { "slug": "boundless", "title": "Boundless", "date": "2026-05-20" },
-    { "slug": "mindful",   "title": "Mindful",   "date": "2026-06-01" }
-  ]
-}
-```
-
-The live homepage hero loads `items` → finds `active` → loads `statements/<active>.json`.
-If there's no active statement, it falls back to the built-in default scene.
-
-## Workflow (save / revisit / publish)
-
-1. Run the site locally so `fetch` works:
+1. **Compose** — open the studio (locally is easiest):
    ```
    cd /Users/christiansolorzano/Documents/OPL
    python3 -m http.server 8000
    ```
-   Open **http://localhost:8000/scene/?edit**
+   Go to **http://localhost:8000/scene/?edit** and design the scene
+   (words, motion, lighting, etc.).
 
-2. **Revisit** a past statement: pick it in the **Statements → Revisit** dropdown and
-   click **Load**. Tweak / enhance it with the panel (words, motion, lighting, etc.).
+2. **Save a version** — in the **Save / Publish** panel, type an optional title and
+   click **⬇ Save version**. This downloads `opal-scene-<timestamp>[-title].json`
+   to your Downloads.
 
-3. **Save**: click **＋ Save as Statement…**, give it a name. This downloads
-   `<slug>.json` and marks it as the live one.
+3. **Tell Claude to publish** — say *"publish"* (or "publish the boundless one").
+   Claude will:
+   - move the file into `scene/statements/<id>.json`
+   - add it to `manifest.json` and set it as `active` (the live one)
+   - commit & push → the homepage updates in ~1 min.
 
-4. **Publish**: 
-   - Move the downloaded `<slug>.json` into `scene/statements/`
-   - Click **⬇ Download manifest.json** and replace `scene/statements/manifest.json`
-   - Commit & push both:
-     ```
-     git add scene/statements/
-     git commit -m "Publish statement: <name>"
-     git push
-     ```
-   GitHub Pages redeploys and the homepage shows the new statement on next load.
+You don't commit anything yourself — Claude handles publishing.
 
-5. To re-publish an **older** statement without changing it: select it, click
-   **Set Live**, then **Download manifest.json** and commit just the manifest.
+## Version history & reverting
 
-## What persists in a statement
+Every published scene is kept as its own timestamped file in `scene/statements/`,
+listed in `manifest.json`:
+
+```json
+{
+  "active": "20260520-2106-boundless",
+  "versions": [
+    { "id": "20260520-2106-boundless", "title": "Boundless", "ts": "2026-05-20T21:06:00.000Z" },
+    { "id": "20260514-0930-mindful",   "title": "Mindful",   "ts": "2026-05-14T09:30:00.000Z" }
+  ]
+}
+```
+
+- **Revisit / enhance an old one:** in `?edit`, pick it under **Revisit a published
+  version → Load**, tweak it, then Save version again (a new timestamp — the old one
+  stays).
+- **Revert the live scene:** just tell Claude *"revert the homepage to <version>"* and
+  it re-points `active` and pushes. Nothing is ever overwritten.
+
+## How the live hero loads
+
+`bootScene()` reads `statements/manifest.json` → finds `active` → loads
+`statements/<active>.json`. If there's no active version it falls back to the built-in
+`defaultScene()` (the current default look).
+
+## What persists in a version
 
 Per-object spin / orbit / tilt (the motion), word groups & layout, auto-rotate,
 lighting & environment, materials, links, and camera. (Physics/vortex slider values
@@ -76,8 +69,7 @@ are live-only for experimenting — not yet serialized.)
 
 - The live hero (`/scene/`) always re-frames the camera to fill the viewport, so the
   composition stays responsive. In `?edit`, the camera you leave is kept while composing.
-- `My Saved Designs` (in the panel) is a separate, browser-local scratchpad
-  (localStorage) — handy for quick drafts, but **not** published. Statements are the
-  published, committed archive.
+- `My Saved Designs` in the panel is a separate, browser-local scratchpad (localStorage)
+  for quick drafts — not published.
 - The default font is embedded (`assets/font-data.js`) so glyphs render even before
   the network font loads.

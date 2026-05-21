@@ -239,22 +239,24 @@
     <button class="btn" id="presetOrbits">Orbits</button>
   </div>
 
-  <h3>Statements</h3>
-  <div class="row"><label>Revisit</label>
-    <select id="stmtList"><option value="">— select —</option></select>
+  <h3>Save / Publish</h3>
+  <div class="row"><label>Title</label>
+    <input type="text" id="stmtTitle" placeholder="e.g. Boundless" style="width:100%;background:#fff;border:1px solid #c8c8cc;border-radius:4px;padding:3px 5px;font-size:11px;color:#1a1a1c"/>
     <span></span>
   </div>
   <div class="btn-row">
-    <button class="btn" id="stmtLoad">Load</button>
-    <button class="btn" id="stmtSetLive">Set Live</button>
+    <button class="btn" id="stmtSave" style="flex:1;background:#1a1a1c;color:#fff;border-color:#1a1a1c">⬇ Save version</button>
+  </div>
+  <div id="stmtMsg" style="font-size:10px;color:#666;margin:4px 0 8px 0;">Downloads a timestamped scene file. Then tell Claude “publish” and it goes live on the homepage.</div>
+
+  <div class="subhead">Revisit a published version</div>
+  <div class="row"><label>Versions</label>
+    <select id="stmtVersions"><option value="">— select —</option></select>
+    <span></span>
   </div>
   <div class="btn-row">
-    <button class="btn" id="stmtSaveAs" style="flex:1;background:#1a1a1c;color:#fff;border-color:#1a1a1c">＋ Save as Statement…</button>
+    <button class="btn" id="stmtLoad" title="Load this version into the editor to revisit / enhance">Load</button>
   </div>
-  <div class="btn-row">
-    <button class="btn" id="stmtManifest" style="flex:1">⬇ Download manifest.json</button>
-  </div>
-  <div style="font-size:10px;color:#666;margin:2px 0 6px 0;">Each statement is a published, revisitable scene. Save → commit the downloaded <b>&lt;slug&gt;.json</b> + <b>manifest.json</b> into <b>scene/statements/</b>. "Set Live" chooses which the homepage shows.</div>
 
   <h3>My Saved Designs</h3>
   <div class="row"><label>Load</label>
@@ -2665,51 +2667,51 @@ async function bootScene() {
 }
 bootScene();
 
-// ===== Statements manager (edit mode only) =====
-if (EDIT) (function statementsUI(){
-  let manifest = { active: null, items: [] };
-  const sel = document.getElementById('stmtList');
+// ===== Save versions + revisit (edit mode only) =====
+// You compose here, click "Save version" to download a timestamped scene file,
+// then tell Claude to publish it — Claude commits it as the active statement and
+// pushes it live, keeping every version so we can revisit / revert. See README.
+if (EDIT) (function versionsUI(){
+  const $id = id => document.getElementById(id);
   const slugify = s => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  function render() {
-    if (!sel) return;
-    sel.innerHTML = '<option value="">— select —</option>' + (manifest.items || []).map(it =>
-      `<option value="${it.slug}">${it.title}${it.slug === manifest.active ? ' • live' : ''}</option>`).join('');
-  }
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  const msg = t => { const el = $id('stmtMsg'); if (el) el.textContent = t; };
   function download(name, obj) {
     const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
+  // Save version → timestamped download for Claude to publish
+  const sv = $id('stmtSave');
+  if (sv) sv.addEventListener('click', () => {
+    const title = ($id('stmtTitle').value || '').trim();
+    const id = stamp(new Date()) + (slugify(title) ? '-' + slugify(title) : '');
+    const state = serializeState();
+    if (title) state._title = title;
+    download('opal-scene-' + id + '.json', state);
+    msg('Saved opal-scene-' + id + '.json to Downloads. Tell Claude “publish” to make it live.');
+  });
+  // Revisit a published version → load it back into the editor
+  const sel = $id('stmtVersions');
   async function loadManifest() {
-    try { const r = await fetch('statements/manifest.json', { cache: 'no-store' }); if (r.ok) manifest = await r.json(); } catch {}
-    if (!manifest.items) manifest.items = [];
-    render();
+    let m = { active: null, versions: [] };
+    try { const r = await fetch('statements/manifest.json', { cache: 'no-store' }); if (r.ok) m = await r.json(); } catch {}
+    const items = m.versions || [];
+    if (sel) sel.innerHTML = '<option value="">— select —</option>' + items.map(v =>
+      `<option value="${v.id}">${v.title || v.id}${v.ts ? ' — ' + new Date(v.ts).toLocaleString() : ''}${v.id === m.active ? ' • LIVE' : ''}</option>`).join('');
   }
-  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
-  on('stmtLoad', async () => {
-    const slug = sel.value; if (!slug) return;
+  const ld = $id('stmtLoad');
+  if (ld) ld.addEventListener('click', async () => {
+    const id = sel.value; if (!id) return;
+    msg('Loading ' + id + '…');
     try {
-      const st = await (await fetch('statements/' + slug + '.json', { cache: 'no-store' })).json();
+      const st = await (await fetch('statements/' + id + '.json', { cache: 'no-store' })).json();
       const state = st.current || (st.rings ? st : null);
-      if (state) restoreState(state); else alert('That statement file looks empty.');
-    } catch (e) { alert('Could not load ' + slug + ': ' + e.message); }
+      if (state) { restoreState(state); msg('Loaded ' + id + '. Enhance it, then Save version.'); }
+      else msg('That version looks empty.');
+    } catch (e) { msg('Load failed: ' + e.message); }
   });
-  on('stmtSaveAs', () => {
-    const title = prompt('Name this statement (e.g. "Boundless"):'); if (!title) return;
-    const slug = slugify(title); if (!slug) { alert('Please use letters/numbers in the name.'); return; }
-    download(slug + '.json', serializeState());
-    if (!manifest.items.some(it => it.slug === slug))
-      manifest.items.push({ slug, title: title.trim(), date: new Date().toISOString().slice(0, 10) });
-    manifest.active = slug;          // a newly saved statement becomes the live one
-    render();
-    alert('Downloaded ' + slug + '.json (and set it live).\n\nNext:\n1) Move it into scene/statements/\n2) Click "Download manifest.json" and replace scene/statements/manifest.json\n3) Commit & push both.');
-  });
-  on('stmtSetLive', () => {
-    const slug = sel.value; if (!slug) return;
-    manifest.active = slug; render();
-    alert('"' + slug + '" set live. Click "Download manifest.json" and commit it to publish.');
-  });
-  on('stmtManifest', () => download('manifest.json', manifest));
   loadManifest();
 })();
 
