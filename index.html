@@ -67,9 +67,8 @@
         touch-action: pan-y;   /* catch touches as a normal element → page scrolls */
       }
     }
-    /* The O.P/A.L slash — a tapered diagonal that takes the place of the subtitle "/".
-       JS anchors left/top to that glyph so it always sits between the words. */
-    #slash-slot { color: transparent; }
+    /* The O.P/A.L slash — a tapered diagonal anchored directly behind the subtitle "/"
+       (JS sets left/top to that glyph's centre, so it tracks on every screen). */
     #hero-slash {
       position: absolute;
       left: 50%; top: 50%;
@@ -77,12 +76,19 @@
       height: 150%;
       background: #fff;
       clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);   /* tapered: points at ends, wide mid */
-      transform: translate(-50%, -50%) rotate(24deg);
+      transform: translate(-50%, -50%) rotate(24deg) scaleY(0);   /* collapsed until the burst */
       transform-origin: center;
+      opacity: 0;
       z-index: 1;
       pointer-events: none;
       filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+      transition: transform 3s cubic-bezier(0.16, 0.84, 0.3, 1), opacity 0.9s ease;
     }
+    #hero-slash.go {   /* grows from the center outward when the burst begins */
+      transform: translate(-50%, -50%) rotate(24deg) scaleY(1);
+      opacity: 1;
+    }
+    @media (prefers-reduced-motion: reduce) { #hero-slash { transition: none; } }
     /* Keep the nav icons legible over both the dark hero and the light content
        below: difference blend paints them as the inverse of whatever's behind. */
     nav { mix-blend-mode: difference; }
@@ -205,8 +211,9 @@
       }, 2600);
     })();
 
-    /* Anchor the tapered slash to the subtitle "/" so it stays between the words. */
-    (function placeSlash() {
+    /* Anchor the tapered slash precisely onto the subtitle "/" (desktop + mobile),
+       then grow it from the centre when the scene's burst fires. */
+    (function heroSlash() {
       const slash = document.getElementById('hero-slash');
       const slot  = document.getElementById('slash-slot');
       const hero  = document.getElementById('hero-canvas');
@@ -218,8 +225,11 @@
       }
       place();
       window.addEventListener('resize', place);
+      window.addEventListener('orientationchange', () => setTimeout(place, 200));
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
-      setTimeout(place, 300);
+      [120, 400, 1000].forEach(t => setTimeout(place, t));   // re-anchor as layout settles
+      // Grow from the centre on load (~3s); the scene's burst follows at 4s.
+      setTimeout(() => { place(); slash.classList.add('go'); }, 400);
     })();
   </script>
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
