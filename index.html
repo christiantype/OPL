@@ -52,12 +52,20 @@
       border: 0;
       display: block;
     }
-    /* On touch devices the canvas (OrbitControls, touch-action:none) swallows the
-       drag and blocks page scroll. Let touches pass through to the page instead —
-       the scene still auto-rotates and runs physics, just isn't drag-rotatable. */
+    /* On touch devices an iframe traps scroll (pointer-events:none on iframes is
+       unreliable on iOS). Put a transparent same-document catcher over it so the
+       page scrolls; hide it on desktop so the mouse can drag-rotate the scene. */
+    #hero-touch { display: none; }
     @media (pointer: coarse) {
       #hero-canvas iframe { pointer-events: none; }
-      #hero-canvas { touch-action: pan-y; }   /* ensure the page scrolls over the hero */
+      #hero-canvas { touch-action: pan-y; }
+      #hero-touch {
+        display: block;
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        touch-action: pan-y;   /* catch touches as a normal element → page scrolls */
+      }
     }
     /* Keep the nav icons legible over both the dark hero and the light content
        below: difference blend paints them as the inverse of whatever's behind. */
@@ -123,6 +131,7 @@
 
   <section id="hero-canvas">
     <iframe src="/scene/" title="O.P/A.L" loading="eager" scrolling="no"></iframe>
+    <div id="hero-touch" aria-hidden="true"></div>
     <p id="hero-tagline" aria-live="polite">
       <span class="tagline-pill"><span id="hero-article">A</span> <span id="hero-word">mindful</span> studio</span>
       <span class="tagline-sub">original practice / applied learning</span>
