@@ -67,6 +67,22 @@
         touch-action: pan-y;   /* catch touches as a normal element → page scrolls */
       }
     }
+    /* The O.P/A.L slash — a tapered diagonal that takes the place of the subtitle "/".
+       JS anchors left/top to that glyph so it always sits between the words. */
+    #slash-slot { color: transparent; }
+    #hero-slash {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 13px;
+      height: 150%;
+      background: #fff;
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);   /* tapered: points at ends, wide mid */
+      transform: translate(-50%, -50%) rotate(24deg);
+      transform-origin: center;
+      z-index: 1;
+      pointer-events: none;
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+    }
     /* Keep the nav icons legible over both the dark hero and the light content
        below: difference blend paints them as the inverse of whatever's behind. */
     nav { mix-blend-mode: difference; }
@@ -132,9 +148,10 @@
   <section id="hero-canvas">
     <iframe src="/scene/" title="O.P/A.L" loading="eager" scrolling="no"></iframe>
     <div id="hero-touch" aria-hidden="true"></div>
+    <div id="hero-slash" aria-hidden="true"></div>
     <p id="hero-tagline" aria-live="polite">
       <span class="tagline-pill"><span id="hero-article">A</span> <span id="hero-word">mindful</span> studio</span>
-      <span class="tagline-sub">original practice / applied learning</span>
+      <span class="tagline-sub">original practice <span id="slash-slot">/</span> applied learning</span>
     </p>
   </section>
 
@@ -186,6 +203,23 @@
           tag.classList.remove('is-swapping');       // fade in
         }, 400);
       }, 2600);
+    })();
+
+    /* Anchor the tapered slash to the subtitle "/" so it stays between the words. */
+    (function placeSlash() {
+      const slash = document.getElementById('hero-slash');
+      const slot  = document.getElementById('slash-slot');
+      const hero  = document.getElementById('hero-canvas');
+      if (!slash || !slot || !hero) return;
+      function place() {
+        const hr = hero.getBoundingClientRect(), sr = slot.getBoundingClientRect();
+        slash.style.left = (sr.left + sr.width / 2 - hr.left) + 'px';
+        slash.style.top  = (sr.top + sr.height / 2 - hr.top) + 'px';
+      }
+      place();
+      window.addEventListener('resize', place);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+      setTimeout(place, 300);
     })();
   </script>
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
