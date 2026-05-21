@@ -244,10 +244,14 @@
     <input type="text" id="stmtTitle" placeholder="e.g. Boundless" style="width:100%;background:#fff;border:1px solid #c8c8cc;border-radius:4px;padding:3px 5px;font-size:11px;color:#1a1a1c"/>
     <span></span>
   </div>
+  <div class="row"><label>Freeze pose</label>
+    <input type="checkbox" id="stmtFreeze"/>
+    <span></span>
+  </div>
   <div class="btn-row">
     <button class="btn" id="stmtSave" style="flex:1;background:#1a1a1c;color:#fff;border-color:#1a1a1c">⬇ Save version</button>
   </div>
-  <div id="stmtMsg" style="font-size:10px;color:#666;margin:4px 0 8px 0;">Downloads a timestamped scene file. Then tell Claude “publish” and it goes live on the homepage.</div>
+  <div id="stmtMsg" style="font-size:10px;color:#666;margin:4px 0 8px 0;">Downloads a timestamped scene file. “Freeze pose” bakes the exact on-screen arrangement (use it for physics layouts). Then tell Claude “publish”.</div>
 
   <div class="subhead">Revisit a published version</div>
   <div class="row"><label>Versions</label>
@@ -474,6 +478,7 @@ scene.add(orbitRoot);
 
 const rings = [];
 let selectedIdx = 0;
+let frozen = false;  // true when the loaded scene is a frozen snapshot (baked transforms)
 
 function makeRing(opts = {}) {
   const o = Object.assign({
@@ -881,6 +886,7 @@ const $ = id => document.getElementById(id);
 const ringListEl = $('ringList');
 
 function defaultScene() {
+  frozen = false;
   while (rings.length) deleteRing(0);
   wordGroups.length = 0;
   nextWordId = 1;
@@ -2446,6 +2452,7 @@ function serializeState() {
 
 function restoreState(s) {
   if (!s || !s.rings) return;
+  frozen = !!s._frozen;   // frozen snapshots replay baked per-object transforms
   // Wipe scene
   while (rings.length) deleteRing(0);
   while (linkGroups.length) {
@@ -2476,6 +2483,9 @@ function restoreState(s) {
   refreshWordGroupsList();
   // Rings
   s.rings.forEach(o => makeRing(o));
+  // Word-group letter positions (_fixedX/Y/Z) aren't serialized — recompute each
+  // group's layout so restored scenes don't collapse all letters onto the origin.
+  wordGroups.forEach(g => applyGroupLayout(g));
   // Lighting
   const L = s.lighting || {};
   if (L.envPreset) { $('envPreset').value = L.envPreset; setEnv(L.envPreset); }
@@ -2664,6 +2674,17 @@ async function bootScene() {
   if (state) restoreState(state); else defaultScene();
   if (EDIT) { if (!state) fitCameraToScene(); }   // frame default for composing; keep saved camera otherwise
   else { heroResize(); }                          // live hero: always full-bleed + auto-fit
+  // Dev hook: /scene/?dump writes the serialized scene (base64) into a hidden
+  // element so the CLI can snapshot it headlessly (used when Claude publishes a
+  // captured scene). Harmless otherwise.
+  if (new URLSearchParams(location.search).has('dump')) {
+    try {
+      const d = document.createElement('div');
+      d.id = '__dump'; d.style.display = 'none';
+      d.textContent = btoa(unescape(encodeURIComponent(JSON.stringify(serializeState()))));
+      document.body.appendChild(d);
+    } catch (e) { console.warn('dump failed', e); }
+  }
 }
 bootScene();
 
@@ -2682,15 +2703,34 @@ if (EDIT) (function versionsUI(){
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
+  // Default the freeze toggle on while physics is running; keep it in sync.
+  const fz = $id('stmtFreeze');
+  if (fz) {
+    fz.checked = !!physEnabled;
+    const pt = $id('physToggle');
+    if (pt) pt.addEventListener('click', () => setTimeout(() => { fz.checked = !!physEnabled; }, 0));
+  }
   // Save version → timestamped download for Claude to publish
   const sv = $id('stmtSave');
   if (sv) sv.addEventListener('click', () => {
     const title = ($id('stmtTitle').value || '').trim();
     const id = stamp(new Date()) + (slugify(title) ? '-' + slugify(title) : '');
+    const freeze = fz && fz.checked;
     const state = serializeState();
+    if (freeze) {
+      state._frozen = true;
+      rings.forEach((r, i) => {
+        const ro = state.rings[i]; if (!ro) return;
+        ro._baked = {
+          p: [r.pivot.position.x, r.pivot.position.y, r.pivot.position.z],
+          q: [r.pivot.quaternion.x, r.pivot.quaternion.y, r.pivot.quaternion.z, r.pivot.quaternion.w],
+          m: [r.mesh.rotation.x, r.mesh.rotation.y, r.mesh.rotation.z],
+        };
+      });
+    }
     if (title) state._title = title;
     download('opal-scene-' + id + '.json', state);
-    msg('Saved opal-scene-' + id + '.json to Downloads. Tell Claude “publish” to make it live.');
+    msg('Saved opal-scene-' + id + '.json' + (freeze ? ' (frozen pose)' : '') + ' to Downloads. Tell Claude “publish”.');
   });
   // Revisit a published version → load it back into the editor
   const sel = $id('stmtVersions');
@@ -2778,6 +2818,15 @@ function animate() {
         );
         if (r.lineSegs) r.lineSegs.rotation.copy(r.mesh.rotation);
       });
+    });
+  } else if (frozen) {
+    // Frozen snapshot: replay each object's baked pivot transform + mesh rotation.
+    rings.forEach(r => {
+      const b = r.opts._baked; if (!b) return;
+      r.pivot.position.set(b.p[0], b.p[1], b.p[2]);
+      r.pivot.quaternion.set(b.q[0], b.q[1], b.q[2], b.q[3]);
+      r.mesh.rotation.set(b.m[0], b.m[1], b.m[2]);
+      if (r.lineSegs) r.lineSegs.rotation.copy(r.mesh.rotation);
     });
   } else {
     // First, position any word groups in orbit mode (animated each frame)

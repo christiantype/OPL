@@ -22,7 +22,13 @@ This folder powers the full-bleed 3D scene embedded on the homepage
 
 2. **Save a version** — in the **Save / Publish** panel, type an optional title and
    click **⬇ Save version**. This downloads `opal-scene-<timestamp>[-title].json`
-   to your Downloads.
+   to your Downloads (or save straight into `scene/statements/`).
+
+   **Freeze pose:** if your arrangement comes from **Physics** (letters tumbled/
+   scattered), check **Freeze pose** before saving. It bakes the exact on-screen
+   position + rotation of every letter into the file, so the homepage shows precisely
+   what you see. Without it, a non-physics scene reproduces from its layout settings.
+   (The checkbox auto-enables while physics is running.)
 
 3. **Tell Claude to publish** — say *"publish"* (or "publish the boundless one").
    Claude will:
@@ -62,8 +68,10 @@ listed in `manifest.json`:
 ## What persists in a version
 
 Per-object spin / orbit / tilt (the motion), word groups & layout, auto-rotate,
-lighting & environment, materials, links, and camera. (Physics/vortex slider values
-are live-only for experimenting — not yet serialized.)
+lighting & environment, materials, links, and camera. With **Freeze pose** checked,
+the exact baked position + rotation of every object is stored too (use this for
+physics arrangements). Physics/vortex *slider* values themselves aren't serialized —
+Freeze captures the resulting pose instead.
 
 ## Notes
 
