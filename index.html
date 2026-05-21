@@ -52,6 +52,12 @@
       border: 0;
       display: block;
     }
+    /* On touch devices the canvas (OrbitControls, touch-action:none) swallows the
+       drag and blocks page scroll. Let touches pass through to the page instead —
+       the scene still auto-rotates and runs physics, just isn't drag-rotatable. */
+    @media (pointer: coarse) {
+      #hero-canvas iframe { pointer-events: none; }
+    }
     /* Keep the nav icons legible over both the dark hero and the light content
        below: difference blend paints them as the inverse of whatever's behind. */
     nav { mix-blend-mode: difference; }
