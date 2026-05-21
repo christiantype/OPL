@@ -1909,7 +1909,7 @@ function getCanvasBounds() {
   // Visible width/height at z=0 from current camera, matching the poster aspect.
   const dist = camera.position.length();
   const visH = 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  const visW = visH * (poster.wIn / poster.hIn);
+  const visW = visH * camera.aspect;   // fill the viewport width (hero-width box), not the portrait crop
   const pad = parseFloat($('physPad').value || 0);
   const depth = parseFloat($('physDepth').value || 4);
   return {
@@ -2052,7 +2052,11 @@ function applyPhysSliders(P) {
 // Start live physics (with a burst) if a restored scene requested it. Deferred until
 // after the camera is framed so the walls fit the right bounds.
 function maybeStartPhysics() {
-  if (_pendingPhysics && !physEnabled && !frozen) physBurst();
+  if (_pendingPhysics && !physEnabled && !frozen) {
+    // Live hero: always contain shapes inside the canvas so nothing flies off-screen.
+    if (!document.documentElement.classList.contains('edit') && $('physWalls')) $('physWalls').value = 'canvas';
+    physBurst();
+  }
   _pendingPhysics = false;
 }
 
