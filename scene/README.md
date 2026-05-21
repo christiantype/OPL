@@ -68,10 +68,12 @@ listed in `manifest.json`:
 ## What persists in a version
 
 Per-object spin / orbit / tilt (the motion), word groups & layout, auto-rotate,
-lighting & environment, materials, links, and camera. With **Freeze pose** checked,
-the exact baked position + rotation of every object is stored too (use this for
-physics arrangements). Physics/vortex *slider* values themselves aren't serialized —
-Freeze captures the resulting pose instead.
+lighting & environment, materials, links, and camera.
+
+**Physics is saved too.** If physics was enabled when you saved, the scene publishes
+**live** — the homepage starts physics and **bursts on load** with your gravity /
+bounce / init-speed / vortex settings (a new tumble each visit). Check **Freeze pose**
+instead to bake a single **static** snapshot (exact baked positions, no live motion).
 
 ## Notes
 

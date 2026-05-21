@@ -251,7 +251,7 @@
   <div class="btn-row">
     <button class="btn" id="stmtSave" style="flex:1;background:#1a1a1c;color:#fff;border-color:#1a1a1c">⬇ Save version</button>
   </div>
-  <div id="stmtMsg" style="font-size:10px;color:#666;margin:4px 0 8px 0;">Downloads a timestamped scene file. “Freeze pose” bakes the exact on-screen arrangement (use it for physics layouts). Then tell Claude “publish”.</div>
+  <div id="stmtMsg" style="font-size:10px;color:#666;margin:4px 0 8px 0;">Downloads a timestamped scene file. Physics scenes publish LIVE (the hero bursts on load). Check “Freeze pose” only to bake a static snapshot instead. Then tell Claude “publish”.</div>
 
   <div class="subhead">Revisit a published version</div>
   <div class="row"><label>Versions</label>
@@ -1852,6 +1852,7 @@ physWorld.addContactMaterial(contact);
 physWorld.defaultContactMaterial = contact;
 
 let physEnabled = false;
+let _pendingPhysics = false;  // a restored scene asked for live physics; start after camera is framed
 let physWalls = []; // Body[]
 const tmpV = new THREE.Vector3();
 const tmpQ = new THREE.Quaternion();
@@ -2032,6 +2033,27 @@ function physBurst() {
     lg._body.velocity.set((Math.random()-0.5)*v*2, (Math.random()-0.5)*v*2, (Math.random()-0.5)*v*2);
     lg._body.angularVelocity.set((Math.random()-0.5)*4, (Math.random()-0.5)*4, (Math.random()-0.5)*4);
   });
+}
+
+// Apply saved physics slider values (used when restoring a published scene).
+function applyPhysSliders(P) {
+  if (!P) return;
+  const set = (id, v, digits) => { const el = $(id); if (el && v != null) { el.value = v; setVal(id, parseFloat(v), digits); } };
+  set('physGrav', P.grav, 1); set('physBounce', P.bounce, 2); set('physFric', P.fric, 2);
+  set('physDamp', P.damp, 3); set('physInit', P.init, 1); set('physDepth', P.depth, 1);
+  set('physPad', P.pad, 2);
+  if (P.walls && $('physWalls')) $('physWalls').value = P.walls;
+  set('vortSpin', P.vortSpin, 1); set('vortPull', P.vortPull, 1);
+  set('vortLift', P.vortLift, 1); set('vortFunnel', P.vortFunnel, 2);
+  vortexEnabled = !!P.vortex;
+  if (typeof setVortexButton === 'function') setVortexButton();
+  applyPhysParams();
+}
+// Start live physics (with a burst) if a restored scene requested it. Deferred until
+// after the camera is framed so the walls fit the right bounds.
+function maybeStartPhysics() {
+  if (_pendingPhysics && !physEnabled && !frozen) physBurst();
+  _pendingPhysics = false;
 }
 
 $('physToggle').addEventListener('click', () => physEnabled ? stopPhysics() : startPhysics());
@@ -2445,6 +2467,22 @@ function serializeState() {
       expo: renderer.toneMappingExposure,
       autoR: parseFloat($('autoR').value),
     },
+    physics: {
+      enabled: physEnabled,
+      vortex: vortexEnabled,
+      grav: parseFloat($('physGrav').value),
+      bounce: parseFloat($('physBounce').value),
+      fric: parseFloat($('physFric').value),
+      damp: parseFloat($('physDamp').value),
+      init: parseFloat($('physInit').value),
+      depth: parseFloat($('physDepth').value),
+      pad: parseFloat($('physPad').value),
+      walls: $('physWalls').value,
+      vortSpin: parseFloat($('vortSpin').value),
+      vortPull: parseFloat($('vortPull').value),
+      vortLift: parseFloat($('vortLift').value),
+      vortFunnel: parseFloat($('vortFunnel').value),
+    },
     camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z,
               tx: controls.target.x, ty: controls.target.y, tz: controls.target.z },
   };
@@ -2515,6 +2553,10 @@ function restoreState(s) {
     const lg = linkGroups[linkGroups.length - 1];
     if (lg && lgData.spinSpeed != null) lg.spinSpeed = lgData.spinSpeed;
   });
+  // Physics — restore the saved sliders; live-run is deferred to maybeStartPhysics()
+  // (called after the camera is framed) so the burst happens with correct walls.
+  applyPhysSliders(s.physics);
+  _pendingPhysics = !!(s.physics && s.physics.enabled) && !frozen;
   selectedIdx = 0;
   refreshRingList();
   syncControls();
@@ -2647,6 +2689,7 @@ function heroResize(){
   camera.updateProjectionMatrix();
   if (typeof refreshAllLineResolutions === 'function') refreshAllLineResolutions();
   fitCameraToScene();
+  if (physEnabled && typeof buildWalls === 'function') buildWalls();   // keep walls fit to the viewport
 }
 window.addEventListener('resize', heroResize);
 heroResize();
@@ -2674,6 +2717,7 @@ async function bootScene() {
   if (state) restoreState(state); else defaultScene();
   if (EDIT) { if (!state) fitCameraToScene(); }   // frame default for composing; keep saved camera otherwise
   else { heroResize(); }                          // live hero: always full-bleed + auto-fit
+  maybeStartPhysics();                            // live burst, now that camera + walls are framed
   // Dev hook: /scene/?dump writes the serialized scene (base64) into a hidden
   // element so the CLI can snapshot it headlessly (used when Claude publishes a
   // captured scene). Harmless otherwise.
@@ -2703,13 +2747,9 @@ if (EDIT) (function versionsUI(){
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
-  // Default the freeze toggle on while physics is running; keep it in sync.
+  // Freeze defaults OFF — physics scenes now publish LIVE (params saved; the hero
+  // bursts on load). Check Freeze only to bake a STATIC snapshot instead.
   const fz = $id('stmtFreeze');
-  if (fz) {
-    fz.checked = !!physEnabled;
-    const pt = $id('physToggle');
-    if (pt) pt.addEventListener('click', () => setTimeout(() => { fz.checked = !!physEnabled; }, 0));
-  }
   // Save version → timestamped download for Claude to publish
   const sv = $id('stmtSave');
   if (sv) sv.addEventListener('click', () => {
@@ -2748,7 +2788,7 @@ if (EDIT) (function versionsUI(){
     try {
       const st = await (await fetch('statements/' + id + '.json', { cache: 'no-store' })).json();
       const state = st.current || (st.rings ? st : null);
-      if (state) { restoreState(state); msg('Loaded ' + id + '. Enhance it, then Save version.'); }
+      if (state) { restoreState(state); maybeStartPhysics(); msg('Loaded ' + id + '. Enhance it, then Save version.'); }
       else msg('That version looks empty.');
     } catch (e) { msg('Load failed: ' + e.message); }
   });
