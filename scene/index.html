@@ -2723,6 +2723,10 @@ async function bootScene() {
   if (EDIT) { if (!state) fitCameraToScene(); }   // frame default for composing; keep saved camera otherwise
   else { heroResize(); }                          // live hero: always full-bleed + auto-fit
   maybeStartPhysics();                            // live burst, now that camera + walls are framed
+  // Tell the homepage the scene rendered, so it can drop the fallback still.
+  if (!EDIT) requestAnimationFrame(() => {
+    try { if (window.parent && window.parent !== window) window.parent.postMessage('opal:ready', '*'); } catch (e) {}
+  });
   // Dev hook: /scene/?dump writes the serialized scene (base64) into a hidden
   // element so the CLI can snapshot it headlessly (used when Claude publishes a
   // captured scene). Harmless otherwise.

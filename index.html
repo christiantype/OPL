@@ -52,6 +52,21 @@
       border: 0;
       display: block;
     }
+    /* Fallback still — covers the iframe until the scene reports it rendered;
+       stays put if the scene never loads (e.g. no WebGL). */
+    #hero-fallback {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.7s ease;
+    }
+    #hero-fallback.hide { opacity: 0; }
     /* On touch devices an iframe traps scroll (pointer-events:none on iframes is
        unreliable on iOS). Put a transparent same-document catcher over it so the
        page scrolls; hide it on desktop so the mouse can drag-rotate the scene. */
@@ -153,6 +168,7 @@
 
   <section id="hero-canvas">
     <iframe src="/scene/" title="O.P/A.L" loading="eager" scrolling="no"></iframe>
+    <img id="hero-fallback" src="images/hero-fallback.webp" alt="" aria-hidden="true">
     <div id="hero-touch" aria-hidden="true"></div>
     <div id="hero-slash" aria-hidden="true"></div>
     <p id="hero-tagline" aria-live="polite">
@@ -228,8 +244,17 @@
       window.addEventListener('orientationchange', () => setTimeout(place, 200));
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
       [120, 400, 1000].forEach(t => setTimeout(place, t));   // re-anchor as layout settles
-      // Grow from the centre on load (~3s); the scene's burst follows at 4s.
+      // Grow from the centre on load; the scene's burst follows.
       setTimeout(() => { place(); slash.classList.add('go'); }, 400);
+    })();
+
+    /* Drop the fallback still once the scene reports it has rendered. */
+    (function heroFallback() {
+      const fb = document.getElementById('hero-fallback');
+      if (!fb) return;
+      window.addEventListener('message', (e) => {
+        if (e && e.data === 'opal:ready') fb.classList.add('hide');
+      });
     })();
   </script>
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
