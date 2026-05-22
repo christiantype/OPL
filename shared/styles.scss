@@ -499,6 +499,30 @@ nav {
   margin: 0 auto;
 }
 
+// Postcard stack — two cards overlaid at angles (front + back); JS shifts them
+// subtly as the section scrolls through the viewport.
+.postcard-stack {
+  position: relative;
+  width: 100%;
+  max-width: 52em;
+  margin: var(--space-20) auto;
+  aspect-ratio: 4 / 3;
+
+  &__card {
+    position: absolute;
+    width: 70%;
+    height: auto;
+    border-radius: 4px;
+    box-shadow: 0 24px 50px -18px rgba(0, 0, 0, 0.55);
+    will-change: transform;
+    // Eased so the scroll-linked + hover shifts glide slowly into place.
+    transition: transform 0.7s cubic-bezier(0.16, 0.84, 0.3, 1);
+
+    &--back  { top: 10%; left: 2%;  transform: rotate(-6deg); z-index: 1; }
+    &--front { top: 0;   left: 28%; transform: rotate(5deg);  z-index: 2; }
+  }
+}
+
 .project-figure {
   display: block;
   margin: 0;

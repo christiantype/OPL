@@ -119,6 +119,13 @@
       item.spread !== undefined ? item.spread : !!PROJECT.imageSpread;
 
     PROJECT.images.forEach(item => {
+      // Two overlaid cards (e.g. a postcard front/back) that shift on scroll.
+      if (item.stack) {
+        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
+        groups.push({ type: 'stack', item });
+        return;
+      }
+
       // A video flagged as a player: full-width black stage, video centred.
       if (item.player) {
         if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
@@ -177,7 +184,17 @@
     };
 
     images.innerHTML = groups.map(g => {
-      if (g.type === 'player') {
+      if (g.type === 'stack') {
+        const s = g.item.stack;
+        return `
+          <div class="container">
+            <div class="postcard-stack" data-stack>
+              <img class="postcard-stack__card postcard-stack__card--back" src="${s.back}" alt="">
+              <img class="postcard-stack__card postcard-stack__card--front" src="${s.front}" alt="${s.alt || ''}">
+            </div>
+          </div>
+        `;
+      } else if (g.type === 'player') {
         const it = g.item;
         const poster = it.poster ? ` poster="${it.poster}"` : '';
         return `
@@ -221,6 +238,38 @@
   }
 
   document.body.appendChild(images);
+
+  /* ── Postcard stacks: subtle scroll-linked shift of the two overlaid cards ── */
+  (function initPostcardStacks() {
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    document.querySelectorAll('[data-stack]').forEach(stack => {
+      const back  = stack.querySelector('.postcard-stack__card--back');
+      const front = stack.querySelector('.postcard-stack__card--front');
+      if (!back || !front) return;
+      let ticking = false, active = false, hover = 0;
+      function update() {
+        const r  = stack.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        const p  = (vh - r.top) / (vh + r.height);          // ~0 entering, ~1 leaving
+        const s  = Math.max(-1, Math.min(1, (p - 0.5) * 2)); // -1 … 1
+        // Hover nudges the cards a little further apart, on top of the scroll shift.
+        back.style.transform  = `rotate(${(-6 - hover * 3).toFixed(1)}deg) translate(${(-s * 5 - hover * 4).toFixed(2)}%, ${(s * 3).toFixed(2)}%)`;
+        front.style.transform = `rotate(${(5 + hover * 3).toFixed(1)}deg) translate(${(s * 6 + hover * 4).toFixed(2)}%, ${(-s * 3).toFixed(2)}%)`;
+        ticking = false;
+      }
+      function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+      stack.addEventListener('mouseenter', () => { hover = 1; update(); });
+      stack.addEventListener('mouseleave', () => { hover = 0; update(); });
+      new IntersectionObserver(entries => entries.forEach(e => {
+        if (e.isIntersecting && !active) {
+          active = true; window.addEventListener('scroll', onScroll, { passive: true }); update();
+        } else if (!e.isIntersecting && active) {
+          active = false; window.removeEventListener('scroll', onScroll);
+        }
+      }), { threshold: 0 }).observe(stack);
+    });
+  })();
 
   /* ── Shared scripts ── */
   [
