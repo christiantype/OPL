@@ -440,6 +440,65 @@ nav {
   }
 }
 
+// Two-page spreads: shown whole (not cropped) on the dark page, with a faint
+// light-grey shadow whispering only from the bottom edge, and a gentle crease
+// down the middle to imply the fold.
+.project-spread {
+  position: relative;
+  display: block;
+  margin: 0 auto var(--space-8);
+  line-height: 0;
+
+  &__media {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  // The gutter crease — a soft, wide shaded band down the centre fold.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0)    41%,
+      rgba(0, 0, 0, 0.03) 47%,
+      rgba(0, 0, 0, 0.10) 50%,
+      rgba(0, 0, 0, 0.03) 53%,
+      rgba(0, 0, 0, 0)    59%
+    );
+  }
+}
+
+// Full-width "theatre" — a dark, spotlit surround with the video set into a
+// light frame and centred like a screen, lifted off the wall with a soft shadow.
+.project-video-player {
+  width: 100%;
+  // No surround — just a spotlight pooling up from the bottom centre over the page.
+  background: radial-gradient(ellipse 65% 50% at 50% 100%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 62%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16) var(--space-8);
+  margin-bottom: var(--space-4);
+}
+
+.project-video-player__frame {
+  background: #e4e2dc;                 // light grey frame / screen mat
+  padding: clamp(12px, 1.5vw, 24px);
+  box-shadow: 0 40px 70px -25px rgba(0, 0, 0, 0.7);
+  line-height: 0;
+}
+
+.project-video-player__media {
+  display: block;
+  max-width: 100%;
+  max-height: 76vh;
+  margin: 0 auto;
+}
+
 .project-figure {
   display: block;
   margin: 0;

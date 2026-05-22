@@ -256,6 +256,25 @@
         if (e && e.data === 'opal:ready') fb.classList.add('hide');
       });
     })();
+
+    /* The hero scene lives in an iframe, so the page's custom "+" cursor can't
+       track over it (and the scene shows a grab hand). The iframe hides its own
+       cursor and forwards pointer moves; replay them here as a synthetic
+       mousemove so cursor.js paints the "+" over the hero. */
+    (function heroCursorForward() {
+      const iframe = document.querySelector('#hero-canvas iframe');
+      if (!iframe) return;
+      window.addEventListener('message', (e) => {
+        const d = e && e.data;
+        if (!d || d.type !== 'opal:cursor') return;
+        const r = iframe.getBoundingClientRect();
+        document.dispatchEvent(new MouseEvent('mousemove', {
+          clientX: r.left + d.x,
+          clientY: r.top + d.y,
+          bubbles: true
+        }));
+      });
+    })();
   </script>
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script src="shared/footer.js"></script>

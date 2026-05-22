@@ -2660,6 +2660,16 @@ document.addEventListener('change', autosave, true);
 
 // ===== HERO boot: full-viewport, auto-fit. ?edit also enables zoom/pan. =====
 const EDIT = document.documentElement.classList.contains('edit');
+// Embedded in the homepage hero: hide the scene's grab cursor and forward pointer
+// moves so the site's custom "+" cursor tracks over the hero.
+if (window.parent && window.parent !== window) {
+  document.documentElement.style.cursor = 'none';
+  const _app = document.getElementById('app');
+  if (_app) _app.style.cursor = 'none';
+  window.addEventListener('mousemove', (e) => {
+    try { window.parent.postMessage({ type: 'opal:cursor', x: e.clientX, y: e.clientY }, '*'); } catch (err) {}
+  });
+}
 controls.autoRotate = true;        // published hero gently rotates;
 controls.autoRotateSpeed = 0.6;    // a saved "Auto Rotate" value overrides this on load.
 controls.enableZoom = EDIT;        // live hero is drag-to-rotate only (don't trap page scroll)

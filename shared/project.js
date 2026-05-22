@@ -114,8 +114,25 @@
 
     const groups = [];
     let gridGroup = null;
+    // Project default can be overridden per image (e.g. a cover is not a spread).
+    const isSpread = (item) =>
+      item.spread !== undefined ? item.spread : !!PROJECT.imageSpread;
 
     PROJECT.images.forEach(item => {
+      // A video flagged as a player: full-width black stage, video centred.
+      if (item.player) {
+        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
+        groups.push({ type: 'player', item });
+        return;
+      }
+
+      // Spreads are their own contained block (fold crease + drop shadow).
+      if (isSpread(item)) {
+        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
+        groups.push({ type: 'spread', item });
+        return;
+      }
+
       const isFull = !item.cols || item.cols === 'full';
 
       if (isFull) {
@@ -142,11 +159,13 @@
         ? (isFull ? `project-image project-image--full${framed}` : `project-image${framed}`)
         : (isFull ? `project-image project-image--full${framed}` : `col-${item.cols} project-image${framed}`);
 
+      const styleAttr = item.radius ? ` style="border-radius:${item.radius}"` : '';
+
       let media;
       if (mediaType === 'video') {
-        media = `<video class="${mediaClass}" autoplay muted loop playsinline preload="auto"><source src="${item.src}" type="video/mp4"></video>`;
+        media = `<video class="${mediaClass}" autoplay muted loop playsinline preload="auto"${styleAttr}><source src="${item.src}" type="video/mp4"></video>`;
       } else {
-        media = `<img class="${mediaClass}" src="${item.src}" alt="${item.alt || ''}">`;
+        media = `<img class="${mediaClass}" src="${item.src}" alt="${item.alt || ''}"${styleAttr}>`;
       }
 
       if (item.caption) {
@@ -158,7 +177,36 @@
     };
 
     images.innerHTML = groups.map(g => {
-      if (g.type === 'full') {
+      if (g.type === 'player') {
+        const it = g.item;
+        const poster = it.poster ? ` poster="${it.poster}"` : '';
+        return `
+          <div class="project-video-player">
+            <div class="project-video-player__frame">
+              <video class="project-video-player__media"
+                     autoplay muted loop playsinline
+                     controls controlsList="nodownload nofullscreen noplaybackrate noremoteplayback"
+                     disablepictureinpicture
+                     preload="auto"${poster}>
+                <source src="${it.src}" type="video/mp4">
+              </video>
+            </div>
+          </div>
+        `;
+      } else if (g.type === 'spread') {
+        const mediaType = g.item.type || 'image';
+        const inner = mediaType === 'video'
+          ? `<video class="project-spread__media" autoplay muted loop playsinline preload="auto"><source src="${g.item.src}" type="video/mp4"></video>`
+          : `<img class="project-spread__media" src="${g.item.src}" alt="${g.item.alt || ''}">`;
+        const caption = g.item.caption
+          ? `<figcaption class="project-caption">${g.item.caption}</figcaption>` : '';
+        return `
+          <div class="container">
+            <figure class="project-spread">${inner}</figure>
+            ${caption}
+          </div>
+        `;
+      } else if (g.type === 'full') {
         return renderMedia(g.item);
       } else {
         return `
