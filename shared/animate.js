@@ -1,5 +1,9 @@
 /* ── OPL Animate — fade in from above on scroll ── */
 (function () {
+  // Respect users who prefer reduced motion: skip the reveal entirely so content
+  // stays visible (and never risks being stranded at opacity:0).
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
   const sel = [
     'h1', 'h2', 'h3',
     'p', '.label', '.section-name', '.member-name',
