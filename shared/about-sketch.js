@@ -1,4 +1,4 @@
-/* ── O.P/A.L About — 5 Typography Experiments ── */
+/* ── OP/AL About — 5 Typography Experiments ── */
 
 const CDN = 'https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.3/p5.min.js';
 function loadP5(cb) {
