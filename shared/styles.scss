@@ -590,10 +590,27 @@ nav {
   }
 }
 
-// On mobile, hide the audio controllers (autoplay stays muted).
+// Hide the browser's default (esp. iOS) overlay play button on autoplay videos.
+.video-spot__media::-webkit-media-controls-start-playback-button,
+.cameo-overlay__video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
 @media (max-width: 40em) {
+  // Hide the audio controllers (autoplay stays muted).
   .video-spot__sound,
   .cameo-overlay__sound { display: none; }
+
+  // Centred videos (e.g. Enough) go full-width on mobile.
+  .video-spot--center {
+    grid-column: 1 / -1 !important;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+  }
+
+  // Cameo overlay: shrink the clip so its caption stays on screen.
+  .cameo-overlay__video { max-height: 46vh; }
 }
 
 // Postcard stack — two cards overlaid at angles (front + back); JS shifts them

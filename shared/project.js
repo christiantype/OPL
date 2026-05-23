@@ -229,7 +229,7 @@
         // Centred: span `cols` but start mid-grid so it sits in the page centre.
         if (item.center && !isFull) {
           const start = Math.max(1, Math.round((12 - item.cols) / 2) + 1);
-          return `<div class="video-spot" style="grid-column: ${start} / span ${item.cols};">${inner}</div>`;
+          return `<div class="video-spot video-spot--center" style="grid-column: ${start} / span ${item.cols};">${inner}</div>`;
         }
         const colClass = isFull ? 'video-spot video-spot--full' : `col-${item.cols} video-spot`;
         return `<div class="${colClass}">${inner}</div>`;
