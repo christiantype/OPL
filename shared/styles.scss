@@ -654,10 +654,11 @@ nav {
   // it, both sized to the SAME height (the landscape spread is ~2× the portrait
   // cover's width), filling most of the column width.
   &--overlay {
-    max-width: 48em;
+    max-width: 68em;
     aspect-ratio: 7 / 5;
 
     .postcard-stack__card { border-radius: 3px; }
+    // Spread (front) ends up ~49em wide — matched by the .spread-tilt cards below.
     .postcard-stack__card--back  { width: 36%; top: 8%;  left: 2%;  }
     .postcard-stack__card--front { width: 72%; top: 30%; left: 22%; }
   }
@@ -674,6 +675,50 @@ nav {
   border-radius: 3px;
   transform: rotate(-2.4deg);
   box-shadow: 0 26px 52px -20px rgba(0, 0, 0, 0.6);
+}
+
+// A tilted spread — same size as the cover overlay's spread (~49em), gently
+// rotated, drifting on scroll (JS sets --shift) and straightening on hover.
+.spread-tilt {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 49em;
+  margin: var(--space-24) auto;
+  border-radius: 3px;
+  box-shadow: 0 24px 50px -18px rgba(0, 0, 0, 0.55);
+  transform: rotate(var(--tilt, -2.5deg)) translateY(var(--shift, 0px)) scale(var(--sc, 1));
+  transition: transform 0.6s cubic-bezier(0.16, 0.84, 0.3, 1), box-shadow 0.6s ease;
+  will-change: transform;
+
+  &:hover {
+    --tilt: 0deg;
+    --sc: 1.02;
+    box-shadow: 0 36px 72px -22px rgba(0, 0, 0, 0.6);
+  }
+
+  &__face {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: inherit;
+  }
+
+  // Thin fold line down the middle, implying the publication crease.
+  &__crease {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spread-tilt { transition: none; }
 }
 
 // Cameo — a clickable portrait that opens its animated preview in an overlay.

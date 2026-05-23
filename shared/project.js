@@ -144,6 +144,13 @@
         return;
       }
 
+      // A tilted, scroll-animated spread (matches the cover overlay's spread size).
+      if (item.tilt) {
+        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
+        groups.push({ type: 'tilt', item });
+        return;
+      }
+
 
       // A video flagged as a player: full-width black stage, video centred.
       if (item.player) {
@@ -258,6 +265,7 @@
       return media;
     };
 
+    let tiltN = 0;
     images.innerHTML = groups.map(g => {
       if (g.type === 'stack') {
         const s = g.item.stack;
@@ -283,6 +291,17 @@
         return `
           <div class="container">
             <img class="spread-flat" src="${f.src}" alt="${f.alt || ''}">
+          </div>
+        `;
+      } else if (g.type === 'tilt') {
+        const t = g.item;
+        const deg = (tiltN++ % 2 === 0) ? '-2.5deg' : '2.8deg';   // alternate the lean
+        return `
+          <div class="container">
+            <div class="spread-tilt" style="--tilt:${deg}">
+              <img class="spread-tilt__face" src="${t.src}" alt="${t.alt || ''}">
+              <span class="spread-tilt__crease" aria-hidden="true"></span>
+            </div>
           </div>
         `;
       } else if (g.type === 'player') {
@@ -469,6 +488,31 @@
           active = false; window.removeEventListener('scroll', onScroll);
         }
       }), { threshold: 0 }).observe(stack);
+    });
+  })();
+
+  /* ── Tilted spreads: a gentle scroll-linked vertical drift (--shift) ── */
+  (function initTiltSpreads() {
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    document.querySelectorAll('.spread-tilt').forEach(el => {
+      let ticking = false, active = false;
+      function update() {
+        const r  = el.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        const p  = (vh - r.top) / (vh + r.height);          // ~0 entering, ~1 leaving
+        const s  = Math.max(-1, Math.min(1, (p - 0.5) * 2)); // -1 … 1
+        el.style.setProperty('--shift', (s * 16).toFixed(1) + 'px');
+        ticking = false;
+      }
+      function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+      new IntersectionObserver(entries => entries.forEach(e => {
+        if (e.isIntersecting && !active) {
+          active = true; window.addEventListener('scroll', onScroll, { passive: true }); update();
+        } else if (!e.isIntersecting && active) {
+          active = false; window.removeEventListener('scroll', onScroll);
+        }
+      }), { threshold: 0 }).observe(el);
     });
   })();
 
