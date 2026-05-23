@@ -151,6 +151,13 @@
         return;
       }
 
+      // A short text caption introducing the media that follows.
+      if (item.heading) {
+        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
+        groups.push({ type: 'heading', item });
+        return;
+      }
+
 
       // A video flagged as a player: full-width black stage, video centred.
       if (item.player) {
@@ -291,6 +298,12 @@
         return `
           <div class="container">
             <img class="spread-flat" src="${f.src}" alt="${f.alt || ''}">
+          </div>
+        `;
+      } else if (g.type === 'heading') {
+        return `
+          <div class="container">
+            <p class="spread-heading">${g.item.heading}</p>
           </div>
         `;
       } else if (g.type === 'tilt') {
@@ -502,7 +515,8 @@
         const vh = window.innerHeight || document.documentElement.clientHeight;
         const p  = (vh - r.top) / (vh + r.height);          // ~0 entering, ~1 leaving
         const s  = Math.max(-1, Math.min(1, (p - 0.5) * 2)); // -1 … 1
-        el.style.setProperty('--shift', (s * 16).toFixed(1) + 'px');
+        el.style.setProperty('--dx', (s * 18).toFixed(1) + 'px');
+        el.style.setProperty('--dy', (s * 32).toFixed(1) + 'px');
         ticking = false;
       }
       function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
