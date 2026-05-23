@@ -177,6 +177,81 @@
       color: #ff94c9;
     }
 
+    .team-bio a {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: color 0.2s;
+    }
+
+    .team-bio a:hover {
+      color: #ff94c9;
+    }
+
+    /* ── Animated name icons ── */
+    .team-name-row {
+      margin-bottom: 0.75em;
+    }
+    .team-name-row .team-name { margin: 0.4em 0 0; }   /* text flush-left under the icon */
+
+    .team-icon {
+      width: 6.5em;
+      height: 6.5em;
+      display: block;
+      color: #393939;            /* icons draw with currentColor */
+    }
+    .team-icon svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .team-icon svg ellipse,
+    .team-icon svg path,
+    .team-icon svg circle,
+    .team-icon svg polygon { fill: currentColor; }
+    .team-icon .hb-eye { fill: #fff; }
+
+    /* Saied — blinking eye (pupil only; outline stays put) */
+    .team-icon .eye-pupil {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: eye-blink 4.5s ease-in-out infinite;
+    }
+    @keyframes eye-blink {
+      0%, 88%, 100% { transform: scaleY(1); }
+      92%           { transform: scaleY(0.06); }
+      96%           { transform: scaleY(1); }
+    }
+
+    /* Christian — fluttering hummingbird wing */
+    .team-icon .wing {
+      transform-box: view-box;
+      transform-origin: 53px 50px;
+      animation: hb-flap 0.14s ease-in-out infinite;
+    }
+    @keyframes hb-flap {
+      0%, 100% { transform: rotate(-16deg); }
+      50%      { transform: rotate(22deg); }
+    }
+
+    /* Christian — soft up/down glide of the whole bird */
+    .team-icon svg.hb {
+      transform: scaleX(-1);                 /* face right */
+      animation: hb-glide 5s ease-in-out infinite;
+    }
+    @keyframes hb-glide {
+      0%, 100% { transform: scaleX(-1) translateY(-3%); }
+      50%      { transform: scaleX(-1) translateY(3%); }
+    }
+
+    /* Rick — grayscale striped Möbius strip (canvas) */
+    .team-icon canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .team-icon .eye-pupil,
+      .team-icon .wing,
+      .team-icon svg.hb { animation: none; }
+    }
+
     /* ── Apply ── */
     .apply-heading-label {
       margin-bottom: 4em;
@@ -306,22 +381,59 @@
       <div class="grid" style="row-gap: 4em;">
         <div class="col-8 fade-up">
           <span class="team-role-label">Founder</span>
-          <p class="team-name"><a href="https://christiansolorzano.com/" target="_blank" rel="noopener">Christian Solorzano</a></p>
-          <p class="team-bio">Designer, educator, photographer, community builder, trained meditation instructor, Brazilian Jiu-Jitsu black belt, producer of Faculty, an annual publication, host of the Underscore podcast, and founder of the Chicago Graphic Design Club and O.P/A.L.
+          <div class="team-name-row">
+            <span class="team-icon" aria-hidden="true">
+              <svg viewBox="0 0 100 100" class="hb">
+                <g class="hb-body-group">
+                  <polygon points="2,39 41,44 41,48"/>
+                  <ellipse cx="53" cy="61" rx="18" ry="10.5" transform="rotate(-20 53 61)"/>
+                  <circle cx="41" cy="46" r="7.5"/>
+                  <polygon points="53,62 87,88 80,91 49,67"/>
+                  <circle class="hb-eye" cx="42" cy="44" r="1.6"/>
+                </g>
+                <g class="wing">
+                  <path d="M53,50 Q70,27 92,16 Q72,35 53,50 Z"/>
+                  <path d="M53,50 Q74,32 97,28 Q75,41 53,50 Z"/>
+                  <path d="M53,50 Q76,43 96,43 Q75,49 53,50 Z"/>
+                  <path d="M53,50 Q75,51 93,56 Q73,56 53,50 Z"/>
+                  <path d="M53,50 Q72,58 86,67 Q68,60 53,50 Z"/>
+                </g>
+              </svg>
+            </span>
+            <p class="team-name"><a href="https://christiansolorzano.com/" target="_blank" rel="noopener">Christian Solorzano</a></p>
+          </div>
+          <p class="team-bio">Designer, educator, photographer, community builder, trained meditation instructor, Brazilian Jiu-Jitsu black belt, producer of <a href="projects/faculty.html">Faculty</a>, an annual publication, host of the <a href="projects/underscore.html">Underscore</a> podcast, and founder of the <a href="projects/cgdc.html">Chicago Graphic Design Club</a> and O.P/A.L.
           <br>
           His work spans identity, culture, and communication. <br>
-          He teaches graphic design at DePaul University. <br></p>
+          Christian teaches graphic design at DePaul University. <br></p>
         </div>
         <div class="col-8 fade-up">
           <span class="team-role-label">Administrative</span>
-          <p class="team-name"><a href="https://substack.com/@theverticaleye" target="_blank" rel="noopener">Saied</a></p>
+          <div class="team-name-row">
+            <span class="team-icon" aria-hidden="true">
+              <svg viewBox="0 0 1000 1000">
+                <g transform="translate(-234 0) rotate(90 500 500)">
+                <g class="eye-lid">
+                  <ellipse class="eye-pupil" cx="500" cy="500" rx="161.97" ry="134.98"/>
+                  <path d="M500,254.29c-225.72,0-408.7,110-408.7,245.71s182.98,245.71,408.7,245.71,408.7-110,408.7-245.71-182.99-245.71-408.7-245.71ZM843.09,572.07c-17.28,24.56-42.58,46.96-75.19,66.57-34.1,20.51-74.11,36.68-118.9,48.07-47.09,11.97-97.22,18.04-148.99,18.04s-101.9-6.07-148.99-18.04c-44.79-11.39-84.79-27.56-118.9-48.07-32.61-19.61-57.91-42.01-75.19-66.57-16.36-23.26-24.66-47.5-24.66-72.07s8.3-48.82,24.66-72.07c17.28-24.56,42.58-46.96,75.19-66.57,34.1-20.51,74.11-36.68,118.9-48.07,47.09-11.97,97.22-18.04,148.99-18.04s101.9,6.07,148.99,18.04c44.79,11.39,84.79,27.56,118.91,48.07,32.61,19.61,57.91,42.01,75.19,66.57,16.36,23.26,24.66,47.5,24.66,72.07s-8.3,48.82-24.66,72.07h0Z"/>
+                </g>
+                </g>
+              </svg>
+            </span>
+            <p class="team-name"><a href="https://substack.com/@theverticaleye" target="_blank" rel="noopener">Saied</a></p>
+          </div>
           <p class="team-bio">Brings a background in business and business administration to O.P/A.L, overseeing the organizational and operational infrastructure allowing our practice to run with clarity and intention.</p>
         </div>
         <div class="col-8 fade-up">
           <span class="team-role-label">Advisor / Producer</span>
-          <p class="team-name">Rick Valicenti</p>
+          <div class="team-name-row">
+            <span class="team-icon" aria-hidden="true">
+              <canvas class="rick-spiral-canvas" width="160" height="160"></canvas>
+            </span>
+            <p class="team-name"><a href="https://en.wikipedia.org/wiki/Rick_Valicenti" target="_blank" rel="noopener">Rick Valicenti</a></p>
+          </div>
           <p class="team-bio">Distinguished by risk, innovation, and fabulousness. <br>
-          He brings all of that and a relentless push for excellence into O.P/A.L.</p>
+          Rick brings all of that and a relentless push for excellence into O.P/A.L.</p>
         </div>
       </div>
 
@@ -551,6 +663,89 @@
     }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
 
     document.querySelectorAll('.fade-up').forEach(el => io.observe(el));
+  </script>
+
+  <!-- Rick — grayscale striped Möbius strip: parametric surface, depth-sorted, gently turning -->
+  <script>
+  (function () {
+    const cv = document.querySelector('.rick-spiral-canvas');
+    if (!cv || !cv.getContext) return;
+    const ctx = cv.getContext('2d');
+    const S = 160, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = S * dpr; cv.height = S * dpr; ctx.scale(dpr, dpr);
+    const cx = S / 2, cy = S / 2, R = S / 2;
+    const NU = 180, CYCLES = 9, WIDTH = 0.34, RMAJ = 0.62, TILT = 0.95, ROLL = 0.65, TWISTS = 3, YAW = 0.55;
+    const sc = S * 0.48, cr = Math.cos(ROLL), sr = Math.sin(ROLL);
+    const stops = [[16,16,16],[245,245,245],[16,16,16]];   // grayscale: black → white → black
+    function col(t){
+      t -= Math.floor(t);
+      const f = t * (stops.length - 1), i = f | 0, k = f - i, a = stops[i], b = stops[i + 1];
+      return [a[0]+(b[0]-a[0])*k, a[1]+(b[1]-a[1])*k, a[2]+(b[2]-a[2])*k];
+    }
+    // a point on the Möbius surface: u runs around the loop, v across the band's width
+    function mob(u, v, ph){
+      const ang = u * TWISTS / 2 + ph;                 // ph animates the twist → the band writhes in place
+      const c = Math.cos(ang), rr = RMAJ + v * WIDTH * c;
+      return [rr * Math.cos(u), rr * Math.sin(u), v * WIDTH * Math.sin(ang)];
+    }
+    function rot3(p, ax, ay){                 // fixed tilt around X, fixed view yaw around Y
+      const ca = Math.cos(ax), sa = Math.sin(ax);
+      const y1 = p[1] * ca - p[2] * sa, z1 = p[1] * sa + p[2] * ca;
+      const cb = Math.cos(ay), sb = Math.sin(ay);
+      return [p[0] * cb + z1 * sb, y1, -p[0] * sb + z1 * cb];
+    }
+    // screen offset from centre (roll applied)
+    function proj(q){ const x = q[0] * sc, y = q[1] * sc; return [x * cr - y * sr, -(x * sr + y * cr)]; }
+    // flush-left: shift so the widest leftmost extent (sampled over a whole twist cycle) lands ~2% in — fixed, so it never jitters
+    let minX = Infinity;
+    for (let s = 0; s < 48; s++){
+      const ph = s / 48 * 6.2832;
+      for (let i = 0; i <= NU; i += 2){
+        const u = i / NU * 6.2832;
+        for (let v = -1; v <= 1; v += 2){
+          const X = proj(rot3(mob(u, v, ph), TILT, YAW))[0];
+          if (X < minX) minX = X;
+        }
+      }
+    }
+    const dx = S * 0.02 - (cx + minX);
+    function draw(ph){
+      ctx.clearRect(0, 0, S, S);
+      const quads = [];
+      for (let i = 0; i < NU; i++){
+        const u0 = i / NU * 6.2832, u1 = (i + 1) / NU * 6.2832;
+        const p = [mob(u0, -1, ph), mob(u0, 1, ph), mob(u1, 1, ph), mob(u1, -1, ph)].map(q => rot3(q, TILT, YAW));
+        const depth = (p[0][2] + p[1][2] + p[2][2] + p[3][2]) / 4;
+        const ax = p[2][0]-p[0][0], ay = p[2][1]-p[0][1], az = p[2][2]-p[0][2];   // surface tangents
+        const bx = p[1][0]-p[0][0], by = p[1][1]-p[0][1], bz = p[1][2]-p[0][2];
+        const nx = ay*bz-az*by, ny = az*bx-ax*bz, nz = ax*by-ay*bx;               // normal → shading
+        const shade = 0.4 + 0.6 * Math.abs(nz / (Math.hypot(nx, ny, nz) || 1));
+        const c = col(i / NU * CYCLES);
+        quads.push({ p, depth, fill: 'rgb(' + (c[0]*shade|0) + ',' + (c[1]*shade|0) + ',' + (c[2]*shade|0) + ')' });
+      }
+      quads.sort((a, b) => a.depth - b.depth);   // painter's algorithm: far to near
+      for (const q of quads){
+        ctx.beginPath();
+        for (let k = 0; k < 4; k++){
+          const e = proj(q.p[k]);
+          const X = cx + dx + e[0], Y = cy + e[1];   // dx → flush-left
+          if (k) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = q.fill;
+        ctx.fill();
+      }
+    }
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce){ draw(0); return; }
+    let last = 0;
+    (function loop(t){
+      requestAnimationFrame(loop);
+      if (t - last < 33) return;   // ~30fps
+      last = t;
+      draw(t * 0.0015);            // animate the twist (not a rigid spin)
+    })(0);
+  })();
   </script>
 </body>
 </html>
