@@ -43,7 +43,9 @@
 
 /* ── Colored periods ── */
 (function () {
-  const colors = ['#ff94c9', '#FFED00', '#79c7f1', '#fcc1b8', '#bbff34'];
+  // Deepened/saturated so every random pick stays legible on white
+  // (was light pastels: #ff94c9 #FFED00 #79c7f1 #fcc1b8 #bbff34)
+  const colors = ['#ff4f9e', '#e0a000', '#2f9bd6', '#ef5a45', '#7aae1f'];
   const skip = new Set(['SCRIPT', 'STYLE', 'svg', 'path']);
 
   function colorPeriods(node) {
