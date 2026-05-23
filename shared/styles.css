@@ -659,6 +659,22 @@ nav {
   transform: rotate(5deg);
   z-index: 2;
 }
+.postcard-stack__face {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: inherit;
+}
+.postcard-stack__crease {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
 .postcard-stack--spread {
   max-width: 62em;
   aspect-ratio: 7/5;
@@ -674,6 +690,23 @@ nav {
 .postcard-stack--spread .postcard-stack__card--front {
   top: 28%;
   left: 25%;
+}
+.postcard-stack--overlay {
+  max-width: 48em;
+  aspect-ratio: 7/5;
+}
+.postcard-stack--overlay .postcard-stack__card {
+  border-radius: 3px;
+}
+.postcard-stack--overlay .postcard-stack__card--back {
+  width: 36%;
+  top: 8%;
+  left: 2%;
+}
+.postcard-stack--overlay .postcard-stack__card--front {
+  width: 72%;
+  top: 30%;
+  left: 22%;
 }
 
 .spread-flat {
@@ -929,13 +962,23 @@ nav {
   padding-bottom: var(--space-24);
 }
 
-.project-header {
-  border-bottom: 0.3px solid #868686;
-  padding-bottom: var(--space-3);
-  margin-bottom: 0;
+.project-section {
+  margin-top: var(--space-20);
 }
-.project-header .col-2 {
-  text-align: right;
+.project-section:first-child {
+  margin-top: 0;
+}
+
+.project-section__title {
+  grid-column: span 12;
+  margin: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 0.3px solid #868686;
+  font-size: var(--body);
+  font-weight: 600;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  text-transform: uppercase;
 }
 
 @keyframes row-in {
@@ -958,7 +1001,7 @@ nav {
   cursor: default;
 }
 .project-row:hover {
-  background: linear-gradient(to right, #ff94c9, transparent);
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.07), transparent);
 }
 .project-row:last-child {
   border-bottom: none;
@@ -966,15 +1009,11 @@ nav {
 .project-row[data-url] {
   cursor: pointer;
 }
-.project-row .col-10 {
+.project-row .col-12 {
   font-size: var(--body);
+  font-weight: 600;
   color: #000000;
   line-height: 2em;
-}
-.project-row .col-2 {
-  font-size: var(--body);
-  color: #000000;
-  text-align: right;
 }
 .project-row a {
   color: inherit;
@@ -1009,17 +1048,7 @@ nav {
 }
 
 @media (max-width: 40em) {
-  .project-header .col-10,
-  .project-row .col-10 {
-    grid-column: span 5 !important;
-  }
-  .project-header .col-2,
-  .project-row .col-2 {
-    grid-column: span 1 !important;
-    text-align: right;
-  }
-  .project-row .col-10,
-  .project-row .col-2 {
+  .project-row .col-12 {
     font-size: 1em;
     line-height: 1.25em;
   }

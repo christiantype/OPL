@@ -21,7 +21,7 @@
   const pagePath = window.location.pathname.replace(/^\/OPL/, '');
   const canonical = base + pagePath;
   const firstImg  = PROJECT.images && PROJECT.images.length
-    ? PROJECT.images.find(i => !i.type || i.type === 'image')
+    ? PROJECT.images.find(i => i.src && (!i.type || i.type === 'image'))
     : null;
   const ogImage = firstImg
     ? base + '/images/' + firstImg.src.replace(/^.*\/images\//, '')
@@ -144,6 +144,7 @@
         return;
       }
 
+
       // A video flagged as a player: full-width black stage, video centred.
       if (item.player) {
         if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
@@ -260,12 +261,20 @@
     images.innerHTML = groups.map(g => {
       if (g.type === 'stack') {
         const s = g.item.stack;
-        const spread = s.spread ? ' postcard-stack--spread' : '';
+        const spread = s.overlay ? ' postcard-stack--overlay'
+                     : s.spread  ? ' postcard-stack--spread' : '';
+        // Optional fold line: front card becomes a wrapper holding image + crease.
+        const front = s.crease
+          ? `<div class="postcard-stack__card postcard-stack__card--front">`
+              + `<img class="postcard-stack__face" src="${s.front}" alt="${s.alt || ''}">`
+              + `<span class="postcard-stack__crease" aria-hidden="true"></span>`
+            + `</div>`
+          : `<img class="postcard-stack__card postcard-stack__card--front" src="${s.front}" alt="${s.alt || ''}">`;
         return `
           <div class="container">
             <div class="postcard-stack${spread}" data-stack>
               <img class="postcard-stack__card postcard-stack__card--back" src="${s.back}" alt="">
-              <img class="postcard-stack__card postcard-stack__card--front" src="${s.front}" alt="${s.alt || ''}">
+              ${front}
             </div>
           </div>
         `;

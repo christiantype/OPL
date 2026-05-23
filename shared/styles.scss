@@ -620,6 +620,25 @@ nav {
     &--front { top: 13%; left: 28%; transform: rotate(5deg);  z-index: 2; }
   }
 
+  // When a card needs a fold line, it's a wrapper holding the image + crease.
+  &__face {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: inherit;
+  }
+
+  &__crease {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+  }
+
   // Landscape variant — two catalog spreads laid flat on the surface, overlapped
   // and angled. Wider frame + wider cards than the portrait postcards.
   &--spread {
@@ -629,6 +648,18 @@ nav {
     .postcard-stack__card { width: 74%; border-radius: 3px; }
     .postcard-stack__card--back  { top: 8%;  left: 1%;  }
     .postcard-stack__card--front { top: 28%; left: 25%; }
+  }
+
+  // Overlay variant — a portrait cover (back) with a landscape spread laid over
+  // it, both sized to the SAME height (the landscape spread is ~2× the portrait
+  // cover's width), filling most of the column width.
+  &--overlay {
+    max-width: 48em;
+    aspect-ratio: 7 / 5;
+
+    .postcard-stack__card { border-radius: 3px; }
+    .postcard-stack__card--back  { width: 36%; top: 8%;  left: 2%;  }
+    .postcard-stack__card--front { width: 72%; top: 30%; left: 22%; }
   }
 }
 
@@ -891,13 +922,24 @@ nav {
   padding-bottom: var(--space-24);
 }
 
-.project-header {
-  border-bottom: 0.3px solid $mid;
+// Section headings — OP/AL's two sides (Original Practice / Applied Learning).
+.project-section {
+  margin-top: var(--space-20);
+
+  &:first-child { margin-top: 0; }
+}
+
+.project-section__title {
+  grid-column: span 12;
+  margin: 0;
   padding-bottom: var(--space-3);
-  margin-bottom: 0;
-
-  .col-2 { text-align: right; }
-
+  border-bottom: 0.3px solid $mid;
+  font-size: var(--body);          // match the project titles
+  font-weight: 600;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  // colour is set inline per section (random, distinct, per page load)
 }
 
 
@@ -923,7 +965,7 @@ nav {
   cursor: default;
 
   &:hover {
-    background: linear-gradient(to right, $accent, transparent);
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.07), transparent);
   }
 
   &:last-child { border-bottom: none; }
@@ -931,16 +973,11 @@ nav {
 
   &[data-url] { cursor: pointer; }
 
-  .col-10 {
+  .col-12 {
     font-size: var(--body);
+    font-weight: 600;
     color: $dark;
     line-height: 2em;
-  }
-
-  .col-2 {
-    font-size: var(--body);
-    color: $dark;
-    text-align: right;
   }
 
   a {
@@ -978,17 +1015,7 @@ nav {
 }
 
 @media (max-width: 40em) {
-  .project-header .col-10,
-  .project-row .col-10 { grid-column: span 5 !important; }
-
-  .project-header .col-2,
-  .project-row .col-2 {
-    grid-column: span 1 !important;
-    text-align: right;
-  }
-
-  .project-row .col-10,
-  .project-row .col-2 {
+  .project-row .col-12 {
     font-size: ms(0);
     line-height: 1.25em;
   }

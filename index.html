@@ -179,10 +179,6 @@
 
   <section id="projects">
     <div class="container">
-      <div class="grid project-header">
-        <span class="col-10 label">Project</span>
-        <span class="col-2 label">Year</span>
-      </div>
       <div id="project-rows"></div>
     </div>
   </section>
@@ -190,14 +186,38 @@
   <script>
     const tbody = document.getElementById('project-rows');
 
+    // Accent palette for the section headings (each a distinct colour per load).
+    const PALETTE = ['#ff4f9e', '#e0a000', '#2f9bd6', '#ef5a45', '#7aae1f', '#8a5cf6'];
+
+    const rowHTML = (p, i) => `
+      <div class="grid project-row${p.url ? ' has-link' : ''}" ${p.url ? `data-url="${p.url}"` : ''} style="${p.url ? 'cursor:pointer;' : ''}animation-delay:${i * 0.07}s">
+        <div class="col-12"><span class="project-category label">${p.category}</span>${p.url ? `<a href="${p.url}">${p.title}</a>` : p.title}</div>
+      </div>`;
+
     fetch('projects.json')
       .then(r => r.json())
       .then(data => {
-        tbody.innerHTML = data.projects.map((p, i) => `
-          <div class="grid project-row${p.url ? ' has-link' : ''}" ${p.url ? `data-url="${p.url}"` : ''} style="${p.url ? 'cursor:pointer;' : ''}animation-delay:${i * 0.07}s">
-            <div class="col-10"><span class="project-category label">${p.category}</span>${p.url ? `<a href="${p.url}">${p.title}</a>` : p.title}</div>
-            <div class="col-2">${p.year}</div>
-          </div>`).join('');
+        // Split into OP/AL's two sides, preserving first-seen group order.
+        const groups = [];
+        data.projects.filter(p => !p.hidden).forEach(p => {
+          const name = p.group || 'Original Practice';
+          let g = groups.find(x => x.name === name);
+          if (!g) { g = { name, items: [] }; groups.push(g); }
+          g.items.push(p);
+        });
+        // Each section heading gets a distinct random colour, reshuffled per load.
+        const heads = [...PALETTE];
+        for (let n = heads.length - 1; n > 0; n--) {
+          const m = Math.floor(Math.random() * (n + 1));
+          [heads[n], heads[m]] = [heads[m], heads[n]];
+        }
+        let i = 0;
+        tbody.innerHTML = groups.map((g, gi) => `
+          <div class="grid project-section">
+            <h2 class="col-12 project-section__title" style="color:${heads[gi % heads.length]}">${g.name}</h2>
+          </div>
+          ${g.items.map(p => rowHTML(p, i++)).join('')}
+        `).join('');
         document.querySelectorAll('.project-row[data-url]').forEach(row => {
           row.addEventListener('click', () => window.location = row.dataset.url);
         });
