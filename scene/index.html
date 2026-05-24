@@ -2052,11 +2052,18 @@ function applyPhysSliders(P) {
 // Start live physics (with a burst) if a restored scene requested it. Deferred until
 // after the camera is framed so the walls fit the right bounds.
 function maybeStartPhysics() {
+  if (STILL) { _pendingPhysics = false; return; }   // capture mode: never burst — hold the opening frame
   if (_pendingPhysics && !physEnabled && !frozen) {
     // Live hero: always contain shapes inside the canvas so nothing flies off-screen.
     if (!document.documentElement.classList.contains('edit') && $('physWalls')) $('physWalls').value = 'canvas';
     // Hold the composed words while the homepage slash grows (~5s), then burst.
-    setTimeout(() => { if (!physEnabled && !frozen) physBurst(); }, 6000);
+    setTimeout(() => {
+      if (!physEnabled && !frozen) physBurst();
+      // Flag the orbit as ready once the burst has settled; heroSpin eases it in.
+      if (HERO_MOTION && !document.documentElement.classList.contains('edit')) {
+        setTimeout(() => { heroOrbitReady = true; }, HERO_SETTLE_MS);
+      }
+    }, 6000);
   }
   _pendingPhysics = false;
 }
@@ -2660,6 +2667,10 @@ document.addEventListener('change', autosave, true);
 
 // ===== HERO boot: full-viewport, auto-fit. ?edit also enables zoom/pan. =====
 const EDIT = document.documentElement.classList.contains('edit');
+// ?still: freeze the live hero on its opening frame (no dolly, no burst, no orbit) so a
+// headless screenshot can be captured for images/hero-fallback.webp — keeping the static
+// still pixel-aligned with the scene's first rendered frame (no crossfade snap).
+const STILL = !EDIT && new URLSearchParams(location.search).has('still');
 // Embedded in the homepage hero: hide the scene's grab cursor and forward pointer
 // moves so the site's custom "+" cursor tracks over the hero.
 if (window.parent && window.parent !== window) {
@@ -2674,6 +2685,21 @@ controls.autoRotate = true;        // published hero gently rotates;
 controls.autoRotateSpeed = 0.6;    // a saved "Auto Rotate" value overrides this on load.
 controls.enableZoom = EDIT;        // live hero is drag-to-rotate only (don't trap page scroll)
 controls.enablePan = EDIT;
+
+// ── Hero auto-orbit: a subtle horizontal drift that begins once the burst settles ──
+const HERO_MOTION = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const HERO_AUTOROTATE_SPEED = 0.5;    // horizontal orbit speed (eased in, never snapped on)
+const HERO_SETTLE_MS = 3500;          // wait after the 6s burst before orbiting
+const HERO_FRAME_MARGIN = 0.6;        // close framing (<1 pulls the camera in so letters loom)
+const HERO_START_MARGIN = 1.4;        // opening framing — whole composition (small)
+const HERO_HOLD_SEC = 1.0;            // hold the opening frame still while the fallback crossfades out
+const HERO_DOLLY_SEC = 5.0;           // then slowly enlarge from start→close, finishing ~at the 6s burst
+let heroMargin = HERO_START_MARGIN;   // animated framing margin for the live hero
+let heroDollyT0 = null;               // clock time the zoom-in begins (set once the scene is framed)
+let heroDollyDone = false;            // true once the zoom-in has finished (or was interrupted)
+let heroOrbitReady = false;           // true once the burst has settled
+let heroDragging   = false;           // true while the viewer is dragging
+let heroSpin = 0;                     // current eased auto-rotate speed (ramps 0 ↔ target)
 
 // Frame the whole composition so it fills the viewport (composition-agnostic,
 // so it keeps working when a different scene is published).
@@ -2703,7 +2729,7 @@ function heroResize(){
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   if (typeof refreshAllLineResolutions === 'function') refreshAllLineResolutions();
-  fitCameraToScene();
+  fitCameraToScene(EDIT ? 1.18 : heroMargin);   // live hero uses the animated dolly margin; editor sees the whole scene
   if (physEnabled && typeof buildWalls === 'function') buildWalls();   // keep walls fit to the viewport
 }
 window.addEventListener('resize', heroResize);
@@ -2731,7 +2757,25 @@ async function bootScene() {
   const state = await loadPublishedState();
   if (state) restoreState(state); else defaultScene();
   if (EDIT) { if (!state) fitCameraToScene(); }   // frame default for composing; keep saved camera otherwise
-  else { heroResize(); }                          // live hero: always full-bleed + auto-fit
+  else {
+    heroResize();                                 // live hero: frames wide (readable composition)
+    controls.autoRotate = false;
+    controls.autoRotateSpeed = 0;                 // eased in later via heroSpin (no mechanical start)
+    if (STILL) {
+      heroDollyDone = true;                        // capture mode: hold the exact opening frame, forever
+    } else if (HERO_MOTION) {
+      // Hold the opening frame still long enough for the homepage's fallback still to finish
+      // crossfading out (so the cut is seamless), THEN begin the slow zoom-in.
+      heroDollyT0 = clock.elapsedTime + HERO_HOLD_SEC;
+      // Dragging takes over: it interrupts the intro zoom; the orbit eases back after release.
+      controls.addEventListener('start', () => { heroDragging = true; heroDollyDone = true; });
+      controls.addEventListener('end',   () => { heroDragging = false; });
+      // Safety net: if no burst is scheduled (a physics-off statement), still begin eventually.
+      setTimeout(() => { heroOrbitReady = true; }, 11000);
+    } else {
+      heroDollyDone = true;                        // reduced motion: stay at the readable wide framing
+    }
+  }
   maybeStartPhysics();                            // live burst, now that camera + walls are framed
   // Tell the homepage the scene rendered, so it can drop the fallback still.
   if (!EDIT) requestAnimationFrame(() => {
@@ -2849,6 +2893,25 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
   const t = clock.elapsedTime;
+
+  // Live hero opening: hold the readable composition, then slowly move it toward
+  // the viewer (dolly in from a wide framing to the close one), finishing just as
+  // the burst fires. Interrupted if the viewer grabs the scene.
+  if (HERO_MOTION && !EDIT && heroDollyT0 != null && t >= heroDollyT0 && !heroDollyDone && !heroDragging) {
+    const k = Math.min(1, (t - heroDollyT0) / HERO_DOLLY_SEC);
+    const e = k * k * (3 - 2 * k);                                   // smoothstep
+    heroMargin = HERO_START_MARGIN + (HERO_FRAME_MARGIN - HERO_START_MARGIN) * e;
+    fitCameraToScene(heroMargin);
+    if (k >= 1) heroDollyDone = true;
+  }
+  // Ease the horizontal auto-orbit up to speed (and back down while dragging), so
+  // it never snaps on or off.
+  if (HERO_MOTION && !EDIT) {
+    const wantSpin = (heroOrbitReady && !heroDragging) ? HERO_AUTOROTATE_SPEED : 0;
+    heroSpin = THREE.MathUtils.damp(heroSpin, wantSpin, 2.2, dt);
+    controls.autoRotate = heroSpin > 0.002;
+    if (controls.autoRotate) controls.autoRotateSpeed = heroSpin;
+  }
 
   if (physEnabled) {
     applyVortexForces(Math.min(dt, 1/30));
