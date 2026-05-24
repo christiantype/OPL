@@ -3,7 +3,7 @@
 
 const FOOTER_COL1 = `More than Design<br>Since 2026`;
 const FOOTER_COL2 = `hi<span style="color:var(--color-accent);">@</span>opal.design<br>224.443.6415`;
-const FOOTER_COL3 = `1029 Lake St.<br>Suite 104, Oak Park IL 60301`;
+const FOOTER_COL3 = `1029 Lake St., Suite 104<br>Oak Park IL 60301`;
 
 /* Path to the footer wordmark SVG — drop opl-footer.svg at the project root */
 const FOOTER_SVG = 'opl-footer.svg';
@@ -31,9 +31,9 @@ const FOOTER_SVG = 'opl-footer.svg';
   footer.innerHTML = `
     <div class="container">
       <div class="grid" style="align-items:start;">
-        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-dark)'};">${FOOTER_COL1}</div>
-        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-dark)'};">${FOOTER_COL2}</div>
-        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-dark)'};">${FOOTER_COL3}</div>
+        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-ink)'};">${FOOTER_COL1}</div>
+        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-ink)'};">${FOOTER_COL2}</div>
+        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-ink)'};">${FOOTER_COL3}</div>
       </div>
     </div>
   `;

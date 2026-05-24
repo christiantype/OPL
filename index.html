@@ -109,17 +109,15 @@
       opacity: 1;
     }
     @media (prefers-reduced-motion: reduce) { #hero-slash { transition: none; } }
-    /* The wordmark + asterisk sit over the dark hero, then the light content as you
-       scroll. Over the hero the wordmark uses a difference blend (adapts to the busy
-       scene). That blend isn't reliable over the white sections (it can vanish), so a
-       scroll handler adds .nav--on-light once the nav clears the hero — there the blend
-       is dropped and both marks are painted a solid dark colour. */
-    .nav-logo-link { mix-blend-mode: difference; }
-    .nav-logo-link svg { fill: #fff; }
+    /* Nav blends with whatever's behind it (difference): white over the dark hero,
+       inverting to dark over the light content as you scroll. The blend needs a PAINTED
+       backdrop — the content below the hero must carry its own white background, or the
+       root-canvas white shows through and the blend has nothing to invert against (the
+       nav then vanishes over it). */
+    nav { mix-blend-mode: difference; }
+    nav svg { fill: #fff; }
     .nav-asterisk { color: #fff; }
-    nav.nav--on-light .nav-logo-link { mix-blend-mode: normal; }
-    nav.nav--on-light .nav-logo-link svg { fill: #111; }
-    nav.nav--on-light .nav-asterisk { color: #111; }
+    #projects { background: #fff; position: relative; z-index: 0; }
     /* Hero tagline: "original practice / applied learning". The "/" stays anchored
        dead-centre (the big tapered slash sits behind it); after the scene's burst the
        two practices glide out to opposite edges of the content grid (JS sets the
@@ -241,8 +239,7 @@
       const right = tag && tag.querySelector('.tagline-side--right');
       const gridC = document.querySelector('#projects .container');
       if (!tag || !hero || !left || !right) return;
-      let spread = false;
-      let appliedL = 0, appliedR = 0;
+      let spread = false, rAF;
       function gridEdges() {
         if (gridC) {
           const r = gridC.getBoundingClientRect(), cs = getComputedStyle(gridC);
@@ -251,45 +248,29 @@
         const hr = hero.getBoundingClientRect();
         return { l: hr.left + 24, r: hr.right - 24 };
       }
-      function apply() {
-        // Move horizontally only — stay on the same baseline, slide out to the grid edges.
-        const e  = gridEdges();
-        const lr = left.getBoundingClientRect(), rr = right.getBoundingClientRect();
-        const lLeftNat  = lr.left  - appliedL;   // natural position = current minus applied transform
-        const rRightNat = rr.right - appliedR;
-        appliedL = e.l - lLeftNat;
-        appliedR = e.r - rRightNat;
-        left.style.transform  = `translateX(${appliedL}px)`;
-        right.style.transform = `translateX(${appliedR}px)`;
+      // Horizontal only, on the same baseline. Always measure from the NATURAL (un-transformed)
+      // position so the labels land exactly on the grid edges and never accumulate past them
+      // (a mid-glide resize used to compound the offset and fling them off-screen).
+      function position(animate) {
+        left.style.transition = right.style.transition = 'none';
+        left.style.transform  = right.style.transform  = 'none';
+        void left.offsetWidth;                                   // commit the reset before measuring
+        const e = gridEdges();
+        const dxL = e.l - left.getBoundingClientRect().left;
+        const dxR = e.r - right.getBoundingClientRect().right;
+        if (animate) { left.style.transition = right.style.transition = ''; void left.offsetWidth; }
+        left.style.transform  = `translateX(${dxL}px)`;
+        right.style.transform = `translateX(${dxR}px)`;
       }
-      function trigger() { if (spread) return; spread = true; apply(); }
+      function trigger() { if (spread) return; spread = true; position(true); }
       setTimeout(trigger, 1400);   // split shortly after load; the slow glide carries it out
-      let rAF;
       window.addEventListener('resize', () => {
         if (!spread) return;
         cancelAnimationFrame(rAF);
-        rAF = requestAnimationFrame(apply);
+        rAF = requestAnimationFrame(() => position(false));   // snap to the new grid edges
       });
     })();
 
-    /* The wordmark + asterisk start over the dark hero, then pass over the light content
-       as you scroll. The wordmark's difference blend can vanish over the white sections,
-       so once the nav clears the hero we flag it (.nav--on-light) and paint solid dark. */
-    (function navContrast() {
-      const hero = document.getElementById('hero-canvas');
-      const nav  = document.querySelector('nav');
-      if (!hero || !nav) return;
-      let ticking = false;
-      const update = () => {
-        const overHero = hero.getBoundingClientRect().bottom > 48;   // nav still over the dark hero
-        nav.classList.toggle('nav--on-light', !overHero);
-        ticking = false;
-      };
-      window.addEventListener('scroll', () => {
-        if (!ticking) { ticking = true; requestAnimationFrame(update); }
-      }, { passive: true });
-      update();
-    })();
 
     /* Anchor the tapered slash precisely onto the subtitle "/" (desktop + mobile),
        then grow it from the centre when the scene's burst fires. */
