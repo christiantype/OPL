@@ -109,63 +109,63 @@
       opacity: 1;
     }
     @media (prefers-reduced-motion: reduce) { #hero-slash { transition: none; } }
-    /* Keep the nav icons legible over both the dark hero and the light content
-       below: difference blend paints them as the inverse of whatever's behind. */
-    nav { mix-blend-mode: difference; }
-    nav svg { fill: #fff; }
-    /* Dead-center rotating tagline — "A {word} studio": black uppercase text on a
-       white pill, centered over the hero. */
+    /* The wordmark + asterisk sit over the dark hero, then the light content as you
+       scroll. Over the hero the wordmark uses a difference blend (adapts to the busy
+       scene). That blend isn't reliable over the white sections (it can vanish), so a
+       scroll handler adds .nav--on-light once the nav clears the hero — there the blend
+       is dropped and both marks are painted a solid dark colour. */
+    .nav-logo-link { mix-blend-mode: difference; }
+    .nav-logo-link svg { fill: #fff; }
+    .nav-asterisk { color: #fff; }
+    nav.nav--on-light .nav-logo-link { mix-blend-mode: normal; }
+    nav.nav--on-light .nav-logo-link svg { fill: #111; }
+    nav.nav--on-light .nav-asterisk { color: #111; }
+    /* Hero tagline: "original practice / applied learning". The "/" stays anchored
+       dead-centre (the big tapered slash sits behind it); after the scene's burst the
+       two practices glide out to opposite edges of the content grid (JS sets the
+       transforms so they land exactly on the container's columns). */
     #hero-tagline {
       position: absolute;
       inset: 0;
       z-index: 2;
       margin: 0;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0.85em;
       pointer-events: none;
       text-align: center;
-      white-space: nowrap;
-    }
-    .tagline-pill {
-      /* Identical frosted style to the subtitle below: dark translucent + white text. */
-      color: #fff;
-      background: rgba(0, 0, 0, 0.4);
-      -webkit-backdrop-filter: blur(7px);
-      backdrop-filter: blur(7px);
-      border-radius: 999px;
-      padding: 0.4em 0.95em;
-      font-size: clamp(0.72rem, 1vw, 0.95rem);
-      line-height: 1.4;
-      letter-spacing: 1.5px;
-      text-indent: 1.5px;
-      text-transform: uppercase;
     }
     .tagline-sub {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;   /* equal sides keep the "/" dead-centre */
+      align-items: center;
+      column-gap: 0.55em;
       color: #fff;
       font-size: clamp(0.72rem, 1vw, 0.95rem);
       line-height: 1.4;
       letter-spacing: 1.5px;
-      text-indent: 1.5px;
+      white-space: nowrap;
+    }
+    .tagline-slash {
+      justify-self: center;                    /* anchored "/" — big slash sits behind it */
+      font-family: "Sidepiece", sans-serif;
+      font-weight: 700;                        /* strongest cut, so the "/" is the boldest mark */
+    }
+    .tagline-side {
       padding: 0.4em 0.95em;
       border-radius: 999px;
-      /* Frosted plate so the line reads over the busy scene while it still shows
-         through. backdrop-filter blurs the canvas behind; the translucent fill is
-         the fallback (and carries the contrast) if blur isn't supported. */
+      /* Frosted plate so each label reads over the busy scene while it still shows through. */
       background: rgba(0, 0, 0, 0.4);
       -webkit-backdrop-filter: blur(7px);
       backdrop-filter: blur(7px);
+      transition: transform 4s cubic-bezier(0.45, 0, 0.2, 1);   /* slow, elegant glide */
+      will-change: transform;
     }
-    #hero-word {
-      display: inline-block;
-      margin: 0 0.3em;
-      transition: opacity 0.4s ease;
+    .tagline-side--left  { justify-self: end; }    /* hug the "/" until the burst */
+    .tagline-side--right { justify-self: start; }
+    @media (prefers-reduced-motion: reduce) {
+      .tagline-side { transition: none; }
     }
-    #hero-tagline.is-swapping #hero-word,
-    #hero-tagline.is-swapping #hero-article { opacity: 0; }
-    #hero-article { transition: opacity 0.4s ease; }
   </style>
 </head>
 <body>
@@ -176,9 +176,12 @@
     <img id="hero-fallback" src="images/hero-fallback.webp?v=2" alt="" aria-hidden="true">
     <div id="hero-touch" aria-hidden="true"></div>
     <div id="hero-slash" aria-hidden="true"></div>
-    <p id="hero-tagline" aria-live="polite">
-      <span class="tagline-pill"><span id="hero-article">A</span> <span id="hero-word">mindful</span> studio</span>
-      <span class="tagline-sub">original practice <span id="slash-slot">/</span> applied learning</span>
+    <p id="hero-tagline">
+      <span class="tagline-sub">
+        <span class="tagline-side tagline-side--left">original practice</span>
+        <span id="slash-slot" class="tagline-slash">/</span>
+        <span class="tagline-side tagline-side--right">applied learning</span>
+      </span>
     </p>
   </section>
 
@@ -228,28 +231,64 @@
         });
       });
 
-    /* Rotating hero tagline — words migrated from opal.design */
-    (function rotateTagline() {
-      const words = ['mindful', 'boundless', 'open', 'aware', 'heartfelt',
-        'practical', 'honest', 'aspirational', 'direct', 'precise', 'vast',
-        'connected', 'opalescent'];
-      const tag  = document.getElementById('hero-tagline');
-      const word = document.getElementById('hero-word');
-      const art  = document.getElementById('hero-article');
-      if (!tag || !word || !art) return;
-      const article = w => /^[aeiou]/i.test(w) ? 'An' : 'A';
-      let i = 0;
-      art.textContent = article(words[0]);
-      word.textContent = words[0];
-      setInterval(() => {
-        tag.classList.add('is-swapping');           // fade out
-        setTimeout(() => {
-          i = (i + 1) % words.length;
-          word.textContent = words[i];
-          art.textContent  = article(words[i]);
-          tag.classList.remove('is-swapping');       // fade in
-        }, 400);
-      }, 2600);
+    /* After the scene's burst, glide "original practice" / "applied learning" out to
+       opposite edges of the content grid (aligned with the project columns below),
+       leaving the "/" anchored dead-centre. */
+    (function heroSpread() {
+      const tag   = document.getElementById('hero-tagline');
+      const hero  = document.getElementById('hero-canvas');
+      const left  = tag && tag.querySelector('.tagline-side--left');
+      const right = tag && tag.querySelector('.tagline-side--right');
+      const gridC = document.querySelector('#projects .container');
+      if (!tag || !hero || !left || !right) return;
+      let spread = false;
+      let appliedL = 0, appliedR = 0;
+      function gridEdges() {
+        if (gridC) {
+          const r = gridC.getBoundingClientRect(), cs = getComputedStyle(gridC);
+          return { l: r.left + parseFloat(cs.paddingLeft), r: r.right - parseFloat(cs.paddingRight) };
+        }
+        const hr = hero.getBoundingClientRect();
+        return { l: hr.left + 24, r: hr.right - 24 };
+      }
+      function apply() {
+        // Move horizontally only — stay on the same baseline, slide out to the grid edges.
+        const e  = gridEdges();
+        const lr = left.getBoundingClientRect(), rr = right.getBoundingClientRect();
+        const lLeftNat  = lr.left  - appliedL;   // natural position = current minus applied transform
+        const rRightNat = rr.right - appliedR;
+        appliedL = e.l - lLeftNat;
+        appliedR = e.r - rRightNat;
+        left.style.transform  = `translateX(${appliedL}px)`;
+        right.style.transform = `translateX(${appliedR}px)`;
+      }
+      function trigger() { if (spread) return; spread = true; apply(); }
+      setTimeout(trigger, 1400);   // split shortly after load; the slow glide carries it out
+      let rAF;
+      window.addEventListener('resize', () => {
+        if (!spread) return;
+        cancelAnimationFrame(rAF);
+        rAF = requestAnimationFrame(apply);
+      });
+    })();
+
+    /* The wordmark + asterisk start over the dark hero, then pass over the light content
+       as you scroll. The wordmark's difference blend can vanish over the white sections,
+       so once the nav clears the hero we flag it (.nav--on-light) and paint solid dark. */
+    (function navContrast() {
+      const hero = document.getElementById('hero-canvas');
+      const nav  = document.querySelector('nav');
+      if (!hero || !nav) return;
+      let ticking = false;
+      const update = () => {
+        const overHero = hero.getBoundingClientRect().bottom > 48;   // nav still over the dark hero
+        nav.classList.toggle('nav--on-light', !overHero);
+        ticking = false;
+      };
+      window.addEventListener('scroll', () => {
+        if (!ticking) { ticking = true; requestAnimationFrame(update); }
+      }, { passive: true });
+      update();
     })();
 
     /* Anchor the tapered slash precisely onto the subtitle "/" (desktop + mobile),
