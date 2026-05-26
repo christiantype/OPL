@@ -1,27 +1,7 @@
-/* ── OPL Custom Cursor — dot + tapering canvas trail ── */
+/* ── OPL Custom Cursor — tapering canvas trail (no pointer mark) ── */
 (function () {
   /* Hide default cursor */
   document.documentElement.style.cursor = 'none';
-
-  /* Cross cursor that tracks the pointer */
-  const dot = document.createElement('div');
-  Object.assign(dot.style, {
-    position:      'fixed',
-    pointerEvents: 'none',
-    zIndex:        '99999',
-    width:         '28px',
-    height:        '28px',
-    transform:     'translate(-50%, -50%)',
-    top:           '-100px',
-    left:          '-100px',
-  });
-  dot.innerHTML = `
-    <svg width="28" height="28" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
-      <line x1="7" y1="0" x2="7" y2="14" stroke="#0000FF" stroke-width="1.5"/>
-      <line x1="0" y1="7" x2="14" y2="7" stroke="#0000FF" stroke-width="1.5"/>
-    </svg>
-  `;
-  document.body.appendChild(dot);
 
   /* Full-page canvas for the trail */
   const canvas = document.createElement('canvas');
@@ -93,10 +73,6 @@
   }
 
   document.addEventListener('mousemove', function (e) {
-    /* Move dot */
-    dot.style.left = e.clientX + 'px';
-    dot.style.top  = e.clientY + 'px';
-
     /* Accumulate trail points */
     trail.push({ x: e.clientX, y: e.clientY });
     if (trail.length > MAX) trail.shift();
@@ -112,11 +88,6 @@
       animating = true;
       requestAnimationFrame(draw);
     }
-  });
-
-  document.addEventListener('mouseleave', function () {
-    dot.style.top  = '-100px';
-    dot.style.left = '-100px';
   });
 
 })();

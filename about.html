@@ -611,6 +611,20 @@
         }
         curP += (tgtP - curP) * easeK;
         curT += (tgtT - curT) * easeK;
+
+        // Cursor ripple: living letters nudged by the pointer ease back via a damped spring,
+        // so disturbances feel organic instead of just dropping straight down.
+        for (let k = 0; k < pts.length; k++){
+          const p = pts[k];
+          if (!p.alive || !(p.dvx || p.dvy || p.dx || p.dy)) continue;
+          p.dvx = ((p.dvx || 0) - (p.dx || 0) * 0.08) * 0.82;
+          p.dvy = ((p.dvy || 0) - (p.dy || 0) * 0.08) * 0.82;
+          p.dx  = (p.dx  || 0) + p.dvx;
+          p.dy  = (p.dy  || 0) + p.dvy;
+          if (Math.abs(p.dx) < 0.1 && Math.abs(p.dy) < 0.1 && Math.abs(p.dvx) < 0.05 && Math.abs(p.dvy) < 0.05) {
+            p.dx = p.dy = p.dvx = p.dvy = 0;
+          }
+        }
         const cosP = Math.cos(curP), sinP = Math.sin(curP), cosT = Math.cos(curT), sinT = Math.sin(curT);
 
         zbuf.fill(0);
@@ -626,8 +640,8 @@
           const nx1 = p.nx*cosP + p.nz*sinP, nz1 = -p.nx*sinP + p.nz*cosP;
           const ny2 = p.ny*cosT - nz1*sinT, nz2 = p.ny*sinT + nz1*cosT, nx2 = nx1;
           const ooz = 1 / (z2 + K2);
-          const sx = Math.round(cx + K1 * ooz * x2);
-          const sy = Math.round(cy - K1 * ooz * y2 * aspect);
+          const sx = Math.round(cx + K1 * ooz * x2 + (p.dx || 0) / CW);
+          const sy = Math.round(cy - K1 * ooz * y2 * aspect + (p.dy || 0) / CH);
           p.sx = sx; p.sy = sy;
           if (sx < 0 || sx >= cols || sy < 0 || sy >= rows) continue;
           const i = sy * cols + sx;
@@ -651,14 +665,21 @@
             ctx.fillText(CHARS[cellCi[i]], xx * CW + CW / 2, py);
           }
         }
-        // falling letters: gravity, then off the bottom and gone (nothing stays)
+        // falling letters: lateral drift + gravity + gentle rotation, off-screen and gone.
         const fh = cv.clientHeight + CH * 2;
+        const fw = cv.clientWidth + CH * 2;
         for (let k = particles.length - 1; k >= 0; k--){
           const p = particles[k];
-          p.vy += 0.45; p.y += p.vy;
-          if (p.y > fh){ particles.splice(k, 1); continue; }
+          p.vy += 0.42; p.y += p.vy;
+          p.vx *= 0.985; p.x += p.vx;            // air drag on the lateral kick
+          p.rot += p.vrot;
+          if (p.y > fh || p.x < -CH || p.x > fw){ particles.splice(k, 1); continue; }
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          if (p.rot) ctx.rotate(p.rot);
           ctx.fillStyle = 'rgb(' + p.cr + ',' + p.cg + ',' + p.cb + ')';
-          ctx.fillText(CHARS[p.ci], p.x, p.y);
+          ctx.fillText(CHARS[p.ci], 0, 0);
+          ctx.restore();
         }
       }
 
@@ -690,8 +711,8 @@
         const mx = e.clientX - rect.left, my = e.clientY - rect.top;
         if (mx < 0 || my < 0 || mx > rect.width || my > rect.height) return;
         const mc = mx / CW, mr = my / CH;
-        const RMAX = 5.5;                 // max reach in cells
-        const ph = e.timeStamp * 0.002;  // slowly drifting lobes
+        const RMAX = 6.5;                 // wider reach so nearby letters also respond
+        const ph = e.timeStamp * 0.002;   // slowly drifting lobes
         for (let k = 0; k < pts.length; k++){
           const p = pts[k];
           if (!p.alive || p.sx < 0) continue;
@@ -703,9 +724,25 @@
           const reff = RMAX * (0.5 + 0.32 * Math.sin(ang * 3 + ph) + 0.18 * Math.sin(ang * 5 - ph * 1.7));
           if (d > reff) continue;
           const t = 1 - d / reff;                 // 1 center .. 0 edge
-          if (Math.random() > t * 0.8 + 0.12) continue;
+
+          // Organic ripple: nudge the letter outward; it springs back over a few frames.
+          const push = (0.40 + Math.random() * 0.35) * t;
+          p.dvx = (p.dvx || 0) + Math.cos(ang) * push * CW * 0.55;
+          p.dvy = (p.dvy || 0) + Math.sin(ang) * push * CH * 0.55;
+
+          // Sparse knock-off — only a few letters fall per pass (was dense).
+          if (Math.random() > t * 0.30 + 0.018) continue;
           p.alive = false;
-          particles.push({ x: p.sx * CW + CW / 2, y: p.sy * CH + CH / 2, vy: Math.random() * 1.2, ci: p.ci, cr: (p.cr * 0.4) | 0, cg: (p.cg * 0.4) | 0, cb: (p.cb * 0.4) | 0 });
+          particles.push({
+            x: p.sx * CW + CW / 2 + (p.dx || 0),
+            y: p.sy * CH + CH / 2 + (p.dy || 0),
+            vx: (p.dvx || 0) * 0.18 + Math.cos(ang) * (0.7 + Math.random() * 0.8),
+            vy: -0.35 + Math.random() * 0.7 + Math.sin(ang) * 0.35,
+            rot: 0,
+            vrot: (Math.random() - 0.5) * 0.12,
+            ci: p.ci,
+            cr: (p.cr * 0.5) | 0, cg: (p.cg * 0.5) | 0, cb: (p.cb * 0.5) | 0
+          });
         }
       }, { passive: true });
     })();
