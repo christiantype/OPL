@@ -1,6 +1,8 @@
 (function () {
-  const HASH = '5c8aa77ea07a0517dd68a987f3ba47069203754611ebe427fa8f620a856508a3';
-  const KEY = 'zlmc-unlocked';
+  // sha-256("murocks") — set 2026-05-26 (rotated from the original).
+  const HASH = 'a15e05cdc0fec666ee9f4acd1547dc1dc5a52d99076a8ba6ca617f9dee364fef';
+  // Bumped key — invalidates any session still unlocked under the old password.
+  const KEY = 'opal-ai-unlocked-v2';
 
   if (sessionStorage.getItem(KEY) === '1') return;
 
@@ -102,7 +104,7 @@
     wrap.className = 'zlmc-gate';
     wrap.innerHTML = `
       <form class="zlmc-gate-card" autocomplete="off">
-        <div class="zlmc-gate-eyebrow">Private · ZLMC Studio</div>
+        <div class="zlmc-gate-eyebrow">Private · OP/AL AI-Tools</div>
         <h1 class="zlmc-gate-title">Enter password to continue.</h1>
         <div class="zlmc-gate-row">
           <input class="zlmc-gate-input" type="password" autocomplete="current-password" placeholder="Password" />

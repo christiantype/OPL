@@ -1,0 +1,2529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Vessel.2 — OP/AL</title>
+<script src="/AI-TOOLS/shared/gate.js"></script>
+<style>
+  /* OPL topbar — same white chrome as the other AI-Tools. */
+  .opl-topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; background: #ffffff;
+    border-bottom: 1px solid #ececec; z-index: 250;
+  }
+  .opl-topbar .opl-brand { display: flex; align-items: center; gap: 14px; color: #1a1a1a; text-decoration: none; }
+  .opl-topbar .opl-brand svg { display: block; height: 18px; width: auto; }
+  .opl-topbar .opl-menu { color: #1a1a1a; line-height: 0; text-decoration: none; }
+  .opl-topbar .opl-product { color: #8a8a8a; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  /* Light chrome around the artwork — body bg reads white like the other
+     OP/AL tools; vessel's dark LP-sleeve stage sits inside the app grid. */
+  body     { background: #ffffff !important; }
+  .app     { height: calc(100vh - 56px) !important; margin-top: 56px; background: #ffffff; }
+  .welcome { top: 56px !important; }
+</style>
+<style>
+  /* ============================================================
+     OPAL — VESSEL.2
+     Drawing-based audio-reactive instrument
+     ============================================================ */
+  :root {
+    --opal-cobalt: #1c39bb;
+    --opal-sienna: #b94a2c;
+    --opal-amber:  #e8a13a;
+    --opal-white:  #f5f2ec;
+    --opal-black:  #0e0e0e;
+    --opal-cream:  #ebe5d7;
+
+    --bg:           var(--opal-black);
+    --panel:        #141414;
+    --panel-2:      #181818;
+    --hairline:     #232323;
+    --hairline-2:   #2a2a2a;
+    --text:         var(--opal-white);
+    --text-dim:     #7a766e;
+    --text-faint:   #3a3833;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Untitled Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.01em;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ============ STAGE ============ */
+  .stage {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--opal-black);
+    overflow: hidden;
+  }
+
+  .stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245, 242, 236, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245, 242, 236, 0.03) 1px, transparent 1px);
+    background-size: 56px 56px;
+    pointer-events: none;
+  }
+
+  .color-bars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .color-bars .bar { width: 4px; height: 64px; }
+  .color-bars .bar.c1 { background: var(--opal-cobalt); }
+  .color-bars .bar.c2 { background: var(--opal-sienna); }
+  .color-bars .bar.c3 { background: var(--opal-amber); }
+
+  .stage-header {
+    position: absolute;
+    top: 24px;
+    left: 32px;
+    right: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .brand {
+    font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .brand .opal-mark { color: var(--opal-white); font-weight: 500; }
+  .brand .tool-name { color: var(--opal-amber); }
+  .brand-sub {
+    margin-top: 4px;
+    color: var(--text-faint);
+    font-size: 9px;
+    letter-spacing: 0.32em;
+  }
+
+  .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--text-faint);
+    text-align: right;
+    line-height: 1.7;
+  }
+  .meta strong { color: var(--text-dim); font-weight: 500; }
+
+  .canvas-wrap {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    height: min(80vh, 80vw);
+    max-height: 84vh;
+    background: #1a1a1a;
+    box-shadow:
+      0 40px 100px rgba(0,0,0,0.7),
+      0 0 0 1px rgba(245, 242, 236, 0.05);
+    cursor: crosshair;
+  }
+
+  .canvas-wrap.dragging { cursor: grabbing; }
+  .canvas-wrap.preview-mode { cursor: default; }
+
+  .corner-tick {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--opal-white);
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .corner-tick.tl { top: -7px; left: -7px; border-right: none; border-bottom: none; }
+  .corner-tick.tr { top: -7px; right: -7px; border-left: none; border-bottom: none; }
+  .corner-tick.bl { bottom: -7px; left: -7px; border-right: none; border-top: none; }
+  .corner-tick.br { bottom: -7px; right: -7px; border-left: none; border-top: none; }
+
+  #bg-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+  }
+
+  #three-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  #draw-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+  }
+
+  .canvas-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .canvas-empty.hidden { display: none; }
+  .canvas-empty .icon {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--text-faint);
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .canvas-empty .icon::before {
+    content: '+';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-family: inherit;
+  }
+
+  .canvas-label {
+    position: absolute;
+    bottom: -32px;
+    left: 0;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .canvas-spec {
+    position: absolute;
+    bottom: -32px;
+    right: 0;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .draw-hint {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--opal-amber);
+    background: rgba(14, 14, 14, 0.7);
+    padding: 6px 14px;
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 7;
+    backdrop-filter: blur(6px);
+    transition: opacity 0.3s;
+  }
+  .draw-hint.hidden { opacity: 0; }
+
+  .footer-mark {
+    position: absolute;
+    bottom: 20px;
+    left: 32px;
+    right: 32px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--text-faint);
+    z-index: 10;
+    pointer-events: none;
+  }
+  .footer-mark strong { color: var(--text-dim); font-weight: 500; }
+
+  /* ============ PANEL ============ */
+  .panel {
+    background: var(--panel);
+    border-left: 1px solid var(--hairline);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0;
+    position: relative;
+  }
+  .panel::-webkit-scrollbar { width: 4px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: #2a2a2a; }
+
+  .panel-header {
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+    padding: 22px 24px 16px;
+    border-bottom: 1px solid var(--hairline);
+    z-index: 5;
+  }
+
+  .panel-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    color: var(--opal-white);
+    text-transform: uppercase;
+  }
+  .panel-title .sep { color: var(--opal-amber); margin: 0 6px; }
+  .panel-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* Mode tabs */
+  .mode-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 12px;
+    border: 1px solid var(--hairline-2);
+  }
+  .mode-tab {
+    padding: 10px;
+    background: transparent;
+    color: var(--text-dim);
+    border: none;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    transition: all 0.12s;
+  }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active {
+    background: var(--opal-amber);
+    color: var(--opal-black);
+  }
+
+  .section {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .section:last-child { border-bottom: none; padding-bottom: 60px; }
+
+  .section-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::before {
+    content: '';
+    width: 14px;
+    height: 1px;
+    background: var(--opal-amber);
+  }
+  .section-title .count {
+    margin-left: auto;
+    color: var(--opal-amber);
+    font-weight: 500;
+  }
+
+  .section-help {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+
+  /* Track list */
+  .track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--hairline);
+  }
+  .track {
+    background: var(--panel-2);
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.12s;
+  }
+  .track:hover { background: #1f1f1f; }
+  .track.active {
+    background: var(--opal-cream);
+    color: var(--opal-black);
+  }
+  .track.active .track-num, .track.active .track-name { color: var(--opal-black); }
+  .track-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.1em;
+    min-width: 28px;
+  }
+  .track-name {
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .track-status {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-faint);
+    flex-shrink: 0;
+  }
+  .track.loaded .track-status { background: var(--opal-amber); }
+  .track.active .track-status { background: var(--opal-cobalt); }
+  .track.missing .track-status { background: var(--opal-sienna); opacity: 0.5; }
+
+  /* Transport */
+  .transport {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .play-btn {
+    width: 36px; height: 36px;
+    background: var(--opal-white);
+    color: var(--opal-black);
+    border: none;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s;
+    flex-shrink: 0;
+  }
+  .play-btn:hover { background: var(--opal-amber); }
+  .play-btn:disabled {
+    background: #2a2a2a;
+    color: var(--text-faint);
+    cursor: not-allowed;
+  }
+  .time-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    flex: 1;
+  }
+  .progress-bar {
+    width: 100%; height: 3px;
+    background: var(--hairline-2);
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--opal-amber);
+    width: 0%;
+    transition: width 0.05s linear;
+  }
+  .levels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .level { text-align: center; }
+  .level-bar {
+    height: 32px;
+    background: #1a1a1a;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 5px;
+    border: 1px solid var(--hairline);
+  }
+  .level-fill {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 0%;
+    transition: height 0.05s linear;
+  }
+  #bass-fill { background: linear-gradient(to top, var(--opal-cobalt), #4863c8); }
+  #mid-fill  { background: linear-gradient(to top, var(--opal-sienna), #d96a4c); }
+  #high-fill { background: linear-gradient(to top, var(--opal-amber), #f4c172); }
+  .level-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: var(--text-faint);
+  }
+
+  /* Photo drop */
+  .photo-drop {
+    display: block;
+    width: 100%;
+    padding: 18px 14px;
+    background: var(--panel-2);
+    border: 1px dashed #2c2c2c;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .photo-drop:hover { border-color: var(--opal-amber); color: var(--text); }
+  .photo-drop.loaded {
+    border-style: solid;
+    border-color: var(--opal-amber);
+    color: var(--text);
+  }
+  .photo-drop.drag-over {
+    border-color: var(--opal-amber);
+    background: rgba(232, 161, 58, 0.06);
+  }
+  .photo-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-faint);
+    margin-top: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Material grid */
+  .material-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .mat-option {
+    padding: 9px 4px;
+    background: var(--panel-2);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-align: center;
+    border: 1px solid transparent;
+    transition: all 0.12s;
+  }
+  .mat-option:hover { background: #1f1f1f; color: var(--text); }
+  .mat-option.active {
+    background: var(--opal-white);
+    color: var(--opal-black);
+  }
+
+  /* Controls */
+  .control-row { margin-bottom: 12px; }
+  .control-row:last-child { margin-bottom: 0; }
+  .control-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .control-label .val {
+    color: var(--opal-amber);
+    font-weight: 500;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--hairline-2);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--opal-white);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px; height: 12px;
+    background: var(--opal-white);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+  input[type="color"] {
+    width: 100%; height: 36px;
+    border: 1px solid var(--hairline-2);
+    background: transparent;
+    cursor: pointer;
+    padding: 2px;
+  }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+  }
+  .toggle-row .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .toggle {
+    width: 36px; height: 20px;
+    background: var(--hairline-2);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    background: var(--opal-white);
+    border-radius: 50%;
+    transition: transform 0.15s;
+  }
+  .toggle.on { background: var(--opal-amber); }
+  .toggle.on::after { transform: translateX(16px); }
+
+  /* Anchor list */
+  .anchor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--hairline);
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .anchor-list::-webkit-scrollbar { width: 4px; }
+  .anchor-list::-webkit-scrollbar-thumb { background: #2a2a2a; }
+
+  .anchor-row {
+    background: var(--panel-2);
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 24px 36px 1fr 1fr;
+    gap: 6px;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+  }
+  .anchor-row.reactive { background: #1d1c18; }
+  .anchor-row.selected { background: #2a2520; }
+
+  .anchor-num {
+    color: var(--text-faint);
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+  .anchor-row.reactive .anchor-num { color: var(--opal-amber); }
+
+  .anchor-toggle {
+    width: 22px; height: 14px;
+    background: var(--hairline-2);
+    border-radius: 7px;
+    position: relative;
+    cursor: pointer;
+    border: none;
+  }
+  .anchor-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 10px; height: 10px;
+    background: var(--opal-white);
+    border-radius: 50%;
+    transition: transform 0.12s;
+  }
+  .anchor-toggle.on { background: var(--opal-amber); }
+  .anchor-toggle.on::after { transform: translateX(8px); }
+
+  .anchor-mode, .anchor-band {
+    padding: 4px;
+    background: #1a1a1a;
+    color: var(--text);
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .anchor-mode:disabled, .anchor-band:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .anchor-empty {
+    background: var(--panel-2);
+    padding: 22px 12px;
+    text-align: center;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* Buttons */
+  .btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--hairline-2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .btn:hover {
+    background: #1f1f1f;
+    border-color: var(--opal-amber);
+    color: var(--opal-amber);
+  }
+  .btn.primary {
+    background: var(--opal-amber);
+    color: var(--opal-black);
+    border-color: var(--opal-amber);
+  }
+  .btn.primary:hover { background: var(--opal-white); color: var(--opal-black); border-color: var(--opal-white); }
+  .btn.cobalt {
+    background: var(--opal-cobalt);
+    color: var(--opal-white);
+    border-color: var(--opal-cobalt);
+  }
+  .btn.cobalt:hover { background: var(--opal-white); color: var(--opal-black); }
+  .btn.danger {
+    background: transparent;
+    color: var(--opal-sienna);
+    border-color: var(--opal-sienna);
+  }
+  .btn.danger:hover { background: var(--opal-sienna); color: var(--opal-white); }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  input[type="file"] { display: none; }
+
+  /* Welcome */
+  .welcome {
+    position: fixed;
+    inset: 0;
+    background: rgba(14, 14, 14, 0.96);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+  .welcome.hidden { display: none; }
+  .welcome-card {
+    max-width: 540px;
+    background: var(--panel);
+    border: 1px solid var(--hairline-2);
+    padding: 40px 36px;
+    position: relative;
+  }
+  .welcome-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    color: var(--opal-amber);
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .welcome-title {
+    font-size: 28px;
+    line-height: 1.15;
+    color: var(--opal-white);
+    margin-bottom: 16px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .welcome-title em { font-style: italic; color: var(--opal-amber); }
+  .welcome-text {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  .welcome-text strong { color: var(--text); font-weight: 500; }
+  .welcome-steps {
+    list-style: none;
+    margin: 20px 0 28px;
+    counter-reset: step;
+  }
+  .welcome-steps li {
+    counter-increment: step;
+    padding-left: 32px;
+    position: relative;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .welcome-steps li::before {
+    content: counter(step, decimal-leading-zero);
+    position: absolute;
+    left: 0; top: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--opal-amber);
+    letter-spacing: 0.1em;
+  }
+  .welcome-cta {
+    padding: 14px 24px;
+    background: var(--opal-amber);
+    color: var(--opal-black);
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .welcome-cta:hover { background: var(--opal-white); }
+  .welcome-footer {
+    margin-top: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+  }
+  .welcome-footer .amber { color: var(--opal-amber); }
+
+  @media (max-width: 980px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: 60vh 1fr; }
+    .panel { border-left: none; border-top: 1px solid var(--hairline); }
+    .canvas-wrap { height: 54vh; }
+    .footer-mark { display: none; }
+  }
+</style>
+<style>
+  /* ─── OP/AL light-theme overrides ──────────────────────────────────────
+     Vessel was built dark. The other OP/AL tools (More-Than-Design,
+     ZLMC Posts) are light/white, so we re-skin the chrome here without
+     touching the original block. The artwork stage stays dark — that IS
+     the LP sleeve being designed. */
+  :root {
+    --bg:         #ffffff;
+    --panel:      rgba(255,255,255,0.92);
+    --panel-2:    #f6f6f7;
+    --hairline:   #e6e6e8;
+    --hairline-2: #ececef;
+    --text:       #1a1a1c;
+    --text-dim:   #6b6b70;
+    --text-faint: #a4a4a8;
+  }
+  html, body { background: #ffffff; color: var(--text); }
+
+  /* Right-side control panel — match More-Than-Design's frosted look. */
+  .panel { background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-left: 1px solid var(--hairline); }
+  .panel-header { background: rgba(255,255,255,0.96); border-bottom: 1px solid var(--hairline); }
+  .panel::-webkit-scrollbar-thumb { background: #cfcfd3; }
+  .panel-title { color: var(--text); }
+  .panel-title .sep { color: var(--text-dim); }
+  .panel-sub { color: var(--text-faint); }
+
+  /* Welcome card — light card on a soft scrim instead of the black blanket. */
+  .welcome { background: rgba(255,255,255,0.94); }
+  .welcome-card { background: #ffffff; border: 1px solid var(--hairline); box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 14px 40px rgba(0,0,0,0.08); }
+  .welcome-eyebrow { color: var(--text-dim) !important; }
+  .welcome-title, .welcome-text, .welcome-steps li { color: var(--text); }
+  .welcome-text strong { color: var(--text); }
+  .welcome-cta { background: #1a1a1c; color: #fff; border: 1px solid #1a1a1c; }
+  .welcome-cta:hover { background: #000; }
+  .welcome-footer { color: var(--text-dim); }
+  .welcome .amber, .amber { color: #b94a2c; }
+  .corner-tick { border-color: var(--text-dim) !important; }
+</style>
+</head>
+<body>
+
+<header class="opl-topbar">
+  <a href="/AI-TOOLS/" class="opl-brand" aria-label="AI-Tools home">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="154.5 212.9 1274.6 186.2" fill="currentColor"><path d="M1356.2,353.2h72.1v-13h-59.1v-100.6h-13v113.5ZM1077.3,313.7l13.5-61.1h10.6l13.3,61.1h-37.5ZM1055.3,353.2h13.3l5.8-26.5h43.3l5.8,26.5h13.3l-25.2-113.5h-30.6l-25.6,113.5ZM723.6,398.3h37.2l111.9-184.5h-37.2l-111.9,184.5ZM478.1,296.2v-43.6h28.1c5.9,0,8.3.9,13,4.7,5.2,4.3,5.9,6.1,5.9,10.6v13c0,4.5-.7,6.3-5.9,10.6-4.7,3.8-7,4.7-13,4.7h-28.1ZM465.1,353.2h13v-44h28.1c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-14.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-41.1v113.5ZM199.1,340.2h-11.9c-5.9,0-8.3-.9-13-4.7-5.2-4.3-5.9-6.1-5.9-10.6v-57c0-4.5.7-6.3,5.9-10.6,4.7-3.8,7-4.7,13-4.7h11.9c5.9,0,8.5.9,13.2,4.7,5,4.1,5.8,6.1,5.8,10.6v57c0,4.5-.7,6.5-5.8,10.6-4.7,3.8-7.2,4.7-13.2,4.7M187.2,353.2h11.9c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-58.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-11.9c-9.4,0-14.2,2-22.5,9-8.3,7-9.4,10.3-9.4,18.6v58.4c0,8.3,1.1,11.5,9.4,18.6,8.3,7,13.2,9,22.5,9"/></svg>
+    <span class="opl-product">Vessel.2</span>
+  </a>
+  <a href="/AI-TOOLS/" class="opl-menu" aria-label="Back to AI-Tools">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 79.7 72" width="17" height="17" fill="currentColor"><path d="M29.3,72h22c16.1,0,28.4-13.1,28.4-28.8v-14.4C79.7,13.1,67.4,0,51.3,0h-22C13.2,0,0,13.1,0,28.8v14.4c0,15.7,13.1,28.8,29.2,28.8h0Z"/></svg>
+  </a>
+</header>
+
+<!-- ============ WELCOME ============ -->
+<div class="welcome" id="welcome">
+  <div class="welcome-card">
+    <div class="corner-tick tl"></div>
+    <div class="corner-tick tr"></div>
+    <div class="corner-tick bl"></div>
+    <div class="corner-tick br"></div>
+
+    <div class="welcome-eyebrow">OP/AL — Vessel.2</div>
+    <h1 class="welcome-title">A drawing instrument for <em>JORDYN<br>(Sugarcane Family)</em></h1>
+    <p class="welcome-text">
+      You draw a shape with anchor points on a snap grid. Choose which points
+      respond to the music. The shape lifts into 3D, casts a shadow, breathes
+      with the track. One entity per song.
+    </p>
+    <p class="welcome-text"><strong>How it works:</strong></p>
+    <ol class="welcome-steps">
+      <li>Pick a track and drop in a quotidian photograph</li>
+      <li>Click to drop sharp anchors; click-and-drag to draw bezier curves with handles</li>
+      <li>In Anchors, turn on which points react and pick a mode — Pulse, Bloat, Twist, Spike, Ripple, Shatter, Orbit</li>
+      <li>Tune Drive and Sensitivity for extreme reactions. Press play. Export when it feels right.</li>
+    </ol>
+    <button class="welcome-cta" onclick="document.getElementById('welcome').classList.add('hidden')">Enter the studio &nbsp;&rarr;</button>
+    <div class="welcome-footer">
+      An <span class="amber">Original Practice Applied Lab</span> instrument &nbsp;/&nbsp; opl.design
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="app">
+
+  <!-- STAGE -->
+  <div class="stage">
+    <div class="color-bars">
+      <div class="bar c1"></div>
+      <div class="bar c2"></div>
+      <div class="bar c3"></div>
+    </div>
+
+    <div class="stage-header">
+      <div class="brand">
+        <div><span class="opal-mark">OPAL</span> &nbsp;&nbsp; <span class="tool-name">VESSEL.2</span></div>
+        <div class="brand-sub">Original Practice Applied Lab</div>
+      </div>
+      <div class="meta">
+        <div><strong>JORDYN</strong> (Sugarcane Family)</div>
+        <div>Sean Fermoyle &mdash; 2026</div>
+        <div>LP Sleeve &nbsp;/&nbsp; 12.375&Prime; &sup2; &nbsp;/&nbsp; 300DPI</div>
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvas-wrap">
+      <div class="corner-tick tl"></div>
+      <div class="corner-tick tr"></div>
+      <div class="corner-tick bl"></div>
+      <div class="corner-tick br"></div>
+
+      <img id="bg-photo" style="display:none" alt="">
+      <canvas id="three-canvas"></canvas>
+      <canvas id="draw-canvas"></canvas>
+      <div class="canvas-empty" id="canvas-empty">
+        <div class="icon"></div>
+        <div>Drop a photograph</div>
+      </div>
+      <div class="draw-hint" id="draw-hint">
+        Click = sharp point &nbsp;·&nbsp; Click-drag = curve (pulls handles) &nbsp;·&nbsp; Drag handles to shape &nbsp;·&nbsp; Alt-drag = break &nbsp;·&nbsp; Right-click = toggle sharp/smooth &nbsp;·&nbsp; Shift-click = delete
+      </div>
+
+      <div class="canvas-label" id="canvas-label">No photograph</div>
+      <div class="canvas-spec">3712 &times; 3712 PX</div>
+    </div>
+
+    <div class="footer-mark">
+      <div><strong>OPAL</strong> &nbsp;&mdash;&nbsp; Original Practice Applied Lab</div>
+      <div>opl.design &nbsp;/&nbsp; hello@opl.design</div>
+    </div>
+  </div>
+
+  <!-- PANEL -->
+  <div class="panel">
+
+    <div class="panel-header">
+      <div class="panel-title">JORDYN <span class="sep">/</span> Vessel.2</div>
+      <div class="panel-sub">8 tracks &middot; Sean Fermoyle</div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="draw">Draw</button>
+        <button class="mode-tab" data-mode="preview">Preview</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Album</div>
+      <div class="track-list" id="track-list"></div>
+      <div style="margin-top:14px">
+        <div class="transport">
+          <button class="play-btn" id="play-btn" disabled>&#9658;</button>
+          <div class="time-display" id="time-display">0:00 / 0:00</div>
+        </div>
+        <div class="progress-bar" id="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="levels">
+          <div class="level"><div class="level-bar"><div class="level-fill" id="bass-fill"></div></div><div class="level-label">BASS</div></div>
+          <div class="level"><div class="level-bar"><div class="level-fill" id="mid-fill"></div></div><div class="level-label">MID</div></div>
+          <div class="level"><div class="level-bar"><div class="level-fill" id="high-fill"></div></div><div class="level-label">HIGH</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Photograph</div>
+      <div class="section-help">Something ordinary. A sink, an orange, a wall.</div>
+      <label class="photo-drop" id="photo-drop">
+        <input type="file" id="photo-input" accept="image/*">
+        <span id="photo-drop-text">Drop or click to upload</span>
+      </label>
+      <div class="photo-name" id="photo-name"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Path</div>
+      <div class="toggle-row">
+        <div class="label">Closed shape</div>
+        <button class="toggle on" id="closed-toggle"></button>
+      </div>
+      <div class="toggle-row">
+        <div class="label">Show grid</div>
+        <button class="toggle on" id="grid-toggle"></button>
+      </div>
+      <div class="toggle-row">
+        <div class="label">Show handles</div>
+        <button class="toggle on" id="handles-toggle"></button>
+      </div>
+      <div class="control-row" style="margin-top:8px">
+        <div class="control-label"><span>Grid density</span><span class="val" id="grid-val">16</span></div>
+        <input type="range" id="grid-density" min="8" max="40" step="1" value="16">
+      </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn" id="clear-shape">Clear shape</button>
+        <button class="btn" id="reset-anchors">Reset reactivity</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        Anchors
+        <span class="count" id="anchor-count">0</span>
+      </div>
+      <div class="section-help">Toggle which points react. Pulse, Bloat, or Twist on Bass / Mid / High.</div>
+      <div class="anchor-list" id="anchor-list">
+        <div class="anchor-empty">Draw a shape to begin</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Material</div>
+      <div class="material-grid" id="material-grid"></div>
+      <div class="control-row" style="margin-top:14px">
+        <div class="control-label"><span>Color</span></div>
+        <input type="color" id="color-input" value="#e8a13a">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Geometry</div>
+      <div class="control-row">
+        <div class="control-label"><span>Line thickness</span><span class="val" id="thick-val">0.040</span></div>
+        <input type="range" id="thickness" min="0.008" max="0.18" step="0.001" value="0.04">
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Depth</span><span class="val" id="depth-val">0.25</span></div>
+        <input type="range" id="depth" min="0" max="1.5" step="0.01" value="0.25">
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Hover height</span><span class="val" id="hover-val">0.20</span></div>
+        <input type="range" id="hover" min="0" max="1.0" step="0.01" value="0.2">
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Rotation</span><span class="val" id="rot-val">0.20</span></div>
+        <input type="range" id="rotspeed" min="0" max="2.0" step="0.01" value="0.2">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Shadow</div>
+      <div class="control-row">
+        <div class="control-label"><span>Strength</span><span class="val" id="shadow-val">0.65</span></div>
+        <input type="range" id="shadow" min="0" max="1.0" step="0.01" value="0.65">
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Softness</span><span class="val" id="shadow-soft-val">0.50</span></div>
+        <input type="range" id="shadow-soft" min="0" max="1.0" step="0.01" value="0.5">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Audio Reactivity</div>
+      <div class="control-row">
+        <div class="control-label"><span>Intensity</span><span class="val" id="react-val">1.00</span></div>
+        <input type="range" id="reactivity" min="0" max="3.0" step="0.01" value="1.0">
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Drive</span><span class="val" id="drive-val">1.00</span></div>
+        <input type="range" id="drive" min="0" max="4.0" step="0.01" value="1.0">
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Transient sensitivity</span><span class="val" id="sens-val">0.55</span></div>
+        <input type="range" id="sensitivity" min="0" max="1.0" step="0.01" value="0.55">
+      </div>
+      <div class="section-help" style="margin-top:6px;margin-bottom:0">
+        Drive multiplies all reactive displacement. Sensitivity sets the transient detector for Spike &amp; Ripple modes — higher = more triggers.
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Export</div>
+      <button class="btn primary" id="export-btn">Export PNG &mdash; full sleeve</button>
+      <button class="btn cobalt" id="export-entity" style="margin-top:6px">Export entity only &mdash; transparent</button>
+    </div>
+
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ============================================================
+// OP/AL — VESSEL.2
+// Drawing-based audio-reactive composer
+// ============================================================
+
+const TRACKS = [
+  { num: '001', name: 'Opitus Session',         file: 'tracks/001.mp3' },
+  { num: '002', name: 'Ships in the Night',     file: 'tracks/002.mp3' },
+  { num: '003', name: 'Jazz Relapse',           file: 'tracks/003.mp3' },
+  { num: '004', name: 'Walk of the Bird',       file: 'tracks/004.mp3' },
+  { num: '005', name: 'Good Evening',           file: 'tracks/005.mp3' },
+  { num: '006', name: 'Cherry Blossom (Interlude)', file: 'tracks/006.mp3' },
+  { num: '007', name: 'Off In The Distance',    file: 'tracks/007.mp3' },
+  { num: '008', name: 'A Little Nervous',       file: 'tracks/008.mp3' }
+];
+
+const MATERIALS = [
+  { id: 'chrome',   name: 'Chrome',   roughness: 0.05, metalness: 1.0, emissive: 0 },
+  { id: 'matte',    name: 'Matte',    roughness: 0.95, metalness: 0.0, emissive: 0 },
+  { id: 'glass',    name: 'Glass',    roughness: 0.0,  metalness: 0.0, emissive: 0, transparent: true, opacity: 0.45 },
+  { id: 'pearl',    name: 'Pearl',    roughness: 0.25, metalness: 0.6, emissive: 0 },
+  { id: 'plaster',  name: 'Plaster',  roughness: 1.0,  metalness: 0.0, emissive: 0 },
+  { id: 'liquid',   name: 'Liquid',   roughness: 0.1,  metalness: 0.85, emissive: 0 },
+  { id: 'neon',     name: 'Neon',     roughness: 0.4,  metalness: 0.0, emissive: 1.4 },
+  { id: 'brushed',  name: 'Brushed',  roughness: 0.55, metalness: 0.9, emissive: 0 },
+  { id: 'wax',      name: 'Wax',      roughness: 0.7,  metalness: 0.1, emissive: 0.15 }
+];
+
+// State
+const state = {
+  mode: 'draw', // 'draw' or 'preview'
+  material: 'chrome',
+  color: '#e8a13a',
+  thickness: 0.04,
+  depth: 0.25,
+  hover: 0.2,
+  rotspeed: 0.2,
+  shadow: 0.65,
+  shadowSoft: 0.5,
+  reactivity: 1.0,
+  drive: 1.0,         // global multiplier on top of reactivity — pushes "extreme" modes hard
+  sensitivity: 0.55,  // 0..1 transient detector — lower = more sensitive
+  gridDensity: 16,
+  closed: true,
+  showGrid: true,
+  showHandles: true,  // toggle the bezier handle UI in draw mode
+  // Audio: raw smoothed bands + transient-driven envelopes (sharp attack, decay)
+  audio: {
+    bass: 0, mid: 0, high: 0, overall: 0,
+    bassEnv: 0, midEnv: 0, highEnv: 0,
+    bassAvg: 0, midAvg: 0, highAvg: 0,
+    waveform: null
+  },
+  currentTrack: null,
+  // Anchors: { x, y, hIn:{x,y}, hOut:{x,y}, broken, reactive, mode, band, amp }
+  // x, y normalized [0,1]; hIn/hOut are offsets in same normalized units
+  // hIn.x=hIn.y=hOut.x=hOut.y=0 → sharp corner; otherwise bezier
+  anchors: [],
+  selectedAnchor: -1,
+  selectedHandle: null  // { anchor: idx, side: 'in' | 'out' } when a handle is being dragged
+};
+
+// ---- anchor helpers ---------------------------------------------------------
+function isSharp(a) {
+  return a.hIn.x === 0 && a.hIn.y === 0 && a.hOut.x === 0 && a.hOut.y === 0;
+}
+function zeroH() { return { x: 0, y: 0 }; }
+// Auto-compute mirrored handles from neighbor positions (for smooth toggle)
+function autoSmoothHandles(i) {
+  const N = state.anchors.length;
+  const a = state.anchors[i];
+  const closed = state.closed && N >= 3;
+  const prev = closed ? state.anchors[(i - 1 + N) % N] : state.anchors[Math.max(0, i - 1)];
+  const next = closed ? state.anchors[(i + 1) % N] : state.anchors[Math.min(N - 1, i + 1)];
+  // Tangent points from prev to next, scaled
+  const tx = (next.x - prev.x) * 0.22;
+  const ty = (next.y - prev.y) * 0.22;
+  a.hOut = { x: tx, y: ty };
+  a.hIn = { x: -tx, y: -ty };
+  a.broken = false;
+}
+// Cubic bezier point
+function cubicBezier(p0, p1, p2, p3, t) {
+  const u = 1 - t, u2 = u * u, u3 = u2 * u;
+  const t2 = t * t, t3 = t2 * t;
+  return {
+    x: u3 * p0.x + 3 * u2 * t * p1.x + 3 * u * t2 * p2.x + t3 * p3.x,
+    y: u3 * p0.y + 3 * u2 * t * p1.y + 3 * u * t2 * p2.y + t3 * p3.y
+  };
+}
+
+// ============================================================
+// TRACK LIST
+// ============================================================
+const trackList = document.getElementById('track-list');
+const trackEls = [];
+const audioEls = [];
+TRACKS.forEach((t, i) => {
+  const el = document.createElement('div');
+  el.className = 'track';
+  el.dataset.idx = i;
+  el.innerHTML = `<span class="track-num">${t.num}</span><span class="track-name">${t.name}</span><span class="track-status"></span>`;
+  el.onclick = () => selectTrack(i);
+  trackList.appendChild(el);
+  trackEls.push(el);
+
+  const a = new Audio();
+  a.src = t.file;
+  a.crossOrigin = 'anonymous';
+  a.preload = 'metadata';
+  a.addEventListener('loadedmetadata', () => el.classList.add('loaded'));
+  a.addEventListener('error', () => {
+    el.classList.add('missing');
+    el.title = `Missing: ${t.file}`;
+  });
+  audioEls.push(a);
+});
+
+// ============================================================
+// MATERIAL BUTTONS
+// ============================================================
+const matGrid = document.getElementById('material-grid');
+MATERIALS.forEach(m => {
+  const b = document.createElement('button');
+  b.className = 'mat-option' + (m.id === state.material ? ' active' : '');
+  b.dataset.material = m.id;
+  b.textContent = m.name;
+  b.onclick = () => {
+    state.material = m.id;
+    document.querySelectorAll('.mat-option').forEach(el => el.classList.remove('active'));
+    b.classList.add('active');
+    rebuildEntity();
+  };
+  matGrid.appendChild(b);
+});
+
+// ============================================================
+// SLIDERS
+// ============================================================
+function bindSlider(id, prop, displayId, fmt = v => v.toFixed(2), onChange) {
+  const el = document.getElementById(id);
+  const disp = document.getElementById(displayId);
+  el.addEventListener('input', () => {
+    state[prop] = parseFloat(el.value);
+    disp.textContent = fmt(state[prop]);
+    if (onChange) onChange();
+  });
+  disp.textContent = fmt(state[prop]);
+}
+bindSlider('thickness', 'thickness', 'thick-val', v => v.toFixed(3), () => rebuildEntity());
+bindSlider('depth', 'depth', 'depth-val', v => v.toFixed(2), () => rebuildEntity());
+bindSlider('hover', 'hover', 'hover-val');
+bindSlider('rotspeed', 'rotspeed', 'rot-val');
+bindSlider('shadow', 'shadow', 'shadow-val');
+bindSlider('shadow-soft', 'shadowSoft', 'shadow-soft-val');
+bindSlider('reactivity', 'reactivity', 'react-val');
+bindSlider('drive', 'drive', 'drive-val');
+bindSlider('sensitivity', 'sensitivity', 'sens-val');
+bindSlider('grid-density', 'gridDensity', 'grid-val', v => Math.round(v).toString(), () => redrawOverlay());
+
+document.getElementById('color-input').addEventListener('input', e => {
+  state.color = e.target.value;
+  applyMaterial();
+});
+
+document.getElementById('closed-toggle').addEventListener('click', e => {
+  state.closed = !state.closed;
+  e.currentTarget.classList.toggle('on', state.closed);
+  rebuildEntity();
+  redrawOverlay();
+});
+
+document.getElementById('grid-toggle').addEventListener('click', e => {
+  state.showGrid = !state.showGrid;
+  e.currentTarget.classList.toggle('on', state.showGrid);
+  redrawOverlay();
+});
+
+document.getElementById('handles-toggle').addEventListener('click', e => {
+  state.showHandles = !state.showHandles;
+  e.currentTarget.classList.toggle('on', state.showHandles);
+  redrawOverlay();
+});
+
+document.getElementById('clear-shape').onclick = () => {
+  if (state.anchors.length && !confirm('Clear the shape?')) return;
+  state.anchors = [];
+  state.selectedAnchor = -1;
+  rebuildEntity();
+  redrawOverlay();
+  renderAnchorList();
+};
+
+document.getElementById('reset-anchors').onclick = () => {
+  state.anchors.forEach(a => {
+    a.reactive = false;
+    a.mode = 'pulse';
+    a.band = 'bass';
+  });
+  renderAnchorList();
+};
+
+// Mode tabs
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.onclick = () => {
+    state.mode = tab.dataset.mode;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('draw-hint').classList.toggle('hidden', state.mode !== 'draw');
+    document.getElementById('canvas-wrap').classList.toggle('preview-mode', state.mode === 'preview');
+    document.getElementById('draw-canvas').style.pointerEvents = state.mode === 'draw' ? 'auto' : 'none';
+    redrawOverlay();
+  };
+});
+
+// ============================================================
+// THREE.js — entity + shadow
+// ============================================================
+const tc = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas: tc, alpha: true, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(0, 0, 5);
+
+// Lights — main directional light casts shadow
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+keyLight.position.set(2.5, 3.5, 4);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -3;
+keyLight.shadow.camera.right = 3;
+keyLight.shadow.camera.top = 3;
+keyLight.shadow.camera.bottom = -3;
+keyLight.shadow.camera.near = 0.1;
+keyLight.shadow.camera.far = 20;
+keyLight.shadow.bias = -0.0005;
+keyLight.shadow.radius = 8;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x9fb8d4, 0.5);
+fillLight.position.set(-3, -1, 2);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffd4a8, 0.35);
+rimLight.position.set(0, -2.5, -4);
+scene.add(rimLight);
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.2);
+scene.add(ambient);
+
+// Env map for reflections
+const pmrem = new THREE.PMREMGenerator(renderer);
+{
+  const cnv = document.createElement('canvas');
+  cnv.width = 512; cnv.height = 256;
+  const ctx = cnv.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.4, '#cccccc');
+  g.addColorStop(0.6, '#888888');
+  g.addColorStop(1, '#222222');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 256);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(80, 30, 40, 20);
+  ctx.fillRect(300, 60, 60, 15);
+  const envTex = new THREE.CanvasTexture(cnv);
+  envTex.mapping = THREE.EquirectangularReflectionMapping;
+  scene.environment = pmrem.fromEquirectangular(envTex).texture;
+}
+
+// Shadow-receiving plane (behind the entity, in front of the photo visually)
+// We use a ShadowMaterial so only the shadow renders, photograph shows through
+const shadowGeom = new THREE.PlaneGeometry(8, 8);
+const shadowMat = new THREE.ShadowMaterial({ opacity: 0.65, transparent: true });
+const shadowPlane = new THREE.Mesh(shadowGeom, shadowMat);
+shadowPlane.position.z = -0.4;
+shadowPlane.receiveShadow = true;
+scene.add(shadowPlane);
+
+// Entity group
+const entityGroup = new THREE.Group();
+scene.add(entityGroup);
+
+let currentMesh = null;
+let currentMaterial = null;
+
+function makeMaterial() {
+  const mat = MATERIALS.find(m => m.id === state.material);
+  const color = new THREE.Color(state.color);
+  const p = {
+    color,
+    roughness: mat.roughness,
+    metalness: mat.metalness,
+    emissive: color,
+    emissiveIntensity: mat.emissive,
+  };
+  if (mat.transparent) {
+    p.transparent = true;
+    p.opacity = mat.opacity;
+  }
+  return new THREE.MeshPhysicalMaterial(p);
+}
+
+function applyMaterial() {
+  if (currentMesh) {
+    const newMat = makeMaterial();
+    currentMesh.traverse(c => {
+      if (c.isMesh) {
+        c.material.dispose();
+        c.material = newMat;
+        c.castShadow = true;
+      }
+    });
+    currentMaterial = newMat;
+  }
+}
+
+// ============================================================
+// ENTITY BUILDER — converts anchors → 3D tube along the path
+// Per-anchor smooth/sharp using Catmull-Rom segments between
+// sharp corners
+// ============================================================
+
+// Convert anchor [x in 0..1] coord to scene space
+// Canvas is roughly -1.5..1.5 in scene units for our camera
+const SCENE_RANGE = 2.8; // total width in scene units used for shapes
+
+function anchorsToScenePoints() {
+  // Returns array of THREE.Vector3 in scene space (z = 0)
+  return state.anchors.map(a => new THREE.Vector3(
+    (a.x - 0.5) * SCENE_RANGE,
+    (0.5 - a.y) * SCENE_RANGE,
+    0
+  ));
+}
+
+// Build a curve that respects per-anchor sharp/smooth
+function buildPathPoints() {
+  const anchors = state.anchors;
+  if (anchors.length < 2) return null;
+
+  const pts = anchorsToScenePoints();
+  const closed = state.closed && anchors.length >= 3;
+
+  // We need to split the path into sub-segments at sharp corners.
+  // For each sub-segment of smooth anchors, we run a Catmull-Rom.
+  // Sharp anchors become hard corners between sub-segments.
+  // Approach: iterate; each anchor contributes its scene point;
+  // smooth anchors connect via curved interpolation, sharp via straight.
+
+  const result = [];
+  const N = anchors.length;
+  const LAST = closed ? N : N - 1;
+
+  // Pre-compute for catmull-rom: we need prev / curr / next / next2 per segment
+  function getPt(i) {
+    if (closed) return pts[(i + N) % N];
+    if (i < 0) return pts[0];
+    if (i > N - 1) return pts[N - 1];
+    return pts[i];
+  }
+
+  function isSmooth(i) {
+    if (closed) return anchors[(i + N) % N].smooth;
+    if (i < 0 || i > N - 1) return false;
+    return anchors[i].smooth;
+  }
+
+  const STEPS_PER_SEG = 24;
+
+  for (let i = 0; i < LAST; i++) {
+    const a0 = getPt(i - 1);
+    const a1 = getPt(i);
+    const a2 = getPt(i + 1);
+    const a3 = getPt(i + 2);
+
+    // If both endpoints are smooth → curve
+    // If one is sharp → curve but flatten tangent at the sharp end
+    // If both sharp → straight line
+    const s1 = isSmooth(i);
+    const s2 = isSmooth(i + 1);
+
+    if (!s1 && !s2) {
+      // Straight line
+      result.push(a1.clone());
+      // mid points to keep tube smooth in case of audio displacement later
+      result.push(a1.clone().lerp(a2, 0.5));
+    } else {
+      // Catmull-Rom segment, but adjust virtual control points for sharp ends
+      const c0 = s1 ? a0 : a1.clone(); // sharp on start → control = self
+      const c3 = s2 ? a3 : a2.clone(); // sharp on end → control = self
+
+      for (let s = 0; s < STEPS_PER_SEG; s++) {
+        const t = s / STEPS_PER_SEG;
+        result.push(catmullRom(c0, a1, a2, c3, t));
+      }
+    }
+  }
+
+  // Final point or close
+  if (!closed) result.push(getPt(N - 1).clone());
+
+  return { pts: result, closed, anchorPts: pts };
+}
+
+function catmullRom(p0, p1, p2, p3, t) {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const v = new THREE.Vector3();
+  v.x = 0.5 * (2*p1.x + (-p0.x + p2.x)*t + (2*p0.x - 5*p1.x + 4*p2.x - p3.x)*t2 + (-p0.x + 3*p1.x - 3*p2.x + p3.x)*t3);
+  v.y = 0.5 * (2*p1.y + (-p0.y + p2.y)*t + (2*p0.y - 5*p1.y + 4*p2.y - p3.y)*t2 + (-p0.y + 3*p1.y - 3*p2.y + p3.y)*t3);
+  v.z = 0.5 * (2*p1.z + (-p0.z + p2.z)*t + (2*p0.z - 5*p1.z + 4*p2.z - p3.z)*t2 + (-p0.z + 3*p1.z - 3*p2.z + p3.z)*t3);
+  return v;
+}
+
+function rebuildEntity() {
+  // Clear current
+  if (currentMesh) {
+    entityGroup.remove(currentMesh);
+    currentMesh.traverse(c => {
+      if (c.isMesh) c.geometry.dispose();
+    });
+    currentMesh = null;
+  }
+
+  if (state.anchors.length < 2) return;
+
+  currentMaterial = makeMaterial();
+  const group = new THREE.Group();
+
+  // The base path will get re-deformed each frame for audio reactivity,
+  // so build it inside the animate loop. Here, build a placeholder.
+  rebuildTubeFromCurrentAnchors(group);
+  currentMesh = group;
+  entityGroup.add(currentMesh);
+}
+
+// Compute displaced scene points based on audio + per-anchor reactivity
+// Returns array of { pos: Vec3, hIn: {x,y}, hOut: {x,y} } in scene units.
+// Bezier handles are deformed along with anchors so the whole curve breathes,
+// not just the corner points.
+function computeDisplacedAnchorPositions(time) {
+  const N = state.anchors.length;
+  if (N === 0) return [];
+  const basePts = anchorsToScenePoints();
+
+  // Centroid for outward direction
+  const c = new THREE.Vector3();
+  basePts.forEach(p => c.add(p));
+  c.divideScalar(N);
+
+  const out = new Array(N);
+  // Global drive — multiplies all reactive displacement
+  const G = state.reactivity * state.drive;
+  const t = time * 0.016; // seconds-ish
+
+  for (let i = 0; i < N; i++) {
+    const a = state.anchors[i];
+    const base = basePts[i].clone();
+    // Base handle vectors in scene units (y flipped: canvas y → scene -y)
+    let hInScene  = { x: a.hIn.x  * SCENE_RANGE, y: -a.hIn.y  * SCENE_RANGE };
+    let hOutScene = { x: a.hOut.x * SCENE_RANGE, y: -a.hOut.y * SCENE_RANGE };
+
+    if (!a.reactive) {
+      out[i] = { pos: base, hIn: hInScene, hOut: hOutScene };
+      continue;
+    }
+
+    const raw = state.audio[a.band] || 0;
+    const env = state.audio[a.band + 'Env'] || 0;
+    const amp = a.amp ?? 1;
+
+    // Outward direction from centroid
+    const dirV = base.clone().sub(c);
+    if (dirV.lengthSq() < 1e-6) dirV.set(0, 0, 1); else dirV.normalize();
+
+    let pos = base.clone();
+    let handleScale = 1;
+
+    if (a.mode === 'pulse') {
+      // Sustained oscillation outward, scaled by raw level
+      const osc = Math.sin(t * 6 + i * 0.7) * 0.5 + 0.6;
+      pos.add(dirV.clone().multiplyScalar(raw * 0.9 * G * amp * osc));
+      handleScale = 1 + raw * 0.4 * G * amp;
+    } else if (a.mode === 'bloat') {
+      // Sustained push, larger amplitude
+      pos.add(dirV.clone().multiplyScalar(raw * 1.4 * G * amp));
+      handleScale = 1 + raw * 0.8 * G * amp;
+    } else if (a.mode === 'twist') {
+      // Rotate around z, driven by raw band — handles rotate too
+      const ang = raw * 0.9 * G * amp;
+      const v = base.clone().sub(c);
+      v.applyAxisAngle(new THREE.Vector3(0, 0, 1), ang);
+      pos = c.clone().add(v);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      hInScene  = { x: hInScene.x  * ca - hInScene.y  * sa, y: hInScene.x  * sa + hInScene.y  * ca };
+      hOutScene = { x: hOutScene.x * ca - hOutScene.y * sa, y: hOutScene.x * sa + hOutScene.y * ca };
+    } else if (a.mode === 'spike') {
+      // Transient-driven punch — uses envelope so kicks are sharp + decay
+      pos.add(dirV.clone().multiplyScalar(env * 2.6 * G * amp));
+      handleScale = 1 + env * 1.8 * G * amp;
+    } else if (a.mode === 'ripple') {
+      // Wave that propagates around the path; this anchor's index sets phase
+      const phase = i * 0.65 - t * 4.5;
+      const wave = Math.sin(phase) * env * 1.8 * G * amp;
+      pos.add(dirV.clone().multiplyScalar(wave));
+      // handles ripple in opposite phase for swimmy feel
+      const hScale = 1 + Math.cos(phase) * env * 0.9 * G * amp;
+      handleScale = hScale;
+    } else if (a.mode === 'shatter') {
+      // Per-anchor pseudo-random jitter, scaled by raw level — broken/glitch look
+      const seedX = Math.sin(i * 12.9898 + t * 17.0) * 43758.5453;
+      const seedY = Math.sin(i * 78.233  + t * 21.3) * 43758.5453;
+      const jx = (seedX - Math.floor(seedX)) * 2 - 1;
+      const jy = (seedY - Math.floor(seedY)) * 2 - 1;
+      const mag = raw * 0.9 * G * amp;
+      pos.x += jx * mag;
+      pos.y += jy * mag;
+      // Handles flail with even more variance
+      handleScale = 1 + (jx + jy) * raw * 0.6 * G * amp;
+    } else if (a.mode === 'orbit') {
+      // Small circular motion around base, radius+speed scale with raw level
+      const speed = 2.5 + raw * 6;
+      const radius = raw * 0.45 * G * amp;
+      pos.x += Math.cos(t * speed + i) * radius;
+      pos.y += Math.sin(t * speed + i) * radius;
+      handleScale = 1 + raw * 0.5 * G * amp;
+    }
+
+    // Apply handle scaling (after any rotation)
+    hInScene  = { x: hInScene.x  * handleScale, y: hInScene.y  * handleScale };
+    hOutScene = { x: hOutScene.x * handleScale, y: hOutScene.y * handleScale };
+
+    out[i] = { pos, hIn: hInScene, hOut: hOutScene };
+  }
+  return out;
+}
+
+// Rebuild tube geometry given displaced anchor positions
+// displacedAnchors: optional [{ pos: Vec3, hIn: {x,y}, hOut: {x,y} }] per anchor
+function rebuildTubeFromCurrentAnchors(group, displacedAnchors = null) {
+  // Clear group
+  while (group.children.length) {
+    const c = group.children[0];
+    group.remove(c);
+    if (c.geometry) c.geometry.dispose();
+  }
+
+  if (state.anchors.length < 2) return;
+
+  const N = state.anchors.length;
+  const closed = state.closed && N >= 3;
+  // Build per-anchor scene-space positions + handle vectors (also in scene units)
+  const nodes = [];
+  for (let i = 0; i < N; i++) {
+    const a = state.anchors[i];
+    const d = displacedAnchors ? displacedAnchors[i] : null;
+    const pos = d ? d.pos : new THREE.Vector3((a.x - 0.5) * SCENE_RANGE, (0.5 - a.y) * SCENE_RANGE, 0);
+    const hIn = d ? d.hIn : { x: a.hIn.x * SCENE_RANGE, y: -a.hIn.y * SCENE_RANGE };
+    const hOut = d ? d.hOut : { x: a.hOut.x * SCENE_RANGE, y: -a.hOut.y * SCENE_RANGE };
+    nodes.push({ pos, hIn, hOut });
+  }
+
+  function getNode(i) {
+    if (closed) return nodes[(i + N) % N];
+    if (i < 0) return nodes[0];
+    if (i > N - 1) return nodes[N - 1];
+    return nodes[i];
+  }
+
+  const result = [];
+  const LAST = closed ? N : N - 1;
+  const STEPS_PER_SEG = 32;
+
+  for (let i = 0; i < LAST; i++) {
+    const a = getNode(i);
+    const b = getNode(i + 1);
+    // Cubic bezier: a.pos, a.pos+a.hOut, b.pos+b.hIn, b.pos
+    const p0 = a.pos;
+    const p1 = { x: a.pos.x + a.hOut.x, y: a.pos.y + a.hOut.y, z: a.pos.z };
+    const p2 = { x: b.pos.x + b.hIn.x,  y: b.pos.y + b.hIn.y,  z: b.pos.z };
+    const p3 = b.pos;
+
+    // Sharp on both sides → straight, but still emit interpolated points so
+    // audio displacement of mid-segment vertices stays smooth
+    const aSharp = (a.hOut.x === 0 && a.hOut.y === 0);
+    const bSharp = (b.hIn.x === 0 && b.hIn.y === 0);
+    const segSteps = (aSharp && bSharp) ? 4 : STEPS_PER_SEG;
+
+    for (let s = 0; s < segSteps; s++) {
+      const t = s / segSteps;
+      const u = 1 - t, u2 = u * u, u3 = u2 * u;
+      const t2 = t * t, t3 = t2 * t;
+      result.push(new THREE.Vector3(
+        u3 * p0.x + 3 * u2 * t * p1.x + 3 * u * t2 * p2.x + t3 * p3.x,
+        u3 * p0.y + 3 * u2 * t * p1.y + 3 * u * t2 * p2.y + t3 * p3.y,
+        u3 * p0.z + 3 * u2 * t * p1.z + 3 * u * t2 * p2.z + t3 * p3.z
+      ));
+    }
+  }
+  if (!closed) result.push(nodes[N - 1].pos.clone());
+
+  if (result.length < 2) return;
+
+  // Build tube
+  try {
+    const curve = new THREE.CatmullRomCurve3(result, closed, 'catmullrom', 0.5);
+    const tubularSegments = Math.max(80, result.length * 2);
+    const tubeGeom = new THREE.TubeGeometry(curve, tubularSegments, state.thickness, 10, closed);
+    const tubeMesh = new THREE.Mesh(tubeGeom, currentMaterial);
+    tubeMesh.castShadow = true;
+    group.add(tubeMesh);
+
+    // Joint spheres at anchors (the small surface elements you allowed)
+    for (let i = 0; i < N; i++) {
+      const sphereGeom = new THREE.SphereGeometry(state.thickness * 1.6, 16, 12);
+      const sm = new THREE.Mesh(sphereGeom, currentMaterial);
+      sm.position.copy(pts[i]);
+      sm.castShadow = true;
+      group.add(sm);
+    }
+
+    // Depth extrusion: clone the tube along z axis for depth
+    if (state.depth > 0.01) {
+      const layers = Math.max(2, Math.floor(state.depth * 8));
+      for (let l = 1; l <= layers; l++) {
+        const offset = (state.depth / layers) * l;
+        const cloneGeom = new THREE.TubeGeometry(curve, tubularSegments, state.thickness * (1 - l/(layers*2)), 10, closed);
+        const cm = new THREE.Mesh(cloneGeom, currentMaterial);
+        cm.position.z = -offset;
+        cm.castShadow = true;
+        group.add(cm);
+
+        // Connector lines from each anchor backward to give the shape "body"
+        if (l === layers) {
+          for (let i = 0; i < N; i++) {
+            const start = pts[i].clone();
+            const end = pts[i].clone();
+            end.z = -offset;
+            const lineCurve = new THREE.LineCurve3(start, end);
+            const lineGeom = new THREE.TubeGeometry(lineCurve, 4, state.thickness * 0.7, 8, false);
+            const lm = new THREE.Mesh(lineGeom, currentMaterial);
+            lm.castShadow = true;
+            group.add(lm);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Tube build failed:', e);
+  }
+}
+
+// ============================================================
+// DRAWING — overlay canvas, anchor management
+// ============================================================
+const drawCanvas = document.getElementById('draw-canvas');
+const dctx = drawCanvas.getContext('2d');
+let canvasW = 0, canvasH = 0;
+
+function snapToGrid(x, y) {
+  const d = Math.round(state.gridDensity);
+  return {
+    x: Math.round(x * d) / d,
+    y: Math.round(y * d) / d
+  };
+}
+
+function clientToNorm(e) {
+  const rect = drawCanvas.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+    y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
+  };
+}
+
+function findAnchorAt(nx, ny, threshold = 0.025) {
+  for (let i = state.anchors.length - 1; i >= 0; i--) {
+    const a = state.anchors[i];
+    const dx = a.x - nx;
+    const dy = a.y - ny;
+    if (Math.sqrt(dx * dx + dy * dy) < threshold) return i;
+  }
+  return -1;
+}
+
+// Find a bezier handle (in / out) under cursor. Returns {idx, side} or null.
+function findHandleAt(nx, ny, threshold = 0.022) {
+  if (!state.showHandles) return null;
+  for (let i = state.anchors.length - 1; i >= 0; i--) {
+    const a = state.anchors[i];
+    if (isSharp(a)) continue;
+    const inx = a.x + a.hIn.x,  iny = a.y + a.hIn.y;
+    const outx = a.x + a.hOut.x, outy = a.y + a.hOut.y;
+    if (Math.hypot(inx - nx,  iny - ny)  < threshold) return { idx: i, side: 'in' };
+    if (Math.hypot(outx - nx, outy - ny) < threshold) return { idx: i, side: 'out' };
+  }
+  return null;
+}
+
+let isDragging = false;
+let dragIdx = -1;
+let dragHandle = null;  // { idx, side, alt }
+let penCreating = -1;   // anchor index currently being created — if user drags, we extend handles
+let penAnchorPos = null;
+
+drawCanvas.addEventListener('mousedown', e => {
+  if (state.mode !== 'draw') return;
+  e.preventDefault();
+  const norm = clientToNorm(e);
+
+  // Shift-click → delete (anchor)
+  if (e.shiftKey) {
+    const idx = findAnchorAt(norm.x, norm.y);
+    if (idx >= 0) {
+      state.anchors.splice(idx, 1);
+      state.selectedAnchor = -1;
+      rebuildEntity();
+      redrawOverlay();
+      renderAnchorList();
+    }
+    return;
+  }
+
+  // Handle hit-test first — handles sit on top of anchors visually
+  const h = findHandleAt(norm.x, norm.y);
+  if (h) {
+    dragHandle = { idx: h.idx, side: h.side, alt: e.altKey };
+    state.selectedAnchor = h.idx;
+    document.getElementById('canvas-wrap').classList.add('dragging');
+    redrawOverlay();
+    renderAnchorList();
+    return;
+  }
+
+  // Existing anchor → drag
+  const idx = findAnchorAt(norm.x, norm.y);
+  if (idx >= 0) {
+    isDragging = true;
+    dragIdx = idx;
+    state.selectedAnchor = idx;
+    document.getElementById('canvas-wrap').classList.add('dragging');
+    redrawOverlay();
+    renderAnchorList();
+    return;
+  }
+
+  // New anchor — pen-tool gesture:
+  //   click  → sharp anchor (zero handles)
+  //   click-drag → smooth anchor, handles pulled out in drag direction
+  const snap = snapToGrid(norm.x, norm.y);
+  state.anchors.push({
+    x: snap.x,
+    y: snap.y,
+    hIn:  { x: 0, y: 0 },
+    hOut: { x: 0, y: 0 },
+    broken: false,
+    reactive: false,
+    mode: 'pulse',
+    band: 'bass',
+    amp: 1.0
+  });
+  state.selectedAnchor = state.anchors.length - 1;
+  // Start "creating" — if user drags before releasing, we'll extend handles
+  penCreating = state.anchors.length - 1;
+  penAnchorPos = { x: snap.x, y: snap.y };
+  rebuildEntity();
+  redrawOverlay();
+  renderAnchorList();
+});
+
+drawCanvas.addEventListener('mousemove', e => {
+  if (state.mode !== 'draw') return;
+  const norm = clientToNorm(e);
+
+  // Pen-tool create: still holding mouse after clicking new anchor → extend handles
+  if (penCreating >= 0 && penAnchorPos) {
+    const a = state.anchors[penCreating];
+    const dx = norm.x - penAnchorPos.x;
+    const dy = norm.y - penAnchorPos.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 0.008) { // ignore micro-jitter — actual drag
+      a.hOut = { x: dx, y: dy };
+      a.hIn  = { x: -dx, y: -dy };
+      a.broken = false;
+      rebuildEntity();
+      redrawOverlay();
+    }
+    return;
+  }
+
+  // Handle dragging
+  if (dragHandle) {
+    const a = state.anchors[dragHandle.idx];
+    const dx = norm.x - a.x;
+    const dy = norm.y - a.y;
+    if (dragHandle.side === 'out') {
+      a.hOut = { x: dx, y: dy };
+      if (!dragHandle.alt && !a.broken) a.hIn = { x: -dx, y: -dy };
+      else if (dragHandle.alt) a.broken = true;
+    } else {
+      a.hIn = { x: dx, y: dy };
+      if (!dragHandle.alt && !a.broken) a.hOut = { x: -dx, y: -dy };
+      else if (dragHandle.alt) a.broken = true;
+    }
+    rebuildEntity();
+    redrawOverlay();
+    return;
+  }
+
+  // Anchor dragging
+  if (isDragging) {
+    const snap = snapToGrid(norm.x, norm.y);
+    state.anchors[dragIdx].x = snap.x;
+    state.anchors[dragIdx].y = snap.y;
+    rebuildEntity();
+    redrawOverlay();
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  if (isDragging || dragHandle || penCreating >= 0) {
+    isDragging = false;
+    dragIdx = -1;
+    dragHandle = null;
+    penCreating = -1;
+    penAnchorPos = null;
+    document.getElementById('canvas-wrap').classList.remove('dragging');
+  }
+});
+
+drawCanvas.addEventListener('contextmenu', e => {
+  if (state.mode !== 'draw') return;
+  e.preventDefault();
+  const norm = clientToNorm(e);
+  const idx = findAnchorAt(norm.x, norm.y);
+  if (idx >= 0) {
+    const a = state.anchors[idx];
+    if (isSharp(a)) autoSmoothHandles(idx);   // sharp → auto-smooth
+    else { a.hIn = zeroH(); a.hOut = zeroH(); a.broken = false; } // smooth → sharp
+    rebuildEntity();
+    redrawOverlay();
+  }
+});
+
+function redrawOverlay() {
+  if (!canvasW) resize();
+  dctx.clearRect(0, 0, canvasW, canvasH);
+
+  // Grid (only in draw mode)
+  if (state.mode === 'draw' && state.showGrid) {
+    const d = Math.round(state.gridDensity);
+    dctx.strokeStyle = 'rgba(245, 242, 236, 0.08)';
+    dctx.lineWidth = 1;
+    for (let i = 1; i < d; i++) {
+      const p = (i / d) * canvasW;
+      dctx.beginPath();
+      dctx.moveTo(p, 0);
+      dctx.lineTo(p, canvasH);
+      dctx.stroke();
+      dctx.beginPath();
+      dctx.moveTo(0, p);
+      dctx.lineTo(canvasW, p);
+      dctx.stroke();
+    }
+    // Highlight grid intersections
+    dctx.fillStyle = 'rgba(245, 242, 236, 0.12)';
+    for (let i = 0; i <= d; i++) {
+      for (let j = 0; j <= d; j++) {
+        dctx.beginPath();
+        dctx.arc((i / d) * canvasW, (j / d) * canvasH, 1, 0, Math.PI * 2);
+        dctx.fill();
+      }
+    }
+  }
+
+  if (state.mode !== 'draw') return; // Don't draw anchors in preview
+
+  const N = state.anchors.length;
+  if (N === 0) return;
+
+  // Path preview — cubic beziers between consecutive anchors using their handles
+  if (N >= 2) {
+    const closed = state.closed && N >= 3;
+    const cpts = state.anchors.map(a => ({ x: a.x * canvasW, y: a.y * canvasH }));
+    const hOuts = state.anchors.map(a => ({ x: a.hOut.x * canvasW, y: a.hOut.y * canvasH }));
+    const hIns  = state.anchors.map(a => ({ x: a.hIn.x  * canvasW, y: a.hIn.y  * canvasH }));
+
+    function getNodeC(i) {
+      if (closed) return { p: cpts[(i + N) % N], hIn: hIns[(i + N) % N], hOut: hOuts[(i + N) % N] };
+      const j = Math.max(0, Math.min(N - 1, i));
+      return { p: cpts[j], hIn: hIns[j], hOut: hOuts[j] };
+    }
+
+    dctx.strokeStyle = 'rgba(232, 161, 58, 0.7)';
+    dctx.lineWidth = 2;
+    dctx.beginPath();
+    dctx.moveTo(cpts[0].x, cpts[0].y);
+
+    const LAST = closed ? N : N - 1;
+    for (let i = 0; i < LAST; i++) {
+      const a = getNodeC(i);
+      const b = getNodeC(i + 1);
+      dctx.bezierCurveTo(
+        a.p.x + a.hOut.x, a.p.y + a.hOut.y,
+        b.p.x + b.hIn.x,  b.p.y + b.hIn.y,
+        b.p.x, b.p.y
+      );
+    }
+    dctx.stroke();
+  }
+
+  // Bezier handles (lines + square dots) for non-sharp anchors
+  if (state.showHandles) {
+    state.anchors.forEach((a, i) => {
+      if (isSharp(a)) return;
+      const x = a.x * canvasW, y = a.y * canvasH;
+      const ix = x + a.hIn.x  * canvasW, iy = y + a.hIn.y  * canvasH;
+      const ox = x + a.hOut.x * canvasW, oy = y + a.hOut.y * canvasH;
+
+      dctx.strokeStyle = i === state.selectedAnchor ? 'rgba(245,242,236,0.6)' : 'rgba(122,118,110,0.5)';
+      dctx.lineWidth = 1;
+      dctx.beginPath();
+      dctx.moveTo(ix, iy); dctx.lineTo(x, y); dctx.lineTo(ox, oy);
+      dctx.stroke();
+
+      // Handle squares
+      dctx.fillStyle = a.broken ? '#b94a2c' : '#1c39bb';
+      dctx.fillRect(ix - 3, iy - 3, 6, 6);
+      dctx.fillRect(ox - 3, oy - 3, 6, 6);
+      dctx.strokeStyle = 'rgba(245,242,236,0.85)';
+      dctx.lineWidth = 1;
+      dctx.strokeRect(ix - 3, iy - 3, 6, 6);
+      dctx.strokeRect(ox - 3, oy - 3, 6, 6);
+    });
+  }
+
+  // Anchors
+  state.anchors.forEach((a, i) => {
+    const x = a.x * canvasW;
+    const y = a.y * canvasH;
+    const smooth = !isSharp(a);
+
+    dctx.strokeStyle = i === state.selectedAnchor ? '#f5f2ec' : (a.reactive ? '#e8a13a' : '#7a766e');
+    dctx.lineWidth = 2;
+    if (smooth) {
+      // Smooth → circle outline
+      dctx.beginPath();
+      dctx.arc(x, y, 7, 0, Math.PI * 2);
+      dctx.stroke();
+    } else {
+      // Sharp → square
+      dctx.beginPath();
+      dctx.rect(x - 6, y - 6, 12, 12);
+      dctx.stroke();
+    }
+
+    // Inner dot
+    dctx.fillStyle = a.reactive ? '#e8a13a' : (i === state.selectedAnchor ? '#f5f2ec' : '#1c39bb');
+    dctx.beginPath();
+    dctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    dctx.fill();
+
+    // Index label
+    if (N <= 30) {
+      dctx.fillStyle = 'rgba(245, 242, 236, 0.85)';
+      dctx.font = 'bold 9px JetBrains Mono, monospace';
+      dctx.fillText(String(i + 1).padStart(2, '0'), x + 10, y - 8);
+    }
+  });
+}
+
+// ============================================================
+// ANCHOR LIST UI
+// ============================================================
+function renderAnchorList() {
+  const list = document.getElementById('anchor-list');
+  const count = document.getElementById('anchor-count');
+  count.textContent = state.anchors.length;
+
+  if (state.anchors.length === 0) {
+    list.innerHTML = '<div class="anchor-empty">Draw a shape to begin</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  state.anchors.forEach((a, i) => {
+    const row = document.createElement('div');
+    row.className = 'anchor-row' + (a.reactive ? ' reactive' : '') + (i === state.selectedAnchor ? ' selected' : '');
+    row.innerHTML = `
+      <span class="anchor-num">${String(i+1).padStart(2,'0')}</span>
+      <button class="anchor-toggle ${a.reactive ? 'on' : ''}" data-i="${i}"></button>
+      <select class="anchor-mode" data-i="${i}" ${a.reactive ? '' : 'disabled'}>
+        <option value="pulse"   ${a.mode==='pulse'  ?'selected':''}>Pulse</option>
+        <option value="bloat"   ${a.mode==='bloat'  ?'selected':''}>Bloat</option>
+        <option value="twist"   ${a.mode==='twist'  ?'selected':''}>Twist</option>
+        <option value="spike"   ${a.mode==='spike'  ?'selected':''}>Spike</option>
+        <option value="ripple"  ${a.mode==='ripple' ?'selected':''}>Ripple</option>
+        <option value="shatter" ${a.mode==='shatter'?'selected':''}>Shatter</option>
+        <option value="orbit"   ${a.mode==='orbit'  ?'selected':''}>Orbit</option>
+      </select>
+      <select class="anchor-band" data-i="${i}" ${a.reactive ? '' : 'disabled'}>
+        <option value="bass" ${a.band==='bass'?'selected':''}>Bass</option>
+        <option value="mid" ${a.band==='mid'?'selected':''}>Mid</option>
+        <option value="high" ${a.band==='high'?'selected':''}>High</option>
+      </select>
+    `;
+    list.appendChild(row);
+
+    row.querySelector('.anchor-toggle').onclick = () => {
+      a.reactive = !a.reactive;
+      renderAnchorList();
+    };
+    row.querySelector('.anchor-mode').onchange = e => {
+      a.mode = e.target.value;
+    };
+    row.querySelector('.anchor-band').onchange = e => {
+      a.band = e.target.value;
+    };
+    row.onclick = e => {
+      if (e.target.classList.contains('anchor-toggle')) return;
+      if (e.target.tagName === 'SELECT') return;
+      state.selectedAnchor = i;
+      renderAnchorList();
+      redrawOverlay();
+    };
+  });
+}
+
+// ============================================================
+// AUDIO
+// ============================================================
+let audioCtx, analyser, audioSource;
+let activeAudio = null;
+let isPlaying = false;
+
+const playBtn = document.getElementById('play-btn');
+const timeDisplay = document.getElementById('time-display');
+const progressFill = document.getElementById('progress-fill');
+const progressBar = document.getElementById('progress-bar');
+
+function ensureAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    // Lower smoothing — we want transients to come through; we do our own smoothing per band
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.55;
+    analyser.connect(audioCtx.destination);
+  }
+}
+
+function selectTrack(idx) {
+  ensureAudioCtx();
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio.currentTime = 0;
+  }
+  if (audioSource) {
+    try { audioSource.disconnect(); } catch (e) {}
+  }
+  trackEls.forEach(el => el.classList.remove('active'));
+  trackEls[idx].classList.add('active');
+
+  activeAudio = audioEls[idx];
+  if (!activeAudio._sourceNode) {
+    activeAudio._sourceNode = audioCtx.createMediaElementSource(activeAudio);
+  }
+  audioSource = activeAudio._sourceNode;
+  audioSource.connect(analyser);
+
+  state.currentTrack = idx;
+  playBtn.disabled = false;
+  isPlaying = false;
+  playBtn.innerHTML = '&#9658;';
+  updateTime();
+
+  activeAudio.onended = () => {
+    isPlaying = false;
+    playBtn.innerHTML = '&#9658;';
+  };
+}
+
+function fmtTime(s) {
+  if (!isFinite(s)) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function updateTime() {
+  if (!activeAudio) {
+    timeDisplay.textContent = '0:00 / 0:00';
+    progressFill.style.width = '0%';
+    return;
+  }
+  timeDisplay.textContent = `${fmtTime(activeAudio.currentTime)} / ${fmtTime(activeAudio.duration)}`;
+  if (activeAudio.duration) {
+    progressFill.style.width = (activeAudio.currentTime / activeAudio.duration * 100) + '%';
+  }
+}
+
+progressBar.addEventListener('click', e => {
+  if (!activeAudio || !activeAudio.duration) return;
+  const rect = progressBar.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  activeAudio.currentTime = pct * activeAudio.duration;
+});
+
+playBtn.addEventListener('click', () => {
+  if (!activeAudio) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (isPlaying) {
+    activeAudio.pause();
+    playBtn.innerHTML = '&#9658;';
+  } else {
+    activeAudio.play();
+    playBtn.innerHTML = '&#10074;&#10074;';
+  }
+  isPlaying = !isPlaying;
+});
+
+// ============================================================
+// PHOTO UPLOAD
+// ============================================================
+const bgPhoto = document.getElementById('bg-photo');
+const photoInput = document.getElementById('photo-input');
+const photoDrop = document.getElementById('photo-drop');
+const photoDropText = document.getElementById('photo-drop-text');
+const photoName = document.getElementById('photo-name');
+const canvasEmpty = document.getElementById('canvas-empty');
+const canvasLabel = document.getElementById('canvas-label');
+
+function loadPhoto(file) {
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  bgPhoto.src = url;
+  bgPhoto.style.display = 'block';
+  photoName.textContent = file.name;
+  photoDropText.textContent = 'Replace photograph';
+  photoDrop.classList.add('loaded');
+  canvasEmpty.classList.add('hidden');
+  canvasLabel.textContent = file.name.toUpperCase();
+}
+
+photoInput.addEventListener('change', e => loadPhoto(e.target.files[0]));
+
+let dragCounter = 0;
+document.addEventListener('dragenter', e => {
+  if (e.dataTransfer?.types?.includes('Files')) {
+    dragCounter++;
+    photoDrop.classList.add('drag-over');
+  }
+});
+document.addEventListener('dragover', e => {
+  if (e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+});
+document.addEventListener('dragleave', e => {
+  dragCounter--;
+  if (dragCounter <= 0) {
+    dragCounter = 0;
+    photoDrop.classList.remove('drag-over');
+  }
+});
+document.addEventListener('drop', e => {
+  dragCounter = 0;
+  photoDrop.classList.remove('drag-over');
+  if (e.dataTransfer?.files?.length) {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    if (f.type.startsWith('image/')) loadPhoto(f);
+  }
+});
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+const freqData = new Uint8Array(512);
+
+// Audio analysis state for transient/envelope detection (persists across frames)
+const audioState = {
+  bassEnv: 0, midEnv: 0, highEnv: 0,
+  bassAvg: 0, midAvg: 0, highAvg: 0
+};
+
+function getBands() {
+  if (!analyser) return state.audio;
+  analyser.getByteFrequencyData(freqData);
+  let bass = 0, mid = 0, high = 0;
+  let bc = 0, mc = 0, hc = 0;
+  for (let i = 0; i < 512; i++) {
+    if (i < 12) { bass += freqData[i]; bc++; }
+    else if (i < 80) { mid += freqData[i]; mc++; }
+    else if (i < 256) { high += freqData[i]; hc++; }
+  }
+  bass = bass / bc / 255;
+  mid  = mid  / mc / 255;
+  high = high / hc / 255;
+
+  // Rolling average per band (slow follower) for transient detection
+  const AVG_RATE = 0.04;
+  audioState.bassAvg += (bass - audioState.bassAvg) * AVG_RATE;
+  audioState.midAvg  += (mid  - audioState.midAvg)  * AVG_RATE;
+  audioState.highAvg += (high - audioState.highAvg) * AVG_RATE;
+
+  // Transient detector: if current exceeds avg by threshold, kick the envelope.
+  // Sensitivity slider inverts: lower threshold = more sensitive.
+  const thresh = 0.04 + (1 - state.sensitivity) * 0.35;
+  const ATK = 0.85;   // how hard transients hit
+  const DECAY = 0.92; // per-frame envelope decay (musical sustain)
+
+  if (bass - audioState.bassAvg > thresh) {
+    audioState.bassEnv = Math.max(audioState.bassEnv, bass * (1 + ATK));
+  }
+  if (mid - audioState.midAvg > thresh) {
+    audioState.midEnv = Math.max(audioState.midEnv, mid * (1 + ATK));
+  }
+  if (high - audioState.highAvg > thresh) {
+    audioState.highEnv = Math.max(audioState.highEnv, high * (1 + ATK));
+  }
+  audioState.bassEnv *= DECAY;
+  audioState.midEnv  *= DECAY;
+  audioState.highEnv *= DECAY;
+
+  return {
+    bass, mid, high,
+    overall: (bass + mid + high) / 3,
+    bassEnv: audioState.bassEnv,
+    midEnv:  audioState.midEnv,
+    highEnv: audioState.highEnv,
+    bassAvg: audioState.bassAvg,
+    midAvg:  audioState.midAvg,
+    highAvg: audioState.highAvg
+  };
+}
+
+let frame = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  frame++;
+
+  state.audio = getBands();
+
+  document.getElementById('bass-fill').style.height = (state.audio.bass * 100) + '%';
+  document.getElementById('mid-fill').style.height = (state.audio.mid * 100) + '%';
+  document.getElementById('high-fill').style.height = (state.audio.high * 100) + '%';
+
+  // Rebuild entity geometry with audio-displaced anchors (every frame, but only if there's reactivity)
+  if (state.anchors.length >= 2 && currentMesh) {
+    const anyReactive = state.anchors.some(a => a.reactive);
+    if (anyReactive) {
+      const disp = computeDisplacedAnchorPositions(frame);
+      rebuildTubeFromCurrentAnchors(currentMesh, disp);
+    }
+  }
+
+  // Hover height + rotation. Overall level lifts the entity; bass envelope kicks it.
+  const kick = state.audio.bassEnv * 0.18 * state.reactivity * state.drive;
+  entityGroup.position.z = state.hover + state.audio.overall * 0.08 * state.reactivity + kick;
+  entityGroup.rotation.y += 0.003 * state.rotspeed + state.audio.midEnv * 0.01 * state.drive;
+
+  // Shadow opacity
+  shadowMat.opacity = state.shadow;
+  // Shadow softness ~ light shadow radius
+  keyLight.shadow.radius = 2 + state.shadowSoft * 14;
+
+  // Emissive flicker for neon/wax
+  if (currentMesh && (state.material === 'neon' || state.material === 'wax')) {
+    const base = MATERIALS.find(m => m.id === state.material).emissive;
+    const inten = base * (0.7 + state.audio.overall * 1.4);
+    currentMesh.traverse(c => {
+      if (c.isMesh && c.material.emissiveIntensity !== undefined) {
+        c.material.emissiveIntensity = inten;
+      }
+    });
+  }
+
+  if (activeAudio && !activeAudio.paused) updateTime();
+
+  renderer.render(scene, camera);
+}
+
+// ============================================================
+// SIZE
+// ============================================================
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  const w = wrap.clientWidth;
+  const h = wrap.clientHeight;
+  canvasW = w;
+  canvasH = h;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  drawCanvas.width = w * window.devicePixelRatio;
+  drawCanvas.height = h * window.devicePixelRatio;
+  drawCanvas.style.width = w + 'px';
+  drawCanvas.style.height = h + 'px';
+  dctx.setTransform(1, 0, 0, 1, 0, 0);
+  dctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  canvasW = w;
+  canvasH = h;
+  redrawOverlay();
+}
+window.addEventListener('resize', resize);
+resize();
+renderAnchorList();
+animate();
+
+// ============================================================
+// EXPORT
+// ============================================================
+const EXPORT_SIZE = 3712;
+
+function exportFrame(transparent = false) {
+  // Force preview mode (no grid, no anchors) and re-render at high res
+  const wasMode = state.mode;
+  state.mode = 'preview';
+  redrawOverlay();
+
+  const out = document.createElement('canvas');
+  out.width = EXPORT_SIZE;
+  out.height = EXPORT_SIZE;
+  const ctx = out.getContext('2d');
+
+  if (!transparent) {
+    if (bgPhoto.src && bgPhoto.complete && bgPhoto.naturalWidth > 0) {
+      const img = bgPhoto;
+      const ir = img.naturalWidth / img.naturalHeight;
+      let sw, sh, sx, sy;
+      if (ir > 1) {
+        sh = img.naturalHeight; sw = sh;
+        sx = (img.naturalWidth - sw) / 2; sy = 0;
+      } else {
+        sw = img.naturalWidth; sh = sw;
+        sx = 0; sy = (img.naturalHeight - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, EXPORT_SIZE, EXPORT_SIZE);
+    } else {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(0, 0, EXPORT_SIZE, EXPORT_SIZE);
+    }
+  }
+
+  const oldSize = new THREE.Vector2();
+  renderer.getSize(oldSize);
+  renderer.setSize(EXPORT_SIZE, EXPORT_SIZE, false);
+  renderer.render(scene, camera);
+  ctx.drawImage(renderer.domElement, 0, 0, EXPORT_SIZE, EXPORT_SIZE);
+  renderer.setSize(oldSize.x, oldSize.y, false);
+
+  // Restore mode
+  state.mode = wasMode;
+  redrawOverlay();
+
+  out.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const trackTag = state.currentTrack !== null ? `track${TRACKS[state.currentTrack].num}` : 'untracked';
+    a.download = `jordyn-${trackTag}-vessel2-${stamp}${transparent ? '-entity' : ''}.png`;
+    a.click();
+  }, 'image/png');
+}
+
+document.getElementById('export-btn').onclick = () => exportFrame(false);
+document.getElementById('export-entity').onclick = () => exportFrame(true);
+
+</script>
+</body>
+</html>
