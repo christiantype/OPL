@@ -62,7 +62,7 @@
 
   .app {
     display: grid;
-    grid-template-columns: 110px 1fr 380px;
+    grid-template-columns: 160px 1fr 380px;
     height: 100vh;
     width: 100vw;
   }
@@ -95,7 +95,15 @@
     position: absolute; top: 4px; left: 6px;
     font-size: 9px; letter-spacing: 0.18em; color: #fff;
     text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    pointer-events: none; font-weight: 700;
+  }
+  .rail-thumb .song {
+    position: absolute; bottom: 4px; left: 6px; right: 6px;
+    font-size: 9px; letter-spacing: 0.04em;
+    color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.95);
     pointer-events: none;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: system-ui, sans-serif;
   }
   .rail-thumb .empty {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -985,6 +993,8 @@
      touching the original block. The artwork stage stays dark — that IS
      the LP sleeve being designed. */
   :root {
+    /* Accent: amber → near-black for a more severe / monochrome read */
+    --opal-amber: #1a1a1c;
     --bg:         #ffffff;
     --panel:      rgba(255,255,255,0.92);
     --panel-2:    #f6f6f7;
@@ -1240,14 +1250,14 @@
   <aside class="rail" id="rail">
     <div class="rail-label">Tracks</div>
     <!-- 8 track tiles -->
-    <div class="rail-thumb" data-i="0"><span class="num">01</span><span class="empty">—</span></div>
-    <div class="rail-thumb" data-i="1"><span class="num">02</span><span class="empty">—</span></div>
-    <div class="rail-thumb" data-i="2"><span class="num">03</span><span class="empty">—</span></div>
-    <div class="rail-thumb" data-i="3"><span class="num">04</span><span class="empty">—</span></div>
-    <div class="rail-thumb" data-i="4"><span class="num">05</span><span class="empty">—</span></div>
-    <div class="rail-thumb" data-i="5"><span class="num">06</span><span class="empty">—</span></div>
-    <div class="rail-thumb" data-i="6"><span class="num">07</span><span class="empty">—</span></div>
-    <div class="rail-thumb" data-i="7"><span class="num">08</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="0"><span class="num">01</span><span class="song">Opitus Session</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="1"><span class="num">02</span><span class="song">Ships in the Night</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="2"><span class="num">03</span><span class="song">Jazz Relapse</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="3"><span class="num">04</span><span class="song">Walk of the Bird</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="4"><span class="num">05</span><span class="song">Good Evening</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="5"><span class="num">06</span><span class="song">Cherry Blossom</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="6"><span class="num">07</span><span class="song">Off In The Distance</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="7"><span class="num">08</span><span class="song">A Little Nervous</span><span class="empty">—</span></div>
     <div class="rail-label" style="margin-top:8px">Cover</div>
     <div class="rail-thumb cover" id="rail-cover"><span class="num">ALL 8</span><span class="empty">+</span></div>
   </aside>
@@ -1314,9 +1324,10 @@
     </div>
 
     <div class="section">
-      <div class="section-title">Album</div>
-      <div class="track-list" id="track-list"></div>
-      <div style="margin-top:14px">
+      <div class="section-title">Now playing</div>
+      <div id="now-playing" style="font-family:'Sidepiece',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.04em;margin:6px 0 4px">— Pick a track from the rail —</div>
+      <div class="section-help" style="margin:0 0 10px 0">Track selection lives in the left rail. This panel shows + controls the audio for the active track.</div>
+      <div style="margin-top:8px">
         <div class="transport">
           <button class="play-btn" id="play-btn" disabled>&#9658;</button>
           <div class="time-display" id="time-display">0:00 / 0:00</div>
@@ -1347,6 +1358,10 @@
         <option value="sketch">Sketch — ink + pencil strokes (audio drawn)</option>
         <option value="paint">Paint — oil swatches (audio painted)</option>
       </select>
+      <div class="control-row" style="margin-top:10px">
+        <div class="control-label"><span>Style opacity</span><span class="val" id="style-opacity-val">1.00</span></div>
+        <input type="range" id="style-opacity" min="0" max="1" step="0.01" value="1.0">
+      </div>
     </div>
 
     <div class="section">
@@ -1609,11 +1624,13 @@ const state = {
     photoDataUrl: null,
     photoFx: 'slice',         // 'none' | 'slice' | 'shift' | 'fracture' | 'rgb' | 'blur'
     photoFxAmount: 0.6,
-    style: 'tube'             // 'tube' | 'qr' | 'radial' | 'orb' | 'liquid'  (per-track visual language)
+    style: 'tube',            // 'tube' | 'qr' | 'radial' | 'orb' | 'liquid' | 'sketch' | 'paint'
+    styleOpacity: 1.0
   })),
   photoFx: 'slice',
   photoFxAmount: 0.6,
-  style: 'tube'
+  style: 'tube',
+  styleOpacity: 1.0
 };
 
 // ============================================================
@@ -1659,6 +1676,7 @@ function saveCurrentDesign() {
   t.photoFx       = state.photoFx;
   t.photoFxAmount = state.photoFxAmount;
   t.style         = state.style;
+  t.styleOpacity  = state.styleOpacity;
   // Capture photo (data URL) only if it's not already one — avoid re-capture loop.
   const pImg = document.getElementById('bg-photo');
   if (pImg && pImg.src && pImg.style.display !== 'none') t.photoDataUrl = pImg.src;
@@ -1683,6 +1701,7 @@ function loadDesign(idx) {
   state.photoFx       = t.photoFx       ?? 'slice';
   state.photoFxAmount = t.photoFxAmount ?? 0.6;
   state.style         = t.style         ?? 'tube';
+  state.styleOpacity  = t.styleOpacity  ?? 1.0;
   state.selectedAnchor = -1;
   state.selectedHandle = null;
   // Photo
@@ -1720,6 +1739,8 @@ function syncControlsToState() {
   const pfa = document.getElementById('photo-fx-amount'); if (pfa) pfa.value = state.photoFxAmount ?? 0.6;
   const pfav = document.getElementById('photo-fx-amount-val'); if (pfav) pfav.textContent = (state.photoFxAmount ?? 0.6).toFixed(2);
   const ts = document.getElementById('track-style'); if (ts) ts.value = state.style || 'tube';
+  const so = document.getElementById('style-opacity'); if (so) so.value = state.styleOpacity ?? 1.0;
+  const sov = document.getElementById('style-opacity-val'); if (sov) sov.textContent = (state.styleOpacity ?? 1.0).toFixed(2);
   // material tabs
   document.querySelectorAll('.mode-tab[data-material]').forEach(el => {
     el.classList.toggle('active', el.dataset.material === state.material);
@@ -1768,17 +1789,16 @@ function cubicBezier(p0, p1, p2, p3, t) {
 // ============================================================
 // TRACK LIST
 // ============================================================
-const trackList = document.getElementById('track-list');
+// Track list removed from the right panel — the left rail is the only
+// selector now. trackEls becomes a virtual list so selectTrack's
+// "activate" calls (.classList.add/remove) don't throw; el is detached.
 const trackEls = [];
 const audioEls = [];
 TRACKS.forEach((t, i) => {
   const el = document.createElement('div');
   el.className = 'track';
   el.dataset.idx = i;
-  el.innerHTML = `<span class="track-num">${t.num}</span><span class="track-name">${t.name}</span><span class="track-status"></span>`;
-  el.onclick = () => selectTrack(i);
-  trackList.appendChild(el);
-  trackEls.push(el);
+  trackEls.push(el);   // detached, only used as a flag holder by selectTrack
 
   const a = new Audio();
   a.src = t.file;
@@ -3123,7 +3143,11 @@ function ensureAudioCtx() {
 }
 
 function selectTrack(idx) {
-  // Save the design we're leaving (no-op if no track was active yet).
+  // Save the design we're leaving + snapshot its thumbnail so the rail
+  // tile shows what we made.
+  if (state.currentTrack != null && typeof captureCurrentThumbnail === 'function') {
+    try { captureCurrentThumbnail(); } catch (e) {}
+  }
   saveCurrentDesign();
 
   ensureAudioCtx();
@@ -3148,6 +3172,17 @@ function selectTrack(idx) {
 
   // Load this track's persisted design (anchors + color + photo + …).
   loadDesign(idx);
+
+  // Update the "Now playing" line in the right panel.
+  const np = document.getElementById('now-playing');
+  if (np) np.textContent = TRACKS[idx].num + ' / ' + TRACKS[idx].name;
+
+  // Refresh the rail thumbnails (highlight + previews) immediately.
+  if (typeof renderRail === 'function') renderRail();
+
+  // Snapshot the newly-loaded track after a couple frames so the rail
+  // shows its current visual.
+  if (typeof scheduleThumbCapture === 'function') scheduleThumbCapture();
 
   playBtn.disabled = false;
   isPlaying = false;
@@ -3672,6 +3707,7 @@ function _styleInit() {
 const QR_N = 22;
 const _qrState = new Uint8Array(QR_N * QR_N);   // 0/1 per cell, persisted between frames
 function drawQR(audio) {
+  styleCanvas.style.opacity = (state.styleOpacity ?? 1);
   if (!analyser) {
     // even with no audio, draw a base lattice so the visual reads as designed
     for (let i = 0; i < _qrState.length; i++) {
@@ -3703,8 +3739,8 @@ function drawQR(audio) {
   const side = Math.min(W, H) * 0.86;
   const ox = (W - side) / 2, oy = (H - side) / 2;
   styleCtx.clearRect(0, 0, W, H);
-  // Background plate
-  styleCtx.fillStyle = '#1f1f1a';
+  // Background plate — translucent so the photo behind reads through.
+  styleCtx.fillStyle = 'rgba(31,31,26,0.50)';
   styleCtx.fillRect(ox, oy, side, side);
   // Cells
   const cell = side / QR_N;
@@ -3729,12 +3765,11 @@ function drawQR(audio) {
 function drawRadial(audio) {
   const W = styleCanvas.width, H = styleCanvas.height;
   const cx = W / 2, cy = H / 2;
+  styleCanvas.style.opacity = (state.styleOpacity ?? 1);
   const cs = styleCtx;
   cs.clearRect(0, 0, W, H);
-  // Plate
-  cs.fillStyle = '#0a0a0a';
-  cs.fillRect(0, 0, W, H);
-
+  // (No opaque plate — leave the canvas transparent so the photograph
+  //  behind reads through; the rays + disc still read on top.)
   const baseR    = Math.min(W, H) * 0.16;
   const maxRayLen = Math.min(W, H) * 0.36;
 
@@ -3813,15 +3848,16 @@ function drawRadial(audio) {
 //    Reads as a slow, levitating mark; bass swells the orb, highs
 //    flicker the halo. ─────────────────────────────────────────────
 function drawOrb(audio) {
+  styleCanvas.style.opacity = (state.styleOpacity ?? 1);
   const W = styleCanvas.width, H = styleCanvas.height;
   const cx = W / 2, cy = H / 2;
   const cs = styleCtx;
   cs.clearRect(0, 0, W, H);
 
-  // Soft radial backdrop
+  // Soft translucent radial backdrop — lets the photo behind read through
   const bg = cs.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H));
-  bg.addColorStop(0, '#161618');
-  bg.addColorStop(1, '#000');
+  bg.addColorStop(0, 'rgba(22,22,24,0.40)');
+  bg.addColorStop(1, 'rgba(0,0,0,0.30)');
   cs.fillStyle = bg;
   cs.fillRect(0, 0, W, H);
 
@@ -3872,10 +3908,12 @@ function drawOrb(audio) {
 //    offset passes whose offsets are driven by the audio. Cream paper
 //    backdrop. ─────────────────────────────────────────────────────
 function drawLiquid(audio) {
+  styleCanvas.style.opacity = (state.styleOpacity ?? 1);
   const W = styleCanvas.width, H = styleCanvas.height;
   const cs = styleCtx;
   cs.clearRect(0, 0, W, H);
-  cs.fillStyle = '#ece4d4';
+  // Translucent cream paper so the photo behind tints through
+  cs.fillStyle = 'rgba(236,228,212,0.55)';
   cs.fillRect(0, 0, W, H);
 
   // A subtle paper grain (very faint diagonal lines)
@@ -3999,13 +4037,17 @@ function _emitSketchStroke(kind, audio) {
   if (sketchStrokes.length > 90) sketchStrokes.shift();
 }
 function drawSketch(audio) {
+  styleCanvas.style.opacity = (state.styleOpacity ?? 1);
   const W = styleCanvas.width, H = styleCanvas.height;
   if (!_paperTexture || _paperTexture.width !== W || _paperTexture.height !== H) {
     _paperTexture = _makePaperTexture(W, H);
   }
   const cx = styleCtx;
   cx.clearRect(0, 0, W, H);
+  // Translucent paper so the photo behind reads through.
+  cx.globalAlpha = 0.55;
   cx.drawImage(_paperTexture, 0, 0);
+  cx.globalAlpha = 1;
   // Emit strokes when audio crosses thresholds (rate-limited)
   const now = performance.now();
   if (now - _lastSketchEmit > 90) {
@@ -4080,13 +4122,17 @@ function _emitPaintSwatch(kind, audio) {
   if (paintStrokes.length > 40) paintStrokes.shift();
 }
 function drawPaint(audio) {
+  styleCanvas.style.opacity = (state.styleOpacity ?? 1);
   const W = styleCanvas.width, H = styleCanvas.height;
   if (!_paperTexture || _paperTexture.width !== W || _paperTexture.height !== H) {
     _paperTexture = _makePaperTexture(W, H);
   }
   const cx = styleCtx;
   cx.clearRect(0, 0, W, H);
+  // Translucent canvas so the photo behind tints through the layers.
+  cx.globalAlpha = 0.45;
   cx.drawImage(_paperTexture, 0, 0);
+  cx.globalAlpha = 1;
 
   // Audio-driven swatch emission (rate-limited)
   const now = performance.now();
@@ -4140,6 +4186,11 @@ function drawTrackStyle(audio) {
 
 document.getElementById('track-style').addEventListener('change', e => {
   state.style = e.target.value;
+  saveCurrentDesign();
+});
+document.getElementById('style-opacity').addEventListener('input', e => {
+  state.styleOpacity = parseFloat(e.target.value);
+  document.getElementById('style-opacity-val').textContent = state.styleOpacity.toFixed(2);
   saveCurrentDesign();
 });
 
@@ -4535,7 +4586,7 @@ function persistCoverLayout() {
 const coverOverlay = document.createElement('div');
 coverOverlay.id = 'cover-overlay';
 coverOverlay.style.cssText = `
-  position: fixed; left: 110px; right: 380px; top: 56px; bottom: 0;
+  position: fixed; left: 160px; right: 380px; top: 56px; bottom: 0;
   background: #050505; z-index: 30; display: none;
   align-items: center; justify-content: center; padding: 28px 28px 80px;
   flex-direction: column; gap: 14px;
@@ -4564,7 +4615,7 @@ coverStage.id = 'cover-stage';
 coverStage.style.cssText = `
   position: relative;
   height: 78vh;
-  aspect-ratio: 4/5;
+  aspect-ratio: 1/1;
   width: auto; min-width: 320px;
   flex: 0 0 auto;
   background: #000;
