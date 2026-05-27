@@ -1076,6 +1076,33 @@
   .track:hover { background: #ececef !important; }
   .track-num { color: var(--text-dim) !important; }
   .track-name { color: var(--text) !important; }
+
+  /* SAFETY NET — force any text inside the panel to be dark, and any
+     input/select/button to be light bg + dark text. This catches every
+     element from the original dark theme that wasn't individually
+     overridden above. */
+  .panel,
+  .panel * {
+    color: var(--text);
+  }
+  .panel .section { border-bottom: 1px solid #ececef; }
+  .panel .section-title { color: var(--text-dim) !important; font-weight: 600; }
+  .panel .section-help { color: var(--text-dim) !important; }
+  .panel input[type="text"],
+  .panel input[type="number"],
+  .panel select,
+  .panel textarea {
+    background: #ffffff !important; color: var(--text) !important;
+    border: 1px solid var(--hairline) !important;
+  }
+  .panel .play-btn { background: #1a1a1c !important; color: #fff !important; }
+  .panel .play-btn:hover { background: #000 !important; color: #fff !important; }
+  .panel .progress-bar { background: #e6e6ea !important; }
+  .panel .progress-fill { background: #1a1a1c !important; }
+  .panel .level-bar { background: #ececef !important; border-color: var(--hairline) !important; }
+  .panel .level-label { color: var(--text-dim) !important; }
+  .panel .time-display { color: var(--text-dim) !important; }
+  .panel .anchor-glyph::placeholder { color: var(--text-faint) !important; }
 </style>
 </head>
 <body>
@@ -3628,40 +3655,199 @@ const COVER_TINTS = [
 ];
 function tintRgba(id) { const t = COVER_TINTS.find(t => t.id === id); return t ? t.rgba : 'rgba(0,0,0,0)'; }
 
-// Persistable layout. All x/y/w/h are 0..1 fractions of the stage.
-function defaultCoverLayout() {
-  const tracksWithPhoto = state.tracks.map((t, i) => ({ i, t })).filter(o => o.t.photoDataUrl);
-  const tracksWithMark  = state.tracks.map((t, i) => ({ i, t })).filter(o => o.t.thumbnail);
-  const baseTrackIdx = tracksWithPhoto[0] ? tracksWithPhoto[0].i : null;
-  // 4-6 strips: cycle through the other photo-bearing tracks
+// ── Cover layout templates ────────────────────────────────────────
+// Each template returns a fresh state.coverLayout. The user picks one
+// from the cover toolbar, then drags / resizes / tints by hand.
+const COVER_TEMPLATES = {
+  grid4x2:  { name: 'Grid 4×2 (clean)',     fn: tpl_grid4x2 },
+  mosaic:   { name: 'Mosaic (strips + marks)', fn: tpl_mosaic },
+  sliced:   { name: 'Sliced (vertical cuts)', fn: tpl_sliced },
+  divided:  { name: 'Divided (large horizontal slabs)', fn: tpl_divided },
+  overlap:  { name: 'Overlap (collage cuts)', fn: tpl_overlap },
+  random:   { name: 'Random scatter',        fn: tpl_random }
+};
+
+function _tracksWithPhoto() {
+  return state.tracks.map((t, i) => ({ i, t })).filter(o => o.t.photoDataUrl);
+}
+function _tracksWithMark() {
+  return state.tracks.map((t, i) => ({ i, t })).filter(o => o.t.thumbnail);
+}
+
+// 4x2 grid of every track's photo (no overlap). Marks tucked into each cell.
+function tpl_grid4x2() {
+  const photos = _tracksWithPhoto();
+  const marks  = _tracksWithMark();
   const strips = [];
-  const others = tracksWithPhoto.filter(o => o.i !== baseTrackIdx);
+  for (let i = 0; i < 8; i++) {
+    const col = i % 4, row = Math.floor(i / 4);
+    const x = col * 0.25, y = 0.04 + row * 0.45;
+    const cellPhoto = photos.find(p => p.i === i) || photos[i % Math.max(1, photos.length)];
+    if (cellPhoto) {
+      strips.push({
+        type: 'strip', trackIdx: cellPhoto.i,
+        x, y, w: 0.25, h: 0.42,
+        tint: ['cobalt','amber','sienna','green','magenta','grey','none','none'][i],
+        cropY: 0.15, cropH: 0.7
+      });
+    }
+  }
+  const sm = marks.map((m, i) => {
+    const col = i % 4, row = Math.floor(i / 4);
+    return { type: 'mark', trackIdx: m.i,
+      x: col * 0.25 + 0.04, y: 0.04 + row * 0.45 + 0.05, size: 0.17, blend: 'screen' };
+  });
+  const base = photos[0] ? photos[0].i : null;
+  return { baseTrackIdx: base, strips, marks: sm, title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+}
+
+// Original collage feel — base photo + a few cross-cutting strips +
+// scattered marks (the original default).
+function tpl_mosaic() {
+  const photos = _tracksWithPhoto();
+  const marks  = _tracksWithMark();
+  const baseTrackIdx = photos[0] ? photos[0].i : null;
+  const others = photos.filter(o => o.i !== baseTrackIdx);
+  const strips = [];
   for (let s = 0; s < Math.min(6, others.length); s++) {
     const o = others[s];
     strips.push({
-      type: 'strip',
-      trackIdx: o.i,
-      x: 0.06 + (s % 2) * 0.05,
-      y: 0.18 + s * 0.10,
-      w: 0.62 + (s % 3) * 0.08,
-      h: 0.10 + (s % 3) * 0.03,
-      tint: COVER_TINTS[1 + (s % (COVER_TINTS.length - 1))].id,
-      // crop window inside the source photo (0..1)
-      cropY: 0.20 + (s * 0.10) % 0.5,
-      cropH: 0.30
+      type: 'strip', trackIdx: o.i,
+      x: 0.06 + (s % 2) * 0.05, y: 0.18 + s * 0.10,
+      w: 0.62 + (s % 3) * 0.08, h: 0.10 + (s % 3) * 0.03,
+      tint: ['cobalt','amber','sienna','green','magenta','grey'][s % 6],
+      cropY: 0.20 + (s * 0.10) % 0.5, cropH: 0.30
     });
   }
-  // Marks scattered in the lower half
-  const marks = tracksWithMark.map((o, idx) => ({
-    type: 'mark',
-    trackIdx: o.i,
+  const sm = marks.map((o, idx) => ({
+    type: 'mark', trackIdx: o.i,
     x: 0.08 + ((idx * 0.18) % 0.78),
     y: 0.56 + ((idx * 0.07) % 0.30),
-    size: 0.18 + (idx % 3) * 0.04,
+    size: 0.18 + (idx % 3) * 0.04, blend: 'screen'
+  }));
+  return { baseTrackIdx, strips, marks: sm, title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+}
+
+// Vertical slices that cut the cover edge-to-edge top-to-bottom.
+function tpl_sliced() {
+  const photos = _tracksWithPhoto();
+  const marks  = _tracksWithMark();
+  const strips = [];
+  const N = Math.max(4, photos.length);
+  const colW = 1 / N;
+  for (let i = 0; i < N; i++) {
+    const p = photos[i % Math.max(1, photos.length)];
+    if (!p) continue;
+    strips.push({
+      type: 'strip', trackIdx: p.i,
+      x: i * colW, y: 0, w: colW, h: 1,
+      tint: ['none','cobalt','none','amber','none','sienna','none','grey'][i % 8],
+      cropY: 0, cropH: 1
+    });
+  }
+  const sm = marks.map((m, i) => ({
+    type: 'mark', trackIdx: m.i,
+    x: 0.05 + ((i * 0.18) % 0.80),
+    y: 0.20 + ((i * 0.13) % 0.55),
+    size: 0.16 + (i % 3) * 0.03, blend: 'screen'
+  }));
+  return { baseTrackIdx: photos[0] ? photos[0].i : null, strips, marks: sm, title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+}
+
+// Large horizontal slabs dividing the cover.
+function tpl_divided() {
+  const photos = _tracksWithPhoto();
+  const marks  = _tracksWithMark();
+  const strips = [];
+  const N = Math.max(3, Math.min(5, photos.length));
+  const slabH = 1 / N;
+  for (let i = 0; i < N; i++) {
+    const p = photos[i % Math.max(1, photos.length)];
+    if (!p) continue;
+    strips.push({
+      type: 'strip', trackIdx: p.i,
+      x: 0, y: i * slabH, w: 1, h: slabH,
+      tint: ['none','cobalt','sienna','amber','green'][i % 5],
+      cropY: 0.2, cropH: 0.6
+    });
+  }
+  const sm = marks.map((m, i) => ({
+    type: 'mark', trackIdx: m.i,
+    x: 0.10 + ((i * 0.22) % 0.70),
+    y: i * slabH + slabH * 0.3,
+    size: 0.18 + (i % 3) * 0.04, blend: 'screen'
+  }));
+  return { baseTrackIdx: photos[0] ? photos[0].i : null, strips, marks: sm, title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+}
+
+// Heavy overlap / Bowie-collage style: many strips cutting into each other.
+function tpl_overlap() {
+  const photos = _tracksWithPhoto();
+  const marks  = _tracksWithMark();
+  const strips = [];
+  const baseTrackIdx = photos[0] ? photos[0].i : null;
+  const others = photos.filter(o => o.i !== baseTrackIdx);
+  // Many irregular rectangles overlapping
+  const placements = [
+    { x: 0.05, y: 0.08, w: 0.45, h: 0.30, tint: 'cobalt' },
+    { x: 0.35, y: 0.04, w: 0.50, h: 0.25, tint: 'amber' },
+    { x: 0.10, y: 0.32, w: 0.55, h: 0.22, tint: 'sienna' },
+    { x: 0.40, y: 0.30, w: 0.50, h: 0.30, tint: 'none' },
+    { x: 0.00, y: 0.55, w: 0.60, h: 0.25, tint: 'green' },
+    { x: 0.45, y: 0.60, w: 0.55, h: 0.20, tint: 'magenta' },
+    { x: 0.20, y: 0.78, w: 0.55, h: 0.18, tint: 'grey' }
+  ];
+  for (let i = 0; i < placements.length; i++) {
+    const o = others[i % Math.max(1, others.length)] || photos[0];
+    if (!o) continue;
+    strips.push({ type: 'strip', trackIdx: o.i, ...placements[i], cropY: 0.1 + (i*0.1)%0.6, cropH: 0.35 });
+  }
+  const sm = marks.map((m, i) => ({
+    type: 'mark', trackIdx: m.i,
+    x: 0.05 + ((i * 0.21) % 0.80),
+    y: 0.20 + ((i * 0.18) % 0.60),
+    size: 0.16 + (i % 3) * 0.05, blend: 'screen'
+  }));
+  return { baseTrackIdx, strips, marks: sm, title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+}
+
+// Fully random placement — each generation different.
+function tpl_random() {
+  const photos = _tracksWithPhoto();
+  const marks  = _tracksWithMark();
+  const baseTrackIdx = photos[0] ? photos[0].i : null;
+  const others = photos.filter(o => o.i !== baseTrackIdx);
+  const strips = [];
+  const N = 3 + Math.floor(Math.random() * 6);
+  const tints = ['none','cobalt','amber','sienna','green','magenta','grey'];
+  for (let i = 0; i < N; i++) {
+    const o = others[i % Math.max(1, others.length)] || photos[0];
+    if (!o) continue;
+    strips.push({
+      type: 'strip', trackIdx: o.i,
+      x: Math.random() * 0.6,
+      y: Math.random() * 0.85,
+      w: 0.20 + Math.random() * 0.60,
+      h: 0.08 + Math.random() * 0.35,
+      tint: tints[Math.floor(Math.random() * tints.length)],
+      cropY: Math.random() * 0.6, cropH: 0.2 + Math.random() * 0.4,
+      rot: (Math.random() - 0.5) * 14
+    });
+  }
+  const sm = marks.map((m, i) => ({
+    type: 'mark', trackIdx: m.i,
+    x: Math.random() * 0.75,
+    y: 0.10 + Math.random() * 0.75,
+    size: 0.14 + Math.random() * 0.18,
+    rot: (Math.random() - 0.5) * 20,
     blend: 'screen'
   }));
-  return { baseTrackIdx, strips, marks, title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+  return { baseTrackIdx, strips, marks: sm, title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
 }
+
+// Default layout = grid-4x2 (clean, readable starting point that you can
+// then mutate via the layout picker or by manual drag).
+function defaultCoverLayout() { return tpl_grid4x2(); }
 
 // Load saved layout (or seed defaults).
 const COVER_LS_KEY = 'vessel.cover.v1';
@@ -3681,16 +3867,35 @@ const coverOverlay = document.createElement('div');
 coverOverlay.id = 'cover-overlay';
 coverOverlay.style.cssText = `
   position: fixed; left: 110px; right: 380px; top: 56px; bottom: 0;
-  background: #0a0a0a; z-index: 30; display: none;
-  align-items: center; justify-content: center; padding: 28px;
+  background: #050505; z-index: 30; display: none;
+  align-items: center; justify-content: center; padding: 28px 28px 80px;
   flex-direction: column; gap: 14px;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+  background-size: 24px 24px, 24px 24px;
 `;
+// Technical metadata band above the stage — Warp/TDR-ish severity.
+const coverMeta = document.createElement('div');
+coverMeta.style.cssText = `
+  width: 100%; max-width: 800px; display: grid;
+  grid-template-columns: 1fr 1fr 1fr; gap: 24px;
+  font-family: "Sidepiece-HoneyPie", sans-serif; font-size: 9px;
+  letter-spacing: 0.28em; text-transform: uppercase; color: #5a5a5a;
+  padding-bottom: 8px; border-bottom: 1px solid #1c1c1c;
+`;
+coverMeta.innerHTML = `
+  <div>VESSEL.2 / COVER</div>
+  <div style="text-align:center">JORDYN — SUGARCANE FAMILY</div>
+  <div style="text-align:right">LP / 12.375&Prime; / 300 DPI</div>
+`;
+coverOverlay.appendChild(coverMeta);
 const coverStage = document.createElement('div');
 coverStage.id = 'cover-stage';
 coverStage.style.cssText = `
-  position: relative; aspect-ratio: 4/5; max-height: 92%;
+  position: relative; aspect-ratio: 4/5; max-height: 78vh;
   background: #000;
-  box-shadow: 0 16px 80px rgba(0,0,0,0.65);
+  box-shadow: 0 16px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.06);
   overflow: hidden; user-select: none;
 `;
 // Inner DOM order: base photo (img) > strips (div+img+tint) > marks (img) > title overlay
@@ -3725,10 +3930,21 @@ coverOverlay.appendChild(coverStage);
 const coverBar = document.createElement('div');
 coverBar.style.cssText = `display:flex;gap:10px;align-items:center;color:#aaa;font-size:11px;font-family:'Sidepiece-HoneyPie',sans-serif;`;
 coverBar.innerHTML = `
-  <button class="btn" id="cover-regen">Regenerate layout</button>
+  <label style="display:flex;gap:6px;align-items:center;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#aaa">
+    Layout
+    <select id="cover-template" style="background:#000;color:#fff;border:1px solid #333;padding:6px 8px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:11px;letter-spacing:0.05em;text-transform:uppercase">
+      <option value="grid4x2">Grid 4×2</option>
+      <option value="mosaic">Mosaic</option>
+      <option value="sliced">Sliced (vertical cuts)</option>
+      <option value="divided">Divided (horizontal slabs)</option>
+      <option value="overlap">Overlap (collage cuts)</option>
+      <option value="random">Random scatter</option>
+    </select>
+  </label>
+  <button class="btn" id="cover-regen">Apply layout</button>
   <button class="btn primary" id="cover-export">Export PNG</button>
   <button class="btn" id="cover-close">Close cover ×</button>
-  <span style="margin-left:14px;opacity:0.6">Drag to move · Wheel to resize · Shift+Wheel rotate · T to cycle tint · Del to remove</span>
+  <span style="margin-left:14px;opacity:0.5;font-size:10px">Drag · Wheel resize · Shift+Wheel rotate · T tint · Del remove</span>
 `;
 coverOverlay.appendChild(coverBar);
 document.body.appendChild(coverOverlay);
@@ -3898,8 +4114,12 @@ document.getElementById('rail-cover').addEventListener('click', () => {
 });
 coverBar.querySelector('#cover-close').onclick = () => { coverOverlay.style.display = 'none'; };
 coverBar.querySelector('#cover-regen').onclick = () => {
-  if (!confirm('Replace the current cover layout with a fresh auto-generated one?')) return;
-  state.coverLayout = defaultCoverLayout();
+  const sel = coverBar.querySelector('#cover-template');
+  const id  = sel ? sel.value : 'grid4x2';
+  const t   = COVER_TEMPLATES[id];
+  if (!t) return;
+  if (!confirm(`Replace current cover with "${t.name}"?`)) return;
+  state.coverLayout = t.fn();
   persistCoverLayout();
   renderCoverAll();
 };
