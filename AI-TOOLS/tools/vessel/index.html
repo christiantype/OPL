@@ -1115,6 +1115,62 @@
   .panel .level-label { color: var(--text-dim) !important; }
   .panel .time-display { color: var(--text-dim) !important; }
   .panel .anchor-glyph::placeholder { color: var(--text-faint) !important; }
+
+  /* ─── WARP-SEVERITY POLISH ─────────────────────────────────────────
+     Drop the rounded UI; sharper hairline rules; bolder typographic
+     section headers; tighter info density. The point: read engineered. */
+  .panel select, .panel input[type="text"], .panel input[type="number"],
+  .panel .btn, .panel .photo-drop, .panel .anchor-mode, .panel .anchor-band,
+  .panel .anchor-glyph, .panel .toggle, .panel .mat-option, .panel .anchor-row,
+  .panel .anchor-toggle, .panel .level-bar, .panel .progress-bar,
+  .rail .rail-thumb, #cover-overlay .btn, #cover-overlay select {
+    border-radius: 0 !important;
+  }
+  .panel .section-title {
+    font-size: 9px !important; letter-spacing: 0.30em !important;
+    font-weight: 700 !important; color: #1a1a1c !important;
+    padding-bottom: 6px; border-bottom: 1px solid #1a1a1c;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel .section { padding: 18px 22px 22px !important; }
+  .panel .section-help {
+    font-size: 10px !important; letter-spacing: 0.04em !important;
+    line-height: 1.55; color: #6b6b70 !important;
+  }
+  .panel .control-label { font-size: 9px !important; letter-spacing: 0.22em !important; text-transform: uppercase; }
+  .panel .control-label .val { font-weight: 600 !important; }
+  .panel .label { font-size: 10px !important; letter-spacing: 0.18em !important; text-transform: uppercase; }
+  .panel .mode-tab {
+    padding: 12px 0 !important; font-size: 10px !important;
+    letter-spacing: 0.30em !important; font-weight: 700 !important;
+  }
+  .panel .btn {
+    padding: 12px !important; font-size: 10px !important;
+    letter-spacing: 0.25em !important; font-weight: 600 !important;
+    text-transform: uppercase;
+  }
+  .panel .toggle, .panel .anchor-toggle { border: 1px solid #1a1a1c; }
+  .panel-header {
+    border-bottom: 1px solid #1a1a1c !important;
+    padding-bottom: 14px !important;
+  }
+  .panel-title { font-weight: 700; }
+
+  /* Stage corner ticks become hairlines on a pure black backdrop */
+  .stage { background: #050505 !important; }
+  .corner-tick { border-color: rgba(255,255,255,0.35) !important; }
+
+  /* Left rail — square thumbnails, sharp lines */
+  .rail { background: #f4f4f6 !important; border-right: 1px solid #1a1a1c !important; }
+  .rail-label { color: #6b6b70 !important; font-weight: 700 !important; }
+  .rail-thumb { border: 1px solid #1a1a1c !important; background: #050505; }
+  .rail-thumb.active { border-color: #1a1a1c !important; box-shadow: 0 0 0 2px #FFD400 !important; }
+  .rail-thumb.cover { border: 1px dashed #b94a2c !important; }
+  .rail-thumb .num { font-weight: 700; }
+
+  /* Cover overlay toolbar buttons all squared */
+  #cover-overlay { padding: 22px 28px 28px !important; }
+  #cover-overlay .btn { border-radius: 0 !important; }
 </style>
 </head>
 <body>
@@ -1263,12 +1319,12 @@
         OP/AL's visual language is a system. Each track speaks differently
         — pick the form this song should take.
       </div>
-      <select id="track-style" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);border-radius:5px;padding:8px 8px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:13px;letter-spacing:0.04em">
-        <option value="tube">Tube — drawn audio shape (default)</option>
+      <select id="track-style" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);padding:8px 8px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:13px;letter-spacing:0.04em">
+        <option value="tube">Tube — drawn audio shape</option>
         <option value="qr">QR Lattice — digital block grid</option>
-        <option value="radial">Radial Wave — circular waveform (soon)</option>
-        <option value="orb">Orb — floating sphere + halo (soon)</option>
-        <option value="liquid">Liquid — flowing letterforms (soon)</option>
+        <option value="radial">Radial Wave — circular waveform + planets</option>
+        <option value="orb">Orb — floating sphere + halo</option>
+        <option value="liquid">Liquid — flowing letterforms</option>
       </select>
     </div>
 
@@ -1282,13 +1338,14 @@
       <div class="photo-name" id="photo-name"></div>
       <div class="control-row" style="margin-top:10px">
         <div class="control-label"><span>Distortion</span></div>
-        <select id="photo-fx" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);border-radius:5px;padding:5px 6px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:12px">
+        <select id="photo-fx" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);padding:5px 6px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:12px">
           <option value="none">Off</option>
           <option value="slice">Slice</option>
           <option value="shift">Shift</option>
           <option value="fracture">Fracture</option>
           <option value="rgb">RGB split</option>
           <option value="blur">Blur</option>
+          <option value="halo">Halo — atmospheric glow</option>
         </select>
       </div>
       <div class="control-row">
@@ -3497,6 +3554,27 @@ function drawPhotoFX(audio) {
     fxCtx.drawImage(src, 0, 0, W, H);
     fxCtx.filter = 'none';
   }
+  else if (fx === 'halo') {
+    // Atmospheric: heavy soft blur + brighten + a bloom-style additive
+    // overlay + radial vignette. Reads as Plaid-record fog with a glow.
+    const baseBlur = 10 + audio.bass * 22 * amt;
+    fxCtx.filter = `blur(${_q(baseBlur, 1)}px) brightness(1.15) contrast(0.95)`;
+    fxCtx.drawImage(src, 0, 0, W, H);
+    // Bloom: bright additive overlay
+    fxCtx.filter = `blur(${_q(baseBlur * 1.6, 1)}px) brightness(1.6)`;
+    fxCtx.globalCompositeOperation = 'lighter';
+    fxCtx.globalAlpha = 0.35 + audio.mid * 0.25;
+    fxCtx.drawImage(src, 0, 0, W, H);
+    fxCtx.globalCompositeOperation = 'source-over';
+    fxCtx.globalAlpha = 1;
+    fxCtx.filter = 'none';
+    // Subtle radial vignette inwards (focuses the eye centre-of-frame)
+    const g = fxCtx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.7);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.45)');
+    fxCtx.fillStyle = g;
+    fxCtx.fillRect(0, 0, W, H);
+  }
 
   fxCtx.restore();
 }
@@ -3592,6 +3670,205 @@ function drawQR(audio) {
   styleCtx.strokeRect(ox, oy, side, side);
 }
 
+// ── Radial Wave — circular waveform around the centroid, with rays
+//    that spike on bass + floating moon-dots on the side. Reads like
+//    Cosmogramma. ──────────────────────────────────────────────────
+function drawRadial(audio) {
+  const W = styleCanvas.width, H = styleCanvas.height;
+  const cx = W / 2, cy = H / 2;
+  const cs = styleCtx;
+  cs.clearRect(0, 0, W, H);
+  // Plate
+  cs.fillStyle = '#0a0a0a';
+  cs.fillRect(0, 0, W, H);
+
+  const baseR    = Math.min(W, H) * 0.16;
+  const maxRayLen = Math.min(W, H) * 0.36;
+
+  // Pull frequency data + waveform once
+  let freq, wave;
+  if (analyser) {
+    freq = new Uint8Array(analyser.frequencyBinCount);
+    wave = new Uint8Array(analyser.fftSize);
+    analyser.getByteFrequencyData(freq);
+    analyser.getByteTimeDomainData(wave);
+  } else {
+    freq = new Uint8Array(180);
+    for (let i = 0; i < 180; i++) freq[i] = 24 + Math.sin(i * 0.4) * 30;
+    wave = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) wave[i] = 128;
+  }
+  const N = 240;
+  const color = state.color || '#FFD400';
+
+  // 1. Outer rays — thin radial strokes, energy from FFT
+  cs.strokeStyle = color;
+  cs.lineWidth = 1.2;
+  cs.globalAlpha = 0.95;
+  cs.beginPath();
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2 - Math.PI / 2;
+    const idx = Math.floor((i / N) * freq.length * 0.6);
+    const energy = (freq[idx] / 255);
+    const r2 = baseR + (0.3 + energy * (0.7 + audio.bass * 0.6)) * maxRayLen;
+    cs.moveTo(cx + Math.cos(a) * baseR, cy + Math.sin(a) * baseR);
+    cs.lineTo(cx + Math.cos(a) * r2,    cy + Math.sin(a) * r2);
+  }
+  cs.stroke();
+
+  // 2. Central solid disc — off-white, slight texture
+  cs.fillStyle = '#ece4d4';
+  cs.beginPath();
+  cs.arc(cx, cy, baseR, 0, Math.PI * 2);
+  cs.fill();
+
+  // 3. Waveform ring on the disc
+  cs.strokeStyle = 'rgba(0,0,0,0.35)';
+  cs.lineWidth = 1;
+  cs.beginPath();
+  for (let i = 0; i < 200; i++) {
+    const a = (i / 200) * Math.PI * 2;
+    const v = wave[i % wave.length] / 128 - 1;        // -1..1
+    const r = baseR * 0.55 + v * baseR * 0.3 * (0.5 + audio.mid);
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) cs.moveTo(x, y); else cs.lineTo(x, y);
+  }
+  cs.closePath(); cs.stroke();
+
+  // 4. Floating moons / planets — fixed pattern, audio scales their size
+  const planets = [
+    { ang: Math.PI * 0.85, dist: 0.34, r: 0.045 },
+    { ang: Math.PI * 0.93, dist: 0.40, r: 0.030 },
+    { ang: Math.PI * 1.02, dist: 0.48, r: 0.026 },
+    { ang: Math.PI * 1.10, dist: 0.58, r: 0.060 },
+    { ang: Math.PI * 0.78, dist: 0.30, r: 0.018 }
+  ];
+  cs.fillStyle = '#000';
+  cs.globalAlpha = 0.95;
+  planets.forEach((p, i) => {
+    const env = i % 2 === 0 ? audio.bass : audio.mid;
+    const sz = Math.min(W, H) * p.r * (1 + env * 0.35);
+    const px = cx + Math.cos(p.ang) * (Math.min(W, H) * p.dist);
+    const py = cy + Math.sin(p.ang) * (Math.min(W, H) * p.dist);
+    cs.beginPath(); cs.arc(px, py, sz, 0, Math.PI * 2); cs.fill();
+  });
+  cs.globalAlpha = 1;
+}
+
+// ── Orb — solid sphere with concentric halo rings + floating dots.
+//    Reads as a slow, levitating mark; bass swells the orb, highs
+//    flicker the halo. ─────────────────────────────────────────────
+function drawOrb(audio) {
+  const W = styleCanvas.width, H = styleCanvas.height;
+  const cx = W / 2, cy = H / 2;
+  const cs = styleCtx;
+  cs.clearRect(0, 0, W, H);
+
+  // Soft radial backdrop
+  const bg = cs.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H));
+  bg.addColorStop(0, '#161618');
+  bg.addColorStop(1, '#000');
+  cs.fillStyle = bg;
+  cs.fillRect(0, 0, W, H);
+
+  const color = state.color || '#FFD400';
+  const orbR  = Math.min(W, H) * 0.16 * (1 + audio.bass * 0.18);
+
+  // 1. Concentric halo rings (faint, expand with highs)
+  cs.strokeStyle = color;
+  cs.lineWidth = 1.5;
+  for (let i = 0; i < 6; i++) {
+    const ringR = orbR * (1.8 + i * 0.6) * (1 + audio.high * 0.08);
+    cs.globalAlpha = (0.22 - i * 0.03) * (0.5 + audio.high * 0.5);
+    cs.beginPath(); cs.arc(cx, cy, ringR, 0, Math.PI * 2); cs.stroke();
+  }
+  cs.globalAlpha = 1;
+
+  // 2. Floating halo dots (slow orbital, audio scales)
+  const t = performance.now() / 1000;
+  const DOTS = 28;
+  cs.fillStyle = '#ffffff';
+  for (let i = 0; i < DOTS; i++) {
+    const a = (i / DOTS) * Math.PI * 2 + t * 0.12 + i * 0.7;
+    const dist = orbR * (2.2 + ((i * 1.13) % 1.0) * 1.8);
+    const sz = orbR * 0.05 * (0.6 + ((i % 4 === 0) ? audio.bass : audio.high) * 0.9);
+    const dx = cx + Math.cos(a) * dist;
+    const dy = cy + Math.sin(a) * dist;
+    cs.globalAlpha = 0.55 + (i % 5) * 0.08;
+    cs.beginPath(); cs.arc(dx, dy, Math.max(0.5, sz), 0, Math.PI * 2); cs.fill();
+  }
+  cs.globalAlpha = 1;
+
+  // 3. Outer glow stroke
+  cs.strokeStyle = color; cs.globalAlpha = 0.4; cs.lineWidth = orbR * 0.06;
+  cs.beginPath(); cs.arc(cx, cy, orbR * 1.06, 0, Math.PI * 2); cs.stroke();
+  cs.globalAlpha = 1;
+
+  // 4. The orb itself — radial gradient with a key highlight
+  const og = cs.createRadialGradient(cx - orbR * 0.32, cy - orbR * 0.32, 0, cx, cy, orbR);
+  og.addColorStop(0, '#ffffff');
+  og.addColorStop(0.18, color);
+  og.addColorStop(1, '#000');
+  cs.fillStyle = og;
+  cs.beginPath(); cs.arc(cx, cy, orbR, 0, Math.PI * 2); cs.fill();
+}
+
+// ── Liquid — flowing letterform mark. Renders three lines of brand
+//    text in the Sidepiece bold display face, each layered with a few
+//    offset passes whose offsets are driven by the audio. Cream paper
+//    backdrop. ─────────────────────────────────────────────────────
+function drawLiquid(audio) {
+  const W = styleCanvas.width, H = styleCanvas.height;
+  const cs = styleCtx;
+  cs.clearRect(0, 0, W, H);
+  cs.fillStyle = '#ece4d4';
+  cs.fillRect(0, 0, W, H);
+
+  // A subtle paper grain (very faint diagonal lines)
+  cs.strokeStyle = 'rgba(0,0,0,0.04)'; cs.lineWidth = 1;
+  for (let y = 0; y < H; y += 6) {
+    cs.beginPath(); cs.moveTo(0, y); cs.lineTo(W, y + 2); cs.stroke();
+  }
+
+  const tIdx = state.currentTrack ?? 0;
+  const trackTitles = ['OPITUS', 'SHIPS', 'JAZZ', 'BIRD', 'EVENING', 'CHERRY', 'DISTANCE', 'NERVOUS'];
+  const lines = [
+    'OP/AL',
+    'VESSEL.2',
+    trackTitles[tIdx] || 'TRACK'
+  ];
+
+  const fontSize = Math.min(W, H) * 0.16;
+  cs.font = `bold ${fontSize}px "Sidepiece", "Sidepiece-HoneyPie", sans-serif`;
+  cs.textAlign = 'center';
+  cs.textBaseline = 'middle';
+
+  const t = performance.now() / 1000;
+  const totalH = lines.length * fontSize * 0.95;
+  const startY = (H - totalH) / 2 + fontSize * 0.47;
+
+  lines.forEach((line, li) => {
+    const baseY = startY + li * fontSize * 0.95;
+    // Layered offset passes — three copies offset slightly, audio-driven
+    for (let p = 0; p < 4; p++) {
+      const phase = t * (1.4 + li * 0.3) + p * 1.7 + li;
+      const dx = Math.sin(phase)      * (audio.mid  * 14 + 2);
+      const dy = Math.cos(phase * 1.3) * (audio.bass * 10 + 1);
+      const a  = p === 0 ? 1 : 0.32 - p * 0.05;
+      cs.globalAlpha = Math.max(0, a);
+      cs.fillStyle = p === 0 ? '#000' : ['#b94a2c','#1c39bb','#FFD400','#000'][p % 4];
+      cs.fillText(line, W/2 + dx, baseY + dy);
+    }
+  });
+  cs.globalAlpha = 1;
+
+  // Hairline + corner ticks (severe)
+  cs.strokeStyle = 'rgba(0,0,0,0.22)'; cs.lineWidth = 1;
+  const m = Math.min(W, H) * 0.04;
+  cs.strokeRect(m, m, W - 2*m, H - 2*m);
+}
+
 function drawTrackStyle(audio) {
   if (!_styleInit()) return;
   const style = state.style || 'tube';
@@ -3600,24 +3877,12 @@ function drawTrackStyle(audio) {
     return;
   }
   styleCanvas.style.display = 'block';
-  if (style === 'qr') {
-    drawQR(audio);
-  } else {
-    // Placeholder for the other styles — render an "incoming" notice
-    // so the picker reads correctly until they ship.
-    const W = styleCanvas.width, H = styleCanvas.height;
-    styleCtx.clearRect(0, 0, W, H);
-    styleCtx.fillStyle = 'rgba(0,0,0,0.78)';
-    styleCtx.fillRect(0, 0, W, H);
-    styleCtx.fillStyle = '#FFD400';
-    styleCtx.font = `${Math.round(H * 0.018)}px "Sidepiece-HoneyPie", sans-serif`;
-    styleCtx.textAlign = 'center';
-    styleCtx.textBaseline = 'middle';
-    styleCtx.letterSpacing = '0.3em';
-    styleCtx.fillText(`${style.toUpperCase()} — coming in the next pass`, W/2, H/2);
-    styleCtx.font = `${Math.round(H * 0.012)}px "Sidepiece-HoneyPie", sans-serif`;
-    styleCtx.fillStyle = 'rgba(255,255,255,0.5)';
-    styleCtx.fillText(`Pick TUBE or QR LATTICE for now.`, W/2, H/2 + H * 0.04);
+  switch (style) {
+    case 'qr':     drawQR(audio);     break;
+    case 'radial': drawRadial(audio); break;
+    case 'orb':    drawOrb(audio);    break;
+    case 'liquid': drawLiquid(audio); break;
+    default: styleCanvas.style.display = 'none';
   }
 }
 
