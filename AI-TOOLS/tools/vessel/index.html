@@ -3529,124 +3529,395 @@ document.querySelectorAll('.rail-thumb[data-i]').forEach(tile => {
 // each track's photo (with its distortion) layered as cross-cutting
 // strips, with the 8 marks (renderer snapshots) floating over the top.
 // ============================================================
+// ============================================================
+// COVER EDITOR — DOM-based draggable / resizable layers (strips +
+// marks). Each layer is a div with the cropped photo or the track's
+// mark as background, positioned in percentage units of the stage
+// (square, so the layout is resolution-independent and exports cleanly
+// to a high-res PNG). Layout persists per session in localStorage.
+// ============================================================
+
+// Tint palette used by strips (multiply blended over the cropped photo).
+const COVER_TINTS = [
+  { id: 'none',    name: 'No tint',  rgba: 'rgba(0,0,0,0)'        },
+  { id: 'cobalt',  name: 'Cobalt',   rgba: 'rgba(20,80,200,0.40)' },
+  { id: 'amber',   name: 'Amber',    rgba: 'rgba(255,200,40,0.36)'},
+  { id: 'sienna',  name: 'Sienna',   rgba: 'rgba(180,60,40,0.38)' },
+  { id: 'green',   name: 'Green',    rgba: 'rgba(40,150,90,0.34)' },
+  { id: 'magenta', name: 'Magenta',  rgba: 'rgba(200,80,160,0.36)'},
+  { id: 'grey',    name: 'Grey',     rgba: 'rgba(180,180,180,0.30)' }
+];
+function tintRgba(id) { const t = COVER_TINTS.find(t => t.id === id); return t ? t.rgba : 'rgba(0,0,0,0)'; }
+
+// Persistable layout. All x/y/w/h are 0..1 fractions of the stage.
+function defaultCoverLayout() {
+  const tracksWithPhoto = state.tracks.map((t, i) => ({ i, t })).filter(o => o.t.photoDataUrl);
+  const tracksWithMark  = state.tracks.map((t, i) => ({ i, t })).filter(o => o.t.thumbnail);
+  const baseTrackIdx = tracksWithPhoto[0] ? tracksWithPhoto[0].i : null;
+  // 4-6 strips: cycle through the other photo-bearing tracks
+  const strips = [];
+  const others = tracksWithPhoto.filter(o => o.i !== baseTrackIdx);
+  for (let s = 0; s < Math.min(6, others.length); s++) {
+    const o = others[s];
+    strips.push({
+      type: 'strip',
+      trackIdx: o.i,
+      x: 0.06 + (s % 2) * 0.05,
+      y: 0.18 + s * 0.10,
+      w: 0.62 + (s % 3) * 0.08,
+      h: 0.10 + (s % 3) * 0.03,
+      tint: COVER_TINTS[1 + (s % (COVER_TINTS.length - 1))].id,
+      // crop window inside the source photo (0..1)
+      cropY: 0.20 + (s * 0.10) % 0.5,
+      cropH: 0.30
+    });
+  }
+  // Marks scattered in the lower half
+  const marks = tracksWithMark.map((o, idx) => ({
+    type: 'mark',
+    trackIdx: o.i,
+    x: 0.08 + ((idx * 0.18) % 0.78),
+    y: 0.56 + ((idx * 0.07) % 0.30),
+    size: 0.18 + (idx % 3) * 0.04,
+    blend: 'screen'
+  }));
+  return { baseTrackIdx, strips, marks, title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+}
+
+// Load saved layout (or seed defaults).
+const COVER_LS_KEY = 'vessel.cover.v1';
+function loadCoverLayout() {
+  try {
+    const raw = localStorage.getItem(COVER_LS_KEY);
+    if (raw) state.coverLayout = JSON.parse(raw);
+  } catch (e) {}
+  if (!state.coverLayout) state.coverLayout = defaultCoverLayout();
+}
+function persistCoverLayout() {
+  try { localStorage.setItem(COVER_LS_KEY, JSON.stringify(state.coverLayout)); } catch (e) {}
+}
+
+// ── Cover overlay DOM ──────────────────────────────────────────────
 const coverOverlay = document.createElement('div');
 coverOverlay.id = 'cover-overlay';
 coverOverlay.style.cssText = `
   position: fixed; left: 110px; right: 380px; top: 56px; bottom: 0;
-  background: #000; z-index: 30; display: none;
-  align-items: center; justify-content: center; padding: 24px;
+  background: #0a0a0a; z-index: 30; display: none;
+  align-items: center; justify-content: center; padding: 28px;
+  flex-direction: column; gap: 14px;
 `;
-const coverCanvas = document.createElement('canvas');
-coverCanvas.style.cssText = `max-width: 100%; max-height: 100%; box-shadow: 0 12px 60px rgba(0,0,0,0.6);`;
-coverOverlay.appendChild(coverCanvas);
-const coverClose = document.createElement('button');
-coverClose.textContent = 'Close cover ×';
-coverClose.style.cssText = `
-  position: absolute; top: 18px; right: 24px;
-  background: rgba(255,255,255,0.08); color: #fff;
-  border: 1px solid rgba(255,255,255,0.18); border-radius: 6px;
-  padding: 6px 12px; cursor: pointer; font-family: 'Sidepiece-HoneyPie',sans-serif; font-size: 12px;
+const coverStage = document.createElement('div');
+coverStage.id = 'cover-stage';
+coverStage.style.cssText = `
+  position: relative; aspect-ratio: 4/5; max-height: 92%;
+  background: #000;
+  box-shadow: 0 16px 80px rgba(0,0,0,0.65);
+  overflow: hidden; user-select: none;
 `;
-coverClose.onclick = () => { coverOverlay.style.display = 'none'; };
-coverOverlay.appendChild(coverClose);
+// Inner DOM order: base photo (img) > strips (div+img+tint) > marks (img) > title overlay
+const coverBaseImg = document.createElement('img');
+coverBaseImg.style.cssText = `
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; pointer-events: none;
+`;
+coverStage.appendChild(coverBaseImg);
+const coverLayersWrap = document.createElement('div');
+coverLayersWrap.style.cssText = 'position:absolute;inset:0;';
+coverStage.appendChild(coverLayersWrap);
+const coverTitleEl = document.createElement('div');
+coverTitleEl.style.cssText = `
+  position: absolute; left: 0; right: 0; bottom: 4%;
+  text-align: center; color: rgba(255,255,255,0.92);
+  font-family: "Sidepiece", sans-serif; font-size: 5%;
+  pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+`;
+coverStage.appendChild(coverTitleEl);
+const coverSubEl = document.createElement('div');
+coverSubEl.style.cssText = `
+  position: absolute; left: 0; right: 0; bottom: 1.5%;
+  text-align: center; color: rgba(255,255,255,0.55);
+  font-family: "Sidepiece-HoneyPie", sans-serif; font-size: 1.4%;
+  letter-spacing: 0.18em; pointer-events: none;
+`;
+coverStage.appendChild(coverSubEl);
+coverOverlay.appendChild(coverStage);
+
+// Toolbar under the stage
+const coverBar = document.createElement('div');
+coverBar.style.cssText = `display:flex;gap:10px;align-items:center;color:#aaa;font-size:11px;font-family:'Sidepiece-HoneyPie',sans-serif;`;
+coverBar.innerHTML = `
+  <button class="btn" id="cover-regen">Regenerate layout</button>
+  <button class="btn primary" id="cover-export">Export PNG</button>
+  <button class="btn" id="cover-close">Close cover ×</button>
+  <span style="margin-left:14px;opacity:0.6">Drag to move · Wheel to resize · Shift+Wheel rotate · T to cycle tint · Del to remove</span>
+`;
+coverOverlay.appendChild(coverBar);
 document.body.appendChild(coverOverlay);
 
-async function renderCoverComposite() {
-  const W = 2400, H = 3000;
-  coverCanvas.width = W; coverCanvas.height = H;
-  const cx = coverCanvas.getContext('2d');
-  cx.fillStyle = '#000'; cx.fillRect(0, 0, W, H);
+// CSS for the per-layer elements (kept local to cover overlay)
+const coverStyle = document.createElement('style');
+coverStyle.textContent = `
+  .cv-layer { position: absolute; cursor: grab; transition: outline-color 0.1s; outline: 1px dashed transparent; }
+  .cv-layer:hover, .cv-layer.selected { outline-color: rgba(255,200,40,0.85); }
+  .cv-layer.dragging { cursor: grabbing; transition: none; }
+  .cv-strip { overflow: hidden; }
+  .cv-strip img { position: absolute; left: 0; top: 0; width: 100%; height: auto; object-fit: cover; pointer-events: none; }
+  .cv-strip .tint { position: absolute; inset: 0; mix-blend-mode: multiply; pointer-events: none; }
+  .cv-mark img { width: 100%; height: 100%; mix-blend-mode: screen; pointer-events: none; display: block; }
+`;
+document.head.appendChild(coverStyle);
 
-  // Pre-load each track's photo (if any) as an Image
-  const tracksWithPhoto = [];
-  for (let i = 0; i < 8; i++) {
-    const t = state.tracks[i];
-    if (!t.photoDataUrl) continue;
-    const img = new Image();
-    await new Promise(r => { img.onload = r; img.onerror = r; img.src = t.photoDataUrl; });
-    tracksWithPhoto.push({ i, img, color: t.color });
+let selectedLayer = null;       // reference to a layer object (in state.coverLayout)
+let selectedLayerEl = null;     // the DOM element for it
+
+function renderCoverLayer(layer, idx) {
+  const stageW = coverStage.clientWidth || 1, stageH = coverStage.clientHeight || 1;
+  const el = document.createElement('div');
+  el.className = 'cv-layer cv-' + layer.type;
+  el.dataset.idx = idx;
+  el.style.left   = (layer.x * 100) + '%';
+  el.style.top    = (layer.y * 100) + '%';
+  if (layer.type === 'strip') {
+    el.style.width  = (layer.w * 100) + '%';
+    el.style.height = (layer.h * 100) + '%';
+    const t = state.tracks[layer.trackIdx];
+    if (t && t.photoDataUrl) {
+      const im = document.createElement('img');
+      im.src = t.photoDataUrl;
+      im.style.height = (1 / (layer.cropH || 0.3) * 100) + '%';
+      im.style.top    = ('-' + ((layer.cropY || 0.2) / (layer.cropH || 0.3) * 100) + '%');
+      el.appendChild(im);
+    }
+    const tint = document.createElement('div');
+    tint.className = 'tint';
+    tint.style.background = tintRgba(layer.tint || 'none');
+    el.appendChild(tint);
+    el.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.6)';
+  } else if (layer.type === 'mark') {
+    el.style.width  = (layer.size * 100) + '%';
+    el.style.aspectRatio = '1 / 1';
+    const t = state.tracks[layer.trackIdx];
+    if (t && t.thumbnail) {
+      const im = document.createElement('img');
+      im.src = t.thumbnail;
+      im.style.mixBlendMode = layer.blend || 'screen';
+      el.appendChild(im);
+    }
   }
-  if (tracksWithPhoto.length === 0) {
-    cx.fillStyle = '#666'; cx.font = '46px "Sidepiece-HoneyPie",sans-serif';
-    cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.fillText('Drop photos on at least one track to build a cover.', W/2, H/2);
-    return;
+  if (typeof layer.rot === 'number' && layer.rot !== 0) {
+    el.style.transform = `rotate(${layer.rot}deg)`;
+    el.style.transformOrigin = 'center center';
   }
-
-  // Base: largest photo (or first) covering the canvas
-  const base = tracksWithPhoto[0];
-  // cover-fit
-  const aspect = base.img.naturalWidth / base.img.naturalHeight;
-  let dw = W, dh = W / aspect;
-  if (dh < H) { dh = H; dw = H * aspect; }
-  cx.drawImage(base.img, (W - dw) / 2, (H - dh) / 2, dw, dh);
-
-  // Strips: 4-6 cross-cutting horizontal strips drawn from OTHER tracks' photos,
-  // each with a colour tint blend, at different y positions and heights.
-  const TINTS = [
-    'rgba(20,80,200,0.32)',   // cobalt
-    'rgba(255,200,40,0.28)',  // amber
-    'rgba(180,60,40,0.30)',   // sienna
-    'rgba(180,180,180,0.20)', // grey
-    'rgba(40,150,90,0.26)',   // green
-    'rgba(200,80,160,0.28)'   // magenta
-  ];
-  const STRIPS = Math.min(6, tracksWithPhoto.length);
-  for (let s = 0; s < STRIPS; s++) {
-    const t = tracksWithPhoto[(s + 1) % tracksWithPhoto.length];
-    const stripH = H * (0.10 + Math.random() * 0.16);
-    const stripY = (H * 0.18) + s * (H * 0.10) + (Math.random() - 0.5) * 50;
-    const stripW = W * (0.55 + Math.random() * 0.40);
-    const stripX = (Math.random() - 0.5) * (W - stripW);
-    // crop a representative band from the source photo
-    const sH = t.img.naturalHeight * (0.20 + Math.random() * 0.4);
-    const sY = (t.img.naturalHeight - sH) * Math.random();
-    cx.save();
-    cx.translate(W/2 + stripX, stripY);
-    cx.drawImage(t.img, 0, sY, t.img.naturalWidth, sH, -stripW/2, 0, stripW, stripH);
-    // colour treatment
-    cx.fillStyle = TINTS[s % TINTS.length];
-    cx.globalCompositeOperation = 'multiply';
-    cx.fillRect(-stripW/2, 0, stripW, stripH);
-    cx.globalCompositeOperation = 'source-over';
-    // subtle outer stroke
-    cx.strokeStyle = 'rgba(0,0,0,0.6)';
-    cx.lineWidth = 2;
-    cx.strokeRect(-stripW/2, 0, stripW, stripH);
-    cx.restore();
-  }
-
-  // Marks: each track's cached thumbnail composited over the cover at small size,
-  // scattered, floating on top. Multiply-blend gives a "stamped" feel.
-  const marks = state.tracks.filter(t => t.thumbnail);
-  marks.forEach((t, idx) => {
-    const img = new Image();
-    img.src = t.thumbnail;
-    // draw immediately (img was already loaded into cache when thumbnail captured)
-    const size = 380 + (idx % 3) * 60;
-    const mx = (W * 0.15) + ((idx * 311) % (W - size - W * 0.30));
-    const my = (H * 0.55) + ((idx * 233) % (H - size - H * 0.60));
-    cx.globalCompositeOperation = 'screen';
-    cx.drawImage(img, mx, my, size, size);
-    cx.globalCompositeOperation = 'source-over';
-  });
-
-  // Title at bottom
-  cx.fillStyle = 'rgba(255,255,255,0.92)';
-  cx.font = '72px "Sidepiece",sans-serif';
-  cx.textAlign = 'center'; cx.textBaseline = 'middle';
-  cx.fillText('JORDYN', W/2, H - 140);
-  cx.font = '22px "Sidepiece-HoneyPie",sans-serif';
-  cx.fillStyle = 'rgba(255,255,255,0.55)';
-  cx.fillText('SUGARCANE FAMILY  /  VESSEL.2', W/2, H - 90);
+  attachLayerInteractions(el, layer);
+  return el;
 }
 
-document.getElementById('rail-cover').addEventListener('click', async () => {
-  coverOverlay.style.display = 'flex';
-  coverClose.textContent = 'Rendering…';
-  await renderCoverComposite();
-  coverClose.textContent = 'Close cover ×';
+function renderCoverAll() {
+  if (!state.coverLayout) state.coverLayout = defaultCoverLayout();
+  const L = state.coverLayout;
+  // Base photo
+  const baseT = (L.baseTrackIdx != null) ? state.tracks[L.baseTrackIdx] : null;
+  if (baseT && baseT.photoDataUrl) {
+    coverBaseImg.src = baseT.photoDataUrl;
+    coverBaseImg.style.display = 'block';
+  } else {
+    coverBaseImg.removeAttribute('src');
+    coverBaseImg.style.display = 'none';
+  }
+  // Clear layers
+  coverLayersWrap.innerHTML = '';
+  const all = [...(L.strips || []), ...(L.marks || [])];
+  all.forEach((layer, idx) => {
+    coverLayersWrap.appendChild(renderCoverLayer(layer, idx));
+  });
+  // Title + subtitle
+  coverTitleEl.textContent    = L.title || 'JORDYN';
+  coverSubEl.textContent      = L.subtitle || 'SUGARCANE FAMILY / VESSEL.2';
+  selectedLayer = null; selectedLayerEl = null;
+}
+
+function selectLayer(layer, el) {
+  if (selectedLayerEl) selectedLayerEl.classList.remove('selected');
+  selectedLayer = layer; selectedLayerEl = el;
+  if (el) el.classList.add('selected');
+}
+
+function attachLayerInteractions(el, layer) {
+  el.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    selectLayer(layer, el);
+    el.classList.add('dragging');
+    const stageR = coverStage.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const startLx = layer.x, startLy = layer.y;
+    function move(ev) {
+      const dx = (ev.clientX - startX) / stageR.width;
+      const dy = (ev.clientY - startY) / stageR.height;
+      layer.x = Math.max(-0.1, Math.min(0.95, startLx + dx));
+      layer.y = Math.max(-0.05, Math.min(0.95, startLy + dy));
+      el.style.left = (layer.x * 100) + '%';
+      el.style.top  = (layer.y * 100) + '%';
+    }
+    function up() {
+      el.classList.remove('dragging');
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      persistCoverLayout();
+    }
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  });
+  // Wheel: resize. Shift+Wheel: rotate.
+  el.addEventListener('wheel', e => {
+    e.preventDefault();
+    selectLayer(layer, el);
+    if (e.shiftKey) {
+      layer.rot = (layer.rot || 0) + (e.deltaY > 0 ? 3 : -3);
+      el.style.transform = `rotate(${layer.rot}deg)`;
+      el.style.transformOrigin = 'center center';
+    } else {
+      const factor = e.deltaY > 0 ? 0.94 : 1.06;
+      if (layer.type === 'strip') {
+        layer.w = Math.max(0.06, Math.min(1.2, layer.w * factor));
+        layer.h = Math.max(0.03, Math.min(1.0, layer.h * factor));
+        el.style.width  = (layer.w * 100) + '%';
+        el.style.height = (layer.h * 100) + '%';
+      } else {
+        layer.size = Math.max(0.05, Math.min(0.7, layer.size * factor));
+        el.style.width = (layer.size * 100) + '%';
+      }
+    }
+    persistCoverLayout();
+  }, { passive: false });
+}
+
+// Keyboard: Del removes the selected layer, T cycles its tint.
+document.addEventListener('keydown', e => {
+  if (coverOverlay.style.display === 'none') return;
+  if (!selectedLayer) return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    const L = state.coverLayout;
+    L.strips = (L.strips || []).filter(l => l !== selectedLayer);
+    L.marks  = (L.marks  || []).filter(l => l !== selectedLayer);
+    persistCoverLayout();
+    renderCoverAll();
+  } else if (e.key === 't' || e.key === 'T') {
+    if (selectedLayer.type !== 'strip') return;
+    const idx = COVER_TINTS.findIndex(t => t.id === (selectedLayer.tint || 'none'));
+    selectedLayer.tint = COVER_TINTS[(idx + 1) % COVER_TINTS.length].id;
+    persistCoverLayout();
+    renderCoverAll();
+  }
 });
+
+// Toolbar buttons
+document.getElementById('rail-cover').addEventListener('click', () => {
+  coverOverlay.style.display = 'flex';
+  loadCoverLayout();
+  renderCoverAll();
+});
+coverBar.querySelector('#cover-close').onclick = () => { coverOverlay.style.display = 'none'; };
+coverBar.querySelector('#cover-regen').onclick = () => {
+  if (!confirm('Replace the current cover layout with a fresh auto-generated one?')) return;
+  state.coverLayout = defaultCoverLayout();
+  persistCoverLayout();
+  renderCoverAll();
+};
+
+// Export — render the layout to a high-res PNG using the same data
+// the DOM editor uses (percentage positions inside an aspect-correct
+// canvas), so what you see is what gets exported.
+coverBar.querySelector('#cover-export').onclick = async () => {
+  const L = state.coverLayout || defaultCoverLayout();
+  const W = 2400, H = 3000;   // 4:5
+  const cnv = document.createElement('canvas');
+  cnv.width = W; cnv.height = H;
+  const cx = cnv.getContext('2d');
+  cx.fillStyle = '#000'; cx.fillRect(0, 0, W, H);
+
+  // Pre-load every photo + thumbnail we'll need
+  const cache = {};
+  async function loadInto(key, src) {
+    if (cache[key] || !src) return;
+    const img = new Image();
+    await new Promise(r => { img.onload = r; img.onerror = r; img.src = src; });
+    cache[key] = img;
+  }
+  if (L.baseTrackIdx != null) await loadInto('photo-' + L.baseTrackIdx, state.tracks[L.baseTrackIdx].photoDataUrl);
+  for (const s of (L.strips || [])) await loadInto('photo-' + s.trackIdx, state.tracks[s.trackIdx].photoDataUrl);
+  for (const m of (L.marks || []))  await loadInto('thumb-' + m.trackIdx, state.tracks[m.trackIdx].thumbnail);
+
+  // Base
+  const baseImg = cache['photo-' + L.baseTrackIdx];
+  if (baseImg) {
+    // cover-fit
+    const a = baseImg.naturalWidth / baseImg.naturalHeight;
+    let dw = W, dh = W / a;
+    if (dh < H) { dh = H; dw = H * a; }
+    cx.drawImage(baseImg, (W - dw)/2, (H - dh)/2, dw, dh);
+  }
+
+  // Helper: rotate around layer centre, draw, restore
+  function withRot(x, y, w, h, rotDeg, fn) {
+    if (rotDeg) {
+      cx.save();
+      cx.translate(x + w/2, y + h/2);
+      cx.rotate(rotDeg * Math.PI / 180);
+      cx.translate(-w/2, -h/2);
+      fn(0, 0, w, h);
+      cx.restore();
+    } else {
+      fn(x, y, w, h);
+    }
+  }
+
+  // Strips
+  for (const s of (L.strips || [])) {
+    const img = cache['photo-' + s.trackIdx]; if (!img) continue;
+    const px = s.x * W, py = s.y * H, pw = s.w * W, ph = s.h * H;
+    withRot(px, py, pw, ph, s.rot || 0, (x, y, w, h) => {
+      const sY = (s.cropY || 0.2) * img.naturalHeight;
+      const sH = (s.cropH || 0.3) * img.naturalHeight;
+      cx.drawImage(img, 0, sY, img.naturalWidth, sH, x, y, w, h);
+      cx.fillStyle = tintRgba(s.tint || 'none');
+      cx.globalCompositeOperation = 'multiply';
+      cx.fillRect(x, y, w, h);
+      cx.globalCompositeOperation = 'source-over';
+      cx.strokeStyle = 'rgba(0,0,0,0.6)'; cx.lineWidth = 2;
+      cx.strokeRect(x, y, w, h);
+    });
+  }
+
+  // Marks
+  for (const m of (L.marks || [])) {
+    const img = cache['thumb-' + m.trackIdx]; if (!img) continue;
+    const size = m.size * W;
+    const mx = m.x * W, my = m.y * H;
+    withRot(mx, my, size, size, m.rot || 0, (x, y, w, h) => {
+      cx.globalCompositeOperation = m.blend || 'screen';
+      cx.drawImage(img, x, y, w, h);
+      cx.globalCompositeOperation = 'source-over';
+    });
+  }
+
+  // Title
+  cx.fillStyle = 'rgba(255,255,255,0.92)';
+  cx.font = `${Math.round(H * 0.05)}px "Sidepiece", sans-serif`;
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText(L.title || 'JORDYN', W/2, H * 0.93);
+  cx.font = `${Math.round(H * 0.014)}px "Sidepiece-HoneyPie", sans-serif`;
+  cx.fillStyle = 'rgba(255,255,255,0.55)';
+  cx.fillText(L.subtitle || 'SUGARCANE FAMILY / VESSEL.2', W/2, H * 0.975);
+
+  cnv.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'vessel-cover.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }, 'image/png');
+};
 
 // ============================================================
 // INIT — restore saved tracks + render badges + rail
