@@ -1468,7 +1468,10 @@
         <input type="range" id="sensitivity" min="0" max="1.0" step="0.01" value="0.55">
       </div>
       <div class="section-help" style="margin-top:6px;margin-bottom:0">
-        Drive multiplies all reactive displacement. Sensitivity sets the transient detector for Spike &amp; Ripple modes — higher = more triggers.
+        Intensity scales the gentle whole-shape pulse on bass. The shape
+        keeps its drawn form — audio drives only the decay layers (spores,
+        tendrils, shards) growing off the anchors, and a quantised breathing
+        scale so the mark snaps to the beat instead of vibrating.
       </div>
     </div>
 
@@ -3324,35 +3327,35 @@ function animate() {
   document.getElementById('mid-fill').style.height = (state.audio.mid * 100) + '%';
   document.getElementById('high-fill').style.height = (state.audio.high * 100) + '%';
 
-  // Rebuild entity geometry with audio-displaced anchors (every frame, but only if there's reactivity)
+  // AUDIO REACTIVITY — REWRITTEN
+  // The mark stays readable. No per-anchor deformation; the shape keeps
+  // its drawn form. Audio drives only:
+  //   1. A subtle whole-shape "breathing" pulse on bass envelope (quantised
+  //      so it snaps to the beat, not noisy continuous wiggle).
+  //   2. The decay layers (spores / tendrils / shards / stipple / maze)
+  //      which grow OFF the shape — those still react per-anchor mode.
+  // Per-anchor displacement is OFF; the shape geometry isn't rebuilt each
+  // frame, only on edits.
   let disp = null;
-  if (state.anchors.length >= 2 && currentMesh) {
-    const anyReactive = state.anchors.some(a => a.reactive);
-    if (anyReactive) {
-      disp = computeDisplacedAnchorPositions(frame);
-      rebuildTubeFromCurrentAnchors(currentMesh, disp);
-    }
-  }
-
-  // Decay layers (spores / stipple / shards / tendrils / maze). All read
-  // the same displaced anchors + audio bands. Ink mode hides the 3D mesh
-  // so only the inked decay reads — like the reference spreads.
+  // Decay layers read raw anchor positions; pass null and they fall back to
+  // un-deformed positions.
   updateDecay(disp, state.audio);
-  // 3D tube is hidden when ink mode is on OR when this track uses a
-  // non-tube visual language (QR / radial / etc.).
   if (currentMesh) currentMesh.visible = !state.decay.inkMode && (state.style || 'tube') === 'tube';
 
-  // Photo distortion: paint bgPhoto through the active per-track effect
-  // onto #photo-fx (sits below the 3D scene).
+  // Photo distortion (per-track, audio-driven). Unchanged.
   if (typeof drawPhotoFX === 'function') drawPhotoFX(state.audio);
-
-  // Per-track visual style overlay (QR lattice etc.).
+  // Per-track visual style overlay (QR / Radial / Orb / Liquid). Unchanged.
   if (typeof drawTrackStyle === 'function') drawTrackStyle(state.audio);
 
-  // Entity is locked in place — no auto-rotation, no audio-driven lift.
-  // Audio reactivity now expresses itself through per-anchor distortion only,
-  // so the SHAPE deforms instead of the whole thing pulsing bigger.
+  // Whole-shape breathing — single uniform scale driven by the BASS
+  // envelope, quantised in 0.005 steps so it feels mechanical / electronic
+  // and snaps to the beat instead of vibrating. Strength scales with
+  // state.reactivity (0 = locked still, 1 = subtle, 2 = stronger).
+  entityGroup.position.x = 0;
+  entityGroup.position.y = 0;
   entityGroup.position.z = state.hover;
+  const breathe = 1 + (Math.round(state.audio.bassEnv * 8) / 8) * 0.04 * (state.reactivity || 1);
+  entityGroup.scale.set(breathe, breathe, breathe);
   entityGroup.rotation.x = 0;
   entityGroup.rotation.y = 0;
   entityGroup.rotation.z = 0;
