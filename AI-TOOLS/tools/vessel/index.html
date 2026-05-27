@@ -1174,6 +1174,21 @@
     </div>
 
     <div class="section">
+      <div class="section-title">Decay</div>
+      <div class="section-help" style="margin-top:0;margin-bottom:8px">
+        Inked layers that grow off your shape with the audio. Spores +
+        Tendrils need anchors set to <em>Spike</em> + <em>Pulse</em>
+        respectively (anchors react by default).
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:11px"><input type="checkbox" id="decay-spore"   checked> Spores <span style="opacity:.6">— spike anchors, high band</span></label>
+      <label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:11px"><input type="checkbox" id="decay-stipple" checked> Stipple <span style="opacity:.6">— along path, mid band</span></label>
+      <label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:11px"><input type="checkbox" id="decay-shard"   checked> Shards <span style="opacity:.6">— shatter anchors</span></label>
+      <label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:11px"><input type="checkbox" id="decay-branch"  checked> Tendrils <span style="opacity:.6">— pulse anchors, bass band</span></label>
+      <label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:11px"><input type="checkbox" id="decay-maze"> Maze fill <span style="opacity:.6">— bbox walker, bass</span></label>
+      <label style="display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-size:11px;border-top:1px solid var(--hairline);padding-top:8px"><input type="checkbox" id="decay-ink"> <strong>2D ink mode</strong> <span style="opacity:.6">— hide the 3D mesh</span></label>
+    </div>
+
+    <div class="section">
       <div class="section-title">Export</div>
       <button class="btn primary" id="export-btn">Export PNG &mdash; full sleeve</button>
       <button class="btn cobalt" id="export-entity" style="margin-top:6px">Export entity only &mdash; transparent</button>
@@ -1353,6 +1368,18 @@ bindSlider('drive', 'drive', 'drive-val');
 bindSlider('sensitivity', 'sensitivity', 'sens-val');
 bindSlider('grid-density', 'gridDensity', 'grid-val', v => Math.round(v).toString(), () => redrawOverlay());
 
+// Decay layer toggles
+['spore','stipple','shard','branch','maze'].forEach(k => {
+  const el = document.getElementById('decay-' + k);
+  if (el) el.addEventListener('change', e => { state.decay[k] = e.target.checked; });
+});
+const inkEl = document.getElementById('decay-ink');
+if (inkEl) inkEl.addEventListener('change', e => {
+  state.decay.inkMode = e.target.checked;
+  // In ink mode, drop the shadow opacity so the inked layers read on a clean stage.
+  shadowMat.opacity = e.target.checked ? 0 : state.shadow;
+});
+
 document.getElementById('color-input').addEventListener('input', e => {
   state.color = e.target.value;
   applyMaterial();
@@ -1479,6 +1506,287 @@ scene.add(shadowPlane);
 // Entity group
 const entityGroup = new THREE.Group();
 scene.add(entityGroup);
+
+// ============================================================
+// DECAY LAYERS — spore bursts, stipple noise, shards, tendrils,
+// maze fill, ink mode. All read anchor positions + audio bands
+// each frame and render as additional 3D objects in entityGroup
+// (so they share the camera, hover, and shadow with the main tube).
+// ============================================================
+const decayGroup = new THREE.Group();
+entityGroup.add(decayGroup);
+state.decay = { spore: true, stipple: true, shard: true, branch: true, maze: false, inkMode: false };
+
+// ── Spore particles (radial bursts from 'spike' anchors, high env) ──
+const SPORE_MAX = 1400;
+const sporeGeom = new THREE.BufferGeometry();
+const sporePos  = new Float32Array(SPORE_MAX * 3);
+for (let i = 0; i < SPORE_MAX * 3; i++) sporePos[i] = -9999;
+sporeGeom.setAttribute('position', new THREE.BufferAttribute(sporePos, 3));
+const sporeMat = new THREE.PointsMaterial({
+  color: 0x000000, size: 0.045, sizeAttenuation: true,
+  transparent: true, opacity: 0.85, depthWrite: false
+});
+const sporePoints = new THREE.Points(sporeGeom, sporeMat);
+decayGroup.add(sporePoints);
+const spores = [];
+function emitSpore(x, y, z, energy) {
+  if (spores.length >= SPORE_MAX) return;
+  const ang = Math.random() * Math.PI * 2;
+  const sp  = 0.02 + Math.random() * 0.06 * (1 + energy * 2);
+  spores.push({ x, y, z,
+    vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+    vz: (Math.random() - 0.5) * 0.02,
+    life: 1, decay: 0.008 + Math.random() * 0.012 });
+}
+function updateSpores(anchors, audio) {
+  if (!state.decay.spore) { sporeGeom.setDrawRange(0, 0); return; }
+  if (audio.highEnv > 0.04) {
+    for (let i = 0; i < anchors.length; i++) {
+      const a = state.anchors[i]; if (!a || !a.reactive || a.mode !== 'spike') continue;
+      const p = anchors[i].pos;
+      const burst = 1 + Math.floor(audio.highEnv * 8);
+      for (let b = 0; b < burst; b++) emitSpore(p.x, p.y, p.z + 0.05, audio.highEnv);
+    }
+  }
+  for (let i = spores.length - 1; i >= 0; i--) {
+    const s = spores[i];
+    s.x += s.vx; s.y += s.vy; s.z += s.vz;
+    s.vy -= 0.0006; s.vx *= 0.985; s.vz *= 0.985;
+    s.life -= s.decay;
+    if (s.life <= 0) spores.splice(i, 1);
+  }
+  for (let i = 0; i < spores.length; i++) {
+    sporePos[i*3] = spores[i].x; sporePos[i*3+1] = spores[i].y; sporePos[i*3+2] = spores[i].z;
+  }
+  sporeGeom.attributes.position.needsUpdate = true;
+  sporeGeom.setDrawRange(0, spores.length);
+}
+
+// ── Stipple dots along the path (mid env -> density + jitter) ──────
+const STIPPLE_MAX = 900;
+const stippleGeom = new THREE.BufferGeometry();
+const stipplePos  = new Float32Array(STIPPLE_MAX * 3);
+stippleGeom.setAttribute('position', new THREE.BufferAttribute(stipplePos, 3));
+const stippleMat = new THREE.PointsMaterial({
+  color: 0x000000, size: 0.024, sizeAttenuation: true,
+  transparent: true, opacity: 0.6, depthWrite: false
+});
+const stipplePoints = new THREE.Points(stippleGeom, stippleMat);
+decayGroup.add(stipplePoints);
+function bezierAt(p0, h0, h1, p1, t) {
+  const u = 1 - t, u2 = u*u, t2 = t*t, u3 = u2*u, t3 = t2*t;
+  return {
+    x: u3*p0.x + 3*u2*t*h0.x + 3*u*t2*h1.x + t3*p1.x,
+    y: u3*p0.y + 3*u2*t*h0.y + 3*u*t2*h1.y + t3*p1.y,
+    z: u3*p0.z + 3*u2*t*h0.z + 3*u*t2*h1.z + t3*p1.z
+  };
+}
+function updateStipple(disp, audio) {
+  if (!state.decay.stipple || !disp || disp.length < 2) { stippleGeom.setDrawRange(0, 0); return; }
+  const env = audio.midEnv;
+  const jit = 0.025 + env * 0.18;
+  const density = Math.floor(10 + env * 18);
+  let idx = 0;
+  for (let i = 0; i < disp.length && idx < STIPPLE_MAX; i++) {
+    const a = disp[i], b = disp[(i + 1) % disp.length];
+    const p0 = a.pos, p1 = b.pos;
+    const h0 = { x: p0.x + a.hOut.x, y: p0.y + a.hOut.y, z: p0.z };
+    const h1 = { x: p1.x + b.hIn.x,  y: p1.y + b.hIn.y,  z: p1.z };
+    for (let s = 0; s < density && idx < STIPPLE_MAX; s++) {
+      const t = (s + Math.random()) / density;
+      const v = bezierAt(p0, h0, h1, p1, t);
+      stipplePos[idx*3]   = v.x + (Math.random() - 0.5) * jit;
+      stipplePos[idx*3+1] = v.y + (Math.random() - 0.5) * jit;
+      stipplePos[idx*3+2] = v.z + (Math.random() - 0.5) * jit * 0.5;
+      idx++;
+    }
+  }
+  for (let i = idx; i < STIPPLE_MAX; i++) { stipplePos[i*3]=stipplePos[i*3+1]=stipplePos[i*3+2]=-9999; }
+  stippleGeom.attributes.position.needsUpdate = true;
+  stippleGeom.setDrawRange(0, idx);
+}
+
+// ── Shards (small black quads drifting + spinning from 'shatter') ──
+const SHARD_MAX = 70;
+const shards = [];
+function emitShard(x, y, z, energy) {
+  if (shards.length >= SHARD_MAX) return;
+  const w = 0.05 + Math.random() * 0.12 * (1 + energy);
+  const h = 0.04 + Math.random() * 0.10 * (1 + energy);
+  const geom = new THREE.PlaneGeometry(w, h);
+  const mat  = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, transparent: true });
+  const mesh = new THREE.Mesh(geom, mat);
+  mesh.position.set(x, y, z);
+  mesh.rotation.z = Math.random() * Math.PI * 2;
+  decayGroup.add(mesh);
+  const ang = Math.random() * Math.PI * 2;
+  const sp  = 0.015 + Math.random() * 0.04 * (1 + energy);
+  shards.push({ mesh,
+    vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+    vz: (Math.random() - 0.5) * 0.01,
+    spin: (Math.random() - 0.5) * 0.06,
+    life: 1, decay: 0.005 + Math.random() * 0.008 });
+}
+function updateShards(anchors, audio) {
+  if (!state.decay.shard) {
+    while (shards.length) { const s = shards.pop(); decayGroup.remove(s.mesh); s.mesh.geometry.dispose(); s.mesh.material.dispose(); }
+    return;
+  }
+  if (audio.overall > 0.15 && Math.random() < audio.overall * 0.6) {
+    for (let i = 0; i < anchors.length; i++) {
+      const a = state.anchors[i]; if (!a || !a.reactive || a.mode !== 'shatter') continue;
+      if (Math.random() < 0.25) {
+        const p = anchors[i].pos;
+        emitShard(p.x, p.y, p.z + 0.04, audio.overall);
+      }
+    }
+  }
+  for (let i = shards.length - 1; i >= 0; i--) {
+    const s = shards[i];
+    s.mesh.position.x += s.vx; s.mesh.position.y += s.vy; s.mesh.position.z += s.vz;
+    s.mesh.rotation.z += s.spin;
+    s.vx *= 0.98; s.vy *= 0.98; s.vy -= 0.0003;
+    s.life -= s.decay;
+    s.mesh.material.opacity = Math.max(0, s.life);
+    if (s.life <= 0) {
+      decayGroup.remove(s.mesh);
+      s.mesh.geometry.dispose(); s.mesh.material.dispose();
+      shards.splice(i, 1);
+    }
+  }
+}
+
+// ── Tendrils / mycelium (L-system from 'pulse' anchors, bass env) ──
+const BRANCH_MAX_SEGS = 1000;
+const branchGeom = new THREE.BufferGeometry();
+const branchPos  = new Float32Array(BRANCH_MAX_SEGS * 6); // 2 verts per segment
+branchGeom.setAttribute('position', new THREE.BufferAttribute(branchPos, 3));
+const branchMat  = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.78 });
+const branchLines = new THREE.LineSegments(branchGeom, branchMat);
+decayGroup.add(branchLines);
+const tendrils = [];
+const tendrilSegs = []; // persisted segments (so they don't snap-disappear)
+function seedTendrils(anchors, audio) {
+  if (!state.decay.branch) return;
+  if (audio.bassEnv > 0.10 && Math.random() < audio.bassEnv * 0.5) {
+    for (let i = 0; i < anchors.length; i++) {
+      const a = state.anchors[i]; if (!a || !a.reactive || a.mode !== 'pulse') continue;
+      const p = anchors[i].pos;
+      tendrils.push({ x: p.x, y: p.y, z: p.z,
+        dir: Math.random() * Math.PI * 2,
+        step: 0.025 + Math.random() * 0.04,
+        depth: 3 + Math.floor(Math.random() * 3),
+        life: 1, decay: 0.005 + Math.random() * 0.006 });
+    }
+  }
+}
+function updateTendrils() {
+  // Grow active tendrils (one segment per frame), maybe branch, eventually die.
+  for (let i = tendrils.length - 1; i >= 0; i--) {
+    const t = tendrils[i];
+    const nx = t.x + Math.cos(t.dir) * t.step;
+    const ny = t.y + Math.sin(t.dir) * t.step;
+    tendrilSegs.push({ x1: t.x, y1: t.y, z1: t.z, x2: nx, y2: ny, z2: t.z, life: 1, decay: t.decay });
+    t.x = nx; t.y = ny;
+    t.dir += (Math.random() - 0.5) * 0.55;
+    t.life -= t.decay;
+    if (t.depth > 0 && Math.random() < 0.05) {
+      tendrils.push({ x: t.x, y: t.y, z: t.z, dir: t.dir + (Math.random() - 0.5) * 1.4,
+        step: t.step * 0.78, depth: t.depth - 1, life: t.life, decay: t.decay * 1.3 });
+      t.depth--;
+    }
+    if (t.life <= 0) tendrils.splice(i, 1);
+  }
+  // Decay laid-down segments so they fade rather than just clip
+  for (let s = tendrilSegs.length - 1; s >= 0; s--) {
+    tendrilSegs[s].life -= tendrilSegs[s].decay * 0.5;
+    if (tendrilSegs[s].life <= 0) tendrilSegs.splice(s, 1);
+  }
+  while (tendrilSegs.length > BRANCH_MAX_SEGS) tendrilSegs.shift();
+  // Write to buffer
+  const n = Math.min(tendrilSegs.length, BRANCH_MAX_SEGS);
+  for (let s = 0; s < n; s++) {
+    const sg = tendrilSegs[s];
+    branchPos[s*6]=sg.x1; branchPos[s*6+1]=sg.y1; branchPos[s*6+2]=sg.z1;
+    branchPos[s*6+3]=sg.x2; branchPos[s*6+4]=sg.y2; branchPos[s*6+5]=sg.z2;
+  }
+  for (let s = n; s < BRANCH_MAX_SEGS; s++) {
+    branchPos[s*6]=branchPos[s*6+1]=branchPos[s*6+2]=-9999;
+    branchPos[s*6+3]=branchPos[s*6+4]=branchPos[s*6+5]=-9999;
+  }
+  branchGeom.attributes.position.needsUpdate = true;
+  branchGeom.setDrawRange(0, n * 2);
+}
+
+// ── Maze fill (random-walk hatching over the shape's bbox, bass) ───
+// Lightweight version: a wandering 2D walker bounded by the anchor
+// bounding box. Adds density on bass energy. Always-on visual decay.
+const MAZE_MAX_SEGS = 600;
+const mazeGeom = new THREE.BufferGeometry();
+const mazePos  = new Float32Array(MAZE_MAX_SEGS * 6);
+mazeGeom.setAttribute('position', new THREE.BufferAttribute(mazePos, 3));
+const mazeMat  = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 });
+const mazeLines = new THREE.LineSegments(mazeGeom, mazeMat);
+decayGroup.add(mazeLines);
+const mazeWalk = { x: 0, y: 0, dir: 0 };
+const mazeSegs = [];
+function updateMaze(anchors, audio) {
+  if (!state.decay.maze || anchors.length < 2) { mazeGeom.setDrawRange(0, 0); return; }
+  // compute bbox of current anchors
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for (const a of anchors) { const p = a.pos;
+    if (p.x<minX) minX=p.x; if (p.x>maxX) maxX=p.x;
+    if (p.y<minY) minY=p.y; if (p.y>maxY) maxY=p.y;
+  }
+  const stepCount = 2 + Math.floor(audio.bass * 6);
+  for (let n = 0; n < stepCount; n++) {
+    const stepLen = 0.05;
+    const nx = mazeWalk.x + Math.cos(mazeWalk.dir) * stepLen;
+    const ny = mazeWalk.y + Math.sin(mazeWalk.dir) * stepLen;
+    if (nx < minX || nx > maxX || ny < minY || ny > maxY) {
+      mazeWalk.x = (minX + maxX) / 2 + (Math.random() - 0.5) * (maxX - minX) * 0.6;
+      mazeWalk.y = (minY + maxY) / 2 + (Math.random() - 0.5) * (maxY - minY) * 0.6;
+      mazeWalk.dir = Math.random() * Math.PI * 2;
+      continue;
+    }
+    mazeSegs.push({ x1: mazeWalk.x, y1: mazeWalk.y, x2: nx, y2: ny });
+    mazeWalk.x = nx; mazeWalk.y = ny;
+    // 90-degree-ish turns occasionally for a labyrinth feel
+    if (Math.random() < 0.25) mazeWalk.dir += (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2;
+    else mazeWalk.dir += (Math.random() - 0.5) * 0.3;
+  }
+  while (mazeSegs.length > MAZE_MAX_SEGS) mazeSegs.shift();
+  const m = mazeSegs.length;
+  for (let s = 0; s < m; s++) {
+    const sg = mazeSegs[s];
+    mazePos[s*6]=sg.x1; mazePos[s*6+1]=sg.y1; mazePos[s*6+2]=-0.05;
+    mazePos[s*6+3]=sg.x2; mazePos[s*6+4]=sg.y2; mazePos[s*6+5]=-0.05;
+  }
+  for (let s = m; s < MAZE_MAX_SEGS; s++) {
+    mazePos[s*6]=mazePos[s*6+1]=mazePos[s*6+2]=-9999;
+    mazePos[s*6+3]=mazePos[s*6+4]=mazePos[s*6+5]=-9999;
+  }
+  mazeGeom.attributes.position.needsUpdate = true;
+  mazeGeom.setDrawRange(0, m * 2);
+}
+
+// Master update — called from animate()
+function updateDecay(disp, audio) {
+  const anchors = (disp && disp.length)
+    ? disp
+    : state.anchors.map(a => ({
+        pos: new THREE.Vector3((a.x - 0.5) * SCENE_RANGE, (0.5 - a.y) * SCENE_RANGE, 0),
+        hIn:  { x: a.hIn.x  * SCENE_RANGE, y: -a.hIn.y  * SCENE_RANGE },
+        hOut: { x: a.hOut.x * SCENE_RANGE, y: -a.hOut.y * SCENE_RANGE }
+      }));
+  updateSpores(anchors, audio);
+  updateStipple(anchors, audio);
+  updateShards(anchors, audio);
+  seedTendrils(anchors, audio);
+  updateTendrils();
+  updateMaze(anchors, audio);
+}
 
 let currentMesh = null;
 let currentMaterial = null;
@@ -2451,13 +2759,20 @@ function animate() {
   document.getElementById('high-fill').style.height = (state.audio.high * 100) + '%';
 
   // Rebuild entity geometry with audio-displaced anchors (every frame, but only if there's reactivity)
+  let disp = null;
   if (state.anchors.length >= 2 && currentMesh) {
     const anyReactive = state.anchors.some(a => a.reactive);
     if (anyReactive) {
-      const disp = computeDisplacedAnchorPositions(frame);
+      disp = computeDisplacedAnchorPositions(frame);
       rebuildTubeFromCurrentAnchors(currentMesh, disp);
     }
   }
+
+  // Decay layers (spores / stipple / shards / tendrils / maze). All read
+  // the same displaced anchors + audio bands. Ink mode hides the 3D mesh
+  // so only the inked decay reads — like the reference spreads.
+  updateDecay(disp, state.audio);
+  if (currentMesh) currentMesh.visible = !state.decay.inkMode;
 
   // Entity is locked in place — no auto-rotation, no audio-driven lift.
   // Audio reactivity now expresses itself through per-anchor distortion only,
@@ -2467,8 +2782,8 @@ function animate() {
   entityGroup.rotation.y = 0;
   entityGroup.rotation.z = 0;
 
-  // Shadow opacity
-  shadowMat.opacity = state.shadow;
+  // Shadow opacity (force off in ink mode so the inked layers float clean)
+  shadowMat.opacity = state.decay.inkMode ? 0 : state.shadow;
   // Shadow softness ~ light shadow radius
   keyLight.shadow.radius = 2 + state.shadowSoft * 14;
 
