@@ -62,10 +62,50 @@
 
   .app {
     display: grid;
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: 110px 1fr 380px;
     height: 100vh;
     width: 100vw;
   }
+
+  /* ─── LEFT RAIL: 8 track thumbnails + a Cover tile ───────────────── */
+  .rail {
+    background: var(--panel);
+    border-right: 1px solid var(--hairline);
+    overflow-y: auto;
+    padding: 14px 10px 14px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .rail-label {
+    font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 2px; padding-left: 2px;
+  }
+  .rail-thumb {
+    position: relative;
+    border: 1px solid var(--hairline);
+    background: #0a0a0a;
+    aspect-ratio: 1 / 1;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.12s, transform 0.12s;
+  }
+  .rail-thumb:hover { border-color: var(--opal-amber); }
+  .rail-thumb.active { border-color: var(--opal-cobalt); box-shadow: 0 0 0 1px var(--opal-cobalt); }
+  .rail-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rail-thumb .num {
+    position: absolute; top: 4px; left: 6px;
+    font-size: 9px; letter-spacing: 0.18em; color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    pointer-events: none;
+  }
+  .rail-thumb .empty {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: var(--text-faint);
+  }
+  .rail-thumb.cover {
+    border-color: var(--opal-amber);
+    border-style: dashed;
+  }
+  .rail-thumb.cover .num { font-size: 9px; color: var(--opal-amber); text-shadow: none; }
 
   /* ============ STAGE ============ */
   .stage {
@@ -185,6 +225,16 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
+  }
+  /* Photo-distortion canvas: same footprint as bg-photo, sits below 3D.
+     Painted each frame by drawPhotoFX() with the active track's effect. */
+  #photo-fx {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: block;
   }
 
   #draw-canvas {
@@ -993,6 +1043,22 @@
 <!-- ============ APP ============ -->
 <div class="app">
 
+  <!-- LEFT RAIL: 8 track thumbnails + a master Cover tile -->
+  <aside class="rail" id="rail">
+    <div class="rail-label">Tracks</div>
+    <!-- 8 track tiles -->
+    <div class="rail-thumb" data-i="0"><span class="num">01</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="1"><span class="num">02</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="2"><span class="num">03</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="3"><span class="num">04</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="4"><span class="num">05</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="5"><span class="num">06</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="6"><span class="num">07</span><span class="empty">—</span></div>
+    <div class="rail-thumb" data-i="7"><span class="num">08</span><span class="empty">—</span></div>
+    <div class="rail-label" style="margin-top:8px">Cover</div>
+    <div class="rail-thumb cover" id="rail-cover"><span class="num">ALL 8</span><span class="empty">+</span></div>
+  </aside>
+
   <!-- STAGE -->
   <div class="stage">
     <div class="color-bars">
@@ -1020,6 +1086,7 @@
       <div class="corner-tick br"></div>
 
       <img id="bg-photo" style="display:none" alt="">
+      <canvas id="photo-fx"></canvas>
       <canvas id="three-canvas"></canvas>
       <canvas id="draw-canvas"></canvas>
       <div class="canvas-empty" id="canvas-empty">
@@ -1079,6 +1146,25 @@
         <span id="photo-drop-text">Drop or click to upload</span>
       </label>
       <div class="photo-name" id="photo-name"></div>
+      <div class="control-row" style="margin-top:10px">
+        <div class="control-label"><span>Distortion</span></div>
+        <select id="photo-fx" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);border-radius:5px;padding:5px 6px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:12px">
+          <option value="none">None — keep it clean</option>
+          <option value="slice">Slice (horizontal bands shift, quantised)</option>
+          <option value="shift">Shift (vertical bands, quantised)</option>
+          <option value="fracture">Fracture (grid cells displace)</option>
+          <option value="rgb">RGB split (chromatic aberration)</option>
+          <option value="blur">Blur pulse</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Amount</span><span class="val" id="photo-fx-amount-val">0.60</span></div>
+        <input type="range" id="photo-fx-amount" min="0" max="1.5" step="0.01" value="0.6">
+      </div>
+      <div class="section-help" style="margin-top:4px">
+        Audio drives the distortion; offsets are quantised so it reads
+        mechanical / electronic, not noisy.
+      </div>
     </div>
 
     <div class="section">
@@ -1304,8 +1390,12 @@ const state = {
     drive: 1.0,
     sensitivity: 0.55,
     closed: true,
-    photoDataUrl: null
-  }))
+    photoDataUrl: null,
+    photoFx: 'slice',         // 'none' | 'slice' | 'shift' | 'fracture' | 'rgb' | 'blur'
+    photoFxAmount: 0.6
+  })),
+  photoFx: 'slice',
+  photoFxAmount: 0.6
 };
 
 // ============================================================
@@ -1348,6 +1438,8 @@ function saveCurrentDesign() {
   t.drive      = state.drive;
   t.sensitivity= state.sensitivity;
   t.closed     = state.closed;
+  t.photoFx       = state.photoFx;
+  t.photoFxAmount = state.photoFxAmount;
   // Capture photo (data URL) only if it's not already one — avoid re-capture loop.
   const pImg = document.getElementById('bg-photo');
   if (pImg && pImg.src && pImg.style.display !== 'none') t.photoDataUrl = pImg.src;
@@ -1369,6 +1461,8 @@ function loadDesign(idx) {
   state.drive      = t.drive      ?? 1.0;
   state.sensitivity= t.sensitivity?? 0.55;
   state.closed     = t.closed     ?? true;
+  state.photoFx       = t.photoFx       ?? 'slice';
+  state.photoFxAmount = t.photoFxAmount ?? 0.6;
   state.selectedAnchor = -1;
   state.selectedHandle = null;
   // Photo
@@ -1402,6 +1496,9 @@ function syncControlsToState() {
   });
   const ci = document.getElementById('color-input'); if (ci) ci.value = state.color;
   const cl = document.getElementById('closed-toggle'); if (cl) cl.classList.toggle('on', state.closed);
+  const pfx = document.getElementById('photo-fx'); if (pfx) pfx.value = state.photoFx || 'slice';
+  const pfa = document.getElementById('photo-fx-amount'); if (pfa) pfa.value = state.photoFxAmount ?? 0.6;
+  const pfav = document.getElementById('photo-fx-amount-val'); if (pfav) pfav.textContent = (state.photoFxAmount ?? 0.6).toFixed(2);
   // material tabs
   document.querySelectorAll('.mode-tab[data-material]').forEach(el => {
     el.classList.toggle('active', el.dataset.material === state.material);
@@ -3028,6 +3125,10 @@ function animate() {
   updateDecay(disp, state.audio);
   if (currentMesh) currentMesh.visible = !state.decay.inkMode;
 
+  // Photo distortion: paint bgPhoto through the active per-track effect
+  // onto #photo-fx (sits below the 3D scene).
+  if (typeof drawPhotoFX === 'function') drawPhotoFX(state.audio);
+
   // Entity is locked in place — no auto-rotation, no audio-driven lift.
   // Audio reactivity now expresses itself through per-anchor distortion only,
   // so the SHAPE deforms instead of the whole thing pulsing bigger.
@@ -3144,6 +3245,130 @@ document.getElementById('export-btn').onclick = () => exportFrame(false);
 document.getElementById('export-entity').onclick = () => exportFrame(true);
 
 // ============================================================
+// PHOTO DISTORTION
+// Lazy-init the fx canvas on first call so this block can live AFTER
+// animate() in the file (animate fires before DOM-late consts would
+// initialise, so we use let + an init check).
+// ============================================================
+var fxCanvas = null, fxCtx = null;   // var (not let) so they're hoisted past animate()
+function _fxInit() {
+  if (fxCtx) return true;
+  fxCanvas = document.getElementById('photo-fx');
+  if (!fxCanvas) return false;
+  fxCtx = fxCanvas.getContext('2d');
+  const wrap = document.getElementById('canvas-wrap');
+  if (wrap) { fxCanvas.width = wrap.clientWidth; fxCanvas.height = wrap.clientHeight; }
+  window.addEventListener('resize', () => {
+    const w = document.getElementById('canvas-wrap');
+    if (w) { fxCanvas.width = w.clientWidth; fxCanvas.height = w.clientHeight; }
+  });
+  return true;
+}
+function _r(seed) { const s = Math.sin(seed) * 43758.5453; return s - Math.floor(s); }
+function _q(v, step) { return Math.round(v / step) * step; }
+
+function drawPhotoFX(audio) {
+  if (!_fxInit()) return;
+  const src = bgPhoto;
+  const hasPhoto = src && src.complete && src.naturalWidth > 0 && src.style.display !== 'none' && src.src;
+  if (!hasPhoto) { fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height); return; }
+  const W = fxCanvas.width, H = fxCanvas.height;
+  const fx = state.photoFx || 'none';
+  const amt = state.photoFxAmount ?? 0.6;
+  fxCtx.save();
+  fxCtx.clearRect(0, 0, W, H);
+  fxCtx.imageSmoothingEnabled = true;
+
+  if (fx === 'none' || amt === 0) {
+    fxCtx.drawImage(src, 0, 0, W, H);
+    fxCtx.restore();
+    return;
+  }
+
+  if (fx === 'slice') {
+    const BANDS = 24;
+    const bandH = H / BANDS;
+    const srcBandH = src.naturalHeight / BANDS;
+    const maxShift = 0.18 * W * amt;
+    const Q = 8;
+    fxCtx.drawImage(src, 0, 0, W, H);   // base layer
+    for (let i = 0; i < BANDS; i++) {
+      const env = i % 3 === 0 ? audio.bass : i % 3 === 1 ? audio.mid : audio.high;
+      const off = _q((_r(i + 1) * 2 - 1) * env * maxShift, Q);
+      fxCtx.drawImage(src,
+        0, i * srcBandH, src.naturalWidth, srcBandH,
+        off, i * bandH, W, bandH);
+    }
+  }
+  else if (fx === 'shift') {
+    const COLS = 24;
+    const colW = W / COLS;
+    const srcColW = src.naturalWidth / COLS;
+    const maxShift = 0.18 * H * amt;
+    const Q = 8;
+    fxCtx.drawImage(src, 0, 0, W, H);
+    for (let i = 0; i < COLS; i++) {
+      const env = i % 3 === 0 ? audio.bass : i % 3 === 1 ? audio.mid : audio.high;
+      const off = _q((_r(i + 13) * 2 - 1) * env * maxShift, Q);
+      fxCtx.drawImage(src,
+        i * srcColW, 0, srcColW, src.naturalHeight,
+        i * colW, off, colW, H);
+    }
+  }
+  else if (fx === 'fracture') {
+    const N = 12;
+    const cellW = W / N, cellH = H / N;
+    const sCW = src.naturalWidth / N, sCH = src.naturalHeight / N;
+    const maxOff = 0.08 * Math.min(W, H) * amt;
+    const Q = 6;
+    fxCtx.drawImage(src, 0, 0, W, H);
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const seed = x * 73 + y * 19 + 7;
+        const env = (y % 2 === 0) ? audio.bass : audio.mid;
+        const a = _r(seed) * Math.PI * 2;
+        const dx = _q(Math.cos(a) * env * maxOff, Q);
+        const dy = _q(Math.sin(a) * env * maxOff, Q);
+        fxCtx.drawImage(src,
+          x * sCW, y * sCH, sCW, sCH,
+          x * cellW + dx, y * cellH + dy, cellW, cellH);
+      }
+    }
+  }
+  else if (fx === 'rgb') {
+    const shift = _q(audio.mid * 0.05 * W * amt, 2);
+    // Base
+    fxCtx.drawImage(src, 0, 0, W, H);
+    // Additive red + blue offsets read as chromatic aberration
+    fxCtx.globalCompositeOperation = 'screen';
+    fxCtx.globalAlpha = 0.55;
+    fxCtx.drawImage(src, -shift, 0, W, H);
+    fxCtx.drawImage(src,  shift, 0, W, H);
+    fxCtx.globalCompositeOperation = 'source-over';
+    fxCtx.globalAlpha = 1;
+  }
+  else if (fx === 'blur') {
+    const px = _q(audio.bass * 28 * amt, 1);
+    fxCtx.filter = `blur(${px}px)`;
+    fxCtx.drawImage(src, 0, 0, W, H);
+    fxCtx.filter = 'none';
+  }
+
+  fxCtx.restore();
+}
+
+// Wire the controls
+document.getElementById('photo-fx').addEventListener('change', e => {
+  state.photoFx = e.target.value;
+  saveCurrentDesign();
+});
+document.getElementById('photo-fx-amount').addEventListener('input', e => {
+  state.photoFxAmount = parseFloat(e.target.value);
+  document.getElementById('photo-fx-amount-val').textContent = state.photoFxAmount.toFixed(2);
+  saveCurrentDesign();
+});
+
+// ============================================================
 // MASTER COVER + SESSION (per-track album workflow)
 // ============================================================
 
@@ -3244,10 +3469,191 @@ document.getElementById('import-session-input').onchange = e => {
 };
 
 // ============================================================
-// INIT — restore saved tracks + render badges
+// LEFT RAIL: track thumbnails + Cover view
+// ============================================================
+function captureCurrentThumbnail() {
+  if (state.currentTrack == null || !currentMesh) return;
+  // Snapshot the renderer at low-res. Render once at 220px to a JPEG dataURL.
+  const tc = renderer.domElement;
+  const w0 = tc.width, h0 = tc.height;
+  renderer.setSize(220, 220, false);
+  camera.aspect = 1; camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  const data = tc.toDataURL('image/jpeg', 0.72);
+  renderer.setSize(w0, h0, false);
+  camera.aspect = w0 / h0; camera.updateProjectionMatrix();
+  state.tracks[state.currentTrack].thumbnail = data;
+  renderRail();
+}
+let _thumbDebounce = null;
+function scheduleThumbCapture() {
+  if (_thumbDebounce) clearTimeout(_thumbDebounce);
+  _thumbDebounce = setTimeout(captureCurrentThumbnail, 600);
+}
+// Hook into saveCurrentDesign so the rail stays current.
+const _saveOrig = saveCurrentDesign;
+saveCurrentDesign = function() { _saveOrig(); scheduleThumbCapture(); };
+
+function renderRail() {
+  for (let i = 0; i < 8; i++) {
+    const tile = document.querySelector(`.rail-thumb[data-i="${i}"]`);
+    if (!tile) continue;
+    const t = state.tracks[i];
+    tile.classList.toggle('active', state.currentTrack === i);
+    const had = tile.querySelector('img');
+    const empty = tile.querySelector('.empty');
+    if (t.thumbnail) {
+      if (!had) {
+        const img = new Image();
+        img.alt = '';
+        tile.insertBefore(img, tile.firstChild);
+        img.src = t.thumbnail;
+      } else {
+        if (had.src !== t.thumbnail) had.src = t.thumbnail;
+      }
+      if (empty) empty.style.display = 'none';
+    } else {
+      if (had) had.remove();
+      if (empty) empty.style.display = 'flex';
+    }
+  }
+}
+
+// Wire rail clicks to switch tracks
+document.querySelectorAll('.rail-thumb[data-i]').forEach(tile => {
+  tile.addEventListener('click', () => selectTrack(parseInt(tile.dataset.i, 10)));
+});
+
+// ============================================================
+// LIVE COVER VIEW — overlay over the stage when toggled. Composite of
+// each track's photo (with its distortion) layered as cross-cutting
+// strips, with the 8 marks (renderer snapshots) floating over the top.
+// ============================================================
+const coverOverlay = document.createElement('div');
+coverOverlay.id = 'cover-overlay';
+coverOverlay.style.cssText = `
+  position: fixed; left: 110px; right: 380px; top: 56px; bottom: 0;
+  background: #000; z-index: 30; display: none;
+  align-items: center; justify-content: center; padding: 24px;
+`;
+const coverCanvas = document.createElement('canvas');
+coverCanvas.style.cssText = `max-width: 100%; max-height: 100%; box-shadow: 0 12px 60px rgba(0,0,0,0.6);`;
+coverOverlay.appendChild(coverCanvas);
+const coverClose = document.createElement('button');
+coverClose.textContent = 'Close cover ×';
+coverClose.style.cssText = `
+  position: absolute; top: 18px; right: 24px;
+  background: rgba(255,255,255,0.08); color: #fff;
+  border: 1px solid rgba(255,255,255,0.18); border-radius: 6px;
+  padding: 6px 12px; cursor: pointer; font-family: 'Sidepiece-HoneyPie',sans-serif; font-size: 12px;
+`;
+coverClose.onclick = () => { coverOverlay.style.display = 'none'; };
+coverOverlay.appendChild(coverClose);
+document.body.appendChild(coverOverlay);
+
+async function renderCoverComposite() {
+  const W = 2400, H = 3000;
+  coverCanvas.width = W; coverCanvas.height = H;
+  const cx = coverCanvas.getContext('2d');
+  cx.fillStyle = '#000'; cx.fillRect(0, 0, W, H);
+
+  // Pre-load each track's photo (if any) as an Image
+  const tracksWithPhoto = [];
+  for (let i = 0; i < 8; i++) {
+    const t = state.tracks[i];
+    if (!t.photoDataUrl) continue;
+    const img = new Image();
+    await new Promise(r => { img.onload = r; img.onerror = r; img.src = t.photoDataUrl; });
+    tracksWithPhoto.push({ i, img, color: t.color });
+  }
+  if (tracksWithPhoto.length === 0) {
+    cx.fillStyle = '#666'; cx.font = '46px "Sidepiece-HoneyPie",sans-serif';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText('Drop photos on at least one track to build a cover.', W/2, H/2);
+    return;
+  }
+
+  // Base: largest photo (or first) covering the canvas
+  const base = tracksWithPhoto[0];
+  // cover-fit
+  const aspect = base.img.naturalWidth / base.img.naturalHeight;
+  let dw = W, dh = W / aspect;
+  if (dh < H) { dh = H; dw = H * aspect; }
+  cx.drawImage(base.img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+
+  // Strips: 4-6 cross-cutting horizontal strips drawn from OTHER tracks' photos,
+  // each with a colour tint blend, at different y positions and heights.
+  const TINTS = [
+    'rgba(20,80,200,0.32)',   // cobalt
+    'rgba(255,200,40,0.28)',  // amber
+    'rgba(180,60,40,0.30)',   // sienna
+    'rgba(180,180,180,0.20)', // grey
+    'rgba(40,150,90,0.26)',   // green
+    'rgba(200,80,160,0.28)'   // magenta
+  ];
+  const STRIPS = Math.min(6, tracksWithPhoto.length);
+  for (let s = 0; s < STRIPS; s++) {
+    const t = tracksWithPhoto[(s + 1) % tracksWithPhoto.length];
+    const stripH = H * (0.10 + Math.random() * 0.16);
+    const stripY = (H * 0.18) + s * (H * 0.10) + (Math.random() - 0.5) * 50;
+    const stripW = W * (0.55 + Math.random() * 0.40);
+    const stripX = (Math.random() - 0.5) * (W - stripW);
+    // crop a representative band from the source photo
+    const sH = t.img.naturalHeight * (0.20 + Math.random() * 0.4);
+    const sY = (t.img.naturalHeight - sH) * Math.random();
+    cx.save();
+    cx.translate(W/2 + stripX, stripY);
+    cx.drawImage(t.img, 0, sY, t.img.naturalWidth, sH, -stripW/2, 0, stripW, stripH);
+    // colour treatment
+    cx.fillStyle = TINTS[s % TINTS.length];
+    cx.globalCompositeOperation = 'multiply';
+    cx.fillRect(-stripW/2, 0, stripW, stripH);
+    cx.globalCompositeOperation = 'source-over';
+    // subtle outer stroke
+    cx.strokeStyle = 'rgba(0,0,0,0.6)';
+    cx.lineWidth = 2;
+    cx.strokeRect(-stripW/2, 0, stripW, stripH);
+    cx.restore();
+  }
+
+  // Marks: each track's cached thumbnail composited over the cover at small size,
+  // scattered, floating on top. Multiply-blend gives a "stamped" feel.
+  const marks = state.tracks.filter(t => t.thumbnail);
+  marks.forEach((t, idx) => {
+    const img = new Image();
+    img.src = t.thumbnail;
+    // draw immediately (img was already loaded into cache when thumbnail captured)
+    const size = 380 + (idx % 3) * 60;
+    const mx = (W * 0.15) + ((idx * 311) % (W - size - W * 0.30));
+    const my = (H * 0.55) + ((idx * 233) % (H - size - H * 0.60));
+    cx.globalCompositeOperation = 'screen';
+    cx.drawImage(img, mx, my, size, size);
+    cx.globalCompositeOperation = 'source-over';
+  });
+
+  // Title at bottom
+  cx.fillStyle = 'rgba(255,255,255,0.92)';
+  cx.font = '72px "Sidepiece",sans-serif';
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText('JORDYN', W/2, H - 140);
+  cx.font = '22px "Sidepiece-HoneyPie",sans-serif';
+  cx.fillStyle = 'rgba(255,255,255,0.55)';
+  cx.fillText('SUGARCANE FAMILY  /  VESSEL.2', W/2, H - 90);
+}
+
+document.getElementById('rail-cover').addEventListener('click', async () => {
+  coverOverlay.style.display = 'flex';
+  coverClose.textContent = 'Rendering…';
+  await renderCoverComposite();
+  coverClose.textContent = 'Close cover ×';
+});
+
+// ============================================================
+// INIT — restore saved tracks + render badges + rail
 // ============================================================
 restoreTracks();
 renderTrackBadges();
+renderRail();
 
 </script>
 </body>
