@@ -236,6 +236,18 @@
     pointer-events: none;
     display: block;
   }
+  /* Track-style overlay: where alternate visual languages render
+     (QR / radial / orb / liquid). Sits above the 3D tube; hidden when
+     the active track's style is 'tube'. */
+  #style-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+    z-index: 3;
+  }
 
   #draw-canvas {
     position: absolute;
@@ -1194,6 +1206,7 @@
       <img id="bg-photo" style="display:none" alt="">
       <canvas id="photo-fx"></canvas>
       <canvas id="three-canvas"></canvas>
+      <canvas id="style-canvas"></canvas>
       <canvas id="draw-canvas"></canvas>
       <div class="canvas-empty" id="canvas-empty">
         <div class="icon"></div>
@@ -1242,6 +1255,21 @@
           <div class="level"><div class="level-bar"><div class="level-fill" id="high-fill"></div></div><div class="level-label">HIGH</div></div>
         </div>
       </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Visual style</div>
+      <div class="section-help" style="margin-bottom:8px">
+        OP/AL's visual language is a system. Each track speaks differently
+        — pick the form this song should take.
+      </div>
+      <select id="track-style" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);border-radius:5px;padding:8px 8px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:13px;letter-spacing:0.04em">
+        <option value="tube">Tube — drawn audio shape (default)</option>
+        <option value="qr">QR Lattice — digital block grid</option>
+        <option value="radial">Radial Wave — circular waveform (soon)</option>
+        <option value="orb">Orb — floating sphere + halo (soon)</option>
+        <option value="liquid">Liquid — flowing letterforms (soon)</option>
+      </select>
     </div>
 
     <div class="section">
@@ -1498,10 +1526,12 @@ const state = {
     closed: true,
     photoDataUrl: null,
     photoFx: 'slice',         // 'none' | 'slice' | 'shift' | 'fracture' | 'rgb' | 'blur'
-    photoFxAmount: 0.6
+    photoFxAmount: 0.6,
+    style: 'tube'             // 'tube' | 'qr' | 'radial' | 'orb' | 'liquid'  (per-track visual language)
   })),
   photoFx: 'slice',
-  photoFxAmount: 0.6
+  photoFxAmount: 0.6,
+  style: 'tube'
 };
 
 // ============================================================
@@ -1546,6 +1576,7 @@ function saveCurrentDesign() {
   t.closed     = state.closed;
   t.photoFx       = state.photoFx;
   t.photoFxAmount = state.photoFxAmount;
+  t.style         = state.style;
   // Capture photo (data URL) only if it's not already one — avoid re-capture loop.
   const pImg = document.getElementById('bg-photo');
   if (pImg && pImg.src && pImg.style.display !== 'none') t.photoDataUrl = pImg.src;
@@ -1569,6 +1600,7 @@ function loadDesign(idx) {
   state.closed     = t.closed     ?? true;
   state.photoFx       = t.photoFx       ?? 'slice';
   state.photoFxAmount = t.photoFxAmount ?? 0.6;
+  state.style         = t.style         ?? 'tube';
   state.selectedAnchor = -1;
   state.selectedHandle = null;
   // Photo
@@ -1605,6 +1637,7 @@ function syncControlsToState() {
   const pfx = document.getElementById('photo-fx'); if (pfx) pfx.value = state.photoFx || 'slice';
   const pfa = document.getElementById('photo-fx-amount'); if (pfa) pfa.value = state.photoFxAmount ?? 0.6;
   const pfav = document.getElementById('photo-fx-amount-val'); if (pfav) pfav.textContent = (state.photoFxAmount ?? 0.6).toFixed(2);
+  const ts = document.getElementById('track-style'); if (ts) ts.value = state.style || 'tube';
   // material tabs
   document.querySelectorAll('.mode-tab[data-material]').forEach(el => {
     el.classList.toggle('active', el.dataset.material === state.material);
@@ -3229,11 +3262,16 @@ function animate() {
   // the same displaced anchors + audio bands. Ink mode hides the 3D mesh
   // so only the inked decay reads — like the reference spreads.
   updateDecay(disp, state.audio);
-  if (currentMesh) currentMesh.visible = !state.decay.inkMode;
+  // 3D tube is hidden when ink mode is on OR when this track uses a
+  // non-tube visual language (QR / radial / etc.).
+  if (currentMesh) currentMesh.visible = !state.decay.inkMode && (state.style || 'tube') === 'tube';
 
   // Photo distortion: paint bgPhoto through the active per-track effect
   // onto #photo-fx (sits below the 3D scene).
   if (typeof drawPhotoFX === 'function') drawPhotoFX(state.audio);
+
+  // Per-track visual style overlay (QR lattice etc.).
+  if (typeof drawTrackStyle === 'function') drawTrackStyle(state.audio);
 
   // Entity is locked in place — no auto-rotation, no audio-driven lift.
   // Audio reactivity now expresses itself through per-anchor distortion only,
@@ -3471,6 +3509,120 @@ document.getElementById('photo-fx').addEventListener('change', e => {
 document.getElementById('photo-fx-amount').addEventListener('input', e => {
   state.photoFxAmount = parseFloat(e.target.value);
   document.getElementById('photo-fx-amount-val').textContent = state.photoFxAmount.toFixed(2);
+  saveCurrentDesign();
+});
+
+// ============================================================
+// TRACK STYLE — alternate visual languages per track. The 'tube'
+// style is the original 3D drawn audio shape; the others render
+// onto #style-canvas (2D, on top of the tube). When non-'tube',
+// the 3D tube is hidden so the alternate carries the track.
+// ============================================================
+var styleCanvas = null, styleCtx = null;
+function _styleInit() {
+  if (styleCtx) return true;
+  styleCanvas = document.getElementById('style-canvas');
+  if (!styleCanvas) return false;
+  styleCtx = styleCanvas.getContext('2d');
+  const wrap = document.getElementById('canvas-wrap');
+  if (wrap) { styleCanvas.width = wrap.clientWidth; styleCanvas.height = wrap.clientHeight; }
+  window.addEventListener('resize', () => {
+    const w = document.getElementById('canvas-wrap');
+    if (w) { styleCanvas.width = w.clientWidth; styleCanvas.height = w.clientHeight; }
+  });
+  return true;
+}
+
+// QR / digital lattice — an NxN grid of solid cells where each cell
+// represents the energy at one frequency bin (mapped row-major). The
+// active state is quantised: a cell is ON if its energy exceeds a
+// threshold (driven by the track's audio + a base bias). Reads cold
+// and mechanical at rest, jitters with bass, lights up with highs.
+const QR_N = 22;
+const _qrState = new Uint8Array(QR_N * QR_N);   // 0/1 per cell, persisted between frames
+function drawQR(audio) {
+  if (!analyser) {
+    // even with no audio, draw a base lattice so the visual reads as designed
+    for (let i = 0; i < _qrState.length; i++) {
+      const v = ((i * 11) % 17) % 3 === 0 ? 1 : 0;
+      _qrState[i] = v;
+    }
+  } else {
+    // Pull raw FFT once and re-bucket into QR_N*QR_N cells.
+    const fft = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(fft);
+    const cellsTotal = QR_N * QR_N;
+    const step = fft.length / cellsTotal;
+    const driveBoost = 0.7 + (state.drive || 1) * 0.6;
+    for (let i = 0; i < cellsTotal; i++) {
+      const s = Math.floor(i * step);
+      const e = Math.floor((i + 1) * step);
+      let m = 0; for (let k = s; k < e; k++) m = Math.max(m, fft[k]);
+      const v = (m / 255) * driveBoost;
+      // Hysteresis: cells stick a little so the lattice doesn't strobe.
+      const wasOn = _qrState[i] === 1;
+      const threshOn  = 0.34;
+      const threshOff = 0.22;
+      _qrState[i] = wasOn ? (v > threshOff ? 1 : 0) : (v > threshOn ? 1 : 0);
+    }
+  }
+  // Render: cells fill a square fit inside the canvas, with a small
+  // gutter. Background a dark olive so the off-cells are also "there".
+  const W = styleCanvas.width, H = styleCanvas.height;
+  const side = Math.min(W, H) * 0.86;
+  const ox = (W - side) / 2, oy = (H - side) / 2;
+  styleCtx.clearRect(0, 0, W, H);
+  // Background plate
+  styleCtx.fillStyle = '#1f1f1a';
+  styleCtx.fillRect(ox, oy, side, side);
+  // Cells
+  const cell = side / QR_N;
+  const gap  = Math.max(1, cell * 0.06);
+  styleCtx.fillStyle = '#000';
+  for (let y = 0; y < QR_N; y++) {
+    for (let x = 0; x < QR_N; x++) {
+      if (_qrState[y * QR_N + x]) {
+        styleCtx.fillRect(ox + x * cell + gap/2, oy + y * cell + gap/2, cell - gap, cell - gap);
+      }
+    }
+  }
+  // Severity: a thin outer rule + corner ticks so it reads engineered.
+  styleCtx.strokeStyle = 'rgba(255,255,255,0.10)';
+  styleCtx.lineWidth = 1;
+  styleCtx.strokeRect(ox, oy, side, side);
+}
+
+function drawTrackStyle(audio) {
+  if (!_styleInit()) return;
+  const style = state.style || 'tube';
+  if (style === 'tube') {
+    styleCanvas.style.display = 'none';
+    return;
+  }
+  styleCanvas.style.display = 'block';
+  if (style === 'qr') {
+    drawQR(audio);
+  } else {
+    // Placeholder for the other styles — render an "incoming" notice
+    // so the picker reads correctly until they ship.
+    const W = styleCanvas.width, H = styleCanvas.height;
+    styleCtx.clearRect(0, 0, W, H);
+    styleCtx.fillStyle = 'rgba(0,0,0,0.78)';
+    styleCtx.fillRect(0, 0, W, H);
+    styleCtx.fillStyle = '#FFD400';
+    styleCtx.font = `${Math.round(H * 0.018)}px "Sidepiece-HoneyPie", sans-serif`;
+    styleCtx.textAlign = 'center';
+    styleCtx.textBaseline = 'middle';
+    styleCtx.letterSpacing = '0.3em';
+    styleCtx.fillText(`${style.toUpperCase()} — coming in the next pass`, W/2, H/2);
+    styleCtx.font = `${Math.round(H * 0.012)}px "Sidepiece-HoneyPie", sans-serif`;
+    styleCtx.fillStyle = 'rgba(255,255,255,0.5)';
+    styleCtx.fillText(`Pick TUBE or QR LATTICE for now.`, W/2, H/2 + H * 0.04);
+  }
+}
+
+document.getElementById('track-style').addEventListener('change', e => {
+  state.style = e.target.value;
   saveCurrentDesign();
 });
 
