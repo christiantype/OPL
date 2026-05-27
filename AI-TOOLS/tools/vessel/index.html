@@ -1225,7 +1225,7 @@ const MATERIALS = [
 const state = {
   mode: 'draw', // 'draw' or 'preview'
   material: 'chrome',
-  color: '#e8a13a',
+  color: '#FFD400',   // OP/AL brand yellow (same as the about-page cone stop)
   thickness: 0.04,
   depth: 0.25,
   hover: 0.2,
@@ -1948,15 +1948,21 @@ drawCanvas.addEventListener('mousedown', e => {
   //   click  → sharp anchor (zero handles)
   //   click-drag → smooth anchor, handles pulled out in drag direction
   const snap = snapToGrid(norm.x, norm.y);
+  // New anchors react by default with varied modes + bands, so the SHAPE
+  // distorts (different anchors deform differently) instead of the whole
+  // entity uniformly pulsing. Toggle off per-anchor in the panel if needed.
+  const _modes = ['spike', 'pulse', 'ripple', 'shatter', 'bloat', 'twist', 'orbit'];
+  const _bands = ['bass', 'mid', 'high'];
+  const _i = state.anchors.length;
   state.anchors.push({
     x: snap.x,
     y: snap.y,
     hIn:  { x: 0, y: 0 },
     hOut: { x: 0, y: 0 },
     broken: false,
-    reactive: false,
-    mode: 'pulse',
-    band: 'bass',
+    reactive: true,
+    mode: _modes[_i % _modes.length],
+    band: _bands[_i % _bands.length],
     amp: 1.0
   });
   state.selectedAnchor = state.anchors.length - 1;
@@ -2453,11 +2459,13 @@ function animate() {
     }
   }
 
-  // Hover height. Overall level lifts the entity; bass envelope kicks it.
-  // (Auto-rotation removed — entity holds its initial orientation.)
-  const kick = state.audio.bassEnv * 0.18 * state.reactivity * state.drive;
-  entityGroup.position.z = state.hover + state.audio.overall * 0.08 * state.reactivity + kick;
+  // Entity is locked in place — no auto-rotation, no audio-driven lift.
+  // Audio reactivity now expresses itself through per-anchor distortion only,
+  // so the SHAPE deforms instead of the whole thing pulsing bigger.
+  entityGroup.position.z = state.hover;
+  entityGroup.rotation.x = 0;
   entityGroup.rotation.y = 0;
+  entityGroup.rotation.z = 0;
 
   // Shadow opacity
   shadowMat.opacity = state.shadow;
