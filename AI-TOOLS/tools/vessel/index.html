@@ -1514,8 +1514,14 @@ scene.add(entityGroup);
 // (so they share the camera, hover, and shadow with the main tube).
 // ============================================================
 const decayGroup = new THREE.Group();
+decayGroup.renderOrder = 999;          // draw on top of the tube
 entityGroup.add(decayGroup);
 state.decay = { spore: true, stipple: true, shard: true, branch: true, maze: false, inkMode: false };
+// Lift the whole decay layer slightly toward the camera so points + lines
+// sit IN FRONT of the 3D tube (the tube has volume; coplanar decay would
+// be buried inside it). Combined with depthTest: false on the materials.
+const DECAY_Z = 0.12;
+decayGroup.position.z = DECAY_Z;
 
 // ── Spore particles (radial bursts from 'spike' anchors, high env) ──
 const SPORE_MAX = 1400;
@@ -1524,8 +1530,8 @@ const sporePos  = new Float32Array(SPORE_MAX * 3);
 for (let i = 0; i < SPORE_MAX * 3; i++) sporePos[i] = -9999;
 sporeGeom.setAttribute('position', new THREE.BufferAttribute(sporePos, 3));
 const sporeMat = new THREE.PointsMaterial({
-  color: 0x000000, size: 0.045, sizeAttenuation: true,
-  transparent: true, opacity: 0.85, depthWrite: false
+  color: 0x000000, size: 0.08, sizeAttenuation: true,
+  transparent: true, opacity: 0.9, depthWrite: false, depthTest: false
 });
 const sporePoints = new THREE.Points(sporeGeom, sporeMat);
 decayGroup.add(sporePoints);
@@ -1569,8 +1575,8 @@ const stippleGeom = new THREE.BufferGeometry();
 const stipplePos  = new Float32Array(STIPPLE_MAX * 3);
 stippleGeom.setAttribute('position', new THREE.BufferAttribute(stipplePos, 3));
 const stippleMat = new THREE.PointsMaterial({
-  color: 0x000000, size: 0.024, sizeAttenuation: true,
-  transparent: true, opacity: 0.6, depthWrite: false
+  color: 0x000000, size: 0.055, sizeAttenuation: true,
+  transparent: true, opacity: 0.85, depthWrite: false, depthTest: false
 });
 const stipplePoints = new THREE.Points(stippleGeom, stippleMat);
 decayGroup.add(stipplePoints);
@@ -1615,7 +1621,7 @@ function emitShard(x, y, z, energy) {
   const w = 0.05 + Math.random() * 0.12 * (1 + energy);
   const h = 0.04 + Math.random() * 0.10 * (1 + energy);
   const geom = new THREE.PlaneGeometry(w, h);
-  const mat  = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, transparent: true });
+  const mat  = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, transparent: true, depthWrite: false, depthTest: false });
   const mesh = new THREE.Mesh(geom, mat);
   mesh.position.set(x, y, z);
   mesh.rotation.z = Math.random() * Math.PI * 2;
@@ -1662,7 +1668,7 @@ const BRANCH_MAX_SEGS = 1000;
 const branchGeom = new THREE.BufferGeometry();
 const branchPos  = new Float32Array(BRANCH_MAX_SEGS * 6); // 2 verts per segment
 branchGeom.setAttribute('position', new THREE.BufferAttribute(branchPos, 3));
-const branchMat  = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.78 });
+const branchMat  = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.85, depthWrite: false, depthTest: false });
 const branchLines = new THREE.LineSegments(branchGeom, branchMat);
 decayGroup.add(branchLines);
 const tendrils = [];
@@ -1726,7 +1732,7 @@ const MAZE_MAX_SEGS = 600;
 const mazeGeom = new THREE.BufferGeometry();
 const mazePos  = new Float32Array(MAZE_MAX_SEGS * 6);
 mazeGeom.setAttribute('position', new THREE.BufferAttribute(mazePos, 3));
-const mazeMat  = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 });
+const mazeMat  = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false });
 const mazeLines = new THREE.LineSegments(mazeGeom, mazeMat);
 decayGroup.add(mazeLines);
 const mazeWalk = { x: 0, y: 0, dir: 0 };
@@ -1817,7 +1823,7 @@ function updateGlyphs(anchors) {
     if (ch) {
       if (!have || have.glyph !== ch) {
         if (have) removeGlyphAt(i);
-        const mat = new THREE.SpriteMaterial({ map: getGlyphTexture(ch), transparent: true, depthWrite: false });
+        const mat = new THREE.SpriteMaterial({ map: getGlyphTexture(ch), transparent: true, depthWrite: false, depthTest: false });
         const spr = new THREE.Sprite(mat);
         spr.scale.set(0.65, 0.65, 1);
         decayGroup.add(spr);
