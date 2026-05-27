@@ -997,6 +997,85 @@
   .welcome-footer { color: var(--text-dim); }
   .welcome .amber, .amber { color: #b94a2c; }
   .corner-tick { border-color: var(--text-dim) !important; }
+
+  /* Anchor row inputs (Mode / Band / glyph) — original vessel hard-coded
+     #1a1a1a backgrounds + dark text. With the light theme that becomes
+     dark on dark = invisible. Force them light. */
+  .anchor-row { background: #f6f6f7 !important; border: 1px solid var(--hairline); border-radius: 4px; }
+  .anchor-row.reactive { background: #fff8e6 !important; }
+  .anchor-row.selected { background: #fff1d0 !important; }
+  .anchor-row .anchor-num { color: var(--text-dim) !important; }
+  .anchor-row.reactive .anchor-num { color: #b94a2c !important; }
+  .anchor-mode, .anchor-band {
+    background: #ffffff !important; color: var(--text) !important;
+    border: 1px solid var(--hairline) !important; border-radius: 4px;
+    padding: 4px 6px !important;
+  }
+  .anchor-glyph { background: #ffffff !important; color: var(--text) !important; }
+  .anchor-toggle { background: #d8d8dc; }
+  .anchor-empty { background: #f6f6f7 !important; color: var(--text-dim) !important; }
+
+  /* Sliders — original track was dark; on a light panel it was nearly
+     invisible. Make the track + handle clearly readable. */
+  .panel input[type="range"]  { background: #d8d8dc !important; }
+  .panel input[type="range"]::-webkit-slider-thumb { background: #1a1a1c !important; }
+  .panel input[type="range"]::-moz-range-thumb { background: #1a1a1c !important; }
+
+  /* Buttons in the panel — fix the dark-hover-with-dark-text invisibility. */
+  .panel .btn,
+  .cover-bar .btn,
+  #cover-overlay .btn {
+    background: #f4f4f6 !important; color: var(--text) !important;
+    border: 1px solid var(--hairline) !important;
+  }
+  .panel .btn:hover,
+  .cover-bar .btn:hover,
+  #cover-overlay .btn:hover {
+    background: #e6e6ea !important; color: var(--text) !important;
+    border-color: var(--text-dim) !important;
+  }
+  .panel .btn.primary,
+  #cover-overlay .btn.primary {
+    background: #1a1a1c !important; color: #fff !important; border-color: #1a1a1c !important;
+  }
+  .panel .btn.primary:hover,
+  #cover-overlay .btn.primary:hover {
+    background: #000 !important; color: #fff !important; border-color: #000 !important;
+  }
+  .panel .btn.cobalt { background: var(--opal-cobalt, #1c39bb) !important; color: #fff !important; border-color: var(--opal-cobalt, #1c39bb) !important; }
+  .panel .btn.cobalt:hover { background: #1530a6 !important; color: #fff !important; }
+
+  /* Photo drop-zone — read as a real upload button on a light panel. */
+  .photo-drop {
+    background: #f4f4f6 !important; color: var(--text) !important;
+    border: 1.5px dashed var(--text-dim) !important; border-radius: 6px;
+    cursor: pointer; display: block; text-align: center; padding: 18px 12px !important;
+  }
+  .photo-drop:hover, .photo-drop.drag-over {
+    background: #fff5d0 !important; border-color: #b94a2c !important; color: var(--text) !important;
+  }
+  .photo-drop.loaded { background: #fff8e6 !important; border-style: solid !important; }
+  .photo-name { color: var(--text-dim) !important; }
+
+  /* Material swatches and the closed-toggle / show-grid / show-handles
+     toggle pills + section-help text — all originally relied on dark vars. */
+  .toggle { background: #d8d8dc; }
+  .toggle.on { background: var(--opal-amber, #e8a13a); }
+  .section-title { color: var(--text) !important; }
+  .section-help { color: var(--text-dim) !important; }
+  .label { color: var(--text) !important; }
+  .control-label { color: var(--text-dim) !important; }
+  .control-label .val { color: var(--text) !important; }
+  .mode-tab { color: var(--text-dim) !important; }
+  .mode-tab:hover { color: var(--text) !important; }
+  .mode-tab.active { background: var(--opal-amber, #e8a13a) !important; color: var(--text) !important; }
+  .mat-option { background: #f4f4f6 !important; color: var(--text) !important; border: 1px solid var(--hairline); }
+  .mat-option:hover { background: #e6e6ea !important; }
+  .mat-option.active { background: #1a1a1c !important; color: #fff !important; border-color: #1a1a1c; }
+  .track { background: #f6f6f7 !important; color: var(--text) !important; }
+  .track:hover { background: #ececef !important; }
+  .track-num { color: var(--text-dim) !important; }
+  .track-name { color: var(--text) !important; }
 </style>
 </head>
 <body>
@@ -1143,18 +1222,18 @@
       <div class="section-help">Something ordinary. A sink, an orange, a wall.</div>
       <label class="photo-drop" id="photo-drop">
         <input type="file" id="photo-input" accept="image/*">
-        <span id="photo-drop-text">Drop or click to upload</span>
+        <span id="photo-drop-text">↑ Click to upload photograph (or drag onto the canvas)</span>
       </label>
       <div class="photo-name" id="photo-name"></div>
       <div class="control-row" style="margin-top:10px">
         <div class="control-label"><span>Distortion</span></div>
         <select id="photo-fx" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);border-radius:5px;padding:5px 6px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:12px">
-          <option value="none">None — keep it clean</option>
-          <option value="slice">Slice (horizontal bands shift, quantised)</option>
-          <option value="shift">Shift (vertical bands, quantised)</option>
-          <option value="fracture">Fracture (grid cells displace)</option>
-          <option value="rgb">RGB split (chromatic aberration)</option>
-          <option value="blur">Blur pulse</option>
+          <option value="none">Off</option>
+          <option value="slice">Slice</option>
+          <option value="shift">Shift</option>
+          <option value="fracture">Fracture</option>
+          <option value="rgb">RGB split</option>
+          <option value="blur">Blur</option>
         </select>
       </div>
       <div class="control-row">
