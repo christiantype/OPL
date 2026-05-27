@@ -1357,7 +1357,7 @@
       <div class="photo-name" id="photo-name"></div>
       <div class="control-row" style="margin-top:10px">
         <div class="control-label"><span>Distortion</span></div>
-        <select id="photo-fx" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);padding:5px 6px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:12px">
+        <select id="photo-fx-pick" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);padding:5px 6px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:12px">
           <option value="none">Off</option>
           <option value="slice">Slice</option>
           <option value="shift">Shift</option>
@@ -1710,7 +1710,7 @@ function syncControlsToState() {
   });
   const ci = document.getElementById('color-input'); if (ci) ci.value = state.color;
   const cl = document.getElementById('closed-toggle'); if (cl) cl.classList.toggle('on', state.closed);
-  const pfx = document.getElementById('photo-fx'); if (pfx) pfx.value = state.photoFx || 'slice';
+  const pfx = document.getElementById('photo-fx-pick'); if (pfx) pfx.value = state.photoFx || 'slice';
   const pfa = document.getElementById('photo-fx-amount'); if (pfa) pfa.value = state.photoFxAmount ?? 0.6;
   const pfav = document.getElementById('photo-fx-amount-val'); if (pfav) pfav.textContent = (state.photoFxAmount ?? 0.6).toFixed(2);
   const ts = document.getElementById('track-style'); if (ts) ts.value = state.style || 'tube';
@@ -3599,7 +3599,7 @@ function drawPhotoFX(audio) {
 }
 
 // Wire the controls
-document.getElementById('photo-fx').addEventListener('change', e => {
+document.getElementById('photo-fx-pick').addEventListener('change', e => {
   state.photoFx = e.target.value;
   saveCurrentDesign();
 });
