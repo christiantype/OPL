@@ -1771,6 +1771,66 @@ function updateMaze(anchors, audio) {
   mazeGeom.setDrawRange(0, m * 2);
 }
 
+// ── Glyph stamps (Sidepiece letters pinned at anchors) ────────────
+// Each anchor with a non-empty `.glyph` gets a black billboard sprite
+// rendered at its position. The other decay layers already emit from
+// anchor positions, so spores / tendrils / shards visually grow off
+// the letter once it's there.
+const GLYPH_TEX_PX = 320;
+const glyphTexCache = new Map();   // 'A' -> THREE.CanvasTexture
+const glyphSprites  = new Map();   // anchorIndex -> { sprite, glyph }
+function getGlyphTexture(ch) {
+  if (glyphTexCache.has(ch)) return glyphTexCache.get(ch);
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = GLYPH_TEX_PX;
+  const cx = cnv.getContext('2d');
+  cx.clearRect(0, 0, GLYPH_TEX_PX, GLYPH_TEX_PX);
+  cx.fillStyle = '#000000';
+  cx.font = `${Math.floor(GLYPH_TEX_PX * 0.78)}px "Sidepiece-HoneyPie", "Sidepiece", sans-serif`;
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText(ch, GLYPH_TEX_PX / 2, GLYPH_TEX_PX / 2);
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.anisotropy = 4;
+  glyphTexCache.set(ch, tex);
+  return tex;
+}
+function removeGlyphAt(idx) {
+  const g = glyphSprites.get(idx);
+  if (!g) return;
+  decayGroup.remove(g.sprite);
+  g.sprite.material.dispose();        // texture is cached — leave it
+  glyphSprites.delete(idx);
+}
+function updateGlyphs(anchors) {
+  // Drop sprites for anchors that no longer exist
+  for (const idx of [...glyphSprites.keys()]) {
+    if (idx >= state.anchors.length) removeGlyphAt(idx);
+  }
+  // Sync sprites with current anchor.glyph values
+  for (let i = 0; i < state.anchors.length; i++) {
+    const a = state.anchors[i];
+    const ch = (a.glyph || '').slice(0, 1);   // single character per anchor
+    const have = glyphSprites.get(i);
+    if (ch) {
+      if (!have || have.glyph !== ch) {
+        if (have) removeGlyphAt(i);
+        const mat = new THREE.SpriteMaterial({ map: getGlyphTexture(ch), transparent: true, depthWrite: false });
+        const spr = new THREE.Sprite(mat);
+        spr.scale.set(0.65, 0.65, 1);
+        decayGroup.add(spr);
+        glyphSprites.set(i, { sprite: spr, glyph: ch });
+      }
+      const p = anchors[i] && anchors[i].pos;
+      if (p) glyphSprites.get(i).sprite.position.set(p.x, p.y, p.z + 0.08);
+    } else if (have) {
+      removeGlyphAt(i);
+    }
+  }
+}
+
 // Master update — called from animate()
 function updateDecay(disp, audio) {
   const anchors = (disp && disp.length)
@@ -1786,6 +1846,7 @@ function updateDecay(disp, audio) {
   seedTendrils(anchors, audio);
   updateTendrils();
   updateMaze(anchors, audio);
+  updateGlyphs(anchors);
 }
 
 let currentMesh = null;
@@ -2271,7 +2332,8 @@ drawCanvas.addEventListener('mousedown', e => {
     reactive: true,
     mode: _modes[_i % _modes.length],
     band: _bands[_i % _bands.length],
-    amp: 1.0
+    amp: 1.0,
+    glyph: ''        // optional Sidepiece letter pinned at this anchor; decay grows off it
   });
   state.selectedAnchor = state.anchors.length - 1;
   // Start "creating" — if user drags before releasing, we'll extend handles
@@ -2517,6 +2579,13 @@ function renderAnchorList() {
         <option value="mid" ${a.band==='mid'?'selected':''}>Mid</option>
         <option value="high" ${a.band==='high'?'selected':''}>High</option>
       </select>
+      <input class="anchor-glyph" data-i="${i}" type="text" maxlength="1"
+             placeholder="—" value="${(a.glyph || '').replace(/"/g, '&quot;')}"
+             title="Stamp a Sidepiece letter at this anchor"
+             style="width:24px;text-align:center;background:#fff;color:var(--text);
+                    border:1px solid var(--hairline);border-radius:4px;padding:3px 0;
+                    font-family:'Sidepiece-HoneyPie',sans-serif;font-size:13px;
+                    text-transform:uppercase;margin-left:4px">
     `;
     list.appendChild(row);
 
@@ -2529,6 +2598,9 @@ function renderAnchorList() {
     };
     row.querySelector('.anchor-band').onchange = e => {
       a.band = e.target.value;
+    };
+    row.querySelector('.anchor-glyph').oninput = e => {
+      a.glyph = (e.target.value || '').slice(0, 1);
     };
     row.onclick = e => {
       if (e.target.classList.contains('anchor-toggle')) return;
