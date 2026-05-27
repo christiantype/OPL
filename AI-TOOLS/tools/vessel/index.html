@@ -429,6 +429,9 @@
   .track.loaded .track-status { background: var(--opal-amber); }
   .track.active .track-status { background: var(--opal-cobalt); }
   .track.missing .track-status { background: var(--opal-sienna); opacity: 0.5; }
+  /* A track with a saved design (anchors drawn for it). Subtle but legible. */
+  .track.has-design { box-shadow: inset 2px 0 0 var(--opal-amber); }
+  .track.has-design.active { box-shadow: inset 2px 0 0 var(--opal-cobalt); }
 
   /* Transport */
   .transport {
@@ -1189,6 +1192,23 @@
     </div>
 
     <div class="section">
+      <div class="section-title">Master Cover</div>
+      <div class="section-help" style="margin-top:0;margin-bottom:8px">
+        Each track owns its own design + photo + colour. Click a track
+        in the Album list to switch — your current design auto-saves
+        and the track's saved design loads. A side bar on the track tile
+        means that track has a design. Master Cover renders all eight
+        into a 4&times;2 grid for the album art.
+      </div>
+      <button class="btn primary" id="export-cover" style="width:100%">Export Master Cover (all 8)</button>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn" id="export-session" style="flex:1">Export session</button>
+        <button class="btn" id="import-session" style="flex:1">Import session</button>
+        <input type="file" id="import-session-input" accept="application/json" style="display:none">
+      </div>
+    </div>
+
+    <div class="section">
       <div class="section-title">Export</div>
       <button class="btn primary" id="export-btn">Export PNG &mdash; full sleeve</button>
       <button class="btn cobalt" id="export-entity" style="margin-top:6px">Export entity only &mdash; transparent</button>
@@ -1267,8 +1287,136 @@ const state = {
   // hIn.x=hIn.y=hOut.x=hOut.y=0 → sharp corner; otherwise bezier
   anchors: [],
   selectedAnchor: -1,
-  selectedHandle: null  // { anchor: idx, side: 'in' | 'out' } when a handle is being dragged
+  selectedHandle: null,  // { anchor: idx, side: 'in' | 'out' } when a handle is being dragged
+  // Per-track design slots — each track owns its own anchors + color +
+  // photo + material + audio settings. Switching tracks saves the current
+  // design and loads the slot's. Persisted to localStorage between sessions.
+  tracks: Array.from({ length: 8 }, () => ({
+    anchors: [],
+    color: '#FFD400',
+    material: 'chrome',
+    thickness: 0.04,
+    depth: 0.25,
+    hover: 0.2,
+    shadow: 0.65,
+    shadowSoft: 0.5,
+    reactivity: 1.0,
+    drive: 1.0,
+    sensitivity: 0.55,
+    closed: true,
+    photoDataUrl: null
+  }))
 };
+
+// ============================================================
+// PER-TRACK DESIGN: save/load/persist
+// Each track has its own anchors + design params + photo. Switching
+// tracks auto-saves the current design and loads the new slot. All
+// 8 slots persist to localStorage so reload restores everything.
+// ============================================================
+const TRACKS_LS_KEY = 'vessel.tracks.v1';
+let _persistTimer = null;
+function persistTracks() {
+  if (_persistTimer) clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(() => {
+    try { localStorage.setItem(TRACKS_LS_KEY, JSON.stringify(state.tracks)); } catch (e) {}
+  }, 300);
+}
+function restoreTracks() {
+  try {
+    const raw = localStorage.getItem(TRACKS_LS_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (Array.isArray(saved) && saved.length === 8) {
+      // Merge: keep defaults for any missing field
+      saved.forEach((s, i) => { Object.assign(state.tracks[i], s); });
+    }
+  } catch (e) { console.warn('vessel: track restore failed', e); }
+}
+function saveCurrentDesign() {
+  if (state.currentTrack == null) return;
+  const t = state.tracks[state.currentTrack];
+  t.anchors    = JSON.parse(JSON.stringify(state.anchors));
+  t.color      = state.color;
+  t.material   = state.material;
+  t.thickness  = state.thickness;
+  t.depth      = state.depth;
+  t.hover      = state.hover;
+  t.shadow     = state.shadow;
+  t.shadowSoft = state.shadowSoft;
+  t.reactivity = state.reactivity;
+  t.drive      = state.drive;
+  t.sensitivity= state.sensitivity;
+  t.closed     = state.closed;
+  // Capture photo (data URL) only if it's not already one — avoid re-capture loop.
+  const pImg = document.getElementById('bg-photo');
+  if (pImg && pImg.src && pImg.style.display !== 'none') t.photoDataUrl = pImg.src;
+  else t.photoDataUrl = null;
+  persistTracks();
+  renderTrackBadges();
+}
+function loadDesign(idx) {
+  const t = state.tracks[idx];
+  state.anchors    = JSON.parse(JSON.stringify(t.anchors || []));
+  state.color      = t.color      ?? '#FFD400';
+  state.material   = t.material   ?? 'chrome';
+  state.thickness  = t.thickness  ?? 0.04;
+  state.depth      = t.depth      ?? 0.25;
+  state.hover      = t.hover      ?? 0.2;
+  state.shadow     = t.shadow     ?? 0.65;
+  state.shadowSoft = t.shadowSoft ?? 0.5;
+  state.reactivity = t.reactivity ?? 1.0;
+  state.drive      = t.drive      ?? 1.0;
+  state.sensitivity= t.sensitivity?? 0.55;
+  state.closed     = t.closed     ?? true;
+  state.selectedAnchor = -1;
+  state.selectedHandle = null;
+  // Photo
+  const pImg = document.getElementById('bg-photo');
+  if (pImg) {
+    if (t.photoDataUrl) { pImg.src = t.photoDataUrl; pImg.style.display = 'block'; }
+    else { pImg.removeAttribute('src'); pImg.style.display = 'none'; }
+  }
+  // Sync UI controls + rebuild
+  syncControlsToState();
+  if (typeof rebuildEntity === 'function') rebuildEntity();
+  if (typeof redrawOverlay === 'function') redrawOverlay();
+  if (typeof renderAnchorList === 'function') renderAnchorList();
+}
+function syncControlsToState() {
+  const sliders = [
+    ['thickness',   state.thickness,   'thick-val',  v => v.toFixed(3)],
+    ['depth',       state.depth,       'depth-val',  v => v.toFixed(2)],
+    ['hover',       state.hover,       'hover-val',  v => v.toFixed(2)],
+    ['shadow',      state.shadow,      'shadow-val', v => v.toFixed(2)],
+    ['shadow-soft', state.shadowSoft,  'shadow-soft-val', v => v.toFixed(2)],
+    ['reactivity',  state.reactivity,  'react-val',  v => v.toFixed(2)],
+    ['drive',       state.drive,       'drive-val',  v => v.toFixed(2)],
+    ['sensitivity', state.sensitivity, 'sens-val',   v => v.toFixed(2)]
+  ];
+  sliders.forEach(([id, val, dispId, fmt]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+    const d = document.getElementById(dispId);
+    if (d) d.textContent = fmt(val);
+  });
+  const ci = document.getElementById('color-input'); if (ci) ci.value = state.color;
+  const cl = document.getElementById('closed-toggle'); if (cl) cl.classList.toggle('on', state.closed);
+  // material tabs
+  document.querySelectorAll('.mode-tab[data-material]').forEach(el => {
+    el.classList.toggle('active', el.dataset.material === state.material);
+  });
+}
+function renderTrackBadges() {
+  // Mark each track tile with a small dot if its design has anchors.
+  for (let i = 0; i < 8; i++) {
+    const t = state.tracks[i];
+    const el = document.querySelectorAll('.track')[i];
+    if (!el) continue;
+    const has = (t.anchors && t.anchors.length > 0);
+    el.classList.toggle('has-design', has);
+  }
+}
 
 // ---- anchor helpers ---------------------------------------------------------
 function isSharp(a) {
@@ -1340,6 +1488,7 @@ MATERIALS.forEach(m => {
     document.querySelectorAll('.mat-option').forEach(el => el.classList.remove('active'));
     b.classList.add('active');
     rebuildEntity();
+    saveCurrentDesign();
   };
   matGrid.appendChild(b);
 });
@@ -1354,6 +1503,7 @@ function bindSlider(id, prop, displayId, fmt = v => v.toFixed(2), onChange) {
     state[prop] = parseFloat(el.value);
     disp.textContent = fmt(state[prop]);
     if (onChange) onChange();
+    saveCurrentDesign();   // every slider edit persists into the active track
   });
   disp.textContent = fmt(state[prop]);
 }
@@ -1383,6 +1533,7 @@ if (inkEl) inkEl.addEventListener('change', e => {
 document.getElementById('color-input').addEventListener('input', e => {
   state.color = e.target.value;
   applyMaterial();
+  saveCurrentDesign();
 });
 
 document.getElementById('closed-toggle').addEventListener('click', e => {
@@ -1390,6 +1541,7 @@ document.getElementById('closed-toggle').addEventListener('click', e => {
   e.currentTarget.classList.toggle('on', state.closed);
   rebuildEntity();
   redrawOverlay();
+  saveCurrentDesign();
 });
 
 document.getElementById('grid-toggle').addEventListener('click', e => {
@@ -1997,16 +2149,23 @@ function rebuildEntity() {
     currentMesh = null;
   }
 
-  if (state.anchors.length < 2) return;
+  if (state.anchors.length >= 2) {
+    currentMaterial = makeMaterial();
+    const group = new THREE.Group();
+    // The base path will get re-deformed each frame for audio reactivity,
+    // so build it inside the animate loop. Here, build a placeholder.
+    rebuildTubeFromCurrentAnchors(group);
+    currentMesh = group;
+    entityGroup.add(currentMesh);
+  }
 
-  currentMaterial = makeMaterial();
-  const group = new THREE.Group();
-
-  // The base path will get re-deformed each frame for audio reactivity,
-  // so build it inside the animate loop. Here, build a placeholder.
-  rebuildTubeFromCurrentAnchors(group);
-  currentMesh = group;
-  entityGroup.add(currentMesh);
+  // Persist the current track's design after any geometry change. Auto-claim
+  // track 0 if the user starts editing before picking a track, so the work
+  // is never lost in a scratch buffer.
+  if (state.currentTrack == null && state.anchors.length > 0) {
+    state.currentTrack = 0;
+  }
+  saveCurrentDesign();
 }
 
 // Compute displaced scene points based on audio + per-anchor reactivity
@@ -2598,15 +2757,19 @@ function renderAnchorList() {
     row.querySelector('.anchor-toggle').onclick = () => {
       a.reactive = !a.reactive;
       renderAnchorList();
+      saveCurrentDesign();
     };
     row.querySelector('.anchor-mode').onchange = e => {
       a.mode = e.target.value;
+      saveCurrentDesign();
     };
     row.querySelector('.anchor-band').onchange = e => {
       a.band = e.target.value;
+      saveCurrentDesign();
     };
     row.querySelector('.anchor-glyph').oninput = e => {
       a.glyph = (e.target.value || '').slice(0, 1);
+      saveCurrentDesign();
     };
     row.onclick = e => {
       if (e.target.classList.contains('anchor-toggle')) return;
@@ -2642,6 +2805,9 @@ function ensureAudioCtx() {
 }
 
 function selectTrack(idx) {
+  // Save the design we're leaving (no-op if no track was active yet).
+  saveCurrentDesign();
+
   ensureAudioCtx();
   if (activeAudio) {
     activeAudio.pause();
@@ -2661,6 +2827,10 @@ function selectTrack(idx) {
   audioSource.connect(analyser);
 
   state.currentTrack = idx;
+
+  // Load this track's persisted design (anchors + color + photo + …).
+  loadDesign(idx);
+
   playBtn.disabled = false;
   isPlaying = false;
   playBtn.innerHTML = '&#9658;';
@@ -2724,14 +2894,20 @@ const canvasLabel = document.getElementById('canvas-label');
 
 function loadPhoto(file) {
   if (!file) return;
-  const url = URL.createObjectURL(file);
-  bgPhoto.src = url;
-  bgPhoto.style.display = 'block';
-  photoName.textContent = file.name;
-  photoDropText.textContent = 'Replace photograph';
-  photoDrop.classList.add('loaded');
-  canvasEmpty.classList.add('hidden');
-  canvasLabel.textContent = file.name.toUpperCase();
+  // Use FileReader -> dataURL so the photo is persistable in localStorage
+  // (object URLs vanish on reload; we need the actual bytes per track).
+  const reader = new FileReader();
+  reader.onload = () => {
+    bgPhoto.src = reader.result;
+    bgPhoto.style.display = 'block';
+    photoName.textContent = file.name;
+    photoDropText.textContent = 'Replace photograph';
+    photoDrop.classList.add('loaded');
+    canvasEmpty.classList.add('hidden');
+    canvasLabel.textContent = file.name.toUpperCase();
+    saveCurrentDesign();
+  };
+  reader.readAsDataURL(file);
 }
 
 photoInput.addEventListener('change', e => loadPhoto(e.target.files[0]));
@@ -2966,6 +3142,112 @@ function exportFrame(transparent = false) {
 
 document.getElementById('export-btn').onclick = () => exportFrame(false);
 document.getElementById('export-entity').onclick = () => exportFrame(true);
+
+// ============================================================
+// MASTER COVER + SESSION (per-track album workflow)
+// ============================================================
+
+// Render one track's design to a square PNG dataURL (off-screen),
+// without disturbing the live editor's currentTrack.
+async function renderTrackToDataURL(idx, sizePx = 700) {
+  return new Promise(resolve => {
+    // Save what we have, swap to idx, give animate() a couple frames to
+    // rebuild + decay, capture, then swap back. The renderer is shared
+    // so we just snapshot its canvas after a fresh paint.
+    const wasTrack = state.currentTrack;
+    saveCurrentDesign();
+    state.currentTrack = idx;
+    loadDesign(idx);
+    // Give 2 animation frames to settle (rebuild + first render).
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      // Re-render at higher resolution: temporarily set renderer size, render, capture.
+      const tc = renderer.domElement;
+      const w0 = tc.width, h0 = tc.height;
+      renderer.setSize(sizePx, sizePx, false);
+      camera.aspect = 1; camera.updateProjectionMatrix();
+      renderer.render(scene, camera);
+      const data = tc.toDataURL('image/png');
+      // Restore renderer size
+      renderer.setSize(w0, h0, false);
+      camera.aspect = w0 / h0; camera.updateProjectionMatrix();
+      // Restore the editor's track
+      state.currentTrack = wasTrack;
+      if (wasTrack != null) loadDesign(wasTrack);
+      resolve(data);
+    }));
+  });
+}
+
+document.getElementById('export-cover').onclick = async () => {
+  const btn = document.getElementById('export-cover');
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = 'Rendering 8 tracks…';
+  try {
+    const CELL = 900;
+    const cols = 4, rows = 2;
+    const cnv = document.createElement('canvas');
+    cnv.width = cols * CELL; cnv.height = rows * CELL;
+    const cx = cnv.getContext('2d');
+    cx.fillStyle = '#000'; cx.fillRect(0, 0, cnv.width, cnv.height);
+    for (let i = 0; i < 8; i++) {
+      btn.textContent = `Rendering track ${i + 1} of 8…`;
+      const has = state.tracks[i].anchors && state.tracks[i].anchors.length > 0;
+      if (!has) continue;   // leave the cell black for empty tracks
+      const dataUrl = await renderTrackToDataURL(i, CELL);
+      const img = new Image();
+      await new Promise(r => { img.onload = r; img.src = dataUrl; });
+      const col = i % cols, row = Math.floor(i / cols);
+      cx.drawImage(img, col * CELL, row * CELL, CELL, CELL);
+    }
+    cnv.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'vessel-master-cover.png';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+};
+
+document.getElementById('export-session').onclick = () => {
+  saveCurrentDesign();
+  const payload = { tool: 'vessel.2', version: 1, tracks: state.tracks, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vessel-session-${Date.now()}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+document.getElementById('import-session').onclick = () =>
+  document.getElementById('import-session-input').click();
+document.getElementById('import-session-input').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const p = JSON.parse(r.result);
+      if (!p || !Array.isArray(p.tracks) || p.tracks.length !== 8) throw new Error('not a vessel session');
+      state.tracks = p.tracks;
+      persistTracks();
+      renderTrackBadges();
+      // Reload current track from the imported set
+      if (state.currentTrack != null) loadDesign(state.currentTrack);
+    } catch (err) { alert('Import failed: ' + err.message); }
+  };
+  r.readAsText(f);
+};
+
+// ============================================================
+// INIT — restore saved tracks + render badges
+// ============================================================
+restoreTracks();
+renderTrackBadges();
 
 </script>
 </body>
