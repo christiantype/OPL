@@ -241,6 +241,11 @@ oka<!DOCTYPE html>
   }
   .thumb:hover .thumb__x { opacity: 1; }
   .thumb__x:hover { background: var(--pink); color: #000; }
+  .thumb { cursor: grab; }
+  .thumb:active { cursor: grabbing; }
+  .thumb.is-dragging { opacity: 0.35; }
+  .thumb.is-dropbefore { box-shadow: inset 3px 0 0 0 var(--accent); }
+  .thumb.is-dropafter  { box-shadow: inset -3px 0 0 0 var(--accent); }
 
   /* ── Stage: canvas ──────────────────────────────────────────── */
   .stage {
@@ -664,9 +669,36 @@ oka<!DOCTYPE html>
 
         <div id="circleBeadOnly" style="display:none">
           <div class="row" style="margin-top:14px"><span class="row__label">Beads per ring</span><input class="row__val" id="v-cBeads" type="text" value="12"></div>
-          <input type="range" id="r-cBeads" min="3" max="48" step="1" value="12">
+          <input type="range" id="r-cBeads" min="3" max="64" step="1" value="12">
           <div class="row"><span class="row__label">Bead size</span><input class="row__val" id="v-cBeadSize" type="text" value="0.08"></div>
           <input type="range" id="r-cBeadSize" min="0.02" max="0.30" step="0.01" value="0.08">
+
+          <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Shape</div>
+          <div class="seg" id="seg-cBeadShape" style="grid-template-columns:repeat(5,1fr)">
+            <button data-bs="circle" class="is-active">●</button>
+            <button data-bs="square">■</button>
+            <button data-bs="diamond">◆</button>
+            <button data-bs="hex">⬢</button>
+            <button data-bs="star">★</button>
+          </div>
+
+          <div class="row" style="margin-top:14px"><span class="row__label">Size jitter</span><input class="row__val" id="v-cBeadJit" type="text" value="0.00"></div>
+          <input type="range" id="r-cBeadJit" min="0" max="1" step="0.01" value="0">
+
+          <div class="row"><span class="row__label">Size falloff</span><input class="row__val" id="v-cBeadFall" type="text" value="0.00"></div>
+          <input type="range" id="r-cBeadFall" min="-1" max="1" step="0.01" value="0">
+
+          <div class="row"><span class="row__label">Opacity</span><input class="row__val" id="v-cBeadOpac" type="text" value="1.00"></div>
+          <input type="range" id="r-cBeadOpac" min="0.1" max="1" step="0.01" value="1">
+
+          <label class="row toggle" style="margin-top:10px">
+            <span class="row__label">Stagger rings</span>
+            <input type="checkbox" id="r-cBeadStagger">
+          </label>
+          <label class="row toggle">
+            <span class="row__label">Outline beads</span>
+            <input type="checkbox" id="r-cBeadOutline">
+          </label>
         </div>
 
         <label class="row toggle" style="margin-top:14px">
@@ -962,6 +994,13 @@ const state = {
     beadsPerRing: 12,
     beadSize:     0.08,     // fraction of canvas
     outline:      false,    // hairline outline on rings
+    // ── Beads-only knobs ──
+    beadShape:    'circle', // 'circle' | 'square' | 'diamond' | 'hex' | 'star'
+    beadJitter:   0,        // 0..1, per-bead size randomization
+    beadFalloff:  0,        // -1..1, shrinks (-) or grows (+) outward rings
+    beadStagger:  false,    // alternate rings offset by half-step
+    beadOpacity:  1,        // 0..1
+    beadOutline:  false,    // hairline ring around each bead
   },
   // ── EFFECT LAYER ─────────────────────────────────────────────
   // A Dot or Glyph overlay whose colors are SAMPLED from the just-
@@ -1226,30 +1265,76 @@ window.addEventListener('drop', e => {
 });
 
 // ── Thumbnail UI ──────────────────────────────────────────────
+// Drag the thumbnails to reorder. The list order drives which photo
+// fills which slot (rings, wedges, bead index, scatter row, etc.) so
+// sorting is how Cass picks the rhythm of the composition.
+let dragSrcId = null;
 function renderThumbs() {
   thumbsEl.innerHTML = '';
   state.images.forEach((s, i) => {
     const t = document.createElement('div');
     t.className = 'thumb' + (s.enabled ? '' : ' thumb__off');
+    t.draggable = true;
     t.innerHTML = `
-      <img src="${s.img.src}" alt="${s.name}">
+      <img src="${s.img.src}" alt="${s.name}" draggable="false">
       <span class="thumb__num">${String(i+1).padStart(2,'0')}</span>
       <span class="thumb__x" data-x="${s.id}">×</span>
     `;
     t.addEventListener('click', e => {
       if (e.target.dataset.x) {
-        // remove
         state.images = state.images.filter(x => x.id !== s.id);
         renderThumbs();
         if (state.mode === 'scatter') renderScatterItemsList();
         render();
       } else {
-        // toggle enable
         s.enabled = !s.enabled;
         renderThumbs();
         if (state.mode === 'scatter') renderScatterItemsList();
         render();
       }
+    });
+    // ── Drag-to-reorder ────────────────────────────────────────
+    t.addEventListener('dragstart', e => {
+      dragSrcId = s.id;
+      t.classList.add('is-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      // Set text so the dragenter/over filter (which checks for "Files"
+      // in dataTransfer.types) treats this as NOT a file drop and the
+      // window-level drop handler short-circuits.
+      e.dataTransfer.setData('text/imagix-thumb', String(s.id));
+    });
+    t.addEventListener('dragend', () => {
+      t.classList.remove('is-dragging');
+      document.querySelectorAll('.thumb.is-dropbefore,.thumb.is-dropafter')
+        .forEach(n => n.classList.remove('is-dropbefore','is-dropafter'));
+      dragSrcId = null;
+    });
+    t.addEventListener('dragover', e => {
+      if (dragSrcId === null || dragSrcId === s.id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const r = t.getBoundingClientRect();
+      const before = (e.clientX - r.left) < r.width / 2;
+      document.querySelectorAll('.thumb.is-dropbefore,.thumb.is-dropafter')
+        .forEach(n => n.classList.remove('is-dropbefore','is-dropafter'));
+      t.classList.add(before ? 'is-dropbefore' : 'is-dropafter');
+    });
+    t.addEventListener('drop', e => {
+      if (dragSrcId === null || dragSrcId === s.id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const fromIdx = state.images.findIndex(x => x.id === dragSrcId);
+      if (fromIdx < 0) return;
+      const [item] = state.images.splice(fromIdx, 1);
+      let insertAt = state.images.findIndex(x => x.id === s.id);
+      if (insertAt < 0) insertAt = state.images.length;
+      const r = t.getBoundingClientRect();
+      const before = (e.clientX - r.left) < r.width / 2;
+      if (!before) insertAt += 1;
+      state.images.splice(insertAt, 0, item);
+      renderThumbs();
+      if (state.mode === 'scatter') renderScatterItemsList();
+      render();
     });
     thumbsEl.appendChild(t);
   });
@@ -2343,22 +2428,41 @@ function circleRender(target, active) {
   } else if (C.style === 'beads') {
     const ringCount = Math.max(1, C.count);
     const beadsPerRing = Math.max(3, C.beadsPerRing || 12);
-    const beadSizePx = Math.max(8, C.beadSize * Math.min(W, H));
+    const baseSizePx = Math.max(8, C.beadSize * Math.min(W, H));
     const span = outer - inner;
+    const jitter  = Math.max(0, Math.min(1, C.beadJitter || 0));
+    const falloff = Math.max(-1, Math.min(1, C.beadFalloff || 0));
+    const stagger = !!C.beadStagger;
+    const opacity = Math.max(0, Math.min(1, C.beadOpacity ?? 1));
+    const beadOutline = !!C.beadOutline;
     for (let r = 0; r < ringCount; r++) {
-      // Distribute rings evenly between inner and outer
       const t = ringCount > 1 ? r / (ringCount - 1) : 0.5;
       const ringRadius = inner + span * t;
-      const phase = rot0 + r * spinPer;
+      const phase = rot0 + r * spinPer + (stagger && r % 2 ? Math.PI / beadsPerRing : 0);
+      // Ring-level size scale: -1 → smaller outward (0.3× at outermost),
+      // 0 → uniform, +1 → larger outward (1.7× at outermost).
+      const ringScale = 1 + falloff * (t - 0.5) * 1.4;
       for (let b = 0; b < beadsPerRing; b++) {
         const angle = phase + (b / beadsPerRing) * Math.PI * 2;
         const bx = cx + Math.cos(angle) * ringRadius;
         const by = cy + Math.sin(angle) * ringRadius;
-        // Pick image by sequential walk so each ring shifts photos
+        // Per-bead jitter: deterministic via seed so re-roll = new pattern.
+        const j = jitter ? (1 - jitter / 2 + rng() * jitter) : 1;
+        const sizePx = Math.max(4, baseSizePx * ringScale * j);
         const imgIdx = (r * beadsPerRing + b) % active.length;
         const src = active[imgIdx];
         if (!src) continue;
-        drawIntoCircle(x, src.img, bx, by, beadSizePx / 2);
+        x.save();
+        x.globalAlpha = opacity;
+        drawIntoBeadShape(x, src.img, bx, by, sizePx / 2, C.beadShape || 'circle', angle);
+        x.restore();
+        if (beadOutline) {
+          x.save();
+          x.strokeStyle = 'rgba(0,0,0,0.45)';
+          x.lineWidth = 1;
+          strokeBeadShape(x, bx, by, sizePx / 2, C.beadShape || 'circle', angle);
+          x.restore();
+        }
       }
     }
   }
@@ -2432,6 +2536,59 @@ function drawIntoCircle(ctx, img, cx, cy, radius) {
   const dw = img.width * r, dh = img.height * r;
   ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
   ctx.restore();
+}
+// ── Bead shapes ──────────────────────────────────────────────
+// All shapes inscribed in a circle of `radius`. `angle` lets some
+// shapes (star, hex) align radially; circle/square ignore it.
+function beadShapePath(cx, cy, radius, shape, angle) {
+  const p = new Path2D();
+  if (shape === 'circle') {
+    p.arc(cx, cy, radius, 0, Math.PI * 2);
+  } else if (shape === 'square') {
+    p.rect(cx - radius, cy - radius, radius * 2, radius * 2);
+  } else if (shape === 'diamond') {
+    p.moveTo(cx, cy - radius);
+    p.lineTo(cx + radius, cy);
+    p.lineTo(cx, cy + radius);
+    p.lineTo(cx - radius, cy);
+    p.closePath();
+  } else if (shape === 'hex') {
+    for (let i = 0; i < 6; i++) {
+      const a = angle + i * Math.PI / 3;
+      const x = cx + Math.cos(a) * radius;
+      const y = cy + Math.sin(a) * radius;
+      if (i) p.lineTo(x, y); else p.moveTo(x, y);
+    }
+    p.closePath();
+  } else if (shape === 'star') {
+    const inner = radius * 0.45;
+    for (let i = 0; i < 10; i++) {
+      const a = angle + i * Math.PI / 5 - Math.PI / 2;
+      const rr = i % 2 ? inner : radius;
+      const x = cx + Math.cos(a) * rr;
+      const y = cy + Math.sin(a) * rr;
+      if (i) p.lineTo(x, y); else p.moveTo(x, y);
+    }
+    p.closePath();
+  } else {
+    p.arc(cx, cy, radius, 0, Math.PI * 2);
+  }
+  return p;
+}
+function drawIntoBeadShape(ctx, img, cx, cy, radius, shape, angle) {
+  ctx.save();
+  const p = beadShapePath(cx, cy, radius, shape, angle);
+  ctx.clip(p);
+  ctx.translate(cx, cy);
+  const box = radius * 2;
+  const r = Math.max(box / img.width, box / img.height);
+  const dw = img.width * r, dh = img.height * r;
+  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+  ctx.restore();
+}
+function strokeBeadShape(ctx, cx, cy, radius, shape, angle) {
+  const p = beadShapePath(cx, cy, radius, shape, angle);
+  ctx.stroke(p);
 }
 
 // ── Composite sources to an offscreen canvas (cover-fit + blend) ──
@@ -2940,6 +3097,26 @@ function wireCircle() {
   bind('r-cGap',      'v-cGap',      'gap',          v => String(Math.round(v)));
   bind('r-cBeads',    'v-cBeads',    'beadsPerRing', v => String(Math.round(v)));
   bind('r-cBeadSize', 'v-cBeadSize', 'beadSize',     v => v.toFixed(2));
+  bind('r-cBeadJit',  'v-cBeadJit',  'beadJitter',   v => v.toFixed(2));
+  bind('r-cBeadFall', 'v-cBeadFall', 'beadFalloff',  v => v.toFixed(2));
+  bind('r-cBeadOpac', 'v-cBeadOpac', 'beadOpacity',  v => v.toFixed(2));
+
+  document.querySelectorAll('#seg-cBeadShape button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#seg-cBeadShape button').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      state.circle.beadShape = b.dataset.bs;
+      render();
+    });
+  });
+  $('r-cBeadStagger')?.addEventListener('change', e => {
+    state.circle.beadStagger = e.target.checked;
+    render();
+  });
+  $('r-cBeadOutline')?.addEventListener('change', e => {
+    state.circle.beadOutline = e.target.checked;
+    render();
+  });
 
   document.querySelectorAll('#seg-circleStyle button').forEach(b => {
     b.addEventListener('click', () => {
