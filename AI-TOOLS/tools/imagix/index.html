@@ -366,10 +366,64 @@
   <aside class="controls">
     <div class="ctrl-group">
       <div class="ctrl-label">Mode</div>
-      <div class="seg" id="seg-mode">
+      <div class="seg" id="seg-mode" style="grid-template-columns:repeat(5,1fr)">
         <button data-mode="slice" class="is-active">Slice</button>
         <button data-mode="dot">Dot</button>
+        <button data-mode="glyph">Glyph</button>
+        <button data-mode="strata">Strata</button>
         <button data-mode="scatter">Scatter</button>
+      </div>
+    </div>
+
+    <!-- GLYPH MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="glyph" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Glyph</div>
+        <div class="row"><span class="row__label">Character</span></div>
+        <input type="text" id="r-glyphChar" value="✕" maxlength="3" style="width:100%;padding:8px 10px;background:var(--panel);color:var(--text);border:1px solid var(--hairline);font-family:var(--sans);font-size:16px;text-align:center;margin-bottom:10px">
+        <div class="seg" id="seg-glyphPreset" style="grid-template-columns:repeat(6,1fr);margin-bottom:14px">
+          <button data-g="✕">✕</button>
+          <button data-g="+">+</button>
+          <button data-g="/">/</button>
+          <button data-g="*">*</button>
+          <button data-g="◢">◢</button>
+          <button data-g="●">●</button>
+        </div>
+        <div class="row"><span class="row__label">Resolution</span><span class="row__val" id="v-gRes">4</span></div>
+        <input type="range" id="r-gRes" min="1" max="8" step="1" value="4">
+        <div class="row"><span class="row__label">Size</span><span class="row__val" id="v-gSize">4</span></div>
+        <input type="range" id="r-gSize" min="1" max="8" step="1" value="4">
+        <div class="row"><span class="row__label">Rotation jitter</span><span class="row__val" id="v-gRot">0°</span></div>
+        <input type="range" id="r-gRot" min="0" max="180" step="1" value="0">
+        <div class="row"><span class="row__label">Position jitter</span><span class="row__val" id="v-gJitter">0</span></div>
+        <input type="range" id="r-gJitter" min="0" max="8" step="1" value="0">
+        <div class="row"><span class="row__label">Blur source</span><span class="row__val" id="v-gBlur">3</span></div>
+        <input type="range" id="r-gBlur" min="0" max="8" step="1" value="3">
+        <div class="seg" id="seg-glyphColor" style="grid-template-columns:repeat(3,1fr);margin-top:14px">
+          <button data-c="sample" class="is-active">From photo</button>
+          <button data-c="ink">Ink</button>
+          <button data-c="white">White</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STRATA MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="strata" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Strata</div>
+        <div class="row"><span class="row__label">Bands</span><span class="row__val" id="v-stBands">7</span></div>
+        <input type="range" id="r-stBands" min="2" max="24" step="1" value="7">
+        <div class="row"><span class="row__label">Height variation</span><span class="row__val" id="v-stVar">0.40</span></div>
+        <input type="range" id="r-stVar" min="0" max="1" step="0.01" value="0.40">
+        <div class="row"><span class="row__label">Shift</span><span class="row__val" id="v-stShift">0.20</span></div>
+        <input type="range" id="r-stShift" min="0" max="1" step="0.01" value="0.20">
+        <div class="row"><span class="row__label">Gap</span><span class="row__val" id="v-stGap">0</span></div>
+        <input type="range" id="r-stGap" min="0" max="30" step="1" value="0">
+        <div class="seg" id="seg-stShiftMode" style="grid-template-columns:repeat(3,1fr);margin-top:10px">
+          <button data-sm="alternate" class="is-active">Alternate</button>
+          <button data-sm="random">Random</button>
+          <button data-sm="cascade">Cascade</button>
+        </div>
       </div>
     </div>
 
@@ -502,7 +556,23 @@
 const state = {
   images: [],          // [{ id, name, img: HTMLImageElement, enabled: true }]
   seed: Math.floor(Math.random() * 1e9),
-  mode: 'slice',       // 'slice' | 'dot' | 'scatter'
+  mode: 'slice',       // 'slice' | 'dot' | 'glyph' | 'strata' | 'scatter'
+  glyph: {
+    char:       '✕',
+    resolution: 4,   // 1..8 → grid size
+    size:       4,   // 1..8 → char size as fraction of cell
+    rotJitter:  0,   // 0..180 degrees
+    posJitter:  0,   // 1..8 → position jitter
+    blur:       3,   // 1..8 → source blur before sampling
+    color:      'sample', // 'sample' | 'ink' | 'white'
+  },
+  strata: {
+    bands:     7,
+    variation: 0.4,
+    shift:     0.2,
+    gap:       0,
+    shiftMode: 'alternate', // 'alternate' | 'random' | 'cascade'
+  },
   scatter: {
     items: [],          // [{ imageId, x, y, size, rot }] — positions in canvas px
     showLines: true,
@@ -654,7 +724,9 @@ function render(target = canvas) {
   }
   empty.style.display = 'none';
   canvas.style.visibility = 'visible';
-  if (state.mode === 'dot')          dotRender(target, active);
+  if      (state.mode === 'dot')     dotRender(target, active);
+  else if (state.mode === 'glyph')   glyphRender(target, active);
+  else if (state.mode === 'strata')  strataRender(target, active);
   else if (state.mode === 'scatter') scatterRender(target, active);
   else                               sliceRender(target, active);
 }
@@ -927,6 +999,143 @@ function renderScatterItemsList() {
   });
 }
 
+// ── Glyph render ──────────────────────────────────────────────
+// Sample composite at a grid; render a CHARACTER per cell colored
+// by the sampled pixel. Photo → typographic rendering.
+function glyphRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  // Background
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.params.bg === 'transparent') x.clearRect(0, 0, W, H);
+  else { x.fillStyle = state.params.bg; x.fillRect(0, 0, W, H); }
+  x.restore();
+
+  const g = state.glyph;
+  const blurPx = DOT.imageBlur[g.blur] || 0;
+  const src = compositeSources(W, H, active, blurPx);
+  const sctx = src.getContext('2d');
+  const data = sctx.getImageData(0, 0, W, H).data;
+
+  const N    = DOT.resolution[g.resolution - 1] || 80;
+  const step = W / N;
+  const fontPx = step * (DOT.dotSize[g.size - 1] || 0.7) * 1.6;
+  const rotRange = g.rotJitter * Math.PI / 180;
+  const jitter = (DOT.grain[g.posJitter] || 0) * step;
+  const rng = mulberry32(state.seed);
+
+  x.save();
+  x.font = `${fontPx}px ${
+    /[\w]/.test(g.char) ? 'JetBrains Mono, Courier New, monospace'
+                        : 'system-ui, sans-serif'
+  }`;
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+
+  const cellsX = N;
+  const cellsY = Math.ceil(H / step);
+  for (let yy = 0; yy < cellsY; yy++) {
+    for (let xx = 0; xx < cellsX; xx++) {
+      const cx0 = xx * step + step / 2;
+      const cy0 = yy * step + step / 2;
+      const cx  = cx0 + (rng() - 0.5) * 2 * jitter;
+      const cy  = cy0 + (rng() - 0.5) * 2 * jitter;
+      const sx = Math.max(0, Math.min(W - 1, Math.floor(cx)));
+      const sy = Math.max(0, Math.min(H - 1, Math.floor(cy)));
+      const i = (sy * W + sx) * 4;
+      const r = data[i], gg = data[i + 1], b = data[i + 2], a = data[i + 3] / 255;
+      if (g.color === 'ink')    x.fillStyle = `rgba(20,20,22,${a})`;
+      else if (g.color === 'white') x.fillStyle = `rgba(255,255,255,${a})`;
+      else                       x.fillStyle = `rgba(${r},${gg},${b},${a})`;
+      const rot = (rng() - 0.5) * 2 * rotRange;
+      if (rot) {
+        x.save(); x.translate(cx, cy); x.rotate(rot);
+        x.fillText(g.char, 0, 0);
+        x.restore();
+      } else {
+        x.fillText(g.char, cx, cy);
+      }
+    }
+  }
+  x.restore();
+
+  stageInfo.textContent = `${active.length} src · ${N}×${cellsY} glyphs · "${g.char}"`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
+// ── Strata render ─────────────────────────────────────────────
+// Hard horizontal bands; each band fills with one image (chain in
+// add-order). Bands shift horizontally per shiftMode.
+function strataRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  // Background
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.params.bg === 'transparent') x.clearRect(0, 0, W, H);
+  else { x.fillStyle = state.params.bg; x.fillRect(0, 0, W, H); }
+  x.restore();
+
+  const s = state.strata;
+  const rng = mulberry32(state.seed);
+
+  // Generate band heights summing to H (accounting for gaps)
+  const totalGap = s.gap * Math.max(0, s.bands - 1);
+  const usable = H - totalGap;
+  const weights = [];
+  let sumW = 0;
+  for (let i = 0; i < s.bands; i++) {
+    const w = 1 + (rng() - 0.5) * 2 * s.variation;
+    weights.push(Math.max(0.15, w)); sumW += weights[weights.length - 1];
+  }
+  // Normalize
+  const bandHeights = weights.map(w => (w / sumW) * usable);
+
+  // Generate shifts per band
+  const shifts = [];
+  for (let i = 0; i < s.bands; i++) {
+    let f;
+    if (s.shiftMode === 'alternate') f = (i % 2 === 0 ? 1 : -1) * 0.5;
+    else if (s.shiftMode === 'random') f = rng() - 0.5;
+    else /* cascade */ f = (i / Math.max(1, s.bands - 1)) - 0.5;
+    shifts.push(f * 2 * s.shift * W);
+  }
+
+  // Draw bands
+  let y = 0;
+  for (let i = 0; i < s.bands; i++) {
+    const bh = bandHeights[i];
+    const src = active[i % active.length];
+    if (!src) { y += bh + s.gap; continue; }
+    const img = src.img;
+    // Cover-fit horizontally to W, crop vertically to band proportion
+    // Center the source image's "band slice" at band index
+    const aspect = img.width / img.height;
+    const dw = W;
+    const dh = dw / aspect;
+    // Vertical source crop: chunk from image based on band index
+    const sliceH = img.height / s.bands;
+    const sy = Math.floor(sliceH * (i % s.bands));
+    x.save();
+    x.translate(shifts[i], 0);
+    x.drawImage(
+      img,
+      0, sy, img.width, Math.min(sliceH, img.height - sy),
+      0, y, W, bh
+    );
+    x.restore();
+    y += bh + s.gap;
+  }
+
+  stageInfo.textContent = `${active.length} src · ${s.bands} bands · ${s.shiftMode}`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
 // ── Composite sources to an offscreen canvas (cover-fit + blend) ──
 function compositeSources(W, H, active, blur = 0) {
   const off = document.createElement('canvas');
@@ -1130,6 +1339,71 @@ function wireScatter() {
   });
 }
 wireScatter();
+
+// ── Glyph mode wiring ─────────────────────────────────────────
+function wireGlyph() {
+  const bind = (id, valId, key, fmt) => {
+    const r = $(id), v = $(valId);
+    if (!r) return;
+    r.addEventListener('input', () => {
+      state.glyph[key] = parseFloat(r.value);
+      if (v) v.textContent = fmt(state.glyph[key]);
+      render();
+    });
+  };
+  bind('r-gRes',    'v-gRes',    'resolution', v => String(Math.round(v)));
+  bind('r-gSize',   'v-gSize',   'size',       v => String(Math.round(v)));
+  bind('r-gRot',    'v-gRot',    'rotJitter',  v => Math.round(v) + '°');
+  bind('r-gJitter', 'v-gJitter', 'posJitter',  v => String(Math.round(v)));
+  bind('r-gBlur',   'v-gBlur',   'blur',       v => String(Math.round(v)));
+
+  $('r-glyphChar')?.addEventListener('input', e => {
+    state.glyph.char = e.target.value || '✕';
+    render();
+  });
+  document.querySelectorAll('#seg-glyphPreset button').forEach(b => {
+    b.addEventListener('click', () => {
+      state.glyph.char = b.dataset.g;
+      $('r-glyphChar').value = b.dataset.g;
+      render();
+    });
+  });
+  document.querySelectorAll('#seg-glyphColor button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#seg-glyphColor button').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      state.glyph.color = b.dataset.c;
+      render();
+    });
+  });
+}
+wireGlyph();
+
+// ── Strata mode wiring ────────────────────────────────────────
+function wireStrata() {
+  const bind = (id, valId, key, fmt) => {
+    const r = $(id), v = $(valId);
+    if (!r) return;
+    r.addEventListener('input', () => {
+      state.strata[key] = parseFloat(r.value);
+      if (v) v.textContent = fmt(state.strata[key]);
+      render();
+    });
+  };
+  bind('r-stBands', 'v-stBands', 'bands',     v => String(Math.round(v)));
+  bind('r-stVar',   'v-stVar',   'variation', v => v.toFixed(2));
+  bind('r-stShift', 'v-stShift', 'shift',     v => v.toFixed(2));
+  bind('r-stGap',   'v-stGap',   'gap',       v => String(Math.round(v)));
+  document.querySelectorAll('#seg-stShiftMode button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#seg-stShiftMode button').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      state.strata.shiftMode = b.dataset.sm;
+      render();
+    });
+  });
+}
+wireStrata();
 $('r-export').addEventListener('input', e => {
   state.params.export = parseInt(e.target.value, 10);
   $('v-export').textContent = `${state.params.export}×${state.params.export}`;
