@@ -249,21 +249,79 @@
 
       // Full-width images can bleed to the viewport edge (natural height, no crop).
       const fullVariant = item.bleed ? 'project-image--bleed' : 'project-image--full';
+      const hasAnnot = Array.isArray(item.annotations) && item.annotations.length > 0;
 
-      // When wrapped in a figure, the figure owns the col class
-      const mediaClass = item.caption
-        ? (isFull ? `project-image ${fullVariant}${framed}` : `project-image${framed}`)
+      // When wrapped in a figure OR the annotations layer, the wrapper owns
+      // the col-N class so the inner <img> stretches to 100% inside it.
+      const mediaClass = item.caption || hasAnnot
+        ? `project-image${isFull ? ' ' + fullVariant : ''}${framed}`
         : (isFull ? `project-image ${fullVariant}${framed}` : `col-${item.cols} project-image${framed}`);
 
       const styleAttr = item.radius ? ` style="border-radius:${item.radius}"` : '';
 
       let media;
-      if (mediaType === 'video') {
+      if (item.mockup) {
+        // Inline HTML mockup that replaces a static screenshot. The file is
+        // fetched at runtime (see initMockups below) and injected here.
+        const escSrc = String(item.mockup).replace(/"/g, '&quot;');
+        const escAlt = (item.alt || '').replace(/"/g, '&quot;');
+        media = `<div class="${mediaClass} project-mockup" data-mockup-src="${escSrc}" role="img" aria-label="${escAlt}"></div>`;
+      } else if (mediaType === 'video') {
         media = `<video class="${mediaClass}" autoplay muted loop playsinline preload="auto"${styleAttr}><source src="${item.src}" type="video/mp4"></video>`;
       } else {
         media = `<img class="${mediaClass}" src="${item.src}" alt="${item.alt || ''}"${styleAttr}>`;
       }
 
+      // Annotations: numbered hotspots overlaid on the image. Desktop floats
+      // a card next to the marker; mobile shows a numbered list under the
+      // image so the story still reads in scroll.
+      if (hasAnnot) {
+        const list = item.annotations;
+        const markers = list.map((a, i) => {
+          const x = (+a.x * 100).toFixed(2);
+          const y = (+a.y * 100).toFixed(2);
+          const side = (+a.x > 0.55) ? 'left' : 'right';
+          const vert = (+a.y > 0.70) ? 'above' : 'below';
+          const n = i + 1;
+          const t = a.title ? `<h4 class="annot-card__title">${a.title}</h4>` : '';
+          const b = a.body  ? `<div class="annot-card__body">${a.body}</div>` : '';
+          const aria = (a.title || '').replace(/"/g, '&quot;');
+          return `<div class="annot-anchor" style="left:${x}%;top:${y}%" data-side="${side}" data-vertical="${vert}">`
+              +    `<button type="button" class="annot-marker" aria-expanded="false" aria-label="Annotation ${n}: ${aria}">`
+              +      `<span class="annot-marker__num">${n}</span>`
+              +    `</button>`
+              +    `<aside class="annot-card" role="region">`
+              +      `<span class="annot-card__num">${String(n).padStart(2,'0')}</span>${t}${b}`
+              +    `</aside>`
+              +  `</div>`;
+        }).join('');
+        const listItems = list.map((a, i) => {
+          const n = i + 1;
+          const t = a.title ? `<h4 class="annot-list__title">${a.title}</h4>` : '';
+          const b = a.body  ? `<div class="annot-list__body">${a.body}</div>` : '';
+          return `<li class="annot-list__item">`
+              +    `<span class="annot-list__num">${String(n).padStart(2,'0')}</span>`
+              +    `<div class="annot-list__copy">${t}${b}</div>`
+              +  `</li>`;
+        }).join('');
+        // Inner col-N goes on the OUTER wrapper. If a window frame is on,
+        // the window owns the grid placement; otherwise annot-wrap does.
+        const outerHasGrid = item.caption || item.windowTitle;
+        const wrapCols = outerHasGrid ? '' : (isFull ? ' annot-wrap--full' : ` col-${item.cols}`);
+        const safeSrc  = (item.src || '').replace(/"/g, '&quot;');
+        const annotated = `<div class="annot-wrap${wrapCols}" data-img="${safeSrc}">`
+                       +    `<div class="annot-stage">${media}${markers}</div>`
+                       +    `<ol class="annot-list">${listItems}</ol>`
+                       +  `</div>`;
+        if (item.windowTitle) return wrapInWindow(annotated, item, isFull);
+        if (item.caption) {
+          const figClass = isFull ? 'project-figure project-figure--full' : `col-${item.cols} project-figure`;
+          return `<figure class="${figClass}">${annotated}<figcaption class="project-caption">${item.caption}</figcaption></figure>`;
+        }
+        return annotated;
+      }
+
+      if (item.windowTitle) return wrapInWindow(media, item, isFull);
       if (item.caption) {
         const figClass = isFull ? 'project-figure project-figure--full' : `col-${item.cols} project-figure`;
         return `<figure class="${figClass}">${media}<figcaption class="project-caption">${item.caption}</figcaption></figure>`;
@@ -271,6 +329,20 @@
 
       return media;
     };
+
+    function wrapInWindow(inner, item, isFull) {
+      const winCols = isFull ? 'proj-window proj-window--full' : `col-${item.cols} proj-window`;
+      const status = item.windowStatus || 'Proof of Concept';
+      const title = item.windowTitle;
+      return `<div class="${winCols}">`
+           +   `<header class="proj-window__bar">`
+           +     `<span class="proj-window__mark" aria-hidden="true">/</span>`
+           +     `<span class="proj-window__title">${title}</span>`
+           +     `<span class="proj-window__status">${status}</span>`
+           +   `</header>`
+           +   `<div class="proj-window__body">${inner}</div>`
+           + `</div>`;
+    }
 
     let tiltN = 0;
     images.innerHTML = groups.map(g => {
@@ -528,6 +600,178 @@
         }
       }), { threshold: 0 }).observe(el);
     });
+  })();
+
+  /* ── Inline mockups: fetch HTML for each `mockup:` image entry and inject
+       it into the placeholder div rendered by renderMedia(). The mockup is
+       a self-contained chunk of HTML (+ scoped <style> + optional <script>)
+       living under /projects/<mock-dir>/ — fetched relative to this page. ── */
+  (function initMockups() {
+    document.querySelectorAll('.project-mockup[data-mockup-src]').forEach(async el => {
+      const src = el.getAttribute('data-mockup-src');
+      try {
+        const res = await fetch(src);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const html = await res.text();
+        el.innerHTML = html;
+        el.removeAttribute('data-mockup-src');
+        // Run any <script> tags inside the loaded mockup (innerHTML doesn't
+        // execute them on its own). Inline only — no external src.
+        el.querySelectorAll('script').forEach(orig => {
+          const s = document.createElement('script');
+          if (orig.textContent) s.textContent = orig.textContent;
+          orig.replaceWith(s);
+        });
+      } catch (e) {
+        el.innerHTML = '<div class="project-mockup__err">Mockup failed to load: ' + src + '</div>';
+        console.warn('Mockup load failed:', src, e);
+      }
+    });
+  })();
+
+  /* ── Annotations: numbered hotspots with click-to-reveal cards ── */
+  (function initAnnotations() {
+    const wraps = document.querySelectorAll('.annot-wrap');
+    if (!wraps.length) return;
+    const anchors = document.querySelectorAll('.annot-anchor');
+
+    function closeAll(except) {
+      anchors.forEach(a => {
+        if (a === except || !a.classList.contains('is-open')) return;
+        a.classList.remove('is-open');
+        const m = a.querySelector('.annot-marker');
+        if (m) m.setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    document.querySelectorAll('.annot-marker').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const anchor = btn.closest('.annot-anchor');
+        if (!anchor) return;
+        const open = anchor.classList.contains('is-open');
+        closeAll(open ? null : anchor);
+        anchor.classList.toggle('is-open', !open);
+        btn.setAttribute('aria-expanded', String(!open));
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.annot-anchor')) closeAll(null);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAll(null);
+    });
+  })();
+
+  /* ── Author mode (?annotate): click an image to place a numbered marker
+       and emit a JSON snippet you paste into the PROJECT.images[i].annotations
+       array. Keyboard: U undo, C copy. ── */
+  (function initAnnotateAuthor() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('annotate')) return;
+    document.body.classList.add('annotate-mode');
+
+    const panel = document.createElement('aside');
+    panel.id = 'annot-author';
+    panel.innerHTML =
+      '<header>' +
+        '<strong>Annotate</strong>' +
+        '<span class="annot-author__hint">Click image · U undo · C copy</span>' +
+        '<button type="button" data-action="copy">Copy</button>' +
+        '<button type="button" data-action="clear">Clear</button>' +
+        '<button type="button" data-action="close">×</button>' +
+      '</header>' +
+      '<div class="annot-author__body"></div>';
+    document.body.appendChild(panel);
+
+    const groups = new Map(); // src → [{x,y}]
+
+    function snippet() {
+      let out = '';
+      for (const [src, pts] of groups.entries()) {
+        const lines = pts.map(p => '  { x: ' + p.x.toFixed(3) + ', y: ' + p.y.toFixed(3) + ', title: "", body: "" }').join(',\n');
+        out += '// ' + src + '\nannotations: [\n' + lines + '\n],\n\n';
+      }
+      return out.trim();
+    }
+    function refresh() {
+      const body = panel.querySelector('.annot-author__body');
+      let html = '';
+      for (const [src, pts] of groups.entries()) {
+        const lines = pts.map(p => '  { x: ' + p.x.toFixed(3) + ', y: ' + p.y.toFixed(3) + ', title: "", body: "" }').join(',\n');
+        html += '<div class="annot-author__group"><div class="annot-author__src">' + src + '</div>' +
+                '<pre>annotations: [\n' + lines + '\n]</pre></div>';
+      }
+      body.innerHTML = html || '<div class="annot-author__empty">No markers yet — click an image.</div>';
+    }
+
+    document.body.addEventListener('click', (e) => {
+      if (e.target.closest('#annot-author')) return;     // panel clicks pass through
+      const media = e.target.closest('img.project-image, video.project-image');
+      if (!media) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const r = media.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width;
+      const y = (e.clientY - r.top)  / r.height;
+      if (x < 0 || y < 0 || x > 1 || y > 1) return;
+      const src = media.getAttribute('src');
+      if (!groups.has(src)) groups.set(src, []);
+      groups.get(src).push({ x, y });
+      let layer = media.parentElement.querySelector('.annot-author__dots');
+      if (!layer) {
+        layer = document.createElement('div');
+        layer.className = 'annot-author__dots';
+        media.parentElement.style.position = 'relative';
+        media.parentElement.appendChild(layer);
+      }
+      const n = groups.get(src).length;
+      const dot = document.createElement('span');
+      dot.className = 'annot-author__dot';
+      dot.style.left = (x * 100) + '%';
+      dot.style.top  = (y * 100) + '%';
+      dot.textContent = n;
+      layer.appendChild(dot);
+      refresh();
+    }, true);
+
+    panel.addEventListener('click', (e) => {
+      const a = e.target.closest('[data-action]');
+      if (!a) return;
+      e.stopPropagation();
+      if (a.dataset.action === 'copy') {
+        navigator.clipboard.writeText(snippet()).then(() => {
+          a.textContent = 'Copied'; setTimeout(() => { a.textContent = 'Copy'; }, 1200);
+        });
+      } else if (a.dataset.action === 'clear') {
+        groups.clear();
+        document.querySelectorAll('.annot-author__dots').forEach(el => el.remove());
+        refresh();
+      } else if (a.dataset.action === 'close') {
+        panel.remove();
+        document.body.classList.remove('annotate-mode');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.target.matches('input, textarea')) return;
+      if (e.key === 'u' || e.key === 'U') {
+        let lastSrc = null;
+        for (const [src, pts] of groups.entries()) if (pts.length) lastSrc = src;
+        if (lastSrc) {
+          groups.get(lastSrc).pop();
+          if (groups.get(lastSrc).length === 0) groups.delete(lastSrc);
+          const dots = document.querySelectorAll('.annot-author__dots .annot-author__dot');
+          if (dots.length) dots[dots.length - 1].remove();
+          refresh();
+        }
+      } else if (e.key === 'c' || e.key === 'C') {
+        navigator.clipboard.writeText(snippet());
+      }
+    });
+
+    refresh();
   })();
 
   /* ── Shared scripts ── */

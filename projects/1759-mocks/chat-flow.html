@@ -1,0 +1,247 @@
+<style>
+  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+  .m1759 {
+    --m-bg: #FFFFFF; --m-ink: #0e0e0e; --m-body: #1a1a1a; --m-mid: #595959;
+    --m-hair: #ececec; --m-cobalt: #1c39bb; --m-pad-x: 48px;
+    --m-sans: 'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    position: relative; background: var(--m-bg); color: var(--m-ink);
+    font-family: var(--m-sans); font-size: 13px; line-height: 1.5;
+    border: 1px solid var(--m-hair); overflow: hidden auto; height: 880px;
+  }
+  /* Styled scrollbar — cobalt accent, always visible. */
+  .m1759 { scrollbar-color: var(--m-cobalt) #F0F0F0; scrollbar-width: thin; }
+  .m1759::-webkit-scrollbar { width: 10px; }
+  .m1759::-webkit-scrollbar-track { background: #F0F0F0; }
+  .m1759::-webkit-scrollbar-thumb { background: var(--m-cobalt); border: 2px solid #F0F0F0; }
+  .m1759::-webkit-scrollbar-thumb:hover { background: #14299c; }
+  .m1759 *, .m1759 *::before, .m1759 *::after { box-sizing: border-box; font-family: inherit; }
+  .m1759 button { font: inherit; background: none; border: none; padding: 0; color: inherit; cursor: pointer; }
+  .m1759 input { font: inherit; background: none; border: none; outline: none; color: inherit; min-width: 0; }
+  .m1759 ul, .m1759 ol { list-style: none; padding: 0; margin: 0; }
+  .m1759 h1, .m1759 h2, .m1759 h3, .m1759 h4 { margin: 0; font-weight: 400; }
+  .m1759 p, .m1759 h1, .m1759 h2, .m1759 h3, .m1759 h4 { margin: 0; }
+  body.project .m1759 p, body.project .m1759 h1, body.project .m1759 h2, body.project .m1759 h3, body.project .m1759 h4 { color: var(--m-ink); }
+  .m1759__corner { position: absolute; bottom: 8px; right: 12px; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; padding: 3px 7px; border: 1px solid var(--m-hair); background: rgba(255,255,255,0.92); z-index: 10; pointer-events: none; }
+
+  .m1759__top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px var(--m-pad-x); border-bottom: 1px solid var(--m-hair); min-width: 0; }
+  .m1759__brand { display: flex; align-items: baseline; gap: 8px; flex-shrink: 0; }
+  .m1759__brand-mark { font-size: 24px; font-weight: 500; color: var(--m-cobalt); line-height: 1; letter-spacing: -0.02em; }
+  .m1759__brand-product { font-size: 12px; letter-spacing: 0.02em; color: var(--m-ink); font-weight: 500; }
+  .m1759__nav { display: flex; align-items: center; gap: 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; flex-shrink: 0; }
+  .m1759__navitem { display: inline-flex; align-items: center; gap: 7px; color: var(--m-ink); padding: 7px 10px; font-weight: 500; }
+  .m1759__navitem--notify { padding: 7px 8px; position: relative; }
+  .m1759__navitem--notify::after { content: ''; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; background: var(--m-cobalt); border: 2px solid var(--m-bg); border-radius: 50%; }
+  .m1759__navdivider { width: 1px; height: 18px; background: var(--m-hair); margin: 0 6px; }
+  .m1759__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--m-cobalt); color: var(--m-bg); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; margin-left: 6px; flex-shrink: 0; }
+  @media (max-width: 64em) { .m1759__navlabel { display: none; } .m1759__navitem { padding: 7px 8px; } }
+
+  /* CHAT LAYOUT */
+  .m1759__chat-shell { display: grid; grid-template-columns: 240px 1fr; height: 640px; }
+  .m1759__sidebar { padding: 24px var(--m-pad-x); border-right: 1px solid var(--m-hair); }
+  .m1759__sidebar-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; margin-bottom: 10px; line-height: 1.3; }
+  .m1759__sidebar-list { display: flex; flex-direction: column; gap: 0; }
+  .m1759__sidebar-item { text-align: left; padding: 7px 10px 7px 14px; margin-right: 12px; border-radius: 4px; font-size: 12px; line-height: 1.3; color: var(--m-body); font-weight: 400; cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m1759__sidebar-item.is-active { background: #f6f6f6; border-left-color: var(--m-cobalt); color: var(--m-ink); font-weight: 500; }
+
+  .m1759__main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+  .m1759__messages {
+    flex: 1; display: flex; flex-direction: column; gap: 16px;
+    padding: 24px var(--m-pad-x) 18px;
+    overflow-y: auto;
+  }
+  .m1759__msg { max-width: 78%; font-size: 13px; line-height: 1.55; }
+  .m1759__msg.is-hidden { display: none; }
+  .m1759__msg--user { align-self: flex-end; background: #f3f3f3; padding: 11px 15px; border-radius: 14px; color: var(--m-ink); }
+  .m1759__msg--ai { align-self: flex-start; color: var(--m-ink); padding-top: 2px; max-width: 88%; }
+  .m1759__msg--ai-center { align-self: center; text-align: center; max-width: 60%; color: var(--m-mid); }
+
+  /* Numbered list inside AI message */
+  .m1759 .m1759__msg--ai ol { list-style: decimal !important; padding-left: 24px !important; margin-top: 8px; display: block; }
+  .m1759 .m1759__msg--ai li { font-size: 13px; line-height: 1.5; color: var(--m-ink); display: list-item; margin-bottom: 4px; padding-left: 4px; }
+  .m1759 .m1759__msg--ai li::marker { color: var(--m-ink); font-weight: 500; }
+
+  /* Rich response blocks */
+  .m1759__block-title { font-size: 14px; font-weight: 500; color: var(--m-ink); margin-bottom: 8px; }
+  .m1759__numbers { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border: 1px solid var(--m-hair); }
+  .m1759__numcell { padding: 12px 14px; border-right: 1px solid var(--m-hair); }
+  .m1759__numcell:last-child { border-right: none; }
+  .m1759__numcell--accent { background: #FAFAFE; }
+  .m1759__numcell-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; margin-bottom: 5px; }
+  .m1759__numcell-value { font-size: 17px; font-weight: 500; color: var(--m-ink); letter-spacing: -0.01em; }
+  .m1759__numcell-value--cobalt { color: var(--m-cobalt); }
+
+  .m1759__strategies { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .m1759__strat { padding: 12px 14px; background: #F5F5F5; }
+  .m1759__strat-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; margin-bottom: 4px; }
+  .m1759__strat-body { font-size: 12.5px; line-height: 1.5; color: var(--m-ink); }
+
+  .m1759__chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .m1759 .m1759__chip { font-size: 11px; padding: 6px 12px; background: var(--m-bg); border: 1px solid var(--m-hair); border-radius: 999px; color: var(--m-ink); font-weight: 500; cursor: pointer; }
+
+  /* TYPING INDICATOR */
+  .m1759__typing { align-self: flex-start; padding: 4px 0; }
+  .m1759__typing.is-hidden { display: none; }
+  .m1759__typing span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--m-mid); margin-right: 3px; animation: m1759-bounce 1.2s infinite ease-in-out; }
+  .m1759__typing span:nth-child(2) { animation-delay: 0.15s; }
+  .m1759__typing span:nth-child(3) { animation-delay: 0.30s; }
+  @keyframes m1759-bounce { 0%, 80%, 100% { transform: scale(0.55); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
+
+  /* CHAT INPUT */
+  .m1759__chat { padding: 16px var(--m-pad-x) 24px; position: sticky; bottom: 0; z-index: 5; background: var(--m-bg); border-top: 1px solid var(--m-hair); }
+  .m1759__chat-form { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--m-bg); border: 1px solid var(--m-hair); border-radius: 8px; }
+  .m1759__chat-prompt { font-size: 14px; color: var(--m-cobalt); font-weight: 700; }
+  .m1759__chat-input { flex: 1; font-size: 13px; color: var(--m-ink); }
+  .m1759__chat-input::placeholder { color: var(--m-mid); }
+  .m1759__chat-send { font-size: 14px; color: var(--m-ink); padding: 0 4px; cursor: pointer; }
+  .m1759__chat-suggestions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .m1759__chat-suggestions button { font-size: 11px; font-weight: 500; padding: 7px 12px; border: 1px solid var(--m-hair); background: var(--m-bg); color: var(--m-ink); border-radius: 999px; }
+
+  @media (max-width: 48em) {
+    .m1759__top { padding: 12px 16px; gap: 10px; }
+    .m1759__chat-shell { grid-template-columns: 1fr; height: auto; min-height: 540px; }
+    .m1759__sidebar { border-right: none; border-bottom: 1px solid var(--m-hair); padding: 16px; }
+    .m1759__messages { padding: 16px; }
+    .m1759__chat { padding: 12px 16px 16px; }
+    .m1759__numbers { grid-template-columns: 1fr; }
+    .m1759__numcell { border-right: none; border-bottom: 1px solid var(--m-hair); }
+  }
+</style>
+
+<div class="m1759 m1759-chat">
+  
+  <header class="m1759__top">
+    <div class="m1759__brand">
+      <span class="m1759__brand-mark">Agentic</span>
+    </div>
+    <div class="m1759__nav" role="navigation">
+      <button class="m1759__navitem" type="button"><svg viewBox="0 0 14 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M2 1h10v15l-5-3.4L2 16z"/></svg><span class="m1759__navlabel">Bookmarks</span></button>
+      <button class="m1759__navitem" type="button"><svg viewBox="0 0 18 14" width="14" height="14" fill="currentColor" aria-hidden="true"><rect x="0" y="8" width="3" height="6"/><rect x="5.5" y="4" width="3" height="10"/><rect x="11" y="0" width="3" height="14"/></svg><span class="m1759__navlabel">Sales Vault</span></button>
+      <span class="m1759__navdivider"></span>
+      <button class="m1759__navitem m1759__navitem--notify" type="button" aria-label="Notifications"><svg viewBox="0 0 18 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M9 1c-3.3 0-6 2.5-6 5.6V11l-2 3h16l-2-3V6.6C15 3.5 12.3 1 9 1z"/></svg></button>
+      <span class="m1759__avatar" aria-label="David Kim">DK</span>
+    </div>
+  </header>
+
+  <div class="m1759__chat-shell">
+    <aside class="m1759__sidebar">
+      <div class="m1759__sidebar-label">Recent Conversations</div>
+      <div class="m1759__sidebar-list">
+        <button class="m1759__sidebar-item is-active" type="button">Assistance with wealth …</button>
+        <button class="m1759__sidebar-item" type="button">Proof of concept</button>
+        <button class="m1759__sidebar-item" type="button">Recommendations on …</button>
+        <button class="m1759__sidebar-item" type="button">New client assessment</button>
+      </div>
+    </aside>
+
+    <section class="m1759__main">
+      <div class="m1759__messages" data-messages>
+        <div class="m1759__msg m1759__msg--user is-hidden">Help me brainstorm a strategy for a client</div>
+        <div class="m1759__msg m1759__msg--ai m1759__msg--ai-center is-hidden">I'm happy to help. Please tell me about the client.</div>
+        <div class="m1759__msg m1759__msg--user is-hidden">Clients are married, both age 75, net worth of $100 million mostly real estate. Both are in good health, except for one or two health conditions that are managed and under control. They have two kids, ages 45 and 47, and four grandchildren.</div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">Thanks for sharing that. A few more things — I'll take them one at a time.</div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">First, what are the estimated total annual expenditures?</div>
+        <div class="m1759__msg m1759__msg--user is-hidden">$1 million</div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">Target growth rate of the investment portfolio?</div>
+        <div class="m1759__msg m1759__msg--user is-hidden">5%</div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">Assumed inflation rate?</div>
+        <div class="m1759__msg m1759__msg--user is-hidden">2%</div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">Remaining estate, gift, and GST tax exemptions?</div>
+        <div class="m1759__msg m1759__msg--user is-hidden">Unknown</div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">Last one — ages of the grandchildren?</div>
+        <div class="m1759__msg m1759__msg--user is-hidden">17, 15, 13, and 10</div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">Life insurance proceeds are income tax free and can be structured to avoid transfer taxes if owned by an ILIT.</div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">
+          <div class="m1759__block-title">Bottom Line</div>
+          <div class="m1759__numbers">
+            <div class="m1759__numcell"><div class="m1759__numcell-label">Without planning</div><div class="m1759__numcell-value">$118M</div></div>
+            <div class="m1759__numcell"><div class="m1759__numcell-label">With planning</div><div class="m1759__numcell-value">$179M</div></div>
+            <div class="m1759__numcell m1759__numcell--accent"><div class="m1759__numcell-label">Net benefit</div><div class="m1759__numcell-value m1759__numcell-value--cobalt">$61M</div></div>
+          </div>
+        </div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">
+          <div class="m1759__block-title">Legacy Planning Strategies</div>
+          <div class="m1759__strategies">
+            <div class="m1759__strat"><div class="m1759__strat-label">Irrevocable Life Insurance Trust (ILIT)</div><div class="m1759__strat-body">GST-exempt ILIT for children and grandchildren for multi-generational tax mitigation. Purchase the life insurance policy within an ILIT to ensure proceeds are transfer tax free.</div></div>
+            <div class="m1759__strat"><div class="m1759__strat-label">Split-Dollar Funding</div><div class="m1759__strat-body">Increase gift tax efficiency by funding the premiums through an economic benefit split-dollar arrangement.</div></div>
+            <div class="m1759__strat"><div class="m1759__strat-label">Gen-Skip Split-Dollar Plan</div><div class="m1759__strat-body">Consider a Gen-Skip Split-Dollar strategy to potentially achieve additional transfer tax savings and legacy benefits.</div></div>
+          </div>
+        </div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">
+          Would you like to learn more about:
+          <div class="m1759__chips">
+            <button class="m1759__chip" type="button">ILITs</button>
+            <button class="m1759__chip" type="button">Split-Dollar Arrangements</button>
+            <button class="m1759__chip" type="button">Gen-Skip Split-Dollar</button>
+          </div>
+        </div>
+        <div class="m1759__msg m1759__msg--ai is-hidden">I can also prepare the legacy plan in the form of a client summary letter. Just let me know.</div>
+        <div class="m1759__typing is-hidden" data-typing><span></span><span></span><span></span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="m1759__chat">
+    <form class="m1759__chat-form" onsubmit="event.preventDefault();">
+      <span class="m1759__chat-prompt">›</span>
+      <input class="m1759__chat-input" type="text" placeholder="How can I help you today?" />
+      <button class="m1759__chat-send" type="submit" aria-label="Send">↵</button>
+    </form>
+    <div class="m1759__chat-suggestions">
+      <button type="button">Help me understand a specific strategy</button>
+      <button type="button">Help me brainstorm a strategy for a client</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const root = document.querySelector('.m1759-chat');
+    if (!root || root.dataset.init) return;
+    root.dataset.init = '1';
+    const container = root.querySelector('[data-messages]');
+    const typing = root.querySelector('[data-typing]');
+    const msgs = Array.from(root.querySelectorAll('.m1759__msg'));
+
+    // Per-message reveal delay (ms). Tuned for natural reading cadence:
+    // user messages are shorter so we pause less; AI replies get more time.
+    // Tuned per message: AI asks → user answers quick → AI asks next.
+    const beats = [1200, 1400, 1400, 1400, 1000, 700, 1000, 700, 1000, 700, 1000, 700, 1000, 700, 1600, 2200, 2400, 1600, 1400];
+    const PAUSE = 4500;     // after last message, pause before restarting
+    const TYPE_HINT = 700;  // typing indicator before each AI message
+
+    let i = 0, timers = [];
+    function clearTimers() { timers.forEach(t => clearTimeout(t)); timers = []; }
+    function reset() {
+      msgs.forEach(m => m.classList.add('is-hidden'));
+      typing.classList.add('is-hidden');
+      i = 0;
+      container.scrollTop = 0;
+      timers.push(setTimeout(reveal, 600));
+    }
+    function reveal() {
+      if (i >= msgs.length) {
+        timers.push(setTimeout(reset, PAUSE));
+        return;
+      }
+      const m = msgs[i];
+      const isAi = m.classList.contains('m1759__msg--ai');
+      const showMsg = () => {
+        typing.classList.add('is-hidden');
+        m.classList.remove('is-hidden');
+        container.scrollTop = container.scrollHeight;
+        i++;
+        timers.push(setTimeout(reveal, beats[i - 1] || 1600));
+      };
+      if (isAi) {
+        // Show typing indicator briefly before the AI message lands
+        typing.classList.remove('is-hidden');
+        container.scrollTop = container.scrollHeight;
+        timers.push(setTimeout(showMsg, TYPE_HINT));
+      } else {
+        showMsg();
+      }
+    }
+    timers.push(setTimeout(reveal, 800));
+  })();
+</script>
