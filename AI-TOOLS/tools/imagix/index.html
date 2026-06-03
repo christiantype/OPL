@@ -529,7 +529,7 @@
   <aside class="controls">
     <div class="ctrl-group">
       <div class="ctrl-label">Mode</div>
-      <div class="seg" id="seg-mode" style="grid-template-columns:repeat(4,1fr);row-gap:4px">
+      <div class="seg" id="seg-mode" style="grid-template-columns:repeat(3,1fr);row-gap:4px">
         <button data-mode="slice" class="is-active">Slice</button>
         <button data-mode="dot">Dot</button>
         <button data-mode="glyph">Glyph</button>
@@ -538,6 +538,7 @@
         <button data-mode="window">Window</button>
         <button data-mode="echo">Echo</button>
         <button data-mode="grid">Grid</button>
+        <button data-mode="circle">Circle</button>
       </div>
     </div>
 
@@ -632,6 +633,46 @@
         <input type="range" id="r-grAsym" min="0" max="1" step="0.01" value="0.60">
         <div class="row"><span class="row__label">Gap</span><input class="row__val" id="v-grGap" type="text" value="4"></div>
         <input type="range" id="r-grGap" min="0" max="24" step="1" value="4">
+      </div>
+    </div>
+
+    <!-- CIRCLE MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="circle" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Circle</div>
+        <div class="seg" id="seg-circleStyle" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+          <button data-cs="rings" class="is-active">Rings</button>
+          <button data-cs="wedges">Wedges</button>
+          <button data-cs="beads">Beads</button>
+        </div>
+
+        <div class="row"><span class="row__label">Count</span><input class="row__val" id="v-cCount" type="text" value="8"></div>
+        <input type="range" id="r-cCount" min="2" max="24" step="1" value="8">
+
+        <div class="row"><span class="row__label">Inner radius</span><input class="row__val" id="v-cInner" type="text" value="0.05"></div>
+        <input type="range" id="r-cInner" min="0" max="0.45" step="0.01" value="0.05">
+        <div class="row"><span class="row__label">Outer radius</span><input class="row__val" id="v-cOuter" type="text" value="0.48"></div>
+        <input type="range" id="r-cOuter" min="0.10" max="0.50" step="0.01" value="0.48">
+
+        <div class="row"><span class="row__label">Rotation</span><input class="row__val" id="v-cRot" type="text" value="0°"></div>
+        <input type="range" id="r-cRot" min="0" max="360" step="1" value="0">
+        <div class="row"><span class="row__label">Spin per ring</span><input class="row__val" id="v-cSpin" type="text" value="0°"></div>
+        <input type="range" id="r-cSpin" min="0" max="90" step="0.5" value="0">
+
+        <div class="row"><span class="row__label">Gap</span><input class="row__val" id="v-cGap" type="text" value="2"></div>
+        <input type="range" id="r-cGap" min="0" max="30" step="1" value="2">
+
+        <div id="circleBeadOnly" style="display:none">
+          <div class="row" style="margin-top:14px"><span class="row__label">Beads per ring</span><input class="row__val" id="v-cBeads" type="text" value="12"></div>
+          <input type="range" id="r-cBeads" min="3" max="48" step="1" value="12">
+          <div class="row"><span class="row__label">Bead size</span><input class="row__val" id="v-cBeadSize" type="text" value="0.08"></div>
+          <input type="range" id="r-cBeadSize" min="0.02" max="0.30" step="0.01" value="0.08">
+        </div>
+
+        <label class="row toggle" style="margin-top:14px">
+          <span class="row__label">Outline rings</span>
+          <input type="checkbox" id="r-cOutline">
+        </label>
       </div>
     </div>
 
@@ -909,6 +950,18 @@ const state = {
     density:   6,    // base cells per axis
     asymmetry: 0.60,
     gap:       4,
+  },
+  circle: {
+    style:        'rings',  // 'rings' | 'wedges' | 'beads'
+    count:        8,        // # rings or # wedges
+    innerRadius:  0.05,     // fraction of canvas half-min
+    outerRadius:  0.48,
+    rotation:     0,        // degrees, whole composition
+    spinPerRing:  0,        // degrees, added per ring/wedge index
+    gap:          2,        // px between rings (or angular gap for wedges, scaled)
+    beadsPerRing: 12,
+    beadSize:     0.08,     // fraction of canvas
+    outline:      false,    // hairline outline on rings
   },
   // ── EFFECT LAYER ─────────────────────────────────────────────
   // A Dot or Glyph overlay whose colors are SAMPLED from the just-
@@ -1223,6 +1276,7 @@ function render(target = canvas) {
   else if (state.mode === 'window')  windowRender(target, active);
   else if (state.mode === 'echo')    echoRender(target, active);
   else if (state.mode === 'grid')    gridRender(target, active);
+  else if (state.mode === 'circle')  circleRender(target, active);
   else                               sliceRender(target, active);
 
   // ── EFFECT LAYER overlay ────────────────────────────────────
@@ -2222,6 +2276,164 @@ function gridRender(target, active) {
   seedDisplay.textContent = `seed ${state.seed}`;
 }
 
+// ── Circle render ─────────────────────────────────────────────
+// Three sub-styles. RINGS: each photo fills a concentric annulus.
+// WEDGES: each photo fills a pie slice (radial). BEADS: small
+// thumbnails arrayed along multiple nested rings.
+function circleRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  // Background
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.params.bg === 'transparent') x.clearRect(0, 0, W, H);
+  else { x.fillStyle = state.params.bg; x.fillRect(0, 0, W, H); }
+  x.restore();
+
+  const C = state.circle;
+  const cx = W / 2, cy = H / 2;
+  const Rmax = Math.min(W, H) / 2;
+  const inner = Math.max(0, C.innerRadius) * Rmax;
+  const outer = Math.max(inner + 4, C.outerRadius * Rmax);
+  const rot0 = (C.rotation || 0) * Math.PI / 180;
+  const spinPer = (C.spinPerRing || 0) * Math.PI / 180;
+  const gap = Math.max(0, C.gap || 0);
+  const rng = mulberry32(state.seed);
+
+  if (C.style === 'rings') {
+    const N = Math.max(1, C.count);
+    const ringSpan = (outer - inner - gap * (N - 1)) / N;
+    if (ringSpan < 1) { stageInfo.textContent = 'Rings too thin — reduce count or gap.'; return; }
+    for (let i = 0; i < N; i++) {
+      const rInner = inner + i * (ringSpan + gap);
+      const rOuter = rInner + ringSpan;
+      const src = active[i % active.length];
+      if (!src) continue;
+      drawIntoAnnulus(x, src.img, cx, cy, rInner, rOuter, rot0 + i * spinPer);
+      if (C.outline) {
+        x.save();
+        x.strokeStyle = 'rgba(0,0,0,0.35)';
+        x.lineWidth = 1;
+        x.beginPath(); x.arc(cx, cy, rOuter, 0, Math.PI * 2); x.stroke();
+        x.beginPath(); x.arc(cx, cy, rInner, 0, Math.PI * 2); x.stroke();
+        x.restore();
+      }
+    }
+  } else if (C.style === 'wedges') {
+    const N = Math.max(2, C.count);
+    const angleGap = (gap / Math.max(outer, 1)) * 0.5; // gap converts to radians along outer arc
+    const step = (Math.PI * 2) / N;
+    for (let i = 0; i < N; i++) {
+      const a0 = rot0 + i * step + angleGap / 2;
+      const a1 = rot0 + (i + 1) * step - angleGap / 2;
+      const src = active[i % active.length];
+      if (!src) continue;
+      drawIntoWedge(x, src.img, cx, cy, inner, outer, a0, a1, spinPer * i);
+      if (C.outline) {
+        x.save();
+        x.strokeStyle = 'rgba(0,0,0,0.35)';
+        x.lineWidth = 1;
+        const p = wedgePath(cx, cy, inner, outer, a0, a1);
+        x.stroke(p);
+        x.restore();
+      }
+    }
+  } else if (C.style === 'beads') {
+    const ringCount = Math.max(1, C.count);
+    const beadsPerRing = Math.max(3, C.beadsPerRing || 12);
+    const beadSizePx = Math.max(8, C.beadSize * Math.min(W, H));
+    const span = outer - inner;
+    for (let r = 0; r < ringCount; r++) {
+      // Distribute rings evenly between inner and outer
+      const t = ringCount > 1 ? r / (ringCount - 1) : 0.5;
+      const ringRadius = inner + span * t;
+      const phase = rot0 + r * spinPer;
+      for (let b = 0; b < beadsPerRing; b++) {
+        const angle = phase + (b / beadsPerRing) * Math.PI * 2;
+        const bx = cx + Math.cos(angle) * ringRadius;
+        const by = cy + Math.sin(angle) * ringRadius;
+        // Pick image by sequential walk so each ring shifts photos
+        const imgIdx = (r * beadsPerRing + b) % active.length;
+        const src = active[imgIdx];
+        if (!src) continue;
+        drawIntoCircle(x, src.img, bx, by, beadSizePx / 2);
+      }
+    }
+  }
+
+  stageInfo.textContent = `${C.style} · ${C.count} · ${active.length} src`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
+// ── Circle helpers ───────────────────────────────────────────
+function annulusPath(cx, cy, rInner, rOuter) {
+  const p = new Path2D();
+  p.arc(cx, cy, rOuter, 0, Math.PI * 2);
+  if (rInner > 0.5) {
+    p.arc(cx, cy, rInner, 0, Math.PI * 2, true);
+  }
+  return p;
+}
+function wedgePath(cx, cy, rInner, rOuter, a0, a1) {
+  const p = new Path2D();
+  p.moveTo(cx + Math.cos(a0) * rInner, cy + Math.sin(a0) * rInner);
+  p.lineTo(cx + Math.cos(a0) * rOuter, cy + Math.sin(a0) * rOuter);
+  p.arc(cx, cy, rOuter, a0, a1);
+  p.lineTo(cx + Math.cos(a1) * rInner, cy + Math.sin(a1) * rInner);
+  if (rInner > 0.5) p.arc(cx, cy, rInner, a1, a0, true);
+  else              p.lineTo(cx, cy);
+  p.closePath();
+  return p;
+}
+function drawIntoAnnulus(ctx, img, cx, cy, rInner, rOuter, rotate = 0) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, rOuter, 0, Math.PI * 2);
+  if (rInner > 0.5) ctx.arc(cx, cy, rInner, 0, Math.PI * 2, true);
+  ctx.clip('evenodd');
+  // Fit the photo cover-style to the OUTER bounding box, rotated
+  ctx.translate(cx, cy);
+  if (rotate) ctx.rotate(rotate);
+  const box = rOuter * 2;
+  const r = Math.max(box / img.width, box / img.height);
+  const dw = img.width * r, dh = img.height * r;
+  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+  ctx.restore();
+}
+function drawIntoWedge(ctx, img, cx, cy, rInner, rOuter, a0, a1, rotate = 0) {
+  ctx.save();
+  // Clip to the wedge path
+  ctx.beginPath();
+  const p = wedgePath(cx, cy, rInner, rOuter, a0, a1);
+  ctx.clip(p);
+  // Place the photo centered in the wedge's bisector at outer radius midpoint
+  const midA = (a0 + a1) / 2;
+  const midR = (rInner + rOuter) / 2;
+  const tx = cx + Math.cos(midA) * midR;
+  const ty = cy + Math.sin(midA) * midR;
+  const box = rOuter * 2;
+  ctx.translate(tx, ty);
+  ctx.rotate(midA + Math.PI / 2 + rotate);  // align radially
+  const r = Math.max(box / img.width, box / img.height);
+  const dw = img.width * r, dh = img.height * r;
+  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+  ctx.restore();
+}
+function drawIntoCircle(ctx, img, cx, cy, radius) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.translate(cx, cy);
+  const box = radius * 2;
+  const r = Math.max(box / img.width, box / img.height);
+  const dw = img.width * r, dh = img.height * r;
+  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+  ctx.restore();
+}
+
 // ── Composite sources to an offscreen canvas (cover-fit + blend) ──
 function compositeSources(W, H, active, blur = 0) {
   const off = document.createElement('canvas');
@@ -2709,6 +2921,41 @@ function wireGrid() {
   bind('r-grGap',  'v-grGap',  'gap',       v => String(Math.round(v)));
 }
 wireGrid();
+
+// ── Circle mode wiring ────────────────────────────────────────
+function wireCircle() {
+  const bind = (id, valId, key, fmt) => {
+    const r = $(id), v = $(valId); if (!r) return;
+    r.addEventListener('input', () => {
+      state.circle[key] = parseFloat(r.value);
+      if (v) setVal(v, fmt(state.circle[key]));
+      render();
+    });
+  };
+  bind('r-cCount',    'v-cCount',    'count',        v => String(Math.round(v)));
+  bind('r-cInner',    'v-cInner',    'innerRadius',  v => v.toFixed(2));
+  bind('r-cOuter',    'v-cOuter',    'outerRadius',  v => v.toFixed(2));
+  bind('r-cRot',      'v-cRot',      'rotation',     v => Math.round(v) + '°');
+  bind('r-cSpin',     'v-cSpin',     'spinPerRing',  v => v.toFixed(1) + '°');
+  bind('r-cGap',      'v-cGap',      'gap',          v => String(Math.round(v)));
+  bind('r-cBeads',    'v-cBeads',    'beadsPerRing', v => String(Math.round(v)));
+  bind('r-cBeadSize', 'v-cBeadSize', 'beadSize',     v => v.toFixed(2));
+
+  document.querySelectorAll('#seg-circleStyle button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#seg-circleStyle button').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      state.circle.style = b.dataset.cs;
+      $('circleBeadOnly').style.display = b.dataset.cs === 'beads' ? '' : 'none';
+      render();
+    });
+  });
+  $('r-cOutline')?.addEventListener('change', e => {
+    state.circle.outline = e.target.checked;
+    render();
+  });
+}
+wireCircle();
 
 // ── Typing into the value field ───────────────────────────────
 // Each row__val is an editable input. Typing here updates the
