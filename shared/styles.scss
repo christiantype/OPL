@@ -1483,14 +1483,39 @@ body.about {
   color: rgba(255, 255, 255, 0.78);
 }
 
+// MOCKUPS ARE STATIC — no hovers, no text selection, no cursor changes.
+// They read as design artifacts, not live software. Annotation markers
+// re-enable pointer-events so the user can still tap to read.
+.annot-stage .project-mockup,
+.annot-stage .m1759 {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.annot-stage .m1759 *,
+.annot-stage .m1759 *::before,
+.annot-stage .m1759 *::after { cursor: default !important; }
+.annot-stage .annot-anchor,
+.annot-stage .annot-marker { pointer-events: auto; }
+
+// MOBILE: render the mockup at desktop dimensions, scaled to fit. The
+// mockup files disable their own (max-width: 48em) rules so the desktop
+// layout stays intact. The scale itself is set inline by JS (see
+// project.js setMobileMockupScale) since CSS scale() can't take a length.
 @media (max-width: 48em) {
-  // On mobile, the mockup reflows (panels stack, columns collapse) so
-  // desktop-calibrated marker positions stop landing on the right UI
-  // features. Hide markers + cards entirely; the stacked annotation list
-  // below the mockup carries the story on black.
-  .annot-card,
-  .annot-anchor,
-  .annot-marker { display: none !important; }
+  .annot-stage {
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 1120 / 880;
+    position: relative;
+  }
+  .annot-stage .project-mockup {
+    width: 1120px !important;
+    height: 880px !important;
+    transform-origin: top left;
+  }
+  // Floating cards step aside for the stacked list on small screens.
+  .annot-card { display: none !important; }
 }
 
 

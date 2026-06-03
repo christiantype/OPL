@@ -606,6 +606,22 @@
        it into the placeholder div rendered by renderMedia(). The mockup is
        a self-contained chunk of HTML (+ scoped <style> + optional <script>)
        living under /projects/<mock-dir>/ — fetched relative to this page. ── */
+  // On mobile, scale each .project-mockup down so the desktop-dimension
+  // mockup fits the available viewport. CSS scale() can't accept a length
+  // expression, so set inline (with !important) so it beats animate.js too.
+  function setMobileMockupScale() {
+    const isMobile = window.innerWidth <= 768;
+    document.querySelectorAll('.project-mockup').forEach(m => {
+      if (isMobile) {
+        const scale = Math.min(1, (window.innerWidth - 40) / 1120);
+        m.style.setProperty('transform', `scale(${scale})`, 'important');
+      } else {
+        m.style.removeProperty('transform');
+      }
+    });
+  }
+  window.addEventListener('resize', setMobileMockupScale);
+
   (function initMockups() {
     document.querySelectorAll('.project-mockup[data-mockup-src]').forEach(async el => {
       const src = el.getAttribute('data-mockup-src');
@@ -628,6 +644,7 @@
         // marker sticks to the UI element it labels even when the mockup
         // scrolls internally.
         rehoistAnnotationsInto(el);
+        setMobileMockupScale();
       } catch (e) {
         el.innerHTML = '<div class="project-mockup__err">Mockup failed to load: ' + src + '</div>';
         console.warn('Mockup load failed:', src, e);
@@ -638,10 +655,9 @@
   // Move .annot-anchor elements from the .annot-stage into the mockup's
   // .m1759 scroll container, converting top% (which was relative to the
   // visible stage) to absolute pixels of the mockup's full scrollHeight.
-  // Skipped on mobile — the mockup reflows and the stacked annotation
-  // list below the image carries the story instead.
+  // Runs on mobile too — the mockup renders at desktop dimensions (just
+  // scaled down to fit), so the same coordinates apply.
   function rehoistAnnotationsInto(mockupEl) {
-    if (window.matchMedia && window.matchMedia('(max-width: 48em)').matches) return;
     const stage = mockupEl.closest('.annot-stage');
     if (!stage) return;
     const m = mockupEl.querySelector('.m1759');

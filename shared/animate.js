@@ -17,7 +17,7 @@
   ].join(', ');
 
   const els = [...document.querySelectorAll(sel)].filter(
-    el => !el.closest('nav') && !el.closest('.project-row')
+    el => !el.closest('nav') && !el.closest('.project-row') && !el.classList.contains('project-mockup')
   );
 
   els.forEach(el => {
