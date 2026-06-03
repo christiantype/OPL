@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OP/AL — Remix</title>
+<script src="/AI-TOOLS/shared/gate.js"></script>
+<style>
+  /* ── Brand font ─────────────────────────────────────────────── */
+  @font-face {
+    font-family: 'Sidepiece-HoneyPie';
+    src: url('/shared/fonts/Sidepiece-HoneyPie.woff2') format('woff2');
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'Untitled Sans';
+    src: url('/shared/fonts/UntitledSans-Regular.otf') format('opentype');
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'Untitled Sans';
+    src: url('/shared/fonts/UntitledSans-Bold.otf') format('opentype');
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+
+  :root {
+    --bg:           #0d0d10;
+    --panel:       #131318;
+    --hairline:    #232328;
+    --text:        #efeeea;
+    --text-mid:    #8e8e94;
+    --text-dim:    #5a5a60;
+    --accent:      #FFD400;   /* OP/AL amber */
+    --cobalt:      #1c39bb;
+    --pink:        #ff94c9;
+    --pad:         18px;
+    --sans:        'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --display:     'Sidepiece-HoneyPie', sans-serif;
+    --mono:        'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 13px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  input::-webkit-slider-thumb { -webkit-appearance: none; }
+
+  /* ── App grid ───────────────────────────────────────────────── */
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr 300px;
+    grid-template-rows: 56px 1fr;
+    height: 100vh; width: 100vw;
+  }
+  .app > * { min-width: 0; min-height: 0; }
+
+  /* ── Top bar ────────────────────────────────────────────────── */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 var(--pad);
+    border-bottom: 1px solid var(--hairline);
+    background: var(--bg);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand__mark {
+    font-family: var(--display);
+    font-size: 22px; color: var(--text); letter-spacing: -0.02em;
+  }
+  .brand__sep { color: var(--text-dim); font-size: 18px; }
+  .brand__tool {
+    font-family: var(--sans);
+    font-size: 11px; letter-spacing: 0.20em; text-transform: uppercase;
+    color: var(--text-mid); padding-bottom: 1px;
+  }
+  .meta {
+    display: flex; align-items: center; gap: 18px;
+    font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text-mid);
+  }
+  .meta__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.3 } }
+
+  /* ── Left rail: images ──────────────────────────────────────── */
+  .images {
+    border-right: 1px solid var(--hairline);
+    padding: var(--pad);
+    overflow-y: auto;
+    background: var(--bg);
+  }
+  .images__label {
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-mid); margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .images__count { color: var(--accent); font-weight: 500; }
+  .drop {
+    border: 1px dashed var(--hairline);
+    padding: 24px 14px;
+    text-align: center;
+    color: var(--text-mid);
+    font-size: 11px; line-height: 1.5;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease;
+    margin-bottom: 14px;
+  }
+  .drop:hover, .drop.is-over {
+    border-color: var(--accent);
+    background: rgba(255, 212, 0, 0.04);
+    color: var(--text);
+  }
+  .drop__hint {
+    display: block; margin-top: 6px;
+    font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .thumb {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb__off::after {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(13, 13, 16, 0.78);
+    border: 1px dashed var(--text-dim);
+  }
+  .thumb__num {
+    position: absolute; top: 3px; left: 5px;
+    font-family: var(--mono); font-size: 9px; color: var(--text);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  }
+  .thumb__x {
+    position: absolute; top: 3px; right: 3px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55); color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; line-height: 1; cursor: pointer;
+    opacity: 0; transition: opacity 0.15s ease;
+  }
+  .thumb:hover .thumb__x { opacity: 1; }
+  .thumb__x:hover { background: var(--pink); color: #000; }
+
+  /* ── Stage: canvas ──────────────────────────────────────────── */
+  .stage {
+    background: #060608;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  #canvas {
+    max-width: 100%; max-height: 100%;
+    background: #000;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.7);
+    display: block;
+  }
+  .empty {
+    color: var(--text-dim);
+    text-align: center;
+    font-size: 13px; letter-spacing: 0.02em;
+  }
+  .empty strong { color: var(--text); font-weight: 500; display: block; margin-bottom: 6px; }
+  .stage-actions {
+    position: absolute; bottom: 18px; right: 18px;
+    display: flex; gap: 8px;
+  }
+  .stage-actions button {
+    background: var(--panel); border: 1px solid var(--hairline);
+    color: var(--text); padding: 9px 14px;
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .stage-actions button:hover { border-color: var(--accent); }
+  .stage-actions .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
+  .stage-actions .btn-primary:hover { background: #ffe34d; }
+  .stage-info {
+    position: absolute; top: 18px; left: 18px;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text-dim); letter-spacing: 0.06em;
+  }
+
+  /* ── Right rail: controls ───────────────────────────────────── */
+  .controls {
+    border-left: 1px solid var(--hairline);
+    padding: var(--pad);
+    overflow-y: auto;
+    background: var(--bg);
+  }
+  .ctrl-group {
+    margin-bottom: 22px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .ctrl-group:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+  .ctrl-label {
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-mid); margin-bottom: 14px;
+  }
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .row:last-child { margin-bottom: 0; }
+  .row__label { font-size: 12px; color: var(--text); }
+  .row__val   { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 22px;
+    background: transparent; cursor: pointer; padding: 0; margin: 0 0 14px;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    background: var(--hairline); height: 1px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); border: none; margin-top: -7px;
+  }
+  input[type=range]::-moz-range-track { background: var(--hairline); height: 1px; }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); border: none;
+  }
+
+  select {
+    width: 100%; padding: 8px 10px;
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--hairline);
+    font-family: var(--sans); font-size: 12px;
+    margin-bottom: 10px; cursor: pointer;
+  }
+  .seg {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px; margin-bottom: 4px;
+  }
+  .seg button {
+    background: var(--panel); border: 1px solid var(--hairline);
+    color: var(--text-mid); padding: 8px 4px;
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.15s ease;
+  }
+  .seg button.is-active {
+    background: var(--accent); color: #000; border-color: var(--accent);
+  }
+  .seg button:hover:not(.is-active) { color: var(--text); border-color: var(--text-dim); }
+
+  /* ── Mobile fallback (read-only) ────────────────────────────── */
+  @media (max-width: 880px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: 56px 220px 1fr 280px; }
+    .images { border-right: none; border-bottom: 1px solid var(--hairline); }
+    .controls { border-left: none; border-top: 1px solid var(--hairline); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark">OP/AL</span>
+      <span class="brand__sep">/</span>
+      <span class="brand__tool">Remix · Cover Cut</span>
+    </div>
+    <div class="meta">
+      <span><span class="meta__dot"></span>&nbsp;&nbsp;Live</span>
+      <span id="seed-display">seed —</span>
+    </div>
+  </header>
+
+  <!-- LEFT: IMAGES -->
+  <aside class="images">
+    <div class="images__label">Sources <span class="images__count" id="count-display">0</span></div>
+    <label class="drop" id="drop">
+      ↑ Drag photos here<span class="drop__hint">or click to choose</span>
+      <input type="file" accept="image/*" multiple style="display:none" id="file-input">
+    </label>
+    <div class="thumbs" id="thumbs"></div>
+  </aside>
+
+  <!-- CENTER: CANVAS -->
+  <section class="stage" id="stage">
+    <canvas id="canvas" width="1000" height="1000"></canvas>
+    <div class="empty" id="empty" style="display:none">
+      <strong>Drop your photos to start.</strong>
+      Both of yours, all of them — the more the merrier.
+    </div>
+    <div class="stage-info" id="stage-info">— / —</div>
+    <div class="stage-actions">
+      <button id="btn-reroll">↻ Re-roll</button>
+      <button id="btn-export-svg">Export SVG</button>
+      <button id="btn-export" class="btn-primary">Export PNG</button>
+    </div>
+  </section>
+
+  <!-- RIGHT: CONTROLS -->
+  <aside class="controls">
+    <div class="ctrl-group">
+      <div class="ctrl-label">Mode</div>
+      <div class="seg" id="seg-mode">
+        <button data-mode="slice" class="is-active">Slice</button>
+        <button data-mode="dot">Dot</button>
+        <button data-mode="" disabled style="opacity:0.35">More…</button>
+      </div>
+    </div>
+
+    <!-- DOT MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="dot" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Dot</div>
+        <div class="row"><span class="row__label">Resolution</span><span class="row__val" id="v-resolution">4</span></div>
+        <input type="range" id="r-resolution" min="1" max="8" step="1" value="4">
+        <div class="row"><span class="row__label">Spacing</span><span class="row__val" id="v-spacing">4</span></div>
+        <input type="range" id="r-spacing" min="1" max="8" step="1" value="4">
+        <div class="row"><span class="row__label">Size</span><span class="row__val" id="v-dotSize">4</span></div>
+        <input type="range" id="r-dotSize" min="1" max="8" step="1" value="4">
+        <div class="row"><span class="row__label">Grain</span><span class="row__val" id="v-grain">2</span></div>
+        <input type="range" id="r-grain" min="1" max="8" step="1" value="2">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Underlay</div>
+        <div class="row"><span class="row__label">Image opacity</span><span class="row__val" id="v-imageOpacity">1</span></div>
+        <input type="range" id="r-imageOpacity" min="1" max="8" step="1" value="1">
+        <div class="row"><span class="row__label">Image blur</span><span class="row__val" id="v-imageBlur">6</span></div>
+        <input type="range" id="r-imageBlur" min="1" max="8" step="1" value="6">
+      </div>
+    </div>
+
+    <!-- SLICE MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="slice">
+    <div class="ctrl-group">
+      <div class="ctrl-label">Geometry</div>
+      <div class="row"><span class="row__label">Slices</span><span class="row__val" id="v-count">40</span></div>
+      <input type="range" id="r-count" min="2" max="160" step="1" value="40">
+      <div class="row"><span class="row__label">Angle</span><span class="row__val" id="v-angle">90°</span></div>
+      <input type="range" id="r-angle" min="0" max="180" step="1" value="90">
+      <div class="row"><span class="row__label">Variation</span><span class="row__val" id="v-variation">0.30</span></div>
+      <input type="range" id="r-variation" min="0" max="1" step="0.01" value="0.3">
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Jitter</div>
+      <div class="row"><span class="row__label">Offset</span><span class="row__val" id="v-offset">0.10</span></div>
+      <input type="range" id="r-offset" min="0" max="0.5" step="0.01" value="0.1">
+      <div class="row"><span class="row__label">Rotation</span><span class="row__val" id="v-rot">0°</span></div>
+      <input type="range" id="r-rot" min="0" max="30" step="0.5" value="0">
+      <div class="row"><span class="row__label">Scale</span><span class="row__val" id="v-scale">0.00</span></div>
+      <input type="range" id="r-scale" min="0" max="0.5" step="0.01" value="0">
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Source pick</div>
+      <div class="seg" id="seg-pick">
+        <button data-pick="random" class="is-active">Random</button>
+        <button data-pick="sequential">In order</button>
+        <button data-pick="alternating">Alternating</button>
+      </div>
+    </div>
+    </div><!-- /slice mode group -->
+
+    <!-- SHARED CONTROLS -->
+    <div class="ctrl-group">
+      <div class="ctrl-label">Mix</div>
+      <select id="r-blend">
+        <option value="source-over">Normal</option>
+        <option value="multiply">Multiply</option>
+        <option value="screen">Screen</option>
+        <option value="overlay">Overlay</option>
+        <option value="difference">Difference</option>
+        <option value="exclusion">Exclusion</option>
+        <option value="hard-light">Hard Light</option>
+        <option value="soft-light">Soft Light</option>
+        <option value="color-dodge">Color Dodge</option>
+        <option value="luminosity">Luminosity</option>
+      </select>
+      <div class="seg" id="seg-bg">
+        <button data-bg="#000" class="is-active">Black</button>
+        <button data-bg="#fff">White</button>
+        <button data-bg="transparent">Transparent</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Output</div>
+      <div class="row"><span class="row__label">Export size</span><span class="row__val" id="v-export">3000×3000</span></div>
+      <input type="range" id="r-export" min="1000" max="5000" step="500" value="3000">
+    </div>
+  </aside>
+</div>
+
+<script>
+/* ============================================================
+   OP/AL — REMIX (Cover Cut)
+   Slice + composite photographs into album-cover variations.
+   Multiple sources, seed-driven so a remix can be recovered.
+   ============================================================ */
+
+// ── State ─────────────────────────────────────────────────────
+const state = {
+  images: [],          // [{ id, name, img: HTMLImageElement, enabled: true }]
+  seed: Math.floor(Math.random() * 1e9),
+  mode: 'slice',       // 'slice' | 'dot'
+  params: {
+    // shared
+    blend:     'source-over',
+    bg:        '#000',
+    pick:      'random',
+    export:    3000,
+    // slice
+    count:     40,
+    angle:     90,     // degrees
+    variation: 0.3,
+    offset:    0.1,
+    rot:       0,
+    scale:     0,
+    // dot mode (1-8 dial values; mapped to real values in dotRender)
+    resolution:   4,   // 1..8 → 20..200 grid
+    spacing:      4,   // 1..8 → packing factor
+    dotSize:      4,   // 1..8 → dot diameter as fraction of cell
+    grain:        2,   // 1..8 → jitter
+    imageOpacity: 1,   // 1..8 → background image opacity
+    imageBlur:    6,   // 1..8 → blur radius before sampling
+  },
+};
+
+// 1..8 → real value lookups for dot mode dials
+const DOT = {
+  resolution:   [20, 40, 60, 80, 110, 150, 200, 280],
+  spacing:      [0.55, 0.70, 0.85, 1.00, 1.15, 1.30, 1.50, 1.75],
+  dotSize:      [0.25, 0.40, 0.55, 0.70, 0.85, 1.00, 1.20, 1.45],
+  grain:        [0, 0.08, 0.18, 0.30, 0.45, 0.60, 0.80, 1.00],
+  imageOpacity: [0, 0.06, 0.12, 0.20, 0.30, 0.45, 0.65, 0.85],
+  imageBlur:    [0, 1, 3, 6, 10, 16, 24, 36],
+};
+
+// ── DOM refs ──────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const canvas    = $('canvas');
+const ctx       = canvas.getContext('2d');
+const stage     = $('stage');
+const empty     = $('empty');
+const stageInfo = $('stage-info');
+const thumbsEl  = $('thumbs');
+const fileInput = $('file-input');
+const drop      = $('drop');
+const seedDisplay  = $('seed-display');
+const countDisplay = $('count-display');
+
+// ── Seedable random (mulberry32) ──────────────────────────────
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = a;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ── Image upload (file picker + drag-drop) ────────────────────
+let nextId = 1;
+function addFiles(files) {
+  Array.from(files).forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      state.images.push({ id: nextId++, name: f.name, img, enabled: true });
+      renderThumbs();
+      render();
+    };
+    img.src = url;
+  });
+}
+fileInput.addEventListener('change', e => addFiles(e.target.files));
+drop.addEventListener('click', e => {
+  if (e.target.tagName !== 'INPUT') fileInput.click();
+});
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.add('is-over');
+}));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.remove('is-over');
+}));
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
+});
+// Page-wide drag-drop too
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  if (e.target.closest('.drop')) return;  // handled above
+  e.preventDefault();
+  if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
+});
+
+// ── Thumbnail UI ──────────────────────────────────────────────
+function renderThumbs() {
+  thumbsEl.innerHTML = '';
+  state.images.forEach((s, i) => {
+    const t = document.createElement('div');
+    t.className = 'thumb' + (s.enabled ? '' : ' thumb__off');
+    t.innerHTML = `
+      <img src="${s.img.src}" alt="${s.name}">
+      <span class="thumb__num">${String(i+1).padStart(2,'0')}</span>
+      <span class="thumb__x" data-x="${s.id}">×</span>
+    `;
+    t.addEventListener('click', e => {
+      if (e.target.dataset.x) {
+        // remove
+        state.images = state.images.filter(x => x.id !== s.id);
+        renderThumbs(); render();
+      } else {
+        // toggle enable
+        s.enabled = !s.enabled;
+        renderThumbs(); render();
+      }
+    });
+    thumbsEl.appendChild(t);
+  });
+  countDisplay.textContent = String(state.images.length);
+}
+
+// ── Render dispatch ───────────────────────────────────────────
+function render(target = canvas) {
+  const active = state.images.filter(s => s.enabled);
+  if (!active.length) {
+    const x = target.getContext('2d');
+    x.clearRect(0, 0, target.width, target.height);
+    empty.style.display = 'block';
+    canvas.style.visibility = 'hidden';
+    stageInfo.textContent = `— / —`;
+    return;
+  }
+  empty.style.display = 'none';
+  canvas.style.visibility = 'visible';
+  if (state.mode === 'dot') dotRender(target, active);
+  else                       sliceRender(target, active);
+}
+
+// ── Slice render ──────────────────────────────────────────────
+function sliceRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  // Background
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.params.bg === 'transparent') {
+    x.clearRect(0, 0, W, H);
+  } else {
+    x.fillStyle = state.params.bg;
+    x.fillRect(0, 0, W, H);
+  }
+  x.restore();
+
+  const p = state.params;
+  const rng = mulberry32(state.seed);
+  const angleRad = (p.angle * Math.PI) / 180;
+
+  // Generate slice widths along the X axis (in rotated frame)
+  const slices = [];
+  const baseW = W / p.count;
+  // Extra coverage to handle rotation
+  const extend = W;          // how much to extend each side
+  let pos = -extend;
+  let i = 0;
+  while (pos < W + extend) {
+    const w = Math.max(2, baseW * (1 + (rng() - 0.5) * 2 * p.variation));
+    slices.push({ x: pos, w, idx: i });
+    pos += w; i++;
+  }
+
+  // Per-slice picks + jitter
+  let pickIdx = 0;
+  slices.forEach(s => {
+    let imgSrc;
+    if (p.pick === 'sequential')      imgSrc = active[pickIdx % active.length];
+    else if (p.pick === 'alternating') imgSrc = active[s.idx % active.length];
+    else                              imgSrc = active[Math.floor(rng() * active.length)];
+    pickIdx++;
+
+    const img = imgSrc.img;
+    const offY = (rng() - 0.5) * 2 * p.offset * H;
+    const rot  = (rng() - 0.5) * 2 * (p.rot * Math.PI / 180);
+    const sc   = 1 + (rng() - 0.5) * 2 * p.scale;
+
+    x.save();
+    x.globalCompositeOperation = p.blend;
+
+    // Rotate slice space around canvas center
+    x.translate(W / 2, H / 2);
+    x.rotate(angleRad);
+    x.translate(-W / 2, -H / 2);
+
+    // Map slice region to source crop. Use cover-fit:
+    //   source-aspect → cropped to canvas region's aspect
+    const sw = img.width * (s.w / W);
+    const srcX = Math.max(0, Math.min(img.width - sw,
+                  ((s.x + s.w / 2) / W) * img.width - sw / 2));
+    const sh = img.height;
+    // Apply per-slice transforms inside slice frame
+    x.translate(s.x + s.w / 2, H / 2 + offY);
+    x.rotate(rot);
+    x.scale(sc, sc);
+    x.drawImage(
+      img,
+      srcX, 0, sw, sh,
+      -s.w / 2, -H / 2, s.w, H
+    );
+    x.restore();
+  });
+
+  stageInfo.textContent = `${active.length} src · ${slices.length} cuts · seed ${state.seed}`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
+// ── Composite sources to an offscreen canvas (cover-fit + blend) ──
+function compositeSources(W, H, active, blur = 0) {
+  const off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  const oc = off.getContext('2d');
+  // Soft white base so blend math has something to work against
+  oc.fillStyle = '#fff';
+  oc.fillRect(0, 0, W, H);
+  const alpha = 1 / Math.max(1, active.length) + 0.15;
+  active.forEach(s => {
+    oc.save();
+    oc.globalCompositeOperation = state.params.blend;
+    oc.globalAlpha = Math.min(1, alpha);
+    const img = s.img;
+    const r = Math.max(W / img.width, H / img.height);
+    const dw = img.width * r, dh = img.height * r;
+    oc.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    oc.restore();
+  });
+  if (blur > 0) {
+    const blurred = document.createElement('canvas');
+    blurred.width = W; blurred.height = H;
+    const bc = blurred.getContext('2d');
+    bc.filter = `blur(${blur}px)`;
+    bc.drawImage(off, 0, 0);
+    return blurred;
+  }
+  return off;
+}
+
+// ── Dot render — sample composite at a grid, draw colored circles ──
+function dotRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const p = state.params;
+  const N    = DOT.resolution[p.resolution - 1];
+  const pack = DOT.spacing[p.spacing - 1];        // packing factor (>1 = overlap)
+  const sz   = DOT.dotSize[p.dotSize - 1];        // dot diameter as fraction of cell
+  const grain= DOT.grain[p.grain - 1];            // jitter
+  const ovr  = DOT.imageOpacity[p.imageOpacity - 1]; // underlay opacity
+  const blr  = DOT.imageBlur[p.imageBlur - 1] * (W / 1000); // scale blur to canvas
+  const rng  = mulberry32(state.seed);
+
+  const comp = compositeSources(W, H, active, blr);
+  const imgData = comp.getContext('2d').getImageData(0, 0, W, H).data;
+
+  // Background
+  if (p.bg === 'transparent') x.clearRect(0, 0, W, H);
+  else { x.fillStyle = p.bg; x.fillRect(0, 0, W, H); }
+
+  // Optional source underlay
+  if (ovr > 0) {
+    x.save();
+    x.globalAlpha = ovr;
+    x.drawImage(comp, 0, 0);
+    x.restore();
+  }
+
+  // Grid of dots
+  const step  = W / N;
+  const radius = (step * sz * pack) / 2;
+  for (let yi = 0; yi < N; yi++) {
+    for (let xi = 0; xi < N; xi++) {
+      const cx = xi * step + step / 2 + (rng() - 0.5) * grain * step;
+      const cy = yi * step + step / 2 + (rng() - 0.5) * grain * step;
+      const sx = Math.max(0, Math.min(W - 1, Math.floor(cx)));
+      const sy = Math.max(0, Math.min(H - 1, Math.floor(cy)));
+      const i = (sy * W + sx) * 4;
+      const r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
+      const a = imgData[i + 3] / 255;
+      x.fillStyle = `rgba(${r},${g},${b},${a})`;
+      x.beginPath();
+      x.arc(cx, cy, radius, 0, Math.PI * 2);
+      x.fill();
+    }
+  }
+
+  stageInfo.textContent = `${active.length} src · ${N}² dots · seed ${state.seed}`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
+// ── Build SVG (dot mode) — same algorithm, but emit <circle> ──
+function buildSVG(size, active) {
+  const p = state.params;
+  const N    = DOT.resolution[p.resolution - 1];
+  const pack = DOT.spacing[p.spacing - 1];
+  const sz   = DOT.dotSize[p.dotSize - 1];
+  const grain= DOT.grain[p.grain - 1];
+  const ovr  = DOT.imageOpacity[p.imageOpacity - 1];
+  const blr  = DOT.imageBlur[p.imageBlur - 1] * (size / 1000);
+  const rng  = mulberry32(state.seed);
+  const comp = compositeSources(size, size, active, blr);
+  const imgData = comp.getContext('2d').getImageData(0, 0, size, size).data;
+
+  const step = size / N;
+  const radius = (step * sz * pack) / 2;
+  const bg = p.bg === 'transparent' ? '' : `<rect width="${size}" height="${size}" fill="${p.bg}"/>`;
+  let underlay = '';
+  if (ovr > 0) underlay = `<image href="${comp.toDataURL()}" width="${size}" height="${size}" opacity="${ovr.toFixed(2)}"/>`;
+  let circles = '';
+  for (let yi = 0; yi < N; yi++) {
+    for (let xi = 0; xi < N; xi++) {
+      const cx = xi * step + step / 2 + (rng() - 0.5) * grain * step;
+      const cy = yi * step + step / 2 + (rng() - 0.5) * grain * step;
+      const sx = Math.max(0, Math.min(size - 1, Math.floor(cx)));
+      const sy = Math.max(0, Math.min(size - 1, Math.floor(cy)));
+      const i = (sy * size + sx) * 4;
+      const r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
+      circles += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${radius.toFixed(2)}" fill="rgb(${r},${g},${b})"/>`;
+    }
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${bg}${underlay}${circles}</svg>`;
+}
+
+// ── Controls wiring ───────────────────────────────────────────
+function wireSlider(rangeId, valueId, key, fmt) {
+  const r = $(rangeId), v = $(valueId);
+  r.addEventListener('input', () => {
+    state.params[key] = parseFloat(r.value);
+    v.textContent = fmt(state.params[key]);
+    render();
+  });
+}
+// Slice sliders
+wireSlider('r-count',     'v-count',     'count',     v => String(Math.round(v)));
+wireSlider('r-angle',     'v-angle',     'angle',     v => Math.round(v) + '°');
+wireSlider('r-variation', 'v-variation', 'variation', v => v.toFixed(2));
+wireSlider('r-offset',    'v-offset',    'offset',    v => v.toFixed(2));
+wireSlider('r-rot',       'v-rot',       'rot',       v => v.toFixed(1) + '°');
+wireSlider('r-scale',     'v-scale',     'scale',     v => v.toFixed(2));
+// Dot dials (1..8 integer)
+wireSlider('r-resolution',   'v-resolution',   'resolution',   v => String(v));
+wireSlider('r-spacing',      'v-spacing',      'spacing',      v => String(v));
+wireSlider('r-dotSize',      'v-dotSize',      'dotSize',      v => String(v));
+wireSlider('r-grain',        'v-grain',        'grain',        v => String(v));
+wireSlider('r-imageOpacity', 'v-imageOpacity', 'imageOpacity', v => String(v));
+wireSlider('r-imageBlur',    'v-imageBlur',    'imageBlur',    v => String(v));
+
+// Mode picker
+function applyMode() {
+  document.querySelectorAll('.mode-group').forEach(g => {
+    g.style.display = g.dataset.modeShow === state.mode ? '' : 'none';
+  });
+  document.querySelectorAll('#seg-mode button').forEach(b => {
+    b.classList.toggle('is-active', b.dataset.mode === state.mode);
+  });
+  render();
+}
+document.querySelectorAll('#seg-mode button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!btn.dataset.mode) return;
+    state.mode = btn.dataset.mode;
+    applyMode();
+  });
+});
+applyMode();
+$('r-export').addEventListener('input', e => {
+  state.params.export = parseInt(e.target.value, 10);
+  $('v-export').textContent = `${state.params.export}×${state.params.export}`;
+});
+$('r-blend').addEventListener('change', e => {
+  state.params.blend = e.target.value;
+  render();
+});
+document.querySelectorAll('#seg-bg button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#seg-bg button').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    state.params.bg = btn.dataset.bg;
+    render();
+  });
+});
+document.querySelectorAll('#seg-pick button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#seg-pick button').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    state.params.pick = btn.dataset.pick;
+    render();
+  });
+});
+
+// SVG export — dot mode only (slice mode is raster by nature).
+$('btn-export-svg').addEventListener('click', () => {
+  const active = state.images.filter(s => s.enabled);
+  if (!active.length) { alert('Add some photos first.'); return; }
+  if (state.mode !== 'dot') {
+    alert('SVG export is available in Dot mode (slices are raster). Switch modes to export SVG.');
+    return;
+  }
+  const size = state.params.export;
+  const svg = buildSVG(size, active);
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.download = `opal-remix-dot-${state.seed}-${size}.svg`;
+  a.href = URL.createObjectURL(blob);
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+// Re-roll: new seed
+$('btn-reroll').addEventListener('click', () => {
+  state.seed = Math.floor(Math.random() * 1e9);
+  render();
+});
+
+// Export: render at chosen size, download PNG
+$('btn-export').addEventListener('click', () => {
+  const size = state.params.export;
+  const out = document.createElement('canvas');
+  out.width = size; out.height = size;
+  render(out);
+  out.toBlob(blob => {
+    const a = document.createElement('a');
+    a.download = `opal-remix-${state.seed}-${size}.png`;
+    a.href = URL.createObjectURL(blob);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }, 'image/png');
+});
+
+// ── First paint ───────────────────────────────────────────────
+empty.style.display = 'block';
+canvas.style.visibility = 'hidden';
+seedDisplay.textContent = `seed ${state.seed}`;
+
+// Persist last-used parameters (not images — those are blobs).
+const LS = 'opal-remix.v1';
+try {
+  const saved = JSON.parse(localStorage.getItem(LS) || 'null');
+  if (saved && saved.params) {
+    Object.assign(state.params, saved.params);
+    if (saved.mode) state.mode = saved.mode;
+    // Push values back into UI
+    const set = (id, vId, val, fmt) => { const r = $(id), v = $(vId); if (r) r.value = val; if (v && fmt) v.textContent = fmt(val); };
+    set('r-count',     'v-count',     state.params.count,     v => String(v));
+    set('r-angle',     'v-angle',     state.params.angle,     v => v + '°');
+    set('r-variation', 'v-variation', state.params.variation, v => v.toFixed(2));
+    set('r-offset',    'v-offset',    state.params.offset,    v => v.toFixed(2));
+    set('r-rot',       'v-rot',       state.params.rot,       v => v.toFixed(1) + '°');
+    set('r-scale',     'v-scale',     state.params.scale,     v => v.toFixed(2));
+    set('r-resolution',   'v-resolution',   state.params.resolution,   v => String(v));
+    set('r-spacing',      'v-spacing',      state.params.spacing,      v => String(v));
+    set('r-dotSize',      'v-dotSize',      state.params.dotSize,      v => String(v));
+    set('r-grain',        'v-grain',        state.params.grain,        v => String(v));
+    set('r-imageOpacity', 'v-imageOpacity', state.params.imageOpacity, v => String(v));
+    set('r-imageBlur',    'v-imageBlur',    state.params.imageBlur,    v => String(v));
+    $('r-blend').value = state.params.blend;
+    $('r-export').value = state.params.export;
+    $('v-export').textContent = `${state.params.export}×${state.params.export}`;
+    document.querySelectorAll('#seg-bg button').forEach(b => b.classList.toggle('is-active', b.dataset.bg === state.params.bg));
+    document.querySelectorAll('#seg-pick button').forEach(b => b.classList.toggle('is-active', b.dataset.pick === state.params.pick));
+    applyMode();
+  }
+} catch (e) {}
+setInterval(() => {
+  try { localStorage.setItem(LS, JSON.stringify({ params: state.params, mode: state.mode })); } catch (e) {}
+}, 2000);
+</script>
+</body>
+</html>
