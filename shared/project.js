@@ -638,7 +638,10 @@
   // Move .annot-anchor elements from the .annot-stage into the mockup's
   // .m1759 scroll container, converting top% (which was relative to the
   // visible stage) to absolute pixels of the mockup's full scrollHeight.
+  // Skipped on mobile — the mockup reflows and the stacked annotation
+  // list below the image carries the story instead.
   function rehoistAnnotationsInto(mockupEl) {
+    if (window.matchMedia && window.matchMedia('(max-width: 48em)').matches) return;
     const stage = mockupEl.closest('.annot-stage');
     if (!stage) return;
     const m = mockupEl.querySelector('.m1759');
