@@ -366,12 +366,70 @@
   <aside class="controls">
     <div class="ctrl-group">
       <div class="ctrl-label">Mode</div>
-      <div class="seg" id="seg-mode" style="grid-template-columns:repeat(5,1fr)">
+      <div class="seg" id="seg-mode" style="grid-template-columns:repeat(4,1fr);row-gap:4px">
         <button data-mode="slice" class="is-active">Slice</button>
         <button data-mode="dot">Dot</button>
         <button data-mode="glyph">Glyph</button>
         <button data-mode="strata">Strata</button>
         <button data-mode="scatter">Scatter</button>
+        <button data-mode="window">Window</button>
+        <button data-mode="echo">Echo</button>
+        <button data-mode="grid">Grid</button>
+      </div>
+    </div>
+
+    <!-- WINDOW MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="window" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Window</div>
+        <div class="row"><span class="row__label">Shape</span></div>
+        <div class="seg" id="seg-winShape" style="grid-template-columns:repeat(6,1fr);margin-bottom:14px">
+          <button data-s="&amp;" class="is-active">&amp;</button>
+          <button data-s="✱">✱</button>
+          <button data-s="◢">◢</button>
+          <button data-s="●">●</button>
+          <button data-s="/">/</button>
+          <button data-s="@">@</button>
+        </div>
+        <input type="text" id="r-winChar" value="&amp;" maxlength="3" style="width:100%;padding:8px 10px;background:var(--panel);color:var(--text);border:1px solid var(--hairline);font-family:var(--sans);font-size:16px;text-align:center;margin-bottom:14px" placeholder="or type any char">
+        <div class="row"><span class="row__label">Count</span><span class="row__val" id="v-winCount">1</span></div>
+        <input type="range" id="r-winCount" min="1" max="10" step="1" value="1">
+        <div class="row"><span class="row__label">Size</span><span class="row__val" id="v-winSize">0.80</span></div>
+        <input type="range" id="r-winSize" min="0.20" max="1.5" step="0.01" value="0.80">
+        <div class="row"><span class="row__label">Position jitter</span><span class="row__val" id="v-winJitter">0.20</span></div>
+        <input type="range" id="r-winJitter" min="0" max="1" step="0.01" value="0.20">
+      </div>
+    </div>
+
+    <!-- ECHO MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="echo" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Echo</div>
+        <div class="row"><span class="row__label">Repeats</span><span class="row__val" id="v-ecCount">5</span></div>
+        <input type="range" id="r-ecCount" min="2" max="14" step="1" value="5">
+        <div class="row"><span class="row__label">Offset X</span><span class="row__val" id="v-ecDx">40</span></div>
+        <input type="range" id="r-ecDx" min="-200" max="200" step="2" value="40">
+        <div class="row"><span class="row__label">Offset Y</span><span class="row__val" id="v-ecDy">40</span></div>
+        <input type="range" id="r-ecDy" min="-200" max="200" step="2" value="40">
+        <div class="row"><span class="row__label">Fade</span><span class="row__val" id="v-ecFade">0.85</span></div>
+        <input type="range" id="r-ecFade" min="0" max="1" step="0.01" value="0.85">
+        <div class="row"><span class="row__label">Scale step</span><span class="row__val" id="v-ecScale">0.00</span></div>
+        <input type="range" id="r-ecScale" min="-0.30" max="0.30" step="0.01" value="0">
+        <div class="row"><span class="row__label">Base size</span><span class="row__val" id="v-ecBase">0.60</span></div>
+        <input type="range" id="r-ecBase" min="0.20" max="1.20" step="0.01" value="0.60">
+      </div>
+    </div>
+
+    <!-- BROKEN GRID MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="grid" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Broken grid</div>
+        <div class="row"><span class="row__label">Density</span><span class="row__val" id="v-grDens">6</span></div>
+        <input type="range" id="r-grDens" min="3" max="14" step="1" value="6">
+        <div class="row"><span class="row__label">Asymmetry</span><span class="row__val" id="v-grAsym">0.60</span></div>
+        <input type="range" id="r-grAsym" min="0" max="1" step="0.01" value="0.60">
+        <div class="row"><span class="row__label">Gap</span><span class="row__val" id="v-grGap">4</span></div>
+        <input type="range" id="r-grGap" min="0" max="24" step="1" value="4">
       </div>
     </div>
 
@@ -573,6 +631,24 @@ const state = {
     gap:       0,
     shiftMode: 'alternate', // 'alternate' | 'random' | 'cascade'
   },
+  window: {
+    char:   '&',
+    count:  1,
+    size:   0.80,    // fraction of canvas dimension
+    jitter: 0.20,    // 0..1
+  },
+  echo: {
+    count: 5,
+    dx: 40, dy: 40,
+    fade: 0.85,
+    scaleStep: 0,
+    baseSize: 0.60,  // fraction of canvas dimension
+  },
+  grid: {
+    density:   6,    // base cells per axis
+    asymmetry: 0.60,
+    gap:       4,
+  },
   scatter: {
     items: [],          // [{ imageId, x, y, size, rot }] — positions in canvas px
     showLines: true,
@@ -728,6 +804,9 @@ function render(target = canvas) {
   else if (state.mode === 'glyph')   glyphRender(target, active);
   else if (state.mode === 'strata')  strataRender(target, active);
   else if (state.mode === 'scatter') scatterRender(target, active);
+  else if (state.mode === 'window')  windowRender(target, active);
+  else if (state.mode === 'echo')    echoRender(target, active);
+  else if (state.mode === 'grid')    gridRender(target, active);
   else                               sliceRender(target, active);
 }
 
@@ -1136,6 +1215,188 @@ function strataRender(target, active) {
   seedDisplay.textContent = `seed ${state.seed}`;
 }
 
+// ── Window render ─────────────────────────────────────────────
+// One or more bold shapes/chars carved into the canvas; each shape is
+// a "window" through which a photo shows. The shape IS the composition.
+function windowRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  // Background
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.params.bg === 'transparent') x.clearRect(0, 0, W, H);
+  else { x.fillStyle = state.params.bg; x.fillRect(0, 0, W, H); }
+  x.restore();
+
+  const w = state.window;
+  const rng = mulberry32(state.seed);
+  const baseSize = Math.min(W, H) * w.size;
+
+  for (let i = 0; i < w.count; i++) {
+    const img = active[i % active.length].img;
+    // Position — center for single window, jittered for multi
+    let cx, cy;
+    if (w.count === 1) { cx = W / 2; cy = H / 2; }
+    else {
+      cx = W / 2 + (rng() - 0.5) * 2 * w.jitter * W * 0.45;
+      cy = H / 2 + (rng() - 0.5) * 2 * w.jitter * H * 0.45;
+    }
+    const size = baseSize * (w.count === 1 ? 1 : 0.7);
+
+    // Build the window: photo masked by the character shape.
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const oc = off.getContext('2d');
+    // Photo cover-fit centered on (cx, cy) at size×size
+    const ratio = Math.max(size / img.width, size / img.height);
+    const pw = img.width * ratio, ph = img.height * ratio;
+    oc.drawImage(img, cx - pw / 2, cy - ph / 2, pw, ph);
+    // Mask: keep only where the character shape was drawn
+    oc.globalCompositeOperation = 'destination-in';
+    oc.fillStyle = '#000';
+    oc.font = `${size}px ${
+      /[A-Za-z0-9&@/]/.test(w.char) ? '"Untitled Sans", system-ui, sans-serif'
+                                    : 'system-ui, sans-serif'
+    }`;
+    oc.textAlign = 'center';
+    oc.textBaseline = 'middle';
+    oc.fillText(w.char, cx, cy);
+
+    x.drawImage(off, 0, 0);
+  }
+
+  stageInfo.textContent = `${w.count}× ${w.char} · ${active.length} src`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
+// ── Echo render ───────────────────────────────────────────────
+// Each photo drawn N times with offset and decreasing opacity.
+// Contrail-of-itself effect.
+function echoRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.params.bg === 'transparent') x.clearRect(0, 0, W, H);
+  else { x.fillStyle = state.params.bg; x.fillRect(0, 0, W, H); }
+  x.restore();
+
+  const e = state.echo;
+  const rng = mulberry32(state.seed);
+  const baseSize = Math.min(W, H) * e.baseSize;
+
+  // For each image, place a base position then draw echo trail
+  active.forEach((src, idx) => {
+    const img = src.img;
+    // Distribute base positions around canvas
+    const colCount = Math.ceil(Math.sqrt(active.length));
+    const col = idx % colCount;
+    const row = Math.floor(idx / colCount);
+    const cellW = W / colCount;
+    const cellH = H / colCount;
+    const cx = (col + 0.5) * cellW + (rng() - 0.5) * cellW * 0.3;
+    const cy = (row + 0.5) * cellH + (rng() - 0.5) * cellH * 0.3;
+
+    // Cover-crop to square at baseSize
+    const minSide = Math.min(img.width, img.height);
+    const sxs = (img.width - minSide) / 2;
+    const sys = (img.height - minSide) / 2;
+
+    // Draw echoes from FURTHEST first so newest sits on top
+    for (let i = e.count - 1; i >= 0; i--) {
+      const t = e.count > 1 ? (i / (e.count - 1)) : 0;
+      const alpha = Math.max(0, 1 - t * e.fade);
+      const sz = baseSize * Math.max(0.1, 1 + e.scaleStep * i);
+      const px = cx + e.dx * i;
+      const py = cy + e.dy * i;
+      x.save();
+      x.globalCompositeOperation = state.params.blend;
+      x.globalAlpha = alpha;
+      x.drawImage(img, sxs, sys, minSide, minSide, px - sz / 2, py - sz / 2, sz, sz);
+      x.restore();
+    }
+  });
+
+  stageInfo.textContent = `${active.length} src · ${e.count}× echo`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
+// ── Broken Grid render ────────────────────────────────────────
+// Asymmetric magazine grid. Cells span varied units. Each cell gets
+// one photo cover-fit.
+function gridRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.params.bg === 'transparent') x.clearRect(0, 0, W, H);
+  else { x.fillStyle = state.params.bg; x.fillRect(0, 0, W, H); }
+  x.restore();
+
+  const g = state.grid;
+  const rng = mulberry32(state.seed);
+  const N = g.density;
+  const cellSize = W / N;
+  const cells = [];
+  const taken = new Uint8Array(N * N);
+
+  // Walk row-major; randomly merge with neighbours
+  for (let y = 0; y < N; y++) {
+    for (let xi = 0; xi < N; xi++) {
+      if (taken[y * N + xi]) continue;
+      let sw = 1, sh = 1;
+      if (rng() < g.asymmetry) {
+        const r = rng();
+        if (r < 0.33 && xi + 1 < N) sw = 2;
+        else if (r < 0.66 && y + 1 < N) sh = 2;
+        else if (xi + 1 < N && y + 1 < N) { sw = 2; sh = 2; }
+        // Verify all cells in span are free
+        outer: for (let yy = y; yy < y + sh; yy++) {
+          for (let xx = xi; xx < xi + sw; xx++) {
+            if (xx >= N || yy >= N || taken[yy * N + xx]) {
+              sw = 1; sh = 1; break outer;
+            }
+          }
+        }
+      }
+      cells.push({ x: xi * cellSize, y: y * cellSize, w: sw * cellSize, h: sh * cellSize });
+      for (let yy = y; yy < y + sh; yy++)
+        for (let xx = xi; xx < xi + sw; xx++)
+          taken[yy * N + xx] = 1;
+    }
+  }
+
+  cells.forEach((cell, i) => {
+    const src = active[i % active.length];
+    if (!src) return;
+    const img = src.img;
+    // Cover-fit: scale so image covers cell, then center-crop
+    const cellW = cell.w - g.gap;
+    const cellH = cell.h - g.gap;
+    if (cellW <= 0 || cellH <= 0) return;
+    const ratio = Math.max(cellW / img.width, cellH / img.height);
+    const dw = img.width * ratio;
+    const dh = img.height * ratio;
+    const dxImg = cell.x + g.gap / 2 + (cellW - dw) / 2;
+    const dyImg = cell.y + g.gap / 2 + (cellH - dh) / 2;
+    x.save();
+    x.beginPath();
+    x.rect(cell.x + g.gap / 2, cell.y + g.gap / 2, cellW, cellH);
+    x.clip();
+    x.drawImage(img, dxImg, dyImg, dw, dh);
+    x.restore();
+  });
+
+  stageInfo.textContent = `${cells.length} cells · ${active.length} src`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
 // ── Composite sources to an offscreen canvas (cover-fit + blend) ──
 function compositeSources(W, H, active, blur = 0) {
   const off = document.createElement('canvas');
@@ -1404,6 +1665,70 @@ function wireStrata() {
   });
 }
 wireStrata();
+
+// ── Window mode wiring ────────────────────────────────────────
+function wireWindow() {
+  const bind = (id, valId, key, fmt) => {
+    const r = $(id), v = $(valId); if (!r) return;
+    r.addEventListener('input', () => {
+      state.window[key] = parseFloat(r.value);
+      if (v) v.textContent = fmt(state.window[key]);
+      render();
+    });
+  };
+  bind('r-winCount',  'v-winCount',  'count',  v => String(Math.round(v)));
+  bind('r-winSize',   'v-winSize',   'size',   v => v.toFixed(2));
+  bind('r-winJitter', 'v-winJitter', 'jitter', v => v.toFixed(2));
+  $('r-winChar')?.addEventListener('input', e => {
+    state.window.char = e.target.value || '&';
+    render();
+  });
+  document.querySelectorAll('#seg-winShape button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#seg-winShape button').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      state.window.char = b.dataset.s;
+      $('r-winChar').value = b.dataset.s;
+      render();
+    });
+  });
+}
+wireWindow();
+
+// ── Echo mode wiring ──────────────────────────────────────────
+function wireEcho() {
+  const bind = (id, valId, key, fmt) => {
+    const r = $(id), v = $(valId); if (!r) return;
+    r.addEventListener('input', () => {
+      state.echo[key] = parseFloat(r.value);
+      if (v) v.textContent = fmt(state.echo[key]);
+      render();
+    });
+  };
+  bind('r-ecCount', 'v-ecCount', 'count',     v => String(Math.round(v)));
+  bind('r-ecDx',    'v-ecDx',    'dx',        v => String(Math.round(v)));
+  bind('r-ecDy',    'v-ecDy',    'dy',        v => String(Math.round(v)));
+  bind('r-ecFade',  'v-ecFade',  'fade',      v => v.toFixed(2));
+  bind('r-ecScale', 'v-ecScale', 'scaleStep', v => v.toFixed(2));
+  bind('r-ecBase',  'v-ecBase',  'baseSize',  v => v.toFixed(2));
+}
+wireEcho();
+
+// ── Broken Grid mode wiring ───────────────────────────────────
+function wireGrid() {
+  const bind = (id, valId, key, fmt) => {
+    const r = $(id), v = $(valId); if (!r) return;
+    r.addEventListener('input', () => {
+      state.grid[key] = parseFloat(r.value);
+      if (v) v.textContent = fmt(state.grid[key]);
+      render();
+    });
+  };
+  bind('r-grDens', 'v-grDens', 'density',   v => String(Math.round(v)));
+  bind('r-grAsym', 'v-grAsym', 'asymmetry', v => v.toFixed(2));
+  bind('r-grGap',  'v-grGap',  'gap',       v => String(Math.round(v)));
+}
+wireGrid();
 $('r-export').addEventListener('input', e => {
   state.params.export = parseInt(e.target.value, 10);
   $('v-export').textContent = `${state.params.export}×${state.params.export}`;
