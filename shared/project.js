@@ -622,12 +622,40 @@
           if (orig.textContent) s.textContent = orig.textContent;
           orig.replaceWith(s);
         });
+        // After the mockup is in the DOM, rehoist any annotation anchors
+        // that were placed beside it (on .annot-stage) INTO the mockup's
+        // scroll container. Y% maps onto the full scrollHeight so each
+        // marker sticks to the UI element it labels even when the mockup
+        // scrolls internally.
+        rehoistAnnotationsInto(el);
       } catch (e) {
         el.innerHTML = '<div class="project-mockup__err">Mockup failed to load: ' + src + '</div>';
         console.warn('Mockup load failed:', src, e);
       }
     });
   })();
+
+  // Move .annot-anchor elements from the .annot-stage into the mockup's
+  // .m1759 scroll container, converting top% (which was relative to the
+  // visible stage) to absolute pixels of the mockup's full scrollHeight.
+  function rehoistAnnotationsInto(mockupEl) {
+    const stage = mockupEl.closest('.annot-stage');
+    if (!stage) return;
+    const m = mockupEl.querySelector('.m1759');
+    if (!m) return;
+    // Wait two frames so the mockup's own layout (custom @font-face,
+    // sticky chat, etc.) settles and scrollHeight is final.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const fullH = m.scrollHeight;
+      stage.querySelectorAll(':scope > .annot-anchor').forEach(a => {
+        const yPct = parseFloat(a.style.top || '0');
+        const px   = (yPct / 100) * fullH;
+        a.style.top = px.toFixed(1) + 'px';
+        // left stays as % — horizontal mapping is consistent.
+        m.appendChild(a);
+      });
+    }));
+  }
 
   /* ── Annotations: numbered hotspots with click-to-reveal cards ── */
   (function initAnnotations() {
