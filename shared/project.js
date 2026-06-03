@@ -158,6 +158,15 @@
         return;
       }
 
+      // An editorial feature section: numbered eyebrow + title + body, used
+      // to break a long project page into discrete features-of-the-tool.
+      // Shape: { section: { num, title, body } }
+      if (item.section) {
+        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
+        groups.push({ type: 'section', item });
+        return;
+      }
+
 
       // A video flagged as a player: full-width black stage, video centred.
       if (item.player) {
@@ -376,6 +385,17 @@
         return `
           <div class="container">
             <p class="spread-heading">${g.item.heading}</p>
+          </div>
+        `;
+      } else if (g.type === 'section') {
+        const s = g.item.section;
+        return `
+          <div class="container">
+            <section class="feat-section">
+              ${s.num   ? `<span class="feat-section__num">${s.num} /</span>` : ''}
+              ${s.title ? `<h2 class="feat-section__title">${s.title}</h2>` : ''}
+              ${s.body  ? `<div class="feat-section__body">${s.body}</div>` : ''}
+            </section>
           </div>
         `;
       } else if (g.type === 'tilt') {
