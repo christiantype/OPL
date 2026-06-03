@@ -84,6 +84,67 @@
   }
   .meta__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.3 } }
+  #btn-help {
+    background: transparent; border: 1px solid var(--hairline);
+    color: var(--text); width: 26px; height: 26px;
+    cursor: pointer; font-family: var(--mono); font-size: 12px;
+    margin-left: 4px; transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  #btn-help:hover { border-color: var(--accent); color: var(--accent); }
+
+  #help { position: fixed; inset: 0; z-index: 1000; }
+  #help[hidden] { display: none; }
+  .help__scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); }
+  .help__panel {
+    position: absolute;
+    top: 6vh; right: 6vw; bottom: 6vh;
+    width: min(680px, 88vw);
+    background: var(--bg); border: 1px solid var(--hairline);
+    display: flex; flex-direction: column;
+    box-shadow: -30px 30px 100px rgba(0,0,0,0.5);
+  }
+  .help__head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .help__head h2 {
+    margin: 0; font-family: var(--display); font-weight: 400;
+    font-size: 22px; color: var(--text); letter-spacing: -0.01em;
+  }
+  #help-close {
+    background: transparent; border: 1px solid var(--hairline);
+    color: var(--text); width: 32px; height: 32px;
+    font-size: 20px; cursor: pointer;
+  }
+  #help-close:hover { border-color: var(--pink); color: var(--pink); }
+  .help__body {
+    padding: 22px;
+    overflow-y: auto;
+    line-height: 1.65; font-size: 13px; color: var(--text-mid);
+  }
+  .help__lede {
+    color: var(--text); font-size: 14px;
+    padding-bottom: 18px; margin-bottom: 18px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .help__body h3 {
+    font-family: var(--sans); font-weight: 500;
+    font-size: 10px; letter-spacing: 0.20em; text-transform: uppercase;
+    color: var(--accent);
+    margin: 24px 0 10px; padding-top: 4px;
+  }
+  .help__body h3:first-child { margin-top: 0; }
+  .help__body p { margin: 0 0 10px; }
+  .help__body ul { margin: 0 0 10px; padding: 0; list-style: none; }
+  .help__body li {
+    position: relative; padding-left: 16px; margin-bottom: 6px;
+  }
+  .help__body li::before {
+    content: '/'; position: absolute; left: 0; color: var(--accent); font-family: var(--mono); font-weight: 500;
+  }
+  .help__body strong { color: var(--text); font-weight: 500; }
+  .help__body em { color: var(--text); font-style: italic; }
 
   /* ── Left rail: images ──────────────────────────────────────── */
   .images {
@@ -380,8 +441,61 @@
     <div class="meta">
       <span><span class="meta__dot"></span>&nbsp;&nbsp;Live</span>
       <span id="seed-display">seed —</span>
+      <button id="btn-help" type="button" title="Open help" aria-label="Help">?</button>
     </div>
   </header>
+
+  <!-- HELP OVERLAY -->
+  <div id="help" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
+    <div class="help__scrim"></div>
+    <div class="help__panel">
+      <header class="help__head">
+        <h2 id="help-title">Imagix · Quick reference</h2>
+        <button id="help-close" type="button" aria-label="Close help">×</button>
+      </header>
+      <div class="help__body">
+        <p class="help__lede">Drop photos in. Pick a base <strong>Mode</strong> on the right. Sliders + value fields are bidirectional — slide or type a number. <strong>Re-roll</strong> rolls a fresh seed; <strong>Export PNG / SVG</strong> renders at the Output size.</p>
+
+        <h3>Modes</h3>
+        <ul>
+          <li><strong>Slice</strong> — cuts the canvas into parallel strips at any angle; each strip pulls a slice from one of your photos. Sliders: Count, Angle, Variation (uneven widths), Offset / Rotation / Scale jitter, Source pick (Random / In order / Alternating).</li>
+          <li><strong>Dot</strong> — composites your photos to an underlay, samples the result at a grid, draws colored circles. Resolution / Spacing / Size / Grain / Image opacity (underlay strength) / Image blur (smooths colors).</li>
+          <li><strong>Glyph</strong> — same grid sampling but the dot is a typed character or uploaded SVG/PNG. Type your own char or pick a preset; <em>Upload glyph</em> stamps an SVG or PNG at each cell, tinted by the sampled color.</li>
+          <li><strong>Strata</strong> — hard horizontal bands, each band a different photo cover-fit. Bands · Height variation · Shift (slide left/right) · Gap · Shift mode (Alternate / Random / Cascade).</li>
+          <li><strong>Scatter</strong> — photos as squares with optional connecting trails. Drag a square on the canvas to move; per-image numeric fields edit it precisely. Each photo gets a <em>subject point</em> auto-detected (saliency + chroma); trails anchor there, not the bounding box.</li>
+          <li><strong>Window</strong> — one bold character (or several) carved into the canvas, photo shows through it. Shape · Count · Size · Position jitter.</li>
+          <li><strong>Echo</strong> — each photo repeated N times with offset + decreasing opacity. Direction is set by Offset X / Y; Scale step grows or shrinks each echo.</li>
+          <li><strong>Grid</strong> — asymmetric magazine grid; cells span varied units, each filled with one photo cover-fit. Density · Asymmetry · Gap.</li>
+        </ul>
+
+        <h3>Effect Layer</h3>
+        <p>A Dot or Glyph overlay whose colors are sampled from the just-rendered base composition. With <strong>no points</strong> it covers the whole canvas. <strong>Click anywhere on the canvas</strong> to drop a point — the layer is then confined to those circular pools with the Brush radius + Falloff you set. Drag a point to move; Shift-click or use × in the list to remove.</p>
+        <p><em>Tip:</em> turn the base into something visual (Slice / Strata / Scatter), enable the layer, set Dot size small + Sample blur high → soft halftone fragments that adopt the base colors.</p>
+
+        <h3>Scatter — Trails</h3>
+        <p>The connective bit. Each photo's subject point gets used as a graph node; trails connect them.</p>
+        <ul>
+          <li><strong>Connect</strong> — Chain (in add-order) · Near 2 / Near 3 (each photo to its N nearest) · MST (Prim's minimum spanning tree) · All (every pair).</li>
+          <li><strong>Anchor</strong> — Square center (geometric) or Subject (line attaches to what the photo is about).</li>
+          <li><strong>Style</strong> — Straight · Curved (bows perpendicular) · Dashed · Wavy (sin wave).</li>
+          <li><strong>Color</strong> — Solid picker, or <strong>Subject gradient</strong> where each line gradients from one endpoint's subject color to the other.</li>
+          <li><strong>Subject markers</strong> — Dot / Ring / Crosshair stamped on each subject point so the anchors are visible.</li>
+        </ul>
+
+        <h3>Output</h3>
+        <p>Export size is in pixels. <strong>PNG</strong> rasterizes the full composition (base + effect layer). <strong>SVG</strong> exports the layer fragments as vector circles / glyphs when the layer is on (or the Dot mode as vectors when not). Slice / Strata / Scatter / Window / Echo / Grid bases are photographic and stay raster — use PNG for those.</p>
+        <p>Filenames include the seed so you can re-find a look later by re-typing the seed (coming soon — for now, screenshot the seed shown top-right).</p>
+
+        <h3>Shortcuts</h3>
+        <ul>
+          <li><strong>Drop files</strong> anywhere on the window to add photos.</li>
+          <li><strong>Click an image thumbnail</strong> to toggle it off / on (without removing).</li>
+          <li><strong>×</strong> on a thumbnail removes it; <strong>Clear all</strong> wipes the source list.</li>
+          <li><strong>Type a number</strong> in any value field next to a slider; Enter or Tab to commit.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
   <!-- LEFT: IMAGES -->
   <aside class="images">
@@ -527,13 +641,25 @@
         <div class="ctrl-label">Glyph</div>
         <div class="row"><span class="row__label">Character</span></div>
         <input type="text" id="r-glyphChar" value="✕" maxlength="3" style="width:100%;padding:8px 10px;background:var(--panel);color:var(--text);border:1px solid var(--hairline);font-family:var(--sans);font-size:16px;text-align:center;margin-bottom:10px">
-        <div class="seg" id="seg-glyphPreset" style="grid-template-columns:repeat(6,1fr);margin-bottom:14px">
+        <div class="seg" id="seg-glyphPreset" style="grid-template-columns:repeat(6,1fr);margin-bottom:10px">
           <button data-g="✕">✕</button>
           <button data-g="+">+</button>
           <button data-g="/">/</button>
           <button data-g="*">*</button>
           <button data-g="◢">◢</button>
           <button data-g="●">●</button>
+        </div>
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Custom (SVG / PNG)</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px">
+          <label class="ctrl-btn" id="r-glyphCustomBtn" style="flex:1;margin:0;text-align:center">
+            Upload glyph
+            <input type="file" id="r-glyphCustom" accept="image/svg+xml,image/png,image/webp,image/jpeg" style="display:none">
+          </label>
+          <button class="ctrl-btn" id="btn-glyphClear" style="width:auto;padding:9px 12px;margin:0" title="Use the typed character / preset instead of an uploaded glyph">Clear</button>
+        </div>
+        <div id="glyph-preview" style="display:none;align-items:center;gap:10px;padding:8px;background:var(--panel);border:1px solid var(--hairline);margin-bottom:14px">
+          <img id="glyph-preview-img" style="width:36px;height:36px;object-fit:contain;background:repeating-conic-gradient(#222 0% 25%,#1a1a1a 25% 50%) 50% / 12px 12px">
+          <span id="glyph-preview-name" style="font-size:11px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
         </div>
         <div class="row"><span class="row__label">Resolution</span><input class="row__val" id="v-gRes" type="text" value="4"></div>
         <input type="range" id="r-gRes" min="1" max="8" step="1" value="4">
@@ -749,12 +875,15 @@ const state = {
   mode: 'slice',       // 'slice' | 'dot' | 'glyph' | 'strata' | 'scatter'
   glyph: {
     char:       '✕',
-    resolution: 4,   // 1..8 → grid size
-    size:       4,   // 1..8 → char size as fraction of cell
-    rotJitter:  0,   // 0..180 degrees
-    posJitter:  0,   // 1..8 → position jitter
-    blur:       3,   // 1..8 → source blur before sampling
-    color:      'sample', // 'sample' | 'ink' | 'white'
+    resolution: 4,
+    size:       4,
+    rotJitter:  0,
+    posJitter:  0,
+    blur:       3,
+    color:      'sample',     // 'sample' | 'ink' | 'white'
+    customImg:  null,         // HTMLImageElement of an uploaded SVG/PNG
+    customName: '',
+    tint:       true,         // tint custom glyph with sampled color
   },
   strata: {
     bands:     7,
@@ -865,6 +994,23 @@ const seedDisplay  = $('seed-display');
 const countDisplay = $('count-display');
 
 // ── Seedable random (mulberry32) ──────────────────────────────
+// Stamp a custom-uploaded glyph at the current ctx origin, tinted with
+// `color`. Uses an internal offscreen canvas to silhouette the image
+// then fills with the color via source-in compositing.
+function stampTintedGlyph(ctx, img, size, color) {
+  const t = stampTintedGlyph._buf || (stampTintedGlyph._buf = document.createElement('canvas'));
+  const px = Math.max(2, Math.ceil(size));
+  t.width = px; t.height = px;
+  const tctx = t.getContext('2d');
+  tctx.clearRect(0, 0, px, px);
+  tctx.drawImage(img, 0, 0, px, px);
+  tctx.globalCompositeOperation = 'source-in';
+  tctx.fillStyle = color;
+  tctx.fillRect(0, 0, px, px);
+  tctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(t, -size/2, -size/2, size, size);
+}
+
 function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {
@@ -1141,6 +1287,8 @@ function drawLayerGrid(effCv, sampleSrc, W, H) {
   if (L.effect === 'glyph') {
     const ch = state.glyph.char || '✕';
     const fontPx = step * (DOT.dotSize[L.dotSize - 1] || 0.7) * 1.6;
+    const customImg  = state.glyph.customImg;
+    const customSize = fontPx * 0.95;
     ctx.font = `${fontPx}px ${
       /[\w&@/]/.test(ch) ? 'Untitled Sans, system-ui, sans-serif'
                          : 'system-ui, sans-serif'
@@ -1156,8 +1304,19 @@ function drawLayerGrid(effCv, sampleSrc, W, H) {
         const i = (syPix * W + sxPix) * 4;
         const r = sampleSrc[i], g = sampleSrc[i + 1], b = sampleSrc[i + 2], a = sampleSrc[i + 3];
         if (a < 4) continue;
-        ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.fillText(ch, cx, cy);
+        if (customImg && customImg.complete) {
+          ctx.save();
+          ctx.translate(cx, cy);
+          if (state.glyph.tint !== false) {
+            stampTintedGlyph(ctx, customImg, customSize, `rgb(${r},${g},${b})`);
+          } else {
+            ctx.drawImage(customImg, -customSize/2, -customSize/2, customSize, customSize);
+          }
+          ctx.restore();
+        } else {
+          ctx.fillStyle = `rgb(${r},${g},${b})`;
+          ctx.fillText(ch, cx, cy);
+        }
       }
     }
   } else {
@@ -1758,6 +1917,8 @@ function glyphRender(target, active) {
   x.textAlign = 'center';
   x.textBaseline = 'middle';
 
+  const customImg = g.customImg;
+  const customSize = fontPx * 0.95; // visually matches typed character sizing
   const cellsX = N;
   const cellsY = Math.ceil(H / step);
   for (let yy = 0; yy < cellsY; yy++) {
@@ -1770,16 +1931,36 @@ function glyphRender(target, active) {
       const sy = Math.max(0, Math.min(H - 1, Math.floor(cy)));
       const i = (sy * W + sx) * 4;
       const r = data[i], gg = data[i + 1], b = data[i + 2], a = data[i + 3] / 255;
-      if (g.color === 'ink')    x.fillStyle = `rgba(20,20,22,${a})`;
-      else if (g.color === 'white') x.fillStyle = `rgba(255,255,255,${a})`;
-      else                       x.fillStyle = `rgba(${r},${gg},${b},${a})`;
       const rot = (rng() - 0.5) * 2 * rotRange;
-      if (rot) {
-        x.save(); x.translate(cx, cy); x.rotate(rot);
-        x.fillText(g.char, 0, 0);
+
+      if (customImg && customImg.complete) {
+        // Stamp the uploaded glyph at this cell. Tint with sampled color
+        // (default) or use the glyph's original colors.
+        let color;
+        if (g.color === 'ink')        color = `rgba(20,20,22,${a})`;
+        else if (g.color === 'white') color = `rgba(255,255,255,${a})`;
+        else                          color = `rgba(${r},${gg},${b},${a})`;
+        x.save();
+        x.globalAlpha = a;
+        x.translate(cx, cy);
+        if (rot) x.rotate(rot);
+        if (g.tint !== false) {
+          stampTintedGlyph(x, customImg, customSize, color);
+        } else {
+          x.drawImage(customImg, -customSize/2, -customSize/2, customSize, customSize);
+        }
         x.restore();
       } else {
-        x.fillText(g.char, cx, cy);
+        if (g.color === 'ink')        x.fillStyle = `rgba(20,20,22,${a})`;
+        else if (g.color === 'white') x.fillStyle = `rgba(255,255,255,${a})`;
+        else                          x.fillStyle = `rgba(${r},${gg},${b},${a})`;
+        if (rot) {
+          x.save(); x.translate(cx, cy); x.rotate(rot);
+          x.fillText(g.char, 0, 0);
+          x.restore();
+        } else {
+          x.fillText(g.char, cx, cy);
+        }
       }
     }
   }
@@ -2405,6 +2586,37 @@ function wireGlyph() {
       render();
     });
   });
+
+  // Custom-glyph upload (SVG / PNG / etc.). Stored on state.glyph and
+  // used by both Glyph mode and the Effect Layer's Glyph option.
+  $('r-glyphCustom')?.addEventListener('change', e => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { alert('Use an SVG or PNG image.'); return; }
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      state.glyph.customImg  = img;
+      state.glyph.customName = f.name;
+      const prev = $('glyph-preview');
+      if (prev) {
+        prev.style.display = 'flex';
+        $('glyph-preview-img').src = url;
+        $('glyph-preview-name').textContent = f.name;
+      }
+      render();
+    };
+    img.onerror = () => { alert('Could not load that file as an image.'); URL.revokeObjectURL(url); };
+    img.src = url;
+    e.target.value = '';
+  });
+  $('btn-glyphClear')?.addEventListener('click', () => {
+    state.glyph.customImg = null;
+    state.glyph.customName = '';
+    const prev = $('glyph-preview');
+    if (prev) prev.style.display = 'none';
+    render();
+  });
 }
 wireGlyph();
 
@@ -2530,6 +2742,35 @@ function wireValInputs() {
   });
 }
 wireValInputs();
+
+// ── Help overlay ─────────────────────────────────────────────
+const helpEl = $('help');
+function openHelp()  { helpEl.hidden = false; }
+function closeHelp() { helpEl.hidden = true; }
+$('btn-help')?.addEventListener('click', openHelp);
+$('help-close')?.addEventListener('click', closeHelp);
+helpEl?.querySelector('.help__scrim')?.addEventListener('click', closeHelp);
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && !helpEl.hidden) closeHelp(); });
+
+// ── Hover tooltips on key controls ───────────────────────────
+const tips = {
+  'seg-mode': 'Pick a base mode — controls below change to match.',
+  'r-layerOn': 'Toggles the Effect Layer overlay. With no points it covers the whole canvas; click the canvas to drop a point.',
+  'seg-layerEffect': 'Which effect the layer paints — Dot or Glyph (uses the typed char or uploaded glyph).',
+  'seg-lineMode': 'How trails connect: chain · nearest neighbors · MST · all pairs.',
+  'seg-anchorMode': 'Where each trail attaches — geometric square center, or the subject point detected from the photo.',
+  'seg-lineStyle': 'Trail rendering style.',
+  'seg-lineColorMode': 'Solid uses the picker; Subject gradient flows between endpoint colors.',
+  'seg-markerStyle': 'How the subject point is marked on each photo.',
+  'r-glyphCustom': 'Upload SVG / PNG to use as the glyph stamp. The shape is tinted with the sampled color.',
+  'btn-clear':    'Removes ALL photos from the sources list.',
+  'btn-reroll':   'Rolls a fresh random seed — same controls, different layout.',
+  'btn-help':     'Open the quick reference.',
+};
+Object.entries(tips).forEach(([id, txt]) => {
+  const el = document.getElementById(id);
+  if (el) el.title = txt;
+});
 
 // ── Effect Layer wiring ───────────────────────────────────────
 function wireLayer() {
