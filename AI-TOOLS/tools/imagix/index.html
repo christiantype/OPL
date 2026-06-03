@@ -1216,7 +1216,13 @@ function scatterRender(target, active) {
   }
   x.restore();
 
-  ensureScatterItems(active, W, H);
+  // Item coordinates are stored in PREVIEW-canvas pixels (canvas.width).
+  // When rendering at export size, scale x/y/size up by the ratio so the
+  // composition fills the export canvas instead of cramming into the
+  // top-left. Pass preview-space W/H to ensureScatterItems so any newly
+  // seeded items still use the layout the user set up.
+  const SCALE = W / canvas.width;
+  ensureScatterItems(active, canvas.width, canvas.height);
   const items = state.scatter.items.filter(it => active.some(a => a.id === it.imageId));
 
   // 1) Lines first (under squares)
@@ -1224,13 +1230,13 @@ function scatterRender(target, active) {
     x.save();
     x.strokeStyle = state.scatter.lineColor;
     x.globalAlpha = state.scatter.lineAlpha;
-    x.lineWidth = state.scatter.lineWidth;
+    x.lineWidth = state.scatter.lineWidth * SCALE;
     x.lineCap = 'round';
     const pairs = computeScatterLinePairs(items);
     pairs.forEach(([a, b]) => {
       x.beginPath();
-      x.moveTo(a.x, a.y);
-      x.lineTo(b.x, b.y);
+      x.moveTo(a.x * SCALE, a.y * SCALE);
+      x.lineTo(b.x * SCALE, b.y * SCALE);
       x.stroke();
     });
     x.restore();
@@ -1241,14 +1247,14 @@ function scatterRender(target, active) {
     const src = active.find(a => a.id === it.imageId);
     if (!src) return;
     const img = src.img;
-    // Cover-crop from center to square
     const minSide = Math.min(img.width, img.height);
     const sx = (img.width - minSide) / 2;
     const sy = (img.height - minSide) / 2;
+    const sz = it.size * SCALE;
     x.save();
-    x.translate(it.x, it.y);
+    x.translate(it.x * SCALE, it.y * SCALE);
     if (it.rot) x.rotate(it.rot * Math.PI / 180);
-    x.drawImage(img, sx, sy, minSide, minSide, -it.size/2, -it.size/2, it.size, it.size);
+    x.drawImage(img, sx, sy, minSide, minSide, -sz/2, -sz/2, sz, sz);
     x.restore();
   });
 
