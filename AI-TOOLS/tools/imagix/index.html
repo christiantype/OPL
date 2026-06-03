@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OP/AL — Remix</title>
+<title>OP/AL — Imagix</title>
 <script src="/AI-TOOLS/shared/gate.js"></script>
 <style>
   /* ── Brand font ─────────────────────────────────────────────── */
@@ -259,6 +259,61 @@
   }
   .seg button:hover:not(.is-active) { color: var(--text); border-color: var(--text-dim); }
 
+  .ctrl-btn {
+    width: 100%; padding: 9px 10px;
+    background: var(--panel); border: 1px solid var(--hairline);
+    color: var(--text); font-size: 11px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    cursor: pointer; margin-top: 8px;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .row.toggle { cursor: pointer; }
+  .row.toggle input[type=checkbox] {
+    accent-color: var(--accent); width: 16px; height: 16px;
+  }
+  .scatter-item {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 10px; padding: 10px 0;
+    border-top: 1px solid var(--hairline);
+    align-items: start;
+  }
+  .scatter-item:first-child { border-top: none; padding-top: 0; }
+  .scatter-item__thumb {
+    width: 32px; height: 32px;
+    background: var(--panel); overflow: hidden;
+    position: relative;
+  }
+  .scatter-item__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .scatter-item__thumb-num {
+    position: absolute; top: 0; left: 0;
+    background: rgba(0,0,0,0.6); color: var(--text);
+    font-family: var(--mono); font-size: 8px;
+    padding: 1px 3px;
+  }
+  .scatter-item__fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-mid);
+  }
+  .scatter-item__fields label {
+    display: flex; align-items: center; gap: 4px;
+    letter-spacing: 0.06em; text-transform: uppercase; font-size: 9px;
+  }
+  .scatter-item__fields input[type=number] {
+    width: 100%; padding: 3px 5px;
+    background: var(--panel); border: 1px solid var(--hairline);
+    color: var(--text); font-family: var(--mono); font-size: 10px;
+  }
+  .scatter-item__fields input[type=number]:focus { outline: none; border-color: var(--accent); }
+
+  /* Scatter overlay tools on the stage */
+  #canvas.is-scatter { cursor: grab; }
+  #canvas.is-scatter.is-dragging { cursor: grabbing; }
+
   /* ── Mobile fallback (read-only) ────────────────────────────── */
   @media (max-width: 880px) {
     .app { grid-template-columns: 1fr; grid-template-rows: 56px 220px 1fr 280px; }
@@ -274,7 +329,7 @@
     <div class="brand">
       <span class="brand__mark">OP/AL</span>
       <span class="brand__sep">/</span>
-      <span class="brand__tool">Remix · Cover Cut</span>
+      <span class="brand__tool">Imagix</span>
     </div>
     <div class="meta">
       <span><span class="meta__dot"></span>&nbsp;&nbsp;Live</span>
@@ -314,7 +369,41 @@
       <div class="seg" id="seg-mode">
         <button data-mode="slice" class="is-active">Slice</button>
         <button data-mode="dot">Dot</button>
-        <button data-mode="" disabled style="opacity:0.35">More…</button>
+        <button data-mode="scatter">Scatter</button>
+      </div>
+    </div>
+
+    <!-- SCATTER MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="scatter" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Scatter</div>
+        <div class="row"><span class="row__label">Square size</span><span class="row__val" id="v-sqSize">200</span></div>
+        <input type="range" id="r-sqSize" min="60" max="500" step="5" value="200">
+        <div class="row"><span class="row__label">Size variation</span><span class="row__val" id="v-sqVar">0.30</span></div>
+        <input type="range" id="r-sqVar" min="0" max="1" step="0.01" value="0.30">
+        <div class="row"><span class="row__label">Rotation</span><span class="row__val" id="v-sqRot">0°</span></div>
+        <input type="range" id="r-sqRot" min="0" max="20" step="0.5" value="0">
+        <button class="ctrl-btn" id="btn-scatter-randomize">↻ Re-scatter</button>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Lines</div>
+        <label class="row toggle"><span class="row__label">Show lines</span>
+          <input type="checkbox" id="r-showLines" checked></label>
+        <div class="seg" id="seg-lineMode" style="margin-top:10px">
+          <button data-lm="chain" class="is-active">Chain</button>
+          <button data-lm="all">All</button>
+          <button data-lm="nearest">Nearest</button>
+        </div>
+        <div class="row" style="margin-top:14px"><span class="row__label">Line weight</span><span class="row__val" id="v-lineW">1.0</span></div>
+        <input type="range" id="r-lineW" min="0.5" max="6" step="0.1" value="1">
+        <div class="row"><span class="row__label">Line opacity</span><span class="row__val" id="v-lineA">0.55</span></div>
+        <input type="range" id="r-lineA" min="0" max="1" step="0.01" value="0.55">
+        <div class="row"><span class="row__label">Color</span></div>
+        <input type="color" id="r-lineC" value="#1a1a1a" style="width:100%;height:28px;border:1px solid var(--hairline);background:var(--panel);cursor:pointer">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Per-image (drag on canvas, or edit)</div>
+        <div id="scatter-items"></div>
       </div>
     </div>
 
@@ -404,16 +493,27 @@
 
 <script>
 /* ============================================================
-   OP/AL — REMIX (Cover Cut)
+   OP/AL — IMAGIX
    Slice + composite photographs into album-cover variations.
-   Multiple sources, seed-driven so a remix can be recovered.
+   Multiple sources, seed-driven so a composition can be recovered.
    ============================================================ */
 
 // ── State ─────────────────────────────────────────────────────
 const state = {
   images: [],          // [{ id, name, img: HTMLImageElement, enabled: true }]
   seed: Math.floor(Math.random() * 1e9),
-  mode: 'slice',       // 'slice' | 'dot'
+  mode: 'slice',       // 'slice' | 'dot' | 'scatter'
+  scatter: {
+    items: [],          // [{ imageId, x, y, size, rot }] — positions in canvas px
+    showLines: true,
+    lineMode: 'chain',  // 'chain' | 'all' | 'nearest'
+    lineWidth: 1,
+    lineAlpha: 0.55,
+    lineColor: '#1a1a1a',
+    sqSize: 200,
+    sqVar:  0.30,
+    sqRot:  0,
+  },
   params: {
     // shared
     blend:     'source-over',
@@ -482,6 +582,7 @@ function addFiles(files) {
     img.onload = () => {
       state.images.push({ id: nextId++, name: f.name, img, enabled: true });
       renderThumbs();
+      if (state.mode === 'scatter') renderScatterItemsList();
       render();
     };
     img.src = url;
@@ -524,11 +625,15 @@ function renderThumbs() {
       if (e.target.dataset.x) {
         // remove
         state.images = state.images.filter(x => x.id !== s.id);
-        renderThumbs(); render();
+        renderThumbs();
+        if (state.mode === 'scatter') renderScatterItemsList();
+        render();
       } else {
         // toggle enable
         s.enabled = !s.enabled;
-        renderThumbs(); render();
+        renderThumbs();
+        if (state.mode === 'scatter') renderScatterItemsList();
+        render();
       }
     });
     thumbsEl.appendChild(t);
@@ -549,8 +654,9 @@ function render(target = canvas) {
   }
   empty.style.display = 'none';
   canvas.style.visibility = 'visible';
-  if (state.mode === 'dot') dotRender(target, active);
-  else                       sliceRender(target, active);
+  if (state.mode === 'dot')          dotRender(target, active);
+  else if (state.mode === 'scatter') scatterRender(target, active);
+  else                               sliceRender(target, active);
 }
 
 // ── Slice render ──────────────────────────────────────────────
@@ -629,6 +735,196 @@ function sliceRender(target, active) {
 
   stageInfo.textContent = `${active.length} src · ${slices.length} cuts · seed ${state.seed}`;
   seedDisplay.textContent = `seed ${state.seed}`;
+}
+
+// ── Scatter render ────────────────────────────────────────────
+// Draws each enabled image as a square (cropped from center) at the
+// position stored in state.scatter.items. Optionally draws lines
+// connecting the squares. Drag a square on the canvas to reposition.
+function scatterRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  // Background
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.scatter.bg === 'transparent' || state.params.bg === 'transparent') {
+    x.clearRect(0, 0, W, H);
+  } else {
+    x.fillStyle = state.params.bg === '#000' ? '#000' : state.params.bg;
+    if (state.params.bg === '#000') x.fillStyle = '#FFFFFF'; // scatter looks best on light
+    if (state.params.bg === '#fff') x.fillStyle = '#FFFFFF';
+    // honor explicit choice if user picked otherwise; default to white for scatter
+    x.fillStyle = state.params.bg === 'transparent' ? 'transparent'
+                : (state.params.bg === '#000' ? '#FFFFFF' : state.params.bg);
+    x.fillRect(0, 0, W, H);
+  }
+  x.restore();
+
+  ensureScatterItems(active, W, H);
+  const items = state.scatter.items.filter(it => active.some(a => a.id === it.imageId));
+
+  // 1) Lines first (under squares)
+  if (state.scatter.showLines && items.length > 1) {
+    x.save();
+    x.strokeStyle = state.scatter.lineColor;
+    x.globalAlpha = state.scatter.lineAlpha;
+    x.lineWidth = state.scatter.lineWidth;
+    x.lineCap = 'round';
+    const pairs = computeScatterLinePairs(items);
+    pairs.forEach(([a, b]) => {
+      x.beginPath();
+      x.moveTo(a.x, a.y);
+      x.lineTo(b.x, b.y);
+      x.stroke();
+    });
+    x.restore();
+  }
+
+  // 2) Squares
+  items.forEach(it => {
+    const src = active.find(a => a.id === it.imageId);
+    if (!src) return;
+    const img = src.img;
+    // Cover-crop from center to square
+    const minSide = Math.min(img.width, img.height);
+    const sx = (img.width - minSide) / 2;
+    const sy = (img.height - minSide) / 2;
+    x.save();
+    x.translate(it.x, it.y);
+    if (it.rot) x.rotate(it.rot * Math.PI / 180);
+    x.drawImage(img, sx, sy, minSide, minSide, -it.size/2, -it.size/2, it.size, it.size);
+    x.restore();
+  });
+
+  stageInfo.textContent = `${items.length} squares · ${state.scatter.showLines ? state.scatter.lineMode : 'no lines'}`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
+// Ensure every active image has a scatter item. New images auto-scatter.
+// Each image gets a unique RNG stream derived from (seed, imageId) so
+// adding/removing images doesn't shift everyone else around.
+function ensureScatterItems(active, W, H) {
+  active.forEach(src => {
+    if (state.scatter.items.some(it => it.imageId === src.id)) return;
+    const localSeed = ((state.seed + src.id * 9301 + 49297) | 0) >>> 0;
+    const rng = mulberry32(localSeed);
+    const base = state.scatter.sqSize;
+    const sizeJ = (rng() - 0.5) * 2 * state.scatter.sqVar;
+    const size  = Math.max(60, base * (1 + sizeJ));
+    const pad   = size / 2 + 30;
+    state.scatter.items.push({
+      imageId: src.id,
+      x: pad + rng() * (W - pad * 2),
+      y: pad + rng() * (H - pad * 2),
+      size,
+      rot: (rng() - 0.5) * 2 * state.scatter.sqRot,
+    });
+  });
+  // Drop items whose image is gone or disabled.
+  state.scatter.items = state.scatter.items.filter(it =>
+    active.some(a => a.id === it.imageId)
+  );
+}
+
+function computeScatterLinePairs(items) {
+  const pairs = [];
+  if (state.scatter.lineMode === 'chain') {
+    for (let i = 0; i < items.length - 1; i++) pairs.push([items[i], items[i+1]]);
+  } else if (state.scatter.lineMode === 'all') {
+    for (let i = 0; i < items.length; i++)
+      for (let j = i + 1; j < items.length; j++) pairs.push([items[i], items[j]]);
+  } else if (state.scatter.lineMode === 'nearest') {
+    items.forEach(a => {
+      const sorted = items.filter(b => b !== a)
+        .map(b => ({ b, d: Math.hypot(a.x - b.x, a.y - b.y) }))
+        .sort((p, q) => p.d - q.d);
+      sorted.slice(0, 2).forEach(({ b }) => {
+        // avoid duplicate edges
+        if (!pairs.some(p => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a))) {
+          pairs.push([a, b]);
+        }
+      });
+    });
+  }
+  return pairs;
+}
+
+// Drag to reposition squares. Hit-test top-down (last drawn = top).
+let scatterDrag = null;
+function onScatterPointerDown(e) {
+  if (state.mode !== 'scatter') return;
+  const rect = canvas.getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const sy = (e.clientY - rect.top)  * (canvas.height / rect.height);
+  const items = state.scatter.items;
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    if (Math.abs(sx - it.x) < it.size/2 && Math.abs(sy - it.y) < it.size/2) {
+      // Bring to top by re-pushing
+      state.scatter.items.splice(i, 1);
+      state.scatter.items.push(it);
+      scatterDrag = { item: it, dx: sx - it.x, dy: sy - it.y };
+      canvas.classList.add('is-dragging');
+      e.preventDefault();
+      return;
+    }
+  }
+}
+function onScatterPointerMove(e) {
+  if (!scatterDrag) return;
+  const rect = canvas.getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const sy = (e.clientY - rect.top)  * (canvas.height / rect.height);
+  scatterDrag.item.x = sx - scatterDrag.dx;
+  scatterDrag.item.y = sy - scatterDrag.dy;
+  render();
+  renderScatterItemsList(); // sync sidebar inputs
+}
+function onScatterPointerUp() {
+  if (scatterDrag) {
+    scatterDrag = null;
+    canvas.classList.remove('is-dragging');
+  }
+}
+canvas.addEventListener('pointerdown', onScatterPointerDown);
+window.addEventListener('pointermove', onScatterPointerMove);
+window.addEventListener('pointerup',   onScatterPointerUp);
+
+// Right-panel per-image cards: thumb + X/Y/Size/Rotate inputs.
+function renderScatterItemsList() {
+  const wrap = $('scatter-items');
+  if (!wrap) return;
+  const active = state.images.filter(s => s.enabled);
+  ensureScatterItems(active, canvas.width, canvas.height);
+  wrap.innerHTML = '';
+  state.scatter.items.forEach((it, i) => {
+    const src = state.images.find(s => s.id === it.imageId);
+    if (!src) return;
+    const card = document.createElement('div');
+    card.className = 'scatter-item';
+    card.innerHTML = `
+      <div class="scatter-item__thumb">
+        <img src="${src.img.src}" alt="">
+        <span class="scatter-item__thumb-num">${String(i+1).padStart(2,'0')}</span>
+      </div>
+      <div class="scatter-item__fields">
+        <label>X<input type="number" data-k="x" value="${Math.round(it.x)}" step="1"></label>
+        <label>Y<input type="number" data-k="y" value="${Math.round(it.y)}" step="1"></label>
+        <label>SIZE<input type="number" data-k="size" value="${Math.round(it.size)}" step="5"></label>
+        <label>ROT<input type="number" data-k="rot" value="${it.rot.toFixed(1)}" step="0.5"></label>
+      </div>
+    `;
+    card.querySelectorAll('input[data-k]').forEach(input => {
+      input.addEventListener('input', () => {
+        const k = input.dataset.k;
+        const v = parseFloat(input.value);
+        if (!isNaN(v)) { it[k] = v; render(); }
+      });
+    });
+    wrap.appendChild(card);
+  });
 }
 
 // ── Composite sources to an offscreen canvas (cover-fit + blend) ──
@@ -779,6 +1075,8 @@ function applyMode() {
   document.querySelectorAll('#seg-mode button').forEach(b => {
     b.classList.toggle('is-active', b.dataset.mode === state.mode);
   });
+  canvas.classList.toggle('is-scatter', state.mode === 'scatter');
+  if (state.mode === 'scatter') renderScatterItemsList();
   render();
 }
 document.querySelectorAll('#seg-mode button').forEach(btn => {
@@ -789,6 +1087,49 @@ document.querySelectorAll('#seg-mode button').forEach(btn => {
   });
 });
 applyMode();
+
+// ── Scatter mode wiring ───────────────────────────────────────
+function wireScatter() {
+  const bind = (id, valId, key, fmt) => {
+    const r = $(id), v = $(valId);
+    if (!r) return;
+    r.addEventListener('input', () => {
+      state.scatter[key] = parseFloat(r.value);
+      if (v) v.textContent = fmt(state.scatter[key]);
+      render();
+    });
+  };
+  bind('r-sqSize', 'v-sqSize', 'sqSize', v => String(Math.round(v)));
+  bind('r-sqVar',  'v-sqVar',  'sqVar',  v => v.toFixed(2));
+  bind('r-sqRot',  'v-sqRot',  'sqRot',  v => Math.round(v) + '°');
+  bind('r-lineW',  'v-lineW',  'lineWidth', v => v.toFixed(1));
+  bind('r-lineA',  'v-lineA',  'lineAlpha', v => v.toFixed(2));
+
+  $('r-showLines')?.addEventListener('change', e => {
+    state.scatter.showLines = e.target.checked;
+    render();
+  });
+  $('r-lineC')?.addEventListener('input', e => {
+    state.scatter.lineColor = e.target.value;
+    render();
+  });
+  document.querySelectorAll('#seg-lineMode button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#seg-lineMode button').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      state.scatter.lineMode = b.dataset.lm;
+      render();
+    });
+  });
+  $('btn-scatter-randomize')?.addEventListener('click', () => {
+    state.seed = Math.floor(Math.random() * 1e9);
+    state.scatter.items = []; // clear so they re-seed with new seed
+    ensureScatterItems(state.images.filter(s => s.enabled), canvas.width, canvas.height);
+    renderScatterItemsList();
+    render();
+  });
+}
+wireScatter();
 $('r-export').addEventListener('input', e => {
   state.params.export = parseInt(e.target.value, 10);
   $('v-export').textContent = `${state.params.export}×${state.params.export}`;
@@ -826,7 +1167,7 @@ $('btn-export-svg').addEventListener('click', () => {
   const svg = buildSVG(size, active);
   const blob = new Blob([svg], { type: 'image/svg+xml' });
   const a = document.createElement('a');
-  a.download = `opal-remix-dot-${state.seed}-${size}.svg`;
+  a.download = `opal-imagix-dot-${state.seed}-${size}.svg`;
   a.href = URL.createObjectURL(blob);
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -846,7 +1187,7 @@ $('btn-export').addEventListener('click', () => {
   render(out);
   out.toBlob(blob => {
     const a = document.createElement('a');
-    a.download = `opal-remix-${state.seed}-${size}.png`;
+    a.download = `opal-imagix-${state.seed}-${size}.png`;
     a.href = URL.createObjectURL(blob);
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -859,7 +1200,7 @@ canvas.style.visibility = 'hidden';
 seedDisplay.textContent = `seed ${state.seed}`;
 
 // Persist last-used parameters (not images — those are blobs).
-const LS = 'opal-remix.v1';
+const LS = 'opal-imagix.v1';
 try {
   const saved = JSON.parse(localStorage.getItem(LS) || 'null');
   if (saved && saved.params) {

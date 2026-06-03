@@ -191,8 +191,13 @@
   .canvas-wrap {
     position: relative;
     aspect-ratio: 1 / 1;
-    height: min(80vh, 80vw);
-    max-height: 84vh;
+    /* Size the square to fit BOTH the viewport height and the stage column.
+       The rail (160px) + panel (380px) eat 540px of width; without accounting
+       for that, on narrower windows the square grew wider than the stage and
+       its left/right edges were clipped under the panels (the shape appeared
+       to "leave the canvas"). The 48px keeps a small gap on each side. */
+    width: min(80vh, calc(100vw - 540px - 48px));
+    max-width: 100%;
     background: #1a1a1a;
     box-shadow:
       0 40px 100px rgba(0,0,0,0.7),
@@ -935,9 +940,26 @@
   @media (max-width: 980px) {
     .app { grid-template-columns: 1fr; grid-template-rows: 60vh 1fr; }
     .panel { border-left: none; border-top: 1px solid var(--hairline); }
-    .canvas-wrap { height: 54vh; }
+    /* Single-column layout: stage spans full width, so size off the 60vh row
+       (capped to viewport width). Overrides the desktop width rule above. */
+    .canvas-wrap { width: min(54vh, 92vw); }
     .footer-mark { display: none; }
   }
+
+  /* ── Shape-drawing removed ────────────────────────────────────────
+     Vessel is now a photo + audio-reactive style + cover composer. The
+     anchor/bezier drawing infrastructure stays in the source so audio
+     reactivity, decay layers, and the 3D entity scaffolding still load
+     without errors — they just never engage (state.mode='preview', no
+     anchors). We hide the user-facing draw affordances AND the 3D shape
+     canvas itself, so any previously-saved drawings stop rendering. */
+  .mode-tabs,
+  #draw-canvas,
+  #draw-hint,
+  #three-canvas,
+  #path-section,
+  #anchors-section { display: none !important; }
+  .canvas-wrap { cursor: default; }
 </style>
 <style>
   /* ─── OP/AL brand fonts ─────────────────────────────────────────────
@@ -1350,9 +1372,9 @@
         — pick the form this song should take.
       </div>
       <select id="track-style" style="width:100%;background:#fff;color:var(--text);border:1px solid var(--hairline);padding:8px 8px;font-family:'Sidepiece-HoneyPie',sans-serif;font-size:13px;letter-spacing:0.04em">
-        <option value="tube">Tube — drawn audio shape</option>
-        <option value="qr">QR Lattice — digital block grid</option>
+        <!-- "Tube" (the drawn 3D shape) removed with the drawing tool. -->
         <option value="radial">Radial Wave — circular waveform + planets</option>
+        <option value="qr">QR Lattice — digital block grid</option>
         <option value="orb">Orb — floating sphere + halo</option>
         <option value="liquid">Liquid — flowing letterforms</option>
         <option value="sketch">Sketch — ink + pencil strokes (audio drawn)</option>
@@ -1395,7 +1417,7 @@
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" id="path-section">
       <div class="section-title">Path</div>
       <div class="toggle-row">
         <div class="label">Closed shape</div>
@@ -1419,7 +1441,7 @@
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" id="anchors-section">
       <div class="section-title">
         Anchors
         <span class="count" id="anchor-count">0</span>
@@ -1508,6 +1530,28 @@
       <label style="display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-size:11px;border-top:1px solid var(--hairline);padding-top:8px"><input type="checkbox" id="decay-ink"> <strong>2D ink mode</strong> <span style="opacity:.6">— hide the 3D mesh</span></label>
     </div>
 
+    <!-- Cass + Christian shared version history (Supabase-backed). See the
+         module script at the bottom of this file + SUPABASE_SCHEMA.sql. -->
+    <div class="section" id="versions-section">
+      <div class="section-title">Versions · Cass + Christian</div>
+      <div class="section-help" id="versions-status" style="margin-bottom:8px">…</div>
+      <div class="control-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <div class="label" style="flex:1">You are</div>
+        <select id="versions-author" style="background:#0a0a0a;color:#fff;border:1px solid #333;padding:5px 8px;font-size:11px;font-family:inherit">
+          <option value="Christian">Christian (odd songs)</option>
+          <option value="Cass">Cass (even songs)</option>
+        </select>
+      </div>
+      <div class="control-row" style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="text" id="versions-name" placeholder="Iteration name" style="flex:1;background:#0a0a0a;color:#fff;border:1px solid #333;padding:6px 8px;font-size:11px;font-family:inherit">
+        <button class="btn" id="versions-save">Save</button>
+      </div>
+      <div class="btn-row" style="margin-bottom:8px">
+        <button class="btn" id="versions-refresh" style="flex:1">Refresh</button>
+      </div>
+      <div id="versions-list" style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto"></div>
+    </div>
+
     <div class="section">
       <div class="section-title">Master Cover</div>
       <div class="section-help" style="margin-top:0;margin-bottom:8px">
@@ -1575,7 +1619,10 @@ const MATERIALS = [
 
 // State
 const state = {
-  mode: 'draw', // 'draw' or 'preview'
+  // Shape-drawing was removed — Vessel is now a photo + visual-style +
+  // cover composer. We pin mode to 'preview' so the (still-present) draw
+  // code paths never engage and the audio-reactive 3D entity stays inert.
+  mode: 'preview',
   material: 'chrome',
   color: '#FFD400',   // OP/AL brand yellow (same as the about-page cone stop)
   thickness: 0.04,
@@ -1624,12 +1671,12 @@ const state = {
     photoDataUrl: null,
     photoFx: 'slice',         // 'none' | 'slice' | 'shift' | 'fracture' | 'rgb' | 'blur'
     photoFxAmount: 0.6,
-    style: 'tube',            // 'tube' | 'qr' | 'radial' | 'orb' | 'liquid' | 'sketch' | 'paint'
+    style: 'radial',          // 'qr' | 'radial' | 'orb' | 'liquid' | 'sketch' | 'paint' ('tube' removed with drawing)
     styleOpacity: 1.0
   })),
   photoFx: 'slice',
   photoFxAmount: 0.6,
-  style: 'tube',
+  style: 'radial',
   styleOpacity: 1.0
 };
 
@@ -1700,7 +1747,8 @@ function loadDesign(idx) {
   state.closed     = t.closed     ?? true;
   state.photoFx       = t.photoFx       ?? 'slice';
   state.photoFxAmount = t.photoFxAmount ?? 0.6;
-  state.style         = t.style         ?? 'tube';
+  // Migrate the retired 'tube' style (the drawn 3D shape) → 'radial'.
+  state.style         = (t.style && t.style !== 'tube') ? t.style : 'radial';
   state.styleOpacity  = t.styleOpacity  ?? 1.0;
   state.selectedAnchor = -1;
   state.selectedHandle = null;
@@ -2686,7 +2734,7 @@ function rebuildTubeFromCurrentAnchors(group, displacedAnchors = null) {
     for (let i = 0; i < N; i++) {
       const sphereGeom = new THREE.SphereGeometry(state.thickness * 1.6, 16, 12);
       const sm = new THREE.Mesh(sphereGeom, currentMaterial);
-      sm.position.copy(pts[i]);
+      sm.position.copy(nodes[i].pos);
       sm.castShadow = true;
       group.add(sm);
     }
@@ -2705,8 +2753,8 @@ function rebuildTubeFromCurrentAnchors(group, displacedAnchors = null) {
         // Connector lines from each anchor backward to give the shape "body"
         if (l === layers) {
           for (let i = 0; i < N; i++) {
-            const start = pts[i].clone();
-            const end = pts[i].clone();
+            const start = nodes[i].pos.clone();
+            const end = nodes[i].pos.clone();
             end.z = -offset;
             const lineCurve = new THREE.LineCurve3(start, end);
             const lineGeom = new THREE.TubeGeometry(lineCurve, 4, state.thickness * 0.7, 8, false);
@@ -3426,6 +3474,10 @@ function resize() {
   const wrap = document.getElementById('canvas-wrap');
   const w = wrap.clientWidth;
   const h = wrap.clientHeight;
+  // Not laid out yet (e.g. behind the password gate, which display:none's the
+  // page). Bail before touching canvasW — otherwise redrawOverlay()'s
+  // `if (!canvasW) resize()` guard would ping-pong with this call forever.
+  if (!w || !h) return;
   canvasW = w;
   canvasH = h;
   renderer.setSize(w, h, false);
@@ -4384,7 +4436,10 @@ const COVER_TEMPLATES = {
   sliced:   { name: 'Sliced (vertical cuts)', fn: tpl_sliced },
   divided:  { name: 'Divided (large horizontal slabs)', fn: tpl_divided },
   overlap:  { name: 'Overlap (collage cuts)', fn: tpl_overlap },
-  random:   { name: 'Random scatter',        fn: tpl_random }
+  random:   { name: 'Random scatter',        fn: tpl_random },
+  circleWedges:   { name: 'Circle — pie wedges',     fn: tpl_circleWedges },
+  circleRings:    { name: 'Circle — concentric rings', fn: tpl_circleRings },
+  circlePinwheel: { name: 'Circle — pinwheel',        fn: tpl_circlePinwheel }
 };
 
 function _tracksWithPhoto() {
@@ -4565,6 +4620,94 @@ function tpl_random() {
   return { baseTrackIdx, strips, marks: sm, title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
 }
 
+// ── Concentric-circle cover templates ─────────────────────────────
+// All the track photos become slices of a circle. Each slice is a
+// full-stage layer whose clip-path confines the (cover-fitted) photo to
+// a wedge or ring. The cover-stage is square, so circles stay true.
+// One slice per song — Cass's even songs + Christian's odd songs all
+// read around the same circle.
+const CIRCLE_TINTS = ['none','cobalt','amber','sienna','green','magenta','grey','none'];
+
+// A point on the circle: radius fraction rf (0=center, 1=edge), angle in deg.
+function _circlePt(rf, deg) {
+  const a = deg * Math.PI / 180;
+  const x = 50 + rf * 50 * Math.cos(a);
+  const y = 50 + rf * 50 * Math.sin(a);
+  return x.toFixed(2) + '% ' + y.toFixed(2) + '%';
+}
+// Wedge (optionally with a hole) from a0→a1 degrees.
+function _wedgeClip(a0, a1, rInner = 0, rOuter = 1) {
+  const steps = Math.max(4, Math.ceil((a1 - a0) / 6));
+  const pts = [];
+  if (rInner <= 0.001) {
+    pts.push('50% 50%');
+  } else {
+    for (let i = steps; i >= 0; i--) pts.push(_circlePt(rInner, a0 + (a1 - a0) * i / steps));
+  }
+  for (let i = 0; i <= steps; i++) pts.push(_circlePt(rOuter, a0 + (a1 - a0) * i / steps));
+  return 'polygon(' + pts.join(', ') + ')';
+}
+// Full annulus band rInner→rOuter (rInner 0 = solid disc).
+function _ringClip(rInner, rOuter) {
+  const steps = 72;
+  const outer = [], inner = [];
+  for (let i = 0; i <= steps; i++) outer.push(_circlePt(rOuter, 360 * i / steps));
+  for (let i = steps; i >= 0; i--) inner.push(_circlePt(rInner, 360 * i / steps));
+  return 'polygon(' + outer.concat(inner).join(', ') + ')';
+}
+function _circleStrip(trackIdx, clip, tint) {
+  // Full-stage layer; the clip carves out the slice. cover:true tells the
+  // renderer to fill+cover the photo instead of using strip crop offsets.
+  return { type: 'strip', trackIdx, x: 0, y: 0, w: 1, h: 1, clip, cover: true, tint: tint || 'none' };
+}
+
+// Pie wedges — each photo a radial slice meeting at the center.
+function tpl_circleWedges() {
+  const photos = _tracksWithPhoto();
+  const N = photos.length;
+  const strips = [];
+  if (N) {
+    const step = 360 / N;
+    for (let i = 0; i < N; i++) {
+      const a0 = -90 + i * step, a1 = -90 + (i + 1) * step;
+      strips.push(_circleStrip(photos[i].i, _wedgeClip(a0, a1), CIRCLE_TINTS[i % CIRCLE_TINTS.length]));
+    }
+  }
+  return { baseTrackIdx: null, strips, marks: [], title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+}
+
+// Concentric rings — each photo a nested band growing outward.
+function tpl_circleRings() {
+  const photos = _tracksWithPhoto();
+  const N = photos.length;
+  const strips = [];
+  if (N) {
+    // Outermost first so inner discs paint on top.
+    for (let i = N - 1; i >= 0; i--) {
+      const rInner = i / N, rOuter = (i + 1) / N;
+      strips.push(_circleStrip(photos[i].i, _ringClip(rInner, rOuter), CIRCLE_TINTS[i % CIRCLE_TINTS.length]));
+    }
+  }
+  return { baseTrackIdx: null, strips, marks: [], title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+}
+
+// Pinwheel — wedges with a center hole, skewed + spun like fan blades.
+function tpl_circlePinwheel() {
+  const photos = _tracksWithPhoto();
+  const N = photos.length;
+  const strips = [];
+  if (N) {
+    const step = 360 / N;
+    const skew = step * 0.55;       // blade lean
+    const rInner = 0.14;            // open hub
+    for (let i = 0; i < N; i++) {
+      const a0 = -90 + i * step, a1 = a0 + step + skew;
+      strips.push(_circleStrip(photos[i].i, _wedgeClip(a0, a1, rInner, 1), CIRCLE_TINTS[i % CIRCLE_TINTS.length]));
+    }
+  }
+  return { baseTrackIdx: null, strips, marks: [], title: 'JORDYN', subtitle: 'SUGARCANE FAMILY / VESSEL.2' };
+}
+
 // Default layout = grid-4x2 (clean, readable starting point that you can
 // then mutate via the layout picker or by manual drag).
 function defaultCoverLayout() { return tpl_grid4x2(); }
@@ -4703,15 +4846,28 @@ function renderCoverLayer(layer, idx) {
     if (t && t.photoDataUrl) {
       const im = document.createElement('img');
       im.src = t.photoDataUrl;
-      im.style.height = (1 / (layer.cropH || 0.3) * 100) + '%';
-      im.style.top    = ('-' + ((layer.cropY || 0.2) / (layer.cropH || 0.3) * 100) + '%');
+      if (layer.cover) {
+        // Circular slice: photo fills + covers the square stage, clip carves the wedge/ring.
+        im.style.width = '100%'; im.style.height = '100%';
+        im.style.objectFit = 'cover'; im.style.top = '0';
+      } else {
+        im.style.height = (1 / (layer.cropH || 0.3) * 100) + '%';
+        im.style.top    = ('-' + ((layer.cropY || 0.2) / (layer.cropH || 0.3) * 100) + '%');
+      }
       el.appendChild(im);
     }
     const tint = document.createElement('div');
     tint.className = 'tint';
     tint.style.background = tintRgba(layer.tint || 'none');
     el.appendChild(tint);
-    el.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.6)';
+    if (layer.clip) {
+      // Confine the layer to its circular slice. No inset border (it would
+      // trace the bounding box, not the arc).
+      el.style.clipPath = layer.clip;
+      el.style.webkitClipPath = layer.clip;
+    } else {
+      el.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.6)';
+    }
   } else if (layer.type === 'mark') {
     el.style.width  = (layer.size * 100) + '%';
     el.style.aspectRatio = '1 / 1';
@@ -4960,6 +5116,118 @@ window.__vessel = {
   renderCoverAll: () => (typeof renderCoverAll === 'function' ? renderCoverAll() : null)
 };
 
+</script>
+
+<!-- ── Versions / Collaboration (Supabase) ──────────────────────────────
+     Lets Cass + Christian save named iterations of the design (all 8
+     tracks' photos/colour/material + the cover layout) into a shared
+     Postgres table and load any prior version. Until SUPABASE_URL +
+     SUPABASE_ANON_KEY are filled in below, the panel shows setup steps
+     and does nothing else — the rest of the tool keeps working. -->
+<script type="module">
+const SUPABASE_URL      = ''; // ← paste your Supabase project URL here
+const SUPABASE_ANON_KEY = ''; // ← paste your anon (public) key here
+
+const $ = (id) => document.getElementById(id);
+const statusEl  = $('versions-status');
+const listEl    = $('versions-list');
+const authorEl  = $('versions-author');
+const nameEl    = $('versions-name');
+const saveBtn   = $('versions-save');
+const refreshBtn = $('versions-refresh');
+
+const AUTHOR_LS = 'vessel.versions.author.v1';
+authorEl.value = localStorage.getItem(AUTHOR_LS) || 'Christian';
+authorEl.addEventListener('change', () => localStorage.setItem(AUTHOR_LS, authorEl.value));
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  statusEl.innerHTML =
+    'Not configured yet. <br>' +
+    '<span style="color:#999">1. Create a free Supabase project (supabase.com)<br>' +
+    '2. SQL editor → paste <code>AI-TOOLS/tools/vessel/SUPABASE_SCHEMA.sql</code><br>' +
+    '3. Project settings → API → copy <strong>URL</strong> + <strong>anon public key</strong><br>' +
+    '4. Paste them at the top of the <code>&lt;script type="module"&gt;</code> at the bottom of <code>index.html</code><br>' +
+    '5. Reload.</span>';
+  saveBtn.disabled = true; refreshBtn.disabled = true; nameEl.disabled = true;
+} else {
+  try {
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function loadList() {
+      statusEl.textContent = 'Loading…';
+      const { data, error } = await sb
+        .from('vessel_iterations')
+        .select('id,name,author,created_at')
+        .order('created_at', { ascending: false })
+        .limit(80);
+      if (error) { statusEl.textContent = 'Load error: ' + error.message; return; }
+      statusEl.textContent = `${data.length} iteration${data.length === 1 ? '' : 's'} · auto-refreshes`;
+      listEl.innerHTML = data.map(v => {
+        const t = new Date(v.created_at);
+        const ts = t.toLocaleDateString() + ' ' + t.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+        const me = (v.author === authorEl.value);
+        return `<div style="display:flex;gap:6px;align-items:center;padding:6px 8px;border:1px solid #2a2a2a;background:${me?'#191919':'transparent'};font-size:11px">
+          <div style="flex:1;min-width:0">
+            <div style="color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.name) || '<em style="opacity:.6">untitled</em>'}</div>
+            <div style="opacity:.6;font-size:10px">${esc(v.author)} · ${ts}</div>
+          </div>
+          <button class="btn" data-load-id="${v.id}" style="padding:4px 8px;font-size:10px">Load</button>
+        </div>`;
+      }).join('') || '<div style="opacity:.6;font-size:11px;padding:8px 0">No saved iterations yet.</div>';
+      listEl.querySelectorAll('[data-load-id]').forEach(b => {
+        b.onclick = () => loadVersion(parseInt(b.dataset.loadId, 10));
+      });
+    }
+
+    async function saveVersion() {
+      if (!window.__vessel) { statusEl.textContent = 'Tool not ready.'; return; }
+      const name = (nameEl.value || '').trim() || 'untitled';
+      const author = authorEl.value;
+      const payload = {
+        v: 1,
+        tracks: window.__vessel.state.tracks,
+        coverLayout: window.__vessel.state.coverLayout
+      };
+      saveBtn.disabled = true; statusEl.textContent = 'Saving…';
+      const { error } = await sb.from('vessel_iterations').insert({ name, author, payload });
+      saveBtn.disabled = false;
+      if (error) { statusEl.textContent = 'Save error: ' + error.message; return; }
+      nameEl.value = '';
+      await loadList();
+    }
+
+    async function loadVersion(id) {
+      statusEl.textContent = 'Loading iteration…';
+      const { data, error } = await sb.from('vessel_iterations').select('payload,name,author').eq('id', id).single();
+      if (error) { statusEl.textContent = 'Load error: ' + error.message; return; }
+      const p = data.payload || {};
+      const s = window.__vessel?.state;
+      if (!s) { statusEl.textContent = 'Tool not ready.'; return; }
+      if (Array.isArray(p.tracks)) {
+        // Preserve array length (8 slots) and replace each slot's data
+        p.tracks.forEach((t, i) => { if (s.tracks[i]) Object.assign(s.tracks[i], t); });
+      }
+      if (p.coverLayout) s.coverLayout = p.coverLayout;
+      window.__vessel.persistTracks?.();
+      window.__vessel.persistCoverLayout?.();
+      window.__vessel.renderRail?.();
+      window.__vessel.renderCoverAll?.();
+      statusEl.textContent = `Loaded "${esc(data.name)}" by ${esc(data.author)}.`;
+    }
+
+    saveBtn.onclick = saveVersion;
+    refreshBtn.onclick = loadList;
+    await loadList();
+    // Light polling so each collaborator sees the other's saves.
+    setInterval(loadList, 15000);
+  } catch (e) {
+    statusEl.textContent = 'Collaboration failed to init: ' + (e?.message || e);
+    saveBtn.disabled = true; refreshBtn.disabled = true; nameEl.disabled = true;
+  }
+}
 </script>
 </body>
 </html>
