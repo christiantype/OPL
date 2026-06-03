@@ -1730,3 +1730,136 @@ body.annotate-mode {
     &__body  { font-size: 14px; }
   }
 }
+
+
+// ============================================================
+//   PROJECT TOUR — scroll-driven product walkthrough.
+//   Mockup pins to the viewport, steps on the right; each step
+//   crops/zooms the mockup onto a specific feature as the user
+//   scrolls. Mobile collapses to a static stack.
+// ============================================================
+.proj-tour {
+  position: relative;
+  padding-top: var(--space-12, 6em);
+  padding-bottom: var(--space-12, 6em);
+
+  &__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    gap: clamp(2em, 4vw, 5em);
+    align-items: start;
+  }
+
+  &__sticky {
+    position: sticky;
+    top: 10vh;
+    align-self: start;
+  }
+
+  &__window {
+    background: $light;
+    box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.55),
+                0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  }
+
+  &__bar {
+    background: #ECECEC;
+    padding: 11px 16px;
+  }
+
+  &__frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1120 / 880;
+    background: $light;
+    overflow: hidden;
+  }
+
+  // The mockup container — absolute, design dimensions, transformed by JS.
+  &__mockup {
+    position: absolute;
+    inset: 0;
+    width: 1120px;
+    height: 880px;
+    transform-origin: top left;
+    transition: transform 0.85s cubic-bezier(0.22, 0.61, 0.36, 1);
+    will-change: transform;
+  }
+  &__mockup .project-mockup {
+    width: 1120px !important;
+    height: 880px !important;
+    transform: none !important; // override the mobile-scale rule
+    pointer-events: none;
+  }
+
+  // Steps on the right — one per stop, each centered to the viewport.
+  &__steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  &__step {
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 3em 0;
+    opacity: 0.35;
+    transition: opacity 0.45s ease;
+    max-width: 36em;
+  }
+  &__step.is-active { opacity: 1; }
+
+  &__step-num {
+    display: block;
+    font-family: 'Untitled Sans', system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: $accent;
+    margin-bottom: 14px;
+  }
+  &__step-title {
+    font-family: 'Sidepiece-HoneyPie', sans-serif;
+    font-size: clamp(24px, 2.6vw, 36px);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.005em;
+    color: $light;
+    margin: 0 0 14px;
+  }
+  &__step-body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: clamp(14px, 1.1vw, 16px);
+    line-height: 1.6;
+    color: $mid-light;
+  }
+  &__step-body p { margin: 0 0 0.7em; }
+  &__step-body p:last-child { margin-bottom: 0; }
+  &__step-body strong { color: $light; font-weight: 500; }
+
+  // Mobile: collapse to a static stack. The sticky pin un-pins, the frame
+  // sits above each step, and the JS skips the scroll-driven transform.
+  @media (max-width: 48em) {
+    padding-top: 2.5em;
+    padding-bottom: 2.5em;
+
+    &__layout {
+      grid-template-columns: 1fr;
+      gap: 1.5em;
+    }
+    &__sticky {
+      position: static;
+      height: auto;
+    }
+    &__step {
+      min-height: 0;
+      padding: 1.5em 0;
+      opacity: 1;
+      max-width: none;
+    }
+    &__step-title { font-size: clamp(20px, 6vw, 28px); }
+    &__step-body { font-size: 14px; }
+  }
+}
