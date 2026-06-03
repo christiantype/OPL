@@ -586,21 +586,61 @@
         <button class="ctrl-btn" id="btn-scatter-randomize">↻ Re-scatter</button>
       </div>
       <div class="ctrl-group">
-        <div class="ctrl-label">Lines</div>
-        <label class="row toggle"><span class="row__label">Show lines</span>
+        <div class="ctrl-label">Trails</div>
+        <label class="row toggle"><span class="row__label">Show trails</span>
           <input type="checkbox" id="r-showLines" checked></label>
-        <div class="seg" id="seg-lineMode" style="margin-top:10px">
-          <button data-lm="chain" class="is-active">Chain</button>
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Connect</div>
+        <div class="seg" id="seg-lineMode" style="grid-template-columns:repeat(3,1fr);row-gap:4px;margin-bottom:4px">
+          <button data-lm="chain">Chain</button>
+          <button data-lm="nearest">Near 2</button>
+          <button data-lm="nearest3" class="is-active">Near 3</button>
+          <button data-lm="mst">MST</button>
           <button data-lm="all">All</button>
-          <button data-lm="nearest">Nearest</button>
         </div>
-        <div class="row" style="margin-top:14px"><span class="row__label">Line weight</span><input class="row__val" id="v-lineW" type="text" value="1.0"></div>
-        <input type="range" id="r-lineW" min="0.5" max="6" step="0.1" value="1">
-        <div class="row"><span class="row__label">Line opacity</span><input class="row__val" id="v-lineA" type="text" value="0.55"></div>
-        <input type="range" id="r-lineA" min="0" max="1" step="0.01" value="0.55">
-        <div class="row"><span class="row__label">Color</span></div>
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Anchor</div>
+        <div class="seg" id="seg-anchorMode" style="grid-template-columns:1fr 1fr;margin-bottom:4px">
+          <button data-am="center">Square center</button>
+          <button data-am="subject" class="is-active">Subject</button>
+        </div>
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Style</div>
+        <div class="seg" id="seg-lineStyle" style="grid-template-columns:repeat(2,1fr);row-gap:4px;margin-bottom:4px">
+          <button data-ls="straight">Straight</button>
+          <button data-ls="curved" class="is-active">Curved</button>
+          <button data-ls="dashed">Dashed</button>
+          <button data-ls="wavy">Wavy</button>
+        </div>
+
+        <div class="row" style="margin-top:14px"><span class="row__label">Curvature</span><input class="row__val" id="v-curv" type="text" value="0.18"></div>
+        <input type="range" id="r-curv" min="0" max="1" step="0.01" value="0.18">
+        <div class="row"><span class="row__label">Line weight</span><input class="row__val" id="v-lineW" type="text" value="1.2"></div>
+        <input type="range" id="r-lineW" min="0.5" max="8" step="0.1" value="1.2">
+        <div class="row"><span class="row__label">Line opacity</span><input class="row__val" id="v-lineA" type="text" value="0.75"></div>
+        <input type="range" id="r-lineA" min="0" max="1" step="0.01" value="0.75">
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Color</div>
+        <div class="seg" id="seg-lineColorMode" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
+          <button data-cm="solid">Solid</button>
+          <button data-cm="gradient" class="is-active">Subject gradient</button>
+        </div>
         <input type="color" id="r-lineC" value="#1a1a1a" style="width:100%;height:28px;border:1px solid var(--hairline);background:var(--panel);cursor:pointer">
       </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-label">Subjects</div>
+        <label class="row toggle"><span class="row__label">Show markers</span>
+          <input type="checkbox" id="r-showSubjects" checked></label>
+        <div class="seg" id="seg-markerStyle" style="grid-template-columns:repeat(3,1fr);margin:10px 0 8px">
+          <button data-ms="dot" class="is-active">Dot</button>
+          <button data-ms="ring">Ring</button>
+          <button data-ms="crosshair">Cross</button>
+        </div>
+        <div class="row"><span class="row__label">Marker size</span><input class="row__val" id="v-markerSize" type="text" value="10"></div>
+        <input type="range" id="r-markerSize" min="3" max="40" step="1" value="10">
+      </div>
+
       <div class="ctrl-group">
         <div class="ctrl-label">Per-image (drag on canvas, or edit)</div>
         <div id="scatter-items"></div>
@@ -758,12 +798,22 @@ const state = {
     falloff:    0.55,      // 0=hard, 1=very soft
   },
   scatter: {
-    items: [],          // [{ imageId, x, y, size, rot }] — positions in canvas px
+    items: [],            // [{ imageId, x, y, size, rot }] — positions in canvas px
+    // Lines
     showLines: true,
-    lineMode: 'chain',  // 'chain' | 'all' | 'nearest'
-    lineWidth: 1,
-    lineAlpha: 0.55,
+    lineMode:  'chain',   // 'chain' | 'all' | 'nearest' | 'nearest3' | 'mst'
+    anchorMode:'subject', // 'center' | 'subject' — where the line attaches
+    lineStyle: 'curved',  // 'straight' | 'curved' | 'dashed' | 'wavy'
+    lineColorMode: 'gradient', // 'solid' | 'gradient' (subject colors)
+    lineWidth: 1.2,
+    lineAlpha: 0.75,
     lineColor: '#1a1a1a',
+    curvature: 0.18,      // bow amount for 'curved' / 'wavy' styles
+    // Subjects
+    showSubjects: true,
+    markerSize:   10,
+    markerStyle:  'dot',  // 'dot' | 'crosshair' | 'ring'
+    // Squares
     sqSize: 200,
     sqVar:  0.30,
     sqRot:  0,
@@ -826,6 +876,58 @@ function mulberry32(seed) {
   };
 }
 
+// ── Subject detection ─────────────────────────────────────────
+// Approximates the "subject" of a photo as the saliency + saturation
+// weighted centroid on a downscaled copy. No ML — just a fast Laplacian
+// edge proxy + saturation, summed at a tiny resolution. Returns
+// normalized x/y in [0..1] plus a sampled color at that point.
+function detectSubject(img) {
+  const W = 128, H = 128;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0, W, H);
+  let data;
+  try { data = ctx.getImageData(0, 0, W, H).data; }
+  catch (e) { return { x: 0.5, y: 0.5, color: 'rgb(128,128,128)' }; }
+
+  // Grayscale + Laplacian-style edge score
+  const gray = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    gray[i] = (data[i*4] + data[i*4+1] + data[i*4+2]) / 3;
+  }
+
+  let sumX = 0, sumY = 0, sumW = 0;
+  // Skip a 4-px border so edges aren't biased toward the frame
+  for (let y = 4; y < H - 4; y++) {
+    for (let x = 4; x < W - 4; x++) {
+      const i = y * W + x;
+      // 4-neighbour Laplacian magnitude
+      const lap = Math.abs(gray[i] * 4 - gray[i-1] - gray[i+1] - gray[i-W] - gray[i+W]);
+      // Saturation (chroma proxy)
+      const r = data[i*4], g = data[i*4+1], b = data[i*4+2];
+      const sat = Math.max(r, g, b) - Math.min(r, g, b);
+      // Slight central bias — many photos have the subject roughly central
+      const dx = (x - W/2) / (W/2), dy = (y - H/2) / (H/2);
+      const central = 1 - 0.3 * Math.min(1, dx*dx + dy*dy);
+      const w = (lap * 1.0 + sat * 0.35) * central;
+      sumX += x * w;
+      sumY += y * w;
+      sumW += w;
+    }
+  }
+  const nx = sumW > 0 ? (sumX / sumW) / W : 0.5;
+  const ny = sumW > 0 ? (sumY / sumW) / H : 0.5;
+  // Sample color at the subject point
+  const sx = Math.max(0, Math.min(W-1, Math.floor(nx * W)));
+  const sy = Math.max(0, Math.min(H-1, Math.floor(ny * H)));
+  const pi = (sy * W + sx) * 4;
+  return {
+    x: nx, y: ny,
+    color: `rgb(${data[pi]},${data[pi+1]},${data[pi+2]})`,
+  };
+}
+
 // ── Image upload (file picker + drag-drop) ────────────────────
 // Janky-fix pass:
 //   • Native <label> opens the picker — no extra click handler.
@@ -863,7 +965,19 @@ function addFiles(files) {
       }
     };
     img.onload = () => {
-      state.images.push({ id: nextId++, name: f.name, img, enabled: true });
+      const subj = detectSubject(img);
+      state.images.push({
+        id: nextId++,
+        name: f.name,
+        img,
+        enabled: true,
+        // [0..1] normalized position of the "subject" within the photo,
+        // computed from saliency + saturation. Used by Scatter to anchor
+        // connecting trails to what the photo is ABOUT, not its bbox.
+        subjectX: subj.x,
+        subjectY: subj.y,
+        subjectColor: subj.color,
+      });
       finish();
     };
     img.onerror = () => {
@@ -1219,44 +1333,71 @@ function scatterRender(target, active) {
   // Item coordinates are stored in PREVIEW-canvas pixels (canvas.width).
   // When rendering at export size, scale x/y/size up by the ratio so the
   // composition fills the export canvas instead of cramming into the
-  // top-left. Pass preview-space W/H to ensureScatterItems so any newly
-  // seeded items still use the layout the user set up.
+  // top-left.
   const SCALE = W / canvas.width;
+  const S = state.scatter;
   ensureScatterItems(active, canvas.width, canvas.height);
-  const items = state.scatter.items.filter(it => active.some(a => a.id === it.imageId));
+  const items = S.items.filter(it => active.some(a => a.id === it.imageId));
+
+  // Resolve each item's source + connection anchor (subject vs square center).
+  // Subject points are in [0..1] image-relative; mapped to the square's
+  // bounding box so they ride along when the square is moved.
+  const nodes = items.map(it => {
+    const src = active.find(a => a.id === it.imageId);
+    const cx = it.x * SCALE;
+    const cy = it.y * SCALE;
+    const sz = it.size * SCALE;
+    // Anchor offset within the square (subject in [-0.5..0.5] * sz)
+    const sxNorm = (src?.subjectX ?? 0.5) - 0.5;
+    const syNorm = (src?.subjectY ?? 0.5) - 0.5;
+    const ax = S.anchorMode === 'subject' ? cx + sxNorm * sz : cx;
+    const ay = S.anchorMode === 'subject' ? cy + syNorm * sz : cy;
+    return { it, src, cx, cy, sz, ax, ay, color: src?.subjectColor || S.lineColor };
+  });
 
   // 1) Lines first (under squares)
-  if (state.scatter.showLines && items.length > 1) {
+  if (S.showLines && nodes.length > 1) {
     x.save();
-    x.strokeStyle = state.scatter.lineColor;
-    x.globalAlpha = state.scatter.lineAlpha;
-    x.lineWidth = state.scatter.lineWidth * SCALE;
+    x.globalAlpha = S.lineAlpha;
+    x.lineWidth = S.lineWidth * SCALE;
     x.lineCap = 'round';
-    const pairs = computeScatterLinePairs(items);
+    if (S.lineStyle === 'dashed') x.setLineDash([10 * SCALE, 8 * SCALE]);
+
+    const pairs = computeScatterLinePairs(nodes);
     pairs.forEach(([a, b]) => {
-      x.beginPath();
-      x.moveTo(a.x * SCALE, a.y * SCALE);
-      x.lineTo(b.x * SCALE, b.y * SCALE);
-      x.stroke();
+      // Color: gradient between subject colors, or solid
+      if (S.lineColorMode === 'gradient') {
+        const g = x.createLinearGradient(a.ax, a.ay, b.ax, b.ay);
+        g.addColorStop(0, a.color);
+        g.addColorStop(1, b.color);
+        x.strokeStyle = g;
+      } else {
+        x.strokeStyle = S.lineColor;
+      }
+      drawTrail(x, a, b, S.lineStyle, S.curvature * SCALE);
     });
+    x.setLineDash([]);
     x.restore();
   }
 
   // 2) Squares
-  items.forEach(it => {
-    const src = active.find(a => a.id === it.imageId);
-    if (!src) return;
-    const img = src.img;
+  nodes.forEach(n => {
+    if (!n.src) return;
+    const img = n.src.img;
     const minSide = Math.min(img.width, img.height);
-    const sx = (img.width - minSide) / 2;
-    const sy = (img.height - minSide) / 2;
-    const sz = it.size * SCALE;
+    const sxImg = (img.width - minSide) / 2;
+    const syImg = (img.height - minSide) / 2;
     x.save();
-    x.translate(it.x * SCALE, it.y * SCALE);
-    if (it.rot) x.rotate(it.rot * Math.PI / 180);
-    x.drawImage(img, sx, sy, minSide, minSide, -sz/2, -sz/2, sz, sz);
+    x.translate(n.cx, n.cy);
+    if (n.it.rot) x.rotate(n.it.rot * Math.PI / 180);
+    x.drawImage(img, sxImg, syImg, minSide, minSide, -n.sz/2, -n.sz/2, n.sz, n.sz);
     x.restore();
   });
+
+  // 3) Subject markers on top of squares
+  if (S.showSubjects && S.anchorMode === 'subject') {
+    nodes.forEach(n => drawSubjectMarker(x, n.ax, n.ay, n.color, S.markerSize * SCALE, S.markerStyle));
+  }
 
   stageInfo.textContent = `${items.length} squares · ${state.scatter.showLines ? state.scatter.lineMode : 'no lines'}`;
   seedDisplay.textContent = `seed ${state.seed}`;
@@ -1288,27 +1429,140 @@ function ensureScatterItems(active, W, H) {
   );
 }
 
+// Inputs may be either raw items (legacy callers) or {ax, ay, ...} nodes
+// from scatterRender. We dispatch by detecting properties.
 function computeScatterLinePairs(items) {
+  const mode = state.scatter.lineMode;
+  const pos = (it) => (it.ax != null) ? { x: it.ax, y: it.ay } : { x: it.x, y: it.y };
   const pairs = [];
-  if (state.scatter.lineMode === 'chain') {
+  if (mode === 'chain') {
     for (let i = 0; i < items.length - 1; i++) pairs.push([items[i], items[i+1]]);
-  } else if (state.scatter.lineMode === 'all') {
+  } else if (mode === 'all') {
     for (let i = 0; i < items.length; i++)
       for (let j = i + 1; j < items.length; j++) pairs.push([items[i], items[j]]);
-  } else if (state.scatter.lineMode === 'nearest') {
+  } else if (mode === 'nearest' || mode === 'nearest3') {
+    const k = mode === 'nearest3' ? 3 : 2;
+    const seen = new Set();
+    const edgeKey = (a, b) => {
+      const ia = items.indexOf(a), ib = items.indexOf(b);
+      return ia < ib ? ia + '-' + ib : ib + '-' + ia;
+    };
     items.forEach(a => {
+      const pa = pos(a);
       const sorted = items.filter(b => b !== a)
-        .map(b => ({ b, d: Math.hypot(a.x - b.x, a.y - b.y) }))
+        .map(b => ({ b, d: Math.hypot(pa.x - pos(b).x, pa.y - pos(b).y) }))
         .sort((p, q) => p.d - q.d);
-      sorted.slice(0, 2).forEach(({ b }) => {
-        // avoid duplicate edges
-        if (!pairs.some(p => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a))) {
-          pairs.push([a, b]);
-        }
+      sorted.slice(0, k).forEach(({ b }) => {
+        const key = edgeKey(a, b);
+        if (!seen.has(key)) { seen.add(key); pairs.push([a, b]); }
       });
     });
+  } else if (mode === 'mst') {
+    // Prim's MST on the subject (or center) anchor points
+    const N = items.length;
+    if (N < 2) return [];
+    const inTree = new Array(N).fill(false);
+    inTree[0] = true;
+    while (pairs.length < N - 1) {
+      let bestI = -1, bestJ = -1, bestD = Infinity;
+      for (let i = 0; i < N; i++) {
+        if (!inTree[i]) continue;
+        const pa = pos(items[i]);
+        for (let j = 0; j < N; j++) {
+          if (inTree[j]) continue;
+          const pb = pos(items[j]);
+          const d = Math.hypot(pa.x - pb.x, pa.y - pb.y);
+          if (d < bestD) { bestD = d; bestI = i; bestJ = j; }
+        }
+      }
+      if (bestJ === -1) break;
+      pairs.push([items[bestI], items[bestJ]]);
+      inTree[bestJ] = true;
+    }
   }
   return pairs;
+}
+
+// Draw a connecting trail between two anchor points, honoring the
+// chosen line style. `a` and `b` are nodes with .ax/.ay (preferred)
+// or .x/.y. Caller has already set strokeStyle/alpha/lineWidth.
+function drawTrail(ctx, a, b, style, bow) {
+  const ax = a.ax != null ? a.ax : a.x;
+  const ay = a.ay != null ? a.ay : a.y;
+  const bx = b.ax != null ? b.ax : b.x;
+  const by = b.ay != null ? b.ay : b.y;
+  if (style === 'straight' || style === 'dashed') {
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+    return;
+  }
+  if (style === 'curved') {
+    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+    const dx = bx - ax, dy = by - ay;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;     // perpendicular
+    const off = (bow / 0.18) * (len * 0.18); // bow scales with line length
+    const cpx = mx + nx * off, cpy = my + ny * off;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.quadraticCurveTo(cpx, cpy, bx, by);
+    ctx.stroke();
+    return;
+  }
+  if (style === 'wavy') {
+    // Sin wave perpendicular to the line — amplitude scales with bow.
+    const dx = bx - ax, dy = by - ay;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    const nx = -uy, ny = ux;
+    const amp = bow * 80;                    // visual sweet spot
+    const period = Math.max(30, len / 6);
+    const steps = Math.max(24, Math.ceil(len / 6));
+    ctx.beginPath();
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const lx = ax + dx * t;
+      const ly = ay + dy * t;
+      const w = Math.sin(t * Math.PI * 2 * (len / period)) * amp;
+      const px = lx + nx * w;
+      const py = ly + ny * w;
+      if (s === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    return;
+  }
+}
+
+function drawSubjectMarker(ctx, x, y, color, size, style) {
+  ctx.save();
+  if (style === 'crosshair') {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1, size * 0.18);
+    ctx.beginPath();
+    ctx.moveTo(x - size, y); ctx.lineTo(x + size, y);
+    ctx.moveTo(x, y - size); ctx.lineTo(x, y + size);
+    ctx.stroke();
+  } else if (style === 'ring') {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1.5, size * 0.22);
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    // dot
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    // tiny white ring for legibility against any photo
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = Math.max(1, size * 0.1);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // Drag to reposition squares. Hit-test top-down (last drawn = top).
@@ -2069,28 +2323,42 @@ function wireScatter() {
       render();
     });
   };
-  bind('r-sqSize', 'v-sqSize', 'sqSize', v => String(Math.round(v)));
-  bind('r-sqVar',  'v-sqVar',  'sqVar',  v => v.toFixed(2));
-  bind('r-sqRot',  'v-sqRot',  'sqRot',  v => Math.round(v) + '°');
-  bind('r-lineW',  'v-lineW',  'lineWidth', v => v.toFixed(1));
-  bind('r-lineA',  'v-lineA',  'lineAlpha', v => v.toFixed(2));
+  bind('r-sqSize',     'v-sqSize',     'sqSize',     v => String(Math.round(v)));
+  bind('r-sqVar',      'v-sqVar',      'sqVar',      v => v.toFixed(2));
+  bind('r-sqRot',      'v-sqRot',      'sqRot',      v => Math.round(v) + '°');
+  bind('r-lineW',      'v-lineW',      'lineWidth',  v => v.toFixed(1));
+  bind('r-lineA',      'v-lineA',      'lineAlpha',  v => v.toFixed(2));
+  bind('r-curv',       'v-curv',       'curvature',  v => v.toFixed(2));
+  bind('r-markerSize', 'v-markerSize', 'markerSize', v => String(Math.round(v)));
 
   $('r-showLines')?.addEventListener('change', e => {
     state.scatter.showLines = e.target.checked;
+    render();
+  });
+  $('r-showSubjects')?.addEventListener('change', e => {
+    state.scatter.showSubjects = e.target.checked;
     render();
   });
   $('r-lineC')?.addEventListener('input', e => {
     state.scatter.lineColor = e.target.value;
     render();
   });
-  document.querySelectorAll('#seg-lineMode button').forEach(b => {
-    b.addEventListener('click', () => {
-      document.querySelectorAll('#seg-lineMode button').forEach(x => x.classList.remove('is-active'));
-      b.classList.add('is-active');
-      state.scatter.lineMode = b.dataset.lm;
-      render();
+  const segBind = (sel, key) => {
+    document.querySelectorAll(`${sel} button`).forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll(`${sel} button`).forEach(x => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        const dataKey = Object.keys(b.dataset)[0];
+        state.scatter[key] = b.dataset[dataKey];
+        render();
+      });
     });
-  });
+  };
+  segBind('#seg-lineMode',      'lineMode');
+  segBind('#seg-anchorMode',    'anchorMode');
+  segBind('#seg-lineStyle',     'lineStyle');
+  segBind('#seg-lineColorMode', 'lineColorMode');
+  segBind('#seg-markerStyle',   'markerStyle');
   $('btn-scatter-randomize')?.addEventListener('click', () => {
     state.seed = Math.floor(Math.random() * 1e9);
     state.scatter.items = []; // clear so they re-seed with new seed
