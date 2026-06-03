@@ -449,6 +449,20 @@
         <input type="range" id="r-layBlur" min="1" max="8" step="1" value="3">
         <div class="row"><span class="row__label">Opacity</span><input class="row__val" id="v-layOpacity" type="text" value="1.00"></div>
         <input type="range" id="r-layOpacity" min="0" max="1" step="0.01" value="1">
+
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--hairline)">
+          <div class="ctrl-label" style="margin-bottom:10px">Where</div>
+          <div style="font-size:10px;color:var(--text-dim);letter-spacing:0.06em;margin-bottom:12px;line-height:1.5">
+            <strong style="color:var(--text-mid)">No points</strong> → effect covers whole canvas.<br>
+            <strong style="color:var(--text-mid)">Click canvas</strong> → drop a point. Effect confines to those circles with falloff.
+          </div>
+          <div class="row"><span class="row__label">Brush radius</span><input class="row__val" id="v-layRadius" type="text" value="280"></div>
+          <input type="range" id="r-layRadius" min="40" max="800" step="5" value="280">
+          <div class="row"><span class="row__label">Falloff</span><input class="row__val" id="v-layFalloff" type="text" value="0.55"></div>
+          <input type="range" id="r-layFalloff" min="0" max="1" step="0.01" value="0.55">
+          <div id="layer-points" style="font-family:var(--mono);font-size:10px;color:var(--text-mid);max-height:120px;overflow-y:auto;margin-top:10px"></div>
+          <button class="ctrl-btn" id="btn-layerClear" style="margin-top:6px">Clear points</button>
+        </div>
       </div>
     </div>
 
@@ -728,10 +742,10 @@ const state = {
     gap:       4,
   },
   // ── EFFECT LAYER ─────────────────────────────────────────────
-  // A whole-canvas dot/glyph overlay whose colors are SAMPLED from
-  // the already-rendered base composition. Drop it onto any mode
-  // (Slice, Strata, Scatter, etc.) to translate the existing color
-  // field into a halftone of itself.
+  // A Dot or Glyph overlay whose colors are SAMPLED from the just-
+  // rendered base composition. With no points it covers the whole
+  // canvas; click anywhere on the canvas to drop a point, and the
+  // layer is then confined to those radial pools (with falloff).
   layer: {
     enabled:    false,
     effect:     'dot',     // 'dot' | 'glyph'
@@ -739,6 +753,9 @@ const state = {
     dotSize:    5,         // 1..8
     blur:       3,         // 1..8 — blur the base canvas before sampling
     opacity:    1.0,       // overall layer opacity
+    points:     [],        // [{ x, y }] — empty = whole canvas
+    radius:     280,       // brush radius for each point (px on canvas)
+    falloff:    0.55,      // 0=hard, 1=very soft
   },
   scatter: {
     items: [],          // [{ imageId, x, y, size, rot }] — positions in canvas px
@@ -959,8 +976,8 @@ function applyEffectLayer(target) {
   const W = target.width, H = target.height;
   const ctx = target.getContext('2d');
 
-  // Optionally blur the base canvas first so colors average across
-  // each cell rather than reading a single pixel.
+  // Blur the base canvas first so cell colors average rather than
+  // reading single pixels.
   const blurPx = (DOT.imageBlur[L.blur - 1] || 0) * (W / 1000);
   let sampleSrc;
   if (blurPx > 0) {
@@ -974,12 +991,39 @@ function applyEffectLayer(target) {
     sampleSrc = ctx.getImageData(0, 0, W, H).data;
   }
 
-  const N    = DOT.resolution[L.resolution - 1] || 80;
-  const step = W / N;
-  const dotR = (step * (DOT.dotSize[L.dotSize - 1] || 0.7)) / 2;
+  // Render the full-canvas dot/glyph grid onto an offscreen canvas
+  // (transparent bg). Mask + composite below.
+  const effCv = document.createElement('canvas');
+  effCv.width = W; effCv.height = H;
+  drawLayerGrid(effCv, sampleSrc, W, H);
+
+  // No points → effect covers the whole canvas.
+  // Points → confine to radial pools with falloff.
+  if (L.points && L.points.length) {
+    const mask = makeLayerMask(W, H);
+    const ectx = effCv.getContext('2d');
+    ectx.globalCompositeOperation = 'destination-in';
+    ectx.drawImage(mask, 0, 0);
+    ectx.globalCompositeOperation = 'source-over';
+  }
 
   ctx.save();
   ctx.globalAlpha = L.opacity;
+  ctx.drawImage(effCv, 0, 0);
+  ctx.restore();
+
+  // Indicator rings — live preview canvas only, never on exports.
+  if (target === canvas && L.points && L.points.length) {
+    drawLayerPointHandles(ctx, L);
+  }
+}
+
+function drawLayerGrid(effCv, sampleSrc, W, H) {
+  const L = state.layer;
+  const ctx = effCv.getContext('2d');
+  const N    = DOT.resolution[L.resolution - 1] || 80;
+  const step = W / N;
+  const dotR = (step * (DOT.dotSize[L.dotSize - 1] || 0.7)) / 2;
   if (L.effect === 'glyph') {
     const ch = state.glyph.char || '✕';
     const fontPx = step * (DOT.dotSize[L.dotSize - 1] || 0.7) * 1.6;
@@ -1019,6 +1063,53 @@ function applyEffectLayer(target) {
       }
     }
   }
+}
+
+// Build a white-on-transparent mask: white radial gradient at each
+// point that fades to transparent through the falloff zone. Used with
+// destination-in to confine the effect grid to those areas.
+function makeLayerMask(W, H) {
+  const L = state.layer;
+  const m = document.createElement('canvas');
+  m.width = W; m.height = H;
+  const mctx = m.getContext('2d');
+  const sx = W / canvas.width;
+  const sy = H / canvas.height;
+  L.points.forEach(p => {
+    const r = (p.radius || L.radius) * Math.min(sx, sy);
+    const px = p.x * sx, py = p.y * sy;
+    const fall = p.falloff != null ? p.falloff : L.falloff;
+    const g = mctx.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(Math.max(0, 1 - fall), 'rgba(255,255,255,1)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    mctx.fillStyle = g;
+    mctx.beginPath();
+    mctx.arc(px, py, r, 0, Math.PI * 2);
+    mctx.fill();
+  });
+  return m;
+}
+
+function drawLayerPointHandles(ctx, L) {
+  ctx.save();
+  L.points.forEach((p, i) => {
+    ctx.strokeStyle = 'rgba(255, 212, 0, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius || L.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255, 212, 0, 0.9)';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 9px JetBrains Mono, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(i + 1), p.x, p.y);
+  });
   ctx.restore();
 }
 
@@ -1255,7 +1346,86 @@ canvas.addEventListener('pointerdown', onScatterPointerDown);
 window.addEventListener('pointermove', onScatterPointerMove);
 window.addEventListener('pointerup',   onScatterPointerUp);
 
-// (Effect Layer is whole-canvas — no canvas-paint interaction.)
+// ── Effect Layer canvas interaction ───────────────────────────
+// When the layer is enabled, click adds a point at the cursor.
+// Shift-click on an existing point removes it. Drag a point to move.
+let layerDrag = null;
+function canvasPoint(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (canvas.width / rect.width),
+    y: (e.clientY - rect.top)  * (canvas.height / rect.height),
+  };
+}
+function pointAtHit(sx, sy) {
+  const hitR = 18;
+  for (let i = state.layer.points.length - 1; i >= 0; i--) {
+    const p = state.layer.points[i];
+    if (Math.hypot(p.x - sx, p.y - sy) < hitR) return { index: i, point: p };
+  }
+  return null;
+}
+canvas.addEventListener('pointerdown', e => {
+  if (!state.layer.enabled) return;
+  if (scatterDrag) return;
+  const { x, y } = canvasPoint(e);
+  const hit = pointAtHit(x, y);
+  if (hit) {
+    if (e.shiftKey) {
+      state.layer.points.splice(hit.index, 1);
+      renderLayerPoints();
+      render();
+    } else {
+      layerDrag = { idx: hit.index, dx: x - hit.point.x, dy: y - hit.point.y };
+      canvas.classList.add('is-dragging');
+    }
+    e.preventDefault();
+    return;
+  }
+  if (!e.shiftKey) {
+    state.layer.points.push({ x, y });
+    renderLayerPoints();
+    render();
+    e.preventDefault();
+  }
+});
+window.addEventListener('pointermove', e => {
+  if (!layerDrag) return;
+  const { x, y } = canvasPoint(e);
+  const p = state.layer.points[layerDrag.idx];
+  if (!p) { layerDrag = null; return; }
+  p.x = x - layerDrag.dx;
+  p.y = y - layerDrag.dy;
+  render();
+});
+window.addEventListener('pointerup', () => {
+  if (layerDrag) {
+    layerDrag = null;
+    canvas.classList.remove('is-dragging');
+    renderLayerPoints();
+  }
+});
+
+function renderLayerPoints() {
+  const wrap = $('layer-points');
+  if (!wrap) return;
+  if (!state.layer.points.length) {
+    wrap.innerHTML = '<div style="color:var(--text-dim);font-style:italic">Whole-canvas mode (no points).</div>';
+    return;
+  }
+  wrap.innerHTML = state.layer.points.map((p, i) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-top:1px solid var(--hairline)">`
+    + `<span>#${String(i+1).padStart(2,'0')} · ${Math.round(p.x)}, ${Math.round(p.y)}</span>`
+    + `<button data-pi="${i}" class="layer-pt-x" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-family:var(--mono);font-size:11px;padding:2px 4px">×</button>`
+    + `</div>`).join('');
+  wrap.querySelectorAll('.layer-pt-x').forEach(b => {
+    b.addEventListener('click', () => {
+      state.layer.points.splice(parseInt(b.dataset.pi, 10), 1);
+      renderLayerPoints();
+      render();
+    });
+  });
+}
 
 // Right-panel per-image cards: thumb + X/Y/Size/Rotate inputs.
 function renderScatterItemsList() {
@@ -1761,6 +1931,28 @@ function buildLayerSVG(size, active) {
 
   const step = size / N;
   const opacity = (L.opacity != null ? L.opacity : 1).toFixed(3);
+
+  // Scale brush points up to export size + precompute mask sampler.
+  const sc = size / canvas.width;
+  const pts = (L.points || []).map(p => ({
+    x: p.x * sc, y: p.y * sc, r: (p.radius || L.radius) * sc,
+    fall: p.falloff != null ? p.falloff : L.falloff,
+  }));
+  const masked = pts.length > 0;
+  function maskAt(cx, cy) {
+    let a = 0;
+    for (const p of pts) {
+      const d = Math.hypot(cx - p.x, cy - p.y);
+      if (d >= p.r) continue;
+      const t = d / p.r;
+      const inner = 1 - p.fall;
+      const va = t <= inner ? 1 : 1 - (t - inner) / Math.max(0.001, p.fall);
+      if (va > a) a = va;
+      if (a >= 1) break;
+    }
+    return a;
+  }
+
   let frags = '';
   if (L.effect === 'glyph') {
     const ch = (state.glyph.char || '✕')
@@ -1771,12 +1963,15 @@ function buildLayerSVG(size, active) {
       const syPix = Math.max(0, Math.min(size - 1, Math.floor(cy)));
       for (let xi = 0; xi < N; xi++) {
         const cx = xi * step + step / 2;
+        const ma = masked ? maskAt(cx, cy) : 1;
+        if (ma < 0.02) continue;
         const sxPix = Math.max(0, Math.min(size - 1, Math.floor(cx)));
         const i = (syPix * size + sxPix) * 4;
         const a = sampleSrc[i + 3];
         if (a < 4) continue;
         const r = sampleSrc[i], g = sampleSrc[i + 1], b = sampleSrc[i + 2];
-        frags += `<text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" font-family="sans-serif" font-size="${fontPx.toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="rgb(${r},${g},${b})">${ch}</text>`;
+        const op = masked ? ` opacity="${ma.toFixed(3)}"` : '';
+        frags += `<text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" font-family="sans-serif" font-size="${fontPx.toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="rgb(${r},${g},${b})"${op}>${ch}</text>`;
       }
     }
   } else {
@@ -1786,12 +1981,15 @@ function buildLayerSVG(size, active) {
       const syPix = Math.max(0, Math.min(size - 1, Math.floor(cy)));
       for (let xi = 0; xi < N; xi++) {
         const cx = xi * step + step / 2;
+        const ma = masked ? maskAt(cx, cy) : 1;
+        if (ma < 0.02) continue;
         const sxPix = Math.max(0, Math.min(size - 1, Math.floor(cx)));
         const i = (syPix * size + sxPix) * 4;
         const a = sampleSrc[i + 3];
         if (a < 4) continue;
         const r = sampleSrc[i], g = sampleSrc[i + 1], b = sampleSrc[i + 2];
-        frags += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${radius.toFixed(2)}" fill="rgb(${r},${g},${b})"/>`;
+        const op = masked ? ` opacity="${ma.toFixed(3)}"` : '';
+        frags += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${radius.toFixed(2)}" fill="rgb(${r},${g},${b})"${op}/>`;
       }
     }
   }
@@ -2073,10 +2271,14 @@ function wireLayer() {
   bind('r-laySize',    'v-laySize',    'dotSize',    v => String(Math.round(v)));
   bind('r-layBlur',    'v-layBlur',    'blur',       v => String(Math.round(v)));
   bind('r-layOpacity', 'v-layOpacity', 'opacity',    v => v.toFixed(2));
+  bind('r-layRadius',  'v-layRadius',  'radius',     v => String(Math.round(v)));
+  bind('r-layFalloff', 'v-layFalloff', 'falloff',    v => v.toFixed(2));
 
   $('r-layerOn')?.addEventListener('change', e => {
     state.layer.enabled = e.target.checked;
     $('layer-controls').style.display = e.target.checked ? '' : 'none';
+    canvas.style.cursor = e.target.checked ? 'crosshair' : '';
+    renderLayerPoints();
     render();
   });
   document.querySelectorAll('#seg-layerEffect button').forEach(b => {
@@ -2087,8 +2289,14 @@ function wireLayer() {
       render();
     });
   });
+  $('btn-layerClear')?.addEventListener('click', () => {
+    state.layer.points = [];
+    renderLayerPoints();
+    render();
+  });
 }
 wireLayer();
+renderLayerPoints();
 
 $('r-export').addEventListener('input', e => {
   state.params.export = parseInt(e.target.value, 10);
