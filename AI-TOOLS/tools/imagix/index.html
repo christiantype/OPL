@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+oka<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -3188,6 +3188,49 @@ try {
 setInterval(() => {
   try { localStorage.setItem(LS, JSON.stringify({ params: state.params, mode: state.mode })); } catch (e) {}
 }, 2000);
+
+// ── Default starting kit ──────────────────────────────────────
+// Loads a curated set of photos on first paint so the canvas isn't
+// empty. Cass can remove any (×) or hit "Clear all" to start fresh;
+// her uploads just push onto the same list.
+const DEFAULT_IMAGES = [
+  'defaults/01.jpg','defaults/02.jpg','defaults/03.jpg','defaults/04.jpg',
+  'defaults/05.jpg','defaults/06.jpg','defaults/07.jpg','defaults/08.jpg',
+];
+(function loadDefaults() {
+  if (state.images.length) return;
+  pendingLoads += DEFAULT_IMAGES.length;
+  updateLoadingPill();
+  let remaining = DEFAULT_IMAGES.length;
+  DEFAULT_IMAGES.forEach(path => {
+    const img = new Image();
+    const finish = () => {
+      pendingLoads--;
+      remaining--;
+      updateLoadingPill();
+      if (remaining === 0) {
+        renderThumbs();
+        if (state.mode === 'scatter') renderScatterItemsList();
+        render();
+      }
+    };
+    img.onload = () => {
+      const subj = detectSubject(img);
+      state.images.push({
+        id: nextId++,
+        name: path.split('/').pop(),
+        img,
+        enabled: true,
+        subjectX: subj.x,
+        subjectY: subj.y,
+        subjectColor: subj.color,
+      });
+      finish();
+    };
+    img.onerror = () => { console.warn('Default failed:', path); finish(); };
+    img.src = path;
+  });
+})();
 </script>
 </body>
 </html>
