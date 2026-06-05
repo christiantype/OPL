@@ -15,11 +15,11 @@ const Opal = (() => {
     const bar = document.createElement('header');
     bar.className = 'opal-topbar';
     bar.innerHTML = `
-      <a href="/AI-TOOLS/" class="opal-brand" aria-label="AI-Tools home" style="color:#1a1a1a;text-decoration:none;display:flex;align-items:center;gap:14px;">
+      <a href="/tools/" class="opal-brand" aria-label="Tools home" style="color:#1a1a1a;text-decoration:none;display:flex;align-items:center;gap:14px;">
         ${WORDMARK}
         ${product ? `<span class="opal-divider"></span><span class="opal-product" style="color:#8a8a8a;font-size:11px;letter-spacing:.14em;text-transform:uppercase;">${product}</span>` : ''}
       </a>
-      <a href="/AI-TOOLS/" class="opal-menu-btn" aria-label="Back to AI-Tools" style="color:#1a1a1a;line-height:0;text-decoration:none;">
+      <a href="/tools/" class="opal-menu-btn" aria-label="Back to Tools" style="color:#1a1a1a;line-height:0;text-decoration:none;">
         ${MENU_ICON}
       </a>
     `;

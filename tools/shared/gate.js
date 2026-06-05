@@ -104,7 +104,7 @@
     wrap.className = 'zlmc-gate';
     wrap.innerHTML = `
       <form class="zlmc-gate-card" autocomplete="off">
-        <div class="zlmc-gate-eyebrow">Private · OP/AL AI-Tools</div>
+        <div class="zlmc-gate-eyebrow">Private · OP/AL Tools</div>
         <h1 class="zlmc-gate-title">Enter password to continue.</h1>
         <div class="zlmc-gate-row">
           <input class="zlmc-gate-input" type="password" autocomplete="current-password" placeholder="Password" />
