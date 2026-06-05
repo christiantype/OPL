@@ -544,6 +544,7 @@ oka<!DOCTYPE html>
         <button data-mode="echo">Echo</button>
         <button data-mode="grid">Grid</button>
         <button data-mode="circle">Circle</button>
+        <button data-mode="nest">Nest</button>
       </div>
     </div>
 
@@ -704,6 +705,75 @@ oka<!DOCTYPE html>
         <label class="row toggle" style="margin-top:14px">
           <span class="row__label">Outline rings</span>
           <input type="checkbox" id="r-cOutline">
+        </label>
+      </div>
+    </div>
+
+    <!-- NEST MODE CONTROLS -->
+    <div class="mode-group" data-mode-show="nest" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Nest</div>
+
+        <div class="row"><span class="row__label">Frames</span><input class="row__val" id="v-nCount" type="text" value="8"></div>
+        <input type="range" id="r-nCount" min="2" max="30" step="1" value="8">
+
+        <div class="row"><span class="row__label">Frame width</span><input class="row__val" id="v-nWidth" type="text" value="0.06"></div>
+        <input type="range" id="r-nWidth" min="0.01" max="0.20" step="0.005" value="0.06">
+
+        <div class="row"><span class="row__label">Width falloff</span><input class="row__val" id="v-nFall" type="text" value="0.00"></div>
+        <input type="range" id="r-nFall" min="-1" max="1" step="0.01" value="0">
+
+        <div class="row"><span class="row__label">Scale step</span><input class="row__val" id="v-nScale" type="text" value="0.86"></div>
+        <input type="range" id="r-nScale" min="0.50" max="0.98" step="0.01" value="0.86">
+
+        <div class="row"><span class="row__label">Aspect</span><input class="row__val" id="v-nAspect" type="text" value="1.00"></div>
+        <input type="range" id="r-nAspect" min="0.40" max="2.50" step="0.01" value="1.00">
+
+        <div class="row"><span class="row__label">Vanishing X</span><input class="row__val" id="v-nVx" type="text" value="0.00"></div>
+        <input type="range" id="r-nVx" min="-0.45" max="0.45" step="0.01" value="0">
+
+        <div class="row"><span class="row__label">Vanishing Y</span><input class="row__val" id="v-nVy" type="text" value="0.00"></div>
+        <input type="range" id="r-nVy" min="-0.45" max="0.45" step="0.01" value="0">
+
+        <div class="row"><span class="row__label">Rotation jitter</span><input class="row__val" id="v-nRot" type="text" value="0°"></div>
+        <input type="range" id="r-nRot" min="0" max="45" step="0.5" value="0">
+
+        <div class="row"><span class="row__label">Position jitter</span><input class="row__val" id="v-nPos" type="text" value="0.00"></div>
+        <input type="range" id="r-nPos" min="0" max="0.20" step="0.005" value="0">
+
+        <div class="row"><span class="row__label">Opacity ramp</span><input class="row__val" id="v-nOpac" type="text" value="0.00"></div>
+        <input type="range" id="r-nOpac" min="-1" max="1" step="0.01" value="0">
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Direction</div>
+        <div class="seg" id="seg-nDir" style="grid-template-columns:repeat(2,1fr)">
+          <button data-nd="in" class="is-active">Inward</button>
+          <button data-nd="out">Outward</button>
+        </div>
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Container shape</div>
+        <div class="seg" id="seg-nShape" style="grid-template-columns:repeat(2,1fr);margin-bottom:10px">
+          <button data-ns="rect" class="is-active">Rect</button>
+          <button data-ns="glyph">Glyph</button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px">
+          <label class="ctrl-btn" id="r-nGlyphBtn" style="flex:1;margin:0;text-align:center">
+            Upload glyph
+            <input type="file" id="r-nGlyph" accept="image/svg+xml,image/png,image/webp,image/jpeg" style="display:none">
+          </label>
+          <button class="ctrl-btn" id="btn-nGlyphClear" style="width:auto;padding:9px 12px;margin:0" title="Remove uploaded glyph">Clear</button>
+        </div>
+        <div id="nest-glyph-preview" style="display:none;align-items:center;gap:10px;padding:8px;background:var(--panel);border:1px solid var(--hairline);margin-bottom:14px">
+          <img id="nest-glyph-preview-img" style="width:36px;height:36px;object-fit:contain;background:repeating-conic-gradient(#222 0% 25%,#1a1a1a 25% 50%) 50% / 12px 12px">
+          <span id="nest-glyph-preview-name" style="font-size:11px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
+        </div>
+
+        <label class="row toggle" style="margin-top:14px">
+          <span class="row__label">Outline frames</span>
+          <input type="checkbox" id="r-nOutline">
+        </label>
+        <label class="row toggle">
+          <span class="row__label">Fill center</span>
+          <input type="checkbox" id="r-nFillCenter" checked>
         </label>
       </div>
     </div>
@@ -982,6 +1052,27 @@ const state = {
     density:   6,    // base cells per axis
     asymmetry: 0.60,
     gap:       4,
+  },
+  nest: {
+    count:        8,        // number of concentric frames
+    frameWidth:   0.06,     // fraction of canvas dim — the "X" in the sketch
+    widthFalloff: 0,        // -1..1, frames thinner (-) or thicker (+) toward center
+    scaleStep:    0.86,     // each inner rect = previous * scaleStep
+    aspect:       1.0,      // w/h ratio for the outermost frame
+    vanishX:      0,        // -0.45..0.45, offsets the vanishing point off-center
+    vanishY:      0,
+    rotJitter:    0,        // deg, per-frame
+    posJitter:    0,        // 0..0.2, fraction of canvas
+    opacityRamp:  0,        // -1..1, fade outward (+) or inward (-)
+    direction:    'in',     // 'in' draws outer→inner; 'out' inner→outer
+    outline:      false,
+    fillCenter:   true,     // draw a solid inner photo behind all frames
+    // Container shape — defaults to a rectangle; upload a glyph (SVG/PNG)
+    // to use its silhouette as the frame container. The silhouette is
+    // squashed to fit each rect, so the aspect knob still applies.
+    shape:        'rect',   // 'rect' | 'glyph'
+    glyphImg:     null,
+    glyphName:    '',
   },
   circle: {
     style:        'rings',  // 'rings' | 'wedges' | 'beads'
@@ -1362,6 +1453,7 @@ function render(target = canvas) {
   else if (state.mode === 'echo')    echoRender(target, active);
   else if (state.mode === 'grid')    gridRender(target, active);
   else if (state.mode === 'circle')  circleRender(target, active);
+  else if (state.mode === 'nest')    nestRender(target, active);
   else                               sliceRender(target, active);
 
   // ── EFFECT LAYER overlay ────────────────────────────────────
@@ -2471,6 +2563,215 @@ function circleRender(target, active) {
   seedDisplay.textContent = `seed ${state.seed}`;
 }
 
+// ── Nest mode ────────────────────────────────────────────────
+// Concentric rectangular frames receding toward an (optionally
+// off-center) vanishing point — a hand-drawn perspective tunnel
+// where each "frame slice" is one photo. The outermost rectangle
+// fills the canvas; each subsequent inner rectangle is scaled by
+// `scaleStep` and offset toward (vanishX, vanishY). The visible
+// frame is the annulus between rectangle[i] and rectangle[i+1],
+// drawn with the photo cover-fitted to the rect bounding box and
+// clipped via even-odd to leave the inside transparent.
+function nestRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  // Background
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.params.bg === 'transparent') x.clearRect(0, 0, W, H);
+  else { x.fillStyle = state.params.bg; x.fillRect(0, 0, W, H); }
+  x.restore();
+
+  const N = state.nest;
+  const count = Math.max(2, Math.round(N.count));
+  const rng = mulberry32(state.seed);
+  const minDim = Math.min(W, H);
+
+  // Outermost rectangle: aspect controls w:h, centered on canvas.
+  const aspect = Math.max(0.1, N.aspect);
+  let outerW, outerH;
+  if (aspect >= 1) { outerH = H; outerW = Math.min(W, H * aspect); }
+  else             { outerW = W; outerH = Math.min(H, W / aspect); }
+  const cx0 = W / 2, cy0 = H / 2;
+
+  // Vanishing point — frames recede toward (vx, vy).
+  const vx = cx0 + N.vanishX * W;
+  const vy = cy0 + N.vanishY * H;
+
+  // Build the rectangle stack from outer (i=0) → inner (i=count).
+  // Each is (cx, cy, w, h). The inside of rect[i+1] is the "hole"
+  // cut from rect[i] to produce the frame band.
+  const rects = [];
+  let cx = cx0, cy = cy0, rw = outerW, rh = outerH;
+  for (let i = 0; i <= count; i++) {
+    rects.push({ cx, cy, w: rw, h: rh });
+    // Per-step frame width as a fraction of minDim. Width falloff
+    // scales the step thinner (-) or thicker (+) as i grows.
+    const tNorm = i / Math.max(1, count - 1);
+    const widthScale = 1 + N.widthFalloff * (tNorm - 0.5) * 1.4;
+    const step = Math.max(0.001, N.frameWidth) * widthScale;
+    // Either scale OR width drives the shrink; multiply both so
+    // user can dial perspective separately from band thickness.
+    rw = Math.max(2, rw * N.scaleStep - step * minDim * 0.6);
+    rh = Math.max(2, rh * N.scaleStep - step * minDim * 0.6);
+    // Slide center toward vanishing point a bit each step.
+    const k = 1 - N.scaleStep;
+    cx = cx + (vx - cx) * k;
+    cy = cy + (vy - cy) * k;
+    if (rw < 6 || rh < 6) break;
+  }
+  const drawCount = rects.length - 1;
+
+  const order = N.direction === 'out'
+    ? Array.from({ length: drawCount }, (_, i) => drawCount - 1 - i)
+    : Array.from({ length: drawCount }, (_, i) => i);
+
+  const useGlyph = N.shape === 'glyph' && N.glyphImg;
+
+  // Fill center first if requested (a solid photo at the innermost
+  // rect, so the very middle isn't transparent).
+  if (N.fillCenter && drawCount > 0) {
+    const center = rects[drawCount];
+    const src = active[drawCount % active.length];
+    if (src) {
+      if (useGlyph) {
+        const off = renderGlyphFrame(W, H, src.img, [center], null, N.glyphImg, 0, 0, 0);
+        x.drawImage(off, 0, 0);
+      } else {
+        x.save();
+        x.beginPath();
+        x.rect(center.cx - center.w / 2, center.cy - center.h / 2, center.w, center.h);
+        x.clip();
+        drawCoverIntoRect(x, src.img, center.cx, center.cy, center.w, center.h);
+        x.restore();
+      }
+    }
+  }
+
+  for (const i of order) {
+    const outer = rects[i];
+    const inner = rects[i + 1];
+    const src = active[i % active.length];
+    if (!src) continue;
+
+    // Per-frame jitter — deterministic from seed.
+    const jx = (rng() - 0.5) * 2 * N.posJitter * W;
+    const jy = (rng() - 0.5) * 2 * N.posJitter * H;
+    const jr = (rng() - 0.5) * 2 * (N.rotJitter * Math.PI / 180);
+
+    // Opacity ramp: -1 fades inward, +1 fades outward, 0 uniform.
+    const tNorm = drawCount > 1 ? i / (drawCount - 1) : 0.5;
+    const opa = N.opacityRamp === 0
+      ? 1
+      : N.opacityRamp > 0
+        ? 1 - tNorm * N.opacityRamp
+        : 1 - (1 - tNorm) * (-N.opacityRamp);
+
+    if (useGlyph) {
+      // Composite-op masking: photo → outer glyph alpha → MINUS inner glyph alpha.
+      const off = renderGlyphFrame(W, H, src.img, [outer], inner, N.glyphImg, jx, jy, jr);
+      x.save();
+      x.globalAlpha = Math.max(0.05, Math.min(1, opa));
+      x.drawImage(off, 0, 0);
+      if (N.outline) {
+        x.strokeStyle = 'rgba(0,0,0,0.45)';
+        x.lineWidth = 1;
+        // Outline the outer glyph silhouette by rendering it as a 1px stroke layer.
+        drawGlyphOutline(x, N.glyphImg, outer.cx + jx, outer.cy + jy, outer.w, outer.h, jr);
+      }
+      x.restore();
+      continue;
+    }
+
+    x.save();
+    x.globalAlpha = Math.max(0.05, Math.min(1, opa));
+    x.translate(outer.cx + jx, outer.cy + jy);
+    if (jr) x.rotate(jr);
+    // Build the annulus path (even-odd: outer rect minus inner rect).
+    const innerOffX = (inner.cx - outer.cx);
+    const innerOffY = (inner.cy - outer.cy);
+    const p = new Path2D();
+    p.rect(-outer.w / 2, -outer.h / 2, outer.w, outer.h);
+    p.rect(innerOffX - inner.w / 2, innerOffY - inner.h / 2, inner.w, inner.h);
+    x.clip(p, 'evenodd');
+    drawCoverIntoRect(x, src.img, 0, 0, outer.w, outer.h);
+    if (N.outline) {
+      x.strokeStyle = 'rgba(0,0,0,0.45)';
+      x.lineWidth = 1;
+      x.strokeRect(-outer.w / 2, -outer.h / 2, outer.w, outer.h);
+    }
+    x.restore();
+  }
+
+  stageInfo.textContent = `nest · ${drawCount} frames · ${active.length} src`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
+// Cover-fit photo into a rect centered at (cx, cy) with (w, h).
+function drawCoverIntoRect(ctx, img, cx, cy, w, h) {
+  const r = Math.max(w / img.width, h / img.height);
+  const dw = img.width * r, dh = img.height * r;
+  ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+}
+
+// Render a single nest frame whose container is a glyph silhouette
+// (instead of a rectangle). Uses composite operations on an offscreen
+// canvas: outer glyph alpha → fills with photo → cuts inner glyph
+// alpha. Returns the offscreen canvas to be drawn onto target.
+// If `inner` is null, fills the whole outer silhouette (used for the
+// innermost fillCenter case).
+function renderGlyphFrame(W, H, photo, outerRects, inner, glyph, jx, jy, jr) {
+  const off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  const o = off.getContext('2d');
+  const outer = outerRects[0];
+  // 1) Draw outer glyph silhouette (the alpha channel acts as a mask).
+  o.save();
+  o.translate(outer.cx + jx, outer.cy + jy);
+  if (jr) o.rotate(jr);
+  o.drawImage(glyph, -outer.w / 2, -outer.h / 2, outer.w, outer.h);
+  o.restore();
+  // 2) Replace silhouette pixels with the photo.
+  o.save();
+  o.globalCompositeOperation = 'source-in';
+  drawCoverIntoRect(o, photo, outer.cx + jx, outer.cy + jy, outer.w, outer.h);
+  o.restore();
+  // 3) Subtract the inner glyph silhouette to leave only the band.
+  if (inner) {
+    o.save();
+    o.globalCompositeOperation = 'destination-out';
+    // Inner is positioned at its own (cx, cy) — already includes the
+    // vanishing-point offset. Apply the same jitter so the band stays
+    // visually attached to the outer frame.
+    o.translate(inner.cx + jx, inner.cy + jy);
+    if (jr) o.rotate(jr);
+    o.drawImage(glyph, -inner.w / 2, -inner.h / 2, inner.w, inner.h);
+    o.restore();
+  }
+  return off;
+}
+
+// Stroke the glyph silhouette at the given placement. Used for the
+// optional outline on Nest's glyph mode. Edge-detect via composite
+// ops on a tiny offscreen canvas, then draw onto target.
+function drawGlyphOutline(ctx, glyph, cx, cy, w, h, rot) {
+  const off = document.createElement('canvas');
+  off.width = Math.ceil(w + 4); off.height = Math.ceil(h + 4);
+  const o = off.getContext('2d');
+  o.translate(off.width / 2, off.height / 2);
+  o.drawImage(glyph, -w / 2, -h / 2, w, h);
+  // Subtract a slightly-smaller copy → 1-2px outline ring.
+  o.globalCompositeOperation = 'destination-out';
+  o.drawImage(glyph, -w / 2 + 1, -h / 2 + 1, w - 2, h - 2);
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (rot) ctx.rotate(rot);
+  ctx.drawImage(off, -off.width / 2, -off.height / 2);
+  ctx.restore();
+}
+
 // ── Circle helpers ───────────────────────────────────────────
 function annulusPath(cx, cy, rInner, rOuter) {
   const p = new Path2D();
@@ -3133,6 +3434,90 @@ function wireCircle() {
   });
 }
 wireCircle();
+
+// ── Nest mode wiring ──────────────────────────────────────────
+function wireNest() {
+  const bind = (id, valId, key, fmt) => {
+    const r = $(id), v = $(valId); if (!r) return;
+    r.addEventListener('input', () => {
+      state.nest[key] = parseFloat(r.value);
+      if (v) setVal(v, fmt(state.nest[key]));
+      render();
+    });
+  };
+  bind('r-nCount',  'v-nCount',  'count',        v => String(Math.round(v)));
+  bind('r-nWidth',  'v-nWidth',  'frameWidth',   v => v.toFixed(3));
+  bind('r-nFall',   'v-nFall',   'widthFalloff', v => v.toFixed(2));
+  bind('r-nScale',  'v-nScale',  'scaleStep',    v => v.toFixed(2));
+  bind('r-nAspect', 'v-nAspect', 'aspect',       v => v.toFixed(2));
+  bind('r-nVx',     'v-nVx',     'vanishX',      v => v.toFixed(2));
+  bind('r-nVy',     'v-nVy',     'vanishY',      v => v.toFixed(2));
+  bind('r-nRot',    'v-nRot',    'rotJitter',    v => Math.round(v) + '°');
+  bind('r-nPos',    'v-nPos',    'posJitter',    v => v.toFixed(2));
+  bind('r-nOpac',   'v-nOpac',   'opacityRamp',  v => v.toFixed(2));
+
+  document.querySelectorAll('#seg-nDir button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#seg-nDir button').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      state.nest.direction = b.dataset.nd;
+      render();
+    });
+  });
+  $('r-nOutline')?.addEventListener('change', e => {
+    state.nest.outline = e.target.checked; render();
+  });
+  $('r-nFillCenter')?.addEventListener('change', e => {
+    state.nest.fillCenter = e.target.checked; render();
+  });
+
+  // Shape (rect / glyph)
+  document.querySelectorAll('#seg-nShape button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#seg-nShape button').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      state.nest.shape = b.dataset.ns;
+      render();
+    });
+  });
+
+  // Upload glyph for the container shape. Pattern mirrors the Glyph
+  // mode's custom-glyph upload so the UX feels identical.
+  $('r-nGlyph')?.addEventListener('change', e => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { alert('Use an SVG or PNG image.'); return; }
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      state.nest.glyphImg = img;
+      state.nest.glyphName = f.name;
+      // Auto-switch to glyph shape on successful upload.
+      state.nest.shape = 'glyph';
+      document.querySelectorAll('#seg-nShape button').forEach(x => x.classList.toggle('is-active', x.dataset.ns === 'glyph'));
+      const prev = $('nest-glyph-preview');
+      if (prev) {
+        prev.style.display = 'flex';
+        $('nest-glyph-preview-img').src = url;
+        $('nest-glyph-preview-name').textContent = f.name;
+      }
+      render();
+    };
+    img.onerror = () => { alert('Could not load that file as an image.'); URL.revokeObjectURL(url); };
+    img.src = url;
+    e.target.value = '';
+  });
+  $('btn-nGlyphClear')?.addEventListener('click', () => {
+    state.nest.glyphImg = null;
+    state.nest.glyphName = '';
+    state.nest.shape = 'rect';
+    document.querySelectorAll('#seg-nShape button').forEach(x => x.classList.toggle('is-active', x.dataset.ns === 'rect'));
+    const prev = $('nest-glyph-preview');
+    if (prev) prev.style.display = 'none';
+    render();
+  });
+}
+wireNest();
 
 // ── Typing into the value field ───────────────────────────────
 // Each row__val is an editable input. Typing here updates the
