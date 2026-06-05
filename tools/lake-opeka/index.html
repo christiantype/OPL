@@ -429,6 +429,11 @@
   /* Scatter overlay tools on the stage */
   #canvas.is-scatter { cursor: grab; }
   #canvas.is-scatter.is-dragging { cursor: grabbing; }
+  /* Effect-layer canvas: crosshair while compositing, grab when hovering
+     an existing point handle so it reads as draggable. */
+  #canvas.is-layer { cursor: crosshair; }
+  #canvas.is-layer.is-hover-pt { cursor: grab; }
+  #canvas.is-layer.is-dragging { cursor: grabbing; }
 
   /* ── Mobile fallback (read-only) ────────────────────────────── */
   @media (max-width: 880px) {
@@ -444,7 +449,7 @@
   <header class="topbar">
     <a href="/tools/" class="opl-brand" aria-label="Tools home">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="154.5 212.9 1274.6 186.2" fill="currentColor"><path d="M1356.2,353.2h72.1v-13h-59.1v-100.6h-13v113.5ZM1077.3,313.7l13.5-61.1h10.6l13.3,61.1h-37.5ZM1055.3,353.2h13.3l5.8-26.5h43.3l5.8,26.5h13.3l-25.2-113.5h-30.6l-25.6,113.5ZM723.6,398.3h37.2l111.9-184.5h-37.2l-111.9,184.5ZM478.1,296.2v-43.6h28.1c5.9,0,8.3.9,13,4.7,5.2,4.3,5.9,6.1,5.9,10.6v13c0,4.5-.7,6.3-5.9,10.6-4.7,3.8-7,4.7-13,4.7h-28.1ZM465.1,353.2h13v-44h28.1c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-14.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-41.1v113.5ZM199.1,340.2h-11.9c-5.9,0-8.3-.9-13-4.7-5.2-4.3-5.9-6.1-5.9-10.6v-57c0-4.5.7-6.3,5.9-10.6,4.7-3.8,7-4.7,13-4.7h11.9c5.9,0,8.5.9,13.2,4.7,5,4.1,5.8,6.1,5.8,10.6v57c0,4.5-.7,6.5-5.8,10.6-4.7,3.8-7.2,4.7-13.2,4.7M187.2,353.2h11.9c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-58.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-11.9c-9.4,0-14.2,2-22.5,9-8.3,7-9.4,10.3-9.4,18.6v58.4c0,8.3,1.1,11.5,9.4,18.6,8.3,7,13.2,9,22.5,9"/></svg>
-      <span class="opl-product">Happy Penguin</span>
+      <span class="opl-product">Lake Opeka</span>
     </a>
     <div class="opl-right">
       <span class="opl-seed" id="seed-display">seed —</span>
@@ -933,6 +938,45 @@
         <input type="range" id="r-dotSize" min="1" max="8" step="1" value="4">
         <div class="row"><span class="row__label">Grain</span><input class="row__val" id="v-grain" type="text" value="2"></div>
         <input type="range" id="r-grain" min="1" max="8" step="1" value="2">
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Shape</div>
+        <div class="seg" id="seg-dotShape" style="grid-template-columns:repeat(5,1fr)">
+          <button data-ds="circle" class="is-active">●</button>
+          <button data-ds="square">■</button>
+          <button data-ds="diamond">◆</button>
+          <button data-ds="ring">○</button>
+          <button data-ds="cross">✕</button>
+        </div>
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Grid</div>
+        <div class="seg" id="seg-dotGrid" style="grid-template-columns:1fr 1fr 1fr">
+          <button data-dg="square" class="is-active">Square</button>
+          <button data-dg="hex">Hex</button>
+          <button data-dg="brick">Brick</button>
+        </div>
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Size mode</div>
+        <div class="seg" id="seg-dotSizeMode" style="grid-template-columns:repeat(3,1fr)">
+          <button data-dsm="uniform" class="is-active">Uniform</button>
+          <button data-dsm="halftone">Halftone</button>
+          <button data-dsm="inverse">Inverse</button>
+        </div>
+
+        <div class="row" style="margin-top:14px"><span class="row__label">Color mode</span></div>
+        <div class="seg" id="seg-dotColor" style="grid-template-columns:repeat(3,1fr)">
+          <button data-dc="rgb" class="is-active">RGB</button>
+          <button data-dc="mono">Mono</button>
+          <button data-dc="duotone">Duotone</button>
+        </div>
+        <div id="duotone-row" style="display:none;margin-top:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input type="color" id="r-duoLight" value="#FFD400" style="width:100%;height:28px;border:1px solid var(--hairline);background:var(--panel);cursor:pointer">
+            <input type="color" id="r-duoDark"  value="#1c39bb" style="width:100%;height:28px;border:1px solid var(--hairline);background:var(--panel);cursor:pointer">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:14px"><span class="row__label">Outline</span><input class="row__val" id="v-dotOutline" type="text" value="0"></div>
+        <input type="range" id="r-dotOutline" min="0" max="4" step="0.5" value="0">
       </div>
       <div class="ctrl-group">
         <div class="ctrl-label">Underlay</div>
@@ -1155,6 +1199,14 @@ const state = {
     grain:        2,   // 1..8 → jitter
     imageOpacity: 1,   // 1..8 → background image opacity
     imageBlur:    6,   // 1..8 → blur radius before sampling
+    // ── New Dot knobs ──
+    dotShape:    'circle',  // 'circle' | 'square' | 'diamond' | 'ring' | 'cross'
+    dotGrid:     'square',  // 'square' | 'hex' | 'brick'
+    dotSizeMode: 'uniform', // 'uniform' | 'halftone' | 'inverse'
+    dotColor:    'rgb',     // 'rgb' | 'mono' | 'duotone'
+    duoLight:    '#FFD400',
+    duoDark:     '#1c39bb',
+    dotOutline:  0,         // px stroke around each dot, 0 = none
   },
 };
 
@@ -1600,6 +1652,51 @@ function makeLayerMask(W, H) {
   return m;
 }
 
+// ── Dot shape helpers (used by dotRender) ────────────────────
+function hexToRgb(hex) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
+  return m
+    ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
+    : { r: 255, g: 255, b: 255 };
+}
+function dotShapePath(ctx, cx, cy, radius, shape) {
+  ctx.beginPath();
+  if (shape === 'square') {
+    ctx.rect(cx - radius, cy - radius, radius * 2, radius * 2);
+  } else if (shape === 'diamond') {
+    ctx.moveTo(cx, cy - radius);
+    ctx.lineTo(cx + radius, cy);
+    ctx.lineTo(cx, cy + radius);
+    ctx.lineTo(cx - radius, cy);
+    ctx.closePath();
+  } else if (shape === 'ring') {
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius * 0.55, 0, Math.PI * 2, true);
+  } else if (shape === 'cross') {
+    // A plus sign inscribed in the circle.
+    const t = radius * 0.38;          // half-thickness of each arm
+    const a = radius * 0.95;          // half-length of each arm
+    ctx.moveTo(cx - t, cy - a); ctx.lineTo(cx + t, cy - a);
+    ctx.lineTo(cx + t, cy - t); ctx.lineTo(cx + a, cy - t);
+    ctx.lineTo(cx + a, cy + t); ctx.lineTo(cx + t, cy + t);
+    ctx.lineTo(cx + t, cy + a); ctx.lineTo(cx - t, cy + a);
+    ctx.lineTo(cx - t, cy + t); ctx.lineTo(cx - a, cy + t);
+    ctx.lineTo(cx - a, cy - t); ctx.lineTo(cx - t, cy - t);
+    ctx.closePath();
+  } else {
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  }
+}
+function drawDotShape(ctx, cx, cy, radius, shape) {
+  if (radius <= 0) return;
+  dotShapePath(ctx, cx, cy, radius, shape);
+  ctx.fill(shape === 'ring' ? 'evenodd' : 'nonzero');
+}
+function strokeDotShape(ctx, cx, cy, radius, shape) {
+  dotShapePath(ctx, cx, cy, radius, shape);
+  ctx.stroke();
+}
+
 function drawLayerPointHandles(ctx, L) {
   ctx.save();
   L.points.forEach((p, i) => {
@@ -2013,7 +2110,11 @@ function canvasPoint(e) {
   };
 }
 function pointAtHit(sx, sy) {
-  const hitR = 18;
+  // Hit radius scales with canvas → screen ratio so dragging always
+  // feels like ~28 screen pixels around the visible handle, regardless
+  // of zoom level. Generous on purpose — the prior 18 was too tight.
+  const rect = canvas.getBoundingClientRect();
+  const hitR = 28 * (canvas.width / rect.width);
   for (let i = state.layer.points.length - 1; i >= 0; i--) {
     const p = state.layer.points[i];
     if (Math.hypot(p.x - sx, p.y - sy) < hitR) return { index: i, point: p };
@@ -2045,7 +2146,14 @@ canvas.addEventListener('pointerdown', e => {
   }
 });
 window.addEventListener('pointermove', e => {
-  if (!layerDrag) return;
+  if (!layerDrag) {
+    // Hover-state cursor: grab if hovering an existing point.
+    if (state.layer.enabled && state.mode !== 'scatter') {
+      const { x, y } = canvasPoint(e);
+      canvas.classList.toggle('is-hover-pt', !!pointAtHit(x, y));
+    }
+    return;
+  }
   const { x, y } = canvasPoint(e);
   const p = state.layer.points[layerDrag.idx];
   if (!p) { layerDrag = null; return; }
@@ -2956,26 +3064,66 @@ function dotRender(target, active) {
     x.restore();
   }
 
-  // Grid of dots
+  // Grid of dots — shape / layout / size-by-luminance / color mode aware.
   const step  = W / N;
-  const radius = (step * sz * pack) / 2;
+  const maxR  = (step * sz * pack) / 2;
+  const shape = p.dotShape || 'circle';
+  const grid  = p.dotGrid || 'square';
+  const mode  = p.dotSizeMode || 'uniform';
+  const cmode = p.dotColor || 'rgb';
+  const outline = p.dotOutline || 0;
+  const duoLight = hexToRgb(p.duoLight || '#FFD400');
+  const duoDark  = hexToRgb(p.duoDark  || '#1c39bb');
+
   for (let yi = 0; yi < N; yi++) {
+    // Hex / brick offset shifts every other row by half a step.
+    const rowOffset = (grid !== 'square' && yi % 2) ? step / 2 : 0;
     for (let xi = 0; xi < N; xi++) {
-      const cx = xi * step + step / 2 + (rng() - 0.5) * grain * step;
-      const cy = yi * step + step / 2 + (rng() - 0.5) * grain * step;
-      const sx = Math.max(0, Math.min(W - 1, Math.floor(cx)));
-      const sy = Math.max(0, Math.min(H - 1, Math.floor(cy)));
-      const i = (sy * W + sx) * 4;
+      const cx = xi * step + step / 2 + rowOffset + (rng() - 0.5) * grain * step;
+      // Hex compacts row spacing by sqrt(3)/2; brick keeps full step.
+      const rowStep = grid === 'hex' ? step * 0.866 : step;
+      const cy = yi * rowStep + step / 2 + (rng() - 0.5) * grain * step;
+      const sxPx = Math.max(0, Math.min(W - 1, Math.floor(cx)));
+      const syPx = Math.max(0, Math.min(H - 1, Math.floor(cy)));
+      const i = (syPx * W + sxPx) * 4;
       const r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
       const a = imgData[i + 3] / 255;
-      x.fillStyle = `rgba(${r},${g},${b},${a})`;
-      x.beginPath();
-      x.arc(cx, cy, radius, 0, Math.PI * 2);
-      x.fill();
+      // Luminance 0..1 (Rec. 709).
+      const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      // Halftone: dark areas get big dots, light areas tiny (classic
+      // newspaper print). Inverse: opposite. Uniform: full size always.
+      let sizeF = 1;
+      if (mode === 'halftone') sizeF = Math.max(0.05, 1 - lum);
+      else if (mode === 'inverse') sizeF = Math.max(0.05, lum);
+      const radius = maxR * sizeF;
+      // Color: mono uses luminance against bg; duotone interpolates
+      // light↔dark across luminance; rgb uses the raw sample.
+      let fill;
+      if (cmode === 'mono') {
+        const v = Math.round(lum * 255);
+        fill = `rgba(${v},${v},${v},${a})`;
+      } else if (cmode === 'duotone') {
+        const t = lum;
+        const dr = Math.round(duoDark.r + (duoLight.r - duoDark.r) * t);
+        const dg = Math.round(duoDark.g + (duoLight.g - duoDark.g) * t);
+        const db = Math.round(duoDark.b + (duoLight.b - duoDark.b) * t);
+        fill = `rgba(${dr},${dg},${db},${a})`;
+      } else {
+        fill = `rgba(${r},${g},${b},${a})`;
+      }
+      x.fillStyle = fill;
+      drawDotShape(x, cx, cy, radius, shape);
+      if (outline > 0 && radius > 1) {
+        x.save();
+        x.strokeStyle = 'rgba(0,0,0,0.55)';
+        x.lineWidth = outline;
+        strokeDotShape(x, cx, cy, radius, shape);
+        x.restore();
+      }
     }
   }
 
-  stageInfo.textContent = `${active.length} src · ${N}² dots · seed ${state.seed}`;
+  stageInfo.textContent = `${active.length} src · ${N}² ${shape} · ${grid} · ${mode}`;
   seedDisplay.textContent = `seed ${state.seed}`;
 }
 
@@ -3156,6 +3304,7 @@ function applyMode() {
     b.classList.toggle('is-active', b.dataset.mode === state.mode);
   });
   canvas.classList.toggle('is-scatter', state.mode === 'scatter');
+  canvas.classList.toggle('is-layer', state.layer.enabled && state.mode !== 'scatter');
   if (state.mode === 'scatter') renderScatterItemsList();
   render();
 }
@@ -3524,6 +3673,38 @@ function wireNest() {
 }
 wireNest();
 
+// ── Dot mode wiring (shape/grid/sizeMode/color picker segments) ──
+function wireDot() {
+  const segs = [
+    ['#seg-dotShape',    'dotShape'],
+    ['#seg-dotGrid',     'dotGrid'],
+    ['#seg-dotSizeMode', 'dotSizeMode'],
+    ['#seg-dotColor',    'dotColor'],
+  ];
+  segs.forEach(([sel, key]) => {
+    document.querySelectorAll(`${sel} button`).forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll(`${sel} button`).forEach(x => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        state.params[key] = b.dataset.ds || b.dataset.dg || b.dataset.dsm || b.dataset.dc;
+        if (key === 'dotColor') {
+          $('duotone-row').style.display = state.params.dotColor === 'duotone' ? '' : 'none';
+        }
+        render();
+      });
+    });
+  });
+  $('r-duoLight')?.addEventListener('input', e => { state.params.duoLight = e.target.value; render(); });
+  $('r-duoDark')?.addEventListener('input',  e => { state.params.duoDark  = e.target.value; render(); });
+  const r = $('r-dotOutline'), v = $('v-dotOutline');
+  r?.addEventListener('input', () => {
+    state.params.dotOutline = parseFloat(r.value);
+    if (v) v.value = state.params.dotOutline.toFixed(1);
+    render();
+  });
+}
+wireDot();
+
 // ── Typing into the value field ───────────────────────────────
 // Each row__val is an editable input. Typing here updates the
 // corresponding slider + state + render WITHOUT letting the slider
@@ -3606,7 +3787,9 @@ function wireLayer() {
   $('r-layerOn')?.addEventListener('change', e => {
     state.layer.enabled = e.target.checked;
     $('layer-controls').style.display = e.target.checked ? '' : 'none';
-    canvas.style.cursor = e.target.checked ? 'crosshair' : '';
+    // Don't fight CSS — clear the inline cursor; .is-layer takes over.
+    canvas.style.cursor = '';
+    canvas.classList.toggle('is-layer', e.target.checked && state.mode !== 'scatter');
     renderLayerPoints();
     render();
   });
