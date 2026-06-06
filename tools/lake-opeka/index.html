@@ -3865,9 +3865,10 @@ function wireValInputs() {
     v.addEventListener('input', () => {
       const n = parseFloat(v.value);
       if (isNaN(n)) return;
+      const real = sliderFromFriendly(r, n);   // typed number is on the 0–10 / −10–10 scale
       const min = r.min === '' ? -Infinity : parseFloat(r.min);
       const max = r.max === '' ? Infinity  : parseFloat(r.max);
-      const clamped = Math.min(max, Math.max(min, n));
+      const clamped = Math.min(max, Math.max(min, real));
       // Drive the slider; setVal() skips writing back while typing.
       v.dataset.typing = '1';
       r.value = clamped;
@@ -3884,6 +3885,36 @@ function wireValInputs() {
   });
 }
 wireValInputs();
+
+// ── Friendly slider numbers (0–10, or −10–10 when the range is centered) ──
+// Display-only: sliders + state keep their real values; we just relabel the
+// value fields onto an intuitive scale (and map typed numbers back).
+function sliderFriendly(r) {
+  const min = parseFloat(r.min), max = parseFloat(r.max), val = parseFloat(r.value);
+  if (isNaN(min) || isNaN(max) || max === min) return String(val);
+  let disp = (min < 0)
+    ? (val / Math.max(Math.abs(min), Math.abs(max))) * 10   // centered → −10..10
+    : ((val - min) / (max - min)) * 10;                     // 0..10
+  disp = Math.round(disp * 10) / 10;
+  if (Object.is(disp, -0)) disp = 0;
+  return String(disp);
+}
+function sliderFromFriendly(r, n) {
+  const min = parseFloat(r.min), max = parseFloat(r.max);
+  if (isNaN(min) || isNaN(max) || max === min) return n;
+  return (min < 0)
+    ? (n / 10) * Math.max(Math.abs(min), Math.abs(max))
+    : min + (n / 10) * (max - min);
+}
+(function friendlySliderDisplays() {
+  document.querySelectorAll('input[type=range]').forEach(r => {
+    const v = $(r.id.replace(/^r-/, 'v-'));
+    if (!v || !v.classList.contains('row__val')) return;
+    const paint = () => { if (v.dataset.typing !== '1') v.value = sliderFriendly(r); };
+    r.addEventListener('input', paint);   // fires after each bind's own handler
+    paint();                              // initialize the label
+  });
+})();
 
 // ── Help overlay ─────────────────────────────────────────────
 const helpEl = $('help');
