@@ -811,6 +811,10 @@
           <span id="nest-glyph-preview-name" style="font-size:11px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
         </div>
 
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:6px 0 7px">Lake Opeka glyphs</div>
+        <div id="nest-glyph-presets" class="glyph-presets"></div>
+        <p style="font-size:10px;color:var(--text-dim);line-height:1.4;margin:0 0 10px">Pick one to use its silhouette as the frame.</p>
+
         <label class="row toggle" style="margin-top:14px">
           <span class="row__label">Outline frames</span>
           <input type="checkbox" id="r-nOutline">
@@ -1618,7 +1622,10 @@ function drawLayerGrid(effCv, sampleSrc, W, H) {
   if (L.effect === 'glyph') {
     const ch = state.glyph.char || '✕';
     const fontPx = step * (DOT.dotSize[L.dotSize - 1] || 0.7) * 1.6;
-    const customImg  = state.glyph.customImg;
+    // Same glyph pool as Glyph mode — selected presets, else an upload.
+    const gpool = (state.glyph.selectedImgs && state.glyph.selectedImgs.length)
+      ? state.glyph.selectedImgs.filter(im => im && im.complete)
+      : (state.glyph.customImg && state.glyph.customImg.complete ? [state.glyph.customImg] : null);
     const customSize = fontPx * 0.95;
     ctx.font = `${fontPx}px ${
       /[\w&@/]/.test(ch) ? 'Untitled Sans, system-ui, sans-serif'
@@ -1635,6 +1642,7 @@ function drawLayerGrid(effCv, sampleSrc, W, H) {
         const i = (syPix * W + sxPix) * 4;
         const r = sampleSrc[i], g = sampleSrc[i + 1], b = sampleSrc[i + 2], a = sampleSrc[i + 3];
         if (a < 4) continue;
+        const customImg = gpool ? gpool[Math.abs((xi * 73856093) ^ (yi * 19349663) ^ (state.seed * 83492791)) % gpool.length] : null;
         if (customImg && customImg.complete) {
           ctx.save();
           ctx.translate(cx, cy);
@@ -3495,11 +3503,10 @@ function wireGlyph() {
 }
 wireGlyph();
 
-// ── Built-in Lake Opeka glyph presets (multi-select) ──────────
-// Pick one, several, or all; the Glyph grid mixes the selected shapes.
+// ── Built-in Lake Opeka glyph presets ─────────────────────────
+// Shared by Glyph mode (multi-select stamp) and Nest mode (single
+// silhouette). Images load once, taint-free, with a file:// fallback.
 function wireGlyphPresets() {
-  const wrap = $('glyph-presets');
-  if (!wrap) return;
   const PRESETS = [
     { n: 'Opitus Season',            f: 'glyphs/g1.svg' },
     { n: 'Ships in the Night',       f: 'glyphs/g2.svg' },
@@ -3510,46 +3517,77 @@ function wireGlyphPresets() {
     { n: 'Off in the Distance',      f: 'glyphs/g7.svg' },
     { n: 'A Little Nervous',         f: 'glyphs/g8.svg' },
   ];
-  const items = [];
-  function syncSelected() {
-    state.glyph.selectedImgs = items.filter(it => it.on && it.img && it.img.complete).map(it => it.img);
-    render();
-  }
-  PRESETS.forEach(p => {
-    const el = document.createElement('button');
-    el.type = 'button'; el.className = 'glyph-preset'; el.title = p.n;
-    const thumb = document.createElement('img');
-    thumb.src = p.f; thumb.alt = p.n;
-    el.appendChild(thumb);
-    wrap.appendChild(el);
-    const item = { meta: p, el, img: null, on: false };
-    // Load a taint-free stamping image (data URI) so PNG export never breaks;
-    // fall back to a direct load if fetch is unavailable (e.g. file://).
-    const finish = im => { item.img = im; if (item.on) syncSelected(); };
+  const loaded = PRESETS.map(p => {
+    const rec = { meta: p, img: null, waiters: [] };
+    const finish = im => { rec.img = im; rec.waiters.forEach(w => w()); rec.waiters = []; };
     fetch(p.f).then(r => r.text()).then(txt => {
       const im = new Image();
       im.onload = () => finish(im);
       im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(txt);
-    }).catch(() => {
-      const im = new Image();
-      im.onload = () => finish(im);
-      im.src = p.f;
+    }).catch(() => { const im = new Image(); im.onload = () => finish(im); im.src = p.f; });
+    return rec;
+  });
+  function mkThumb(rec, onClick) {
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'glyph-preset'; el.title = rec.meta.n;
+    const thumb = document.createElement('img');
+    thumb.src = rec.meta.f; thumb.alt = rec.meta.n;
+    el.appendChild(thumb);
+    el.addEventListener('click', () => onClick(el));
+    return el;
+  }
+
+  // Glyph mode — pick one / several / all; the grid mixes them.
+  const multiWrap = $('glyph-presets');
+  if (multiWrap) {
+    const sel = new Set();
+    const syncMulti = () => {
+      state.glyph.selectedImgs = [...sel].map(i => loaded[i].img).filter(im => im && im.complete);
+      render();
+    };
+    loaded.forEach((rec, i) => {
+      const el = mkThumb(rec, () => {
+        if (sel.has(i)) { sel.delete(i); el.classList.remove('is-active'); }
+        else { sel.add(i); el.classList.add('is-active'); }
+        syncMulti();
+      });
+      rec.waiters.push(() => { if (sel.has(i)) syncMulti(); });
+      multiWrap.appendChild(el);
     });
-    el.addEventListener('click', () => {
-      item.on = !item.on;
-      el.classList.toggle('is-active', item.on);
-      syncSelected();
+    $('btn-glyphPresetsAll')?.addEventListener('click', () => {
+      loaded.forEach((_, i) => sel.add(i));
+      [...multiWrap.children].forEach(c => c.classList.add('is-active'));
+      syncMulti();
     });
-    items.push(item);
-  });
-  $('btn-glyphPresetsAll')?.addEventListener('click', () => {
-    items.forEach(it => { it.on = true; it.el.classList.add('is-active'); });
-    syncSelected();
-  });
-  $('btn-glyphPresetsNone')?.addEventListener('click', () => {
-    items.forEach(it => { it.on = false; it.el.classList.remove('is-active'); });
-    syncSelected();
-  });
+    $('btn-glyphPresetsNone')?.addEventListener('click', () => {
+      sel.clear();
+      [...multiWrap.children].forEach(c => c.classList.remove('is-active'));
+      syncMulti();
+    });
+  }
+
+  // Nest mode — single silhouette for the frame container.
+  const nestWrap = $('nest-glyph-presets');
+  if (nestWrap) {
+    loaded.forEach(rec => {
+      const el = mkThumb(rec, () => {
+        [...nestWrap.children].forEach(c => c.classList.remove('is-active'));
+        el.classList.add('is-active');
+        const apply = () => {
+          state.nest.glyphImg = rec.img;
+          state.nest.glyphName = rec.meta.n;
+          state.nest.shape = 'glyph';
+          const seg = $('seg-nShape');
+          if (seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.ns === 'glyph'));
+          const prev = $('nest-glyph-preview');
+          if (prev) { prev.style.display = 'flex'; $('nest-glyph-preview-img').src = rec.meta.f; $('nest-glyph-preview-name').textContent = rec.meta.n; }
+          render();
+        };
+        if (rec.img) apply(); else rec.waiters.push(apply);
+      });
+      nestWrap.appendChild(el);
+    });
+  }
 }
 wireGlyphPresets();
 
