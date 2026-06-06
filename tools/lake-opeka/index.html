@@ -1350,6 +1350,21 @@ function stampTintedGlyph(ctx, img, size, color) {
   ctx.drawImage(t, -size/2, -size/2, size, size);
 }
 
+// A capped JPEG data-URL of an image, so photos can be saved to a session
+// and rebuilt later (blob: object URLs don't persist across reloads).
+function toPersistableDataURL(img, cap = 2000) {
+  try {
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if (!w || !h) return null;
+    const scale = Math.min(1, cap / Math.max(w, h));
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(w * scale));
+    cv.height = Math.max(1, Math.round(h * scale));
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    return cv.toDataURL('image/jpeg', 0.85);
+  } catch (e) { return null; }
+}
+
 function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {
@@ -1456,6 +1471,9 @@ function addFiles(files) {
         name: f.name,
         img,
         enabled: true,
+        // A capped, persistable copy of the photo so sessions can carry the
+        // images themselves (blob: URLs don't survive a reload).
+        dataURL: toPersistableDataURL(img),
         // [0..1] normalized position of the "subject" within the photo,
         // computed from saliency + saturation. Used by Scatter to anchor
         // connecting trails to what the photo is ABOUT, not its bbox.
@@ -1463,6 +1481,7 @@ function addFiles(files) {
         subjectY: subj.y,
         subjectColor: subj.color,
       });
+      if (window._loSchedulePhotoSave) window._loSchedulePhotoSave();
       finish();
     };
     img.onerror = () => {
@@ -1530,6 +1549,7 @@ function renderThumbs() {
     t.addEventListener('click', e => {
       if (e.target.dataset.x) {
         state.images = state.images.filter(x => x.id !== s.id);
+        if (window._loSchedulePhotoSave) window._loSchedulePhotoSave();
         renderThumbs();
         if (state.mode === 'scatter') renderScatterItemsList();
         render();
@@ -1579,6 +1599,7 @@ function renderThumbs() {
       const before = (e.clientX - r.left) < r.width / 2;
       if (!before) insertAt += 1;
       state.images.splice(insertAt, 0, item);
+      if (window._loSchedulePhotoSave) window._loSchedulePhotoSave();
       renderThumbs();
       if (state.mode === 'scatter') renderScatterItemsList();
       render();
@@ -3977,8 +3998,55 @@ function sliderFromFriendly(r, n) {
 // not captured — sessions store the *settings* recipe.
 (function () {
   const LS_AUTO = 'lakeopeka:autosave';
-  const LS_SESS = 'lakeopeka:sessions';
+  const LS_SESS = 'lakeopeka:sessions';      // localStorage index of session names
   const panelEl = document.querySelector('.controls');
+
+  // ── IndexedDB kv (holds the photos — too big for localStorage) ──
+  const IDB_NAME = 'lakeopeka', IDB_STORE = 'kv';
+  function idb() {
+    return new Promise((res, rej) => {
+      const rq = indexedDB.open(IDB_NAME, 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore(IDB_STORE);
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => rej(rq.error);
+    });
+  }
+  async function idbSet(k, v) { const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction(IDB_STORE, 'readwrite'); tx.objectStore(IDB_STORE).put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+  async function idbGet(k) { const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction(IDB_STORE, 'readonly'); const rq = tx.objectStore(IDB_STORE).get(k); rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); }); }
+  async function idbDel(k) { const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction(IDB_STORE, 'readwrite'); tx.objectStore(IDB_STORE).delete(k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+
+  // ── Photos ↔ persistable copies ──
+  function capturePhotos() {
+    return state.images.map(s => ({
+      name: s.name, enabled: s.enabled,
+      subjectX: s.subjectX, subjectY: s.subjectY, subjectColor: s.subjectColor,
+      dataURL: s.dataURL || (s.dataURL = toPersistableDataURL(s.img)),
+    })).filter(p => p.dataURL);
+  }
+  function restorePhotos(photos) {
+    return new Promise(resolve => {
+      if (!Array.isArray(photos)) return resolve();
+      state.images = [];
+      let remaining = photos.length;
+      if (!remaining) { renderThumbs(); render(); return resolve(); }
+      photos.forEach(p => {
+        const img = new Image();
+        img.onload = img.onerror = () => {
+          state.images.push({
+            id: nextId++, name: p.name || 'photo', img, enabled: p.enabled !== false,
+            dataURL: p.dataURL, subjectX: (p.subjectX ?? 0.5), subjectY: (p.subjectY ?? 0.5),
+            subjectColor: p.subjectColor || 'rgb(128,128,128)',
+          });
+          if (--remaining === 0) { renderThumbs(); render(); resolve(); }
+        };
+        img.src = p.dataURL;
+      });
+    });
+  }
+  // Photo autosave (debounced; fired whenever the image set changes).
+  let photoT = null;
+  function schedulePhotoSave() { clearTimeout(photoT); photoT = setTimeout(() => { idbSet('autosave-photos', capturePhotos()).catch(() => {}); }, 600); }
+  window._loSchedulePhotoSave = schedulePhotoSave;
 
   function snapshot() {
     const ranges = {}, checks = {}, texts = {}, segs = {};
@@ -4039,33 +4107,44 @@ function sliderFromFriendly(r, n) {
   function undo() { if (ptr > 0) { ptr--; applySnapshot(history[ptr]); updateBtns(); saveAuto(history[ptr]); } }
   function redo() { if (ptr < history.length - 1) { ptr++; applySnapshot(history[ptr]); updateBtns(); saveAuto(history[ptr]); } }
 
-  function loadSessions() { try { return JSON.parse(localStorage.getItem(LS_SESS) || '{}'); } catch (e) { return {}; } }
-  function storeSessions(o) { try { localStorage.setItem(LS_SESS, JSON.stringify(o)); } catch (e) { alert('Storage full — could not save the session.'); } }
+  // Session index (names + timestamps) in localStorage; each session's full
+  // payload (settings + photos) in IndexedDB.
+  function loadIndex() { try { return JSON.parse(localStorage.getItem(LS_SESS) || '{}'); } catch (e) { return {}; } }
+  function saveIndex(o) { try { localStorage.setItem(LS_SESS, JSON.stringify(o)); } catch (e) {} }
 
   const panel = $('sessions'), listEl = $('sessions-list'), nameInput = $('session-name');
   function renderList() {
-    const sess = loadSessions();
-    const keys = Object.keys(sess).sort((a, b) => (sess[b].t || 0) - (sess[a].t || 0));
+    const idx = loadIndex();
+    const keys = Object.keys(idx).sort((a, b) => (idx[b].t || 0) - (idx[a].t || 0));
     listEl.innerHTML = keys.length ? '' : '<li class="sessions__empty">No saved sessions yet.</li>';
     keys.forEach(name => {
       const li = document.createElement('li'); li.className = 'sessions__item';
       const nm = document.createElement('span'); nm.className = 'sessions__item-name'; nm.textContent = name; nm.title = 'Open “' + name + '”';
-      const when = sess[name].t ? new Date(sess[name].t).toLocaleDateString() : '';
-      if (when) { const s = document.createElement('small'); s.textContent = when; nm.appendChild(s); }
-      const open = () => { applySnapshot(sess[name].snap); pushHistory(); closePanel(); };
+      const meta = [];
+      if (idx[name].photos) meta.push(idx[name].photos + ' photo' + (idx[name].photos === 1 ? '' : 's'));
+      if (idx[name].t) meta.push(new Date(idx[name].t).toLocaleDateString());
+      if (meta.length) { const s = document.createElement('small'); s.textContent = meta.join(' · '); nm.appendChild(s); }
+      const open = async () => {
+        const data = await idbGet('session:' + name).catch(() => null);
+        if (data) { if (data.photos) await restorePhotos(data.photos); applySnapshot(data.snap); pushHistory(); }
+        closePanel();
+      };
       nm.addEventListener('click', open);
       const openBtn = document.createElement('button'); openBtn.textContent = 'Open'; openBtn.addEventListener('click', open);
       const del = document.createElement('button'); del.className = 'sessions__del'; del.textContent = '×'; del.title = 'Delete';
-      del.addEventListener('click', () => { const s = loadSessions(); delete s[name]; storeSessions(s); renderList(); });
+      del.addEventListener('click', async () => { const i = loadIndex(); delete i[name]; saveIndex(i); await idbDel('session:' + name).catch(() => {}); renderList(); });
       li.append(nm, openBtn, del); listEl.appendChild(li);
     });
   }
   function openPanel() { renderList(); panel.hidden = false; nameInput && nameInput.focus(); }
   function closePanel() { panel.hidden = true; }
-  function saveSession() {
+  async function saveSession() {
     const name = (nameInput.value || '').trim() || ('Session ' + new Date().toLocaleString());
-    const sess = loadSessions(); sess[name] = { snap: snapshot(), t: Date.now() };
-    storeSessions(sess); nameInput.value = ''; renderList();
+    const photos = capturePhotos();
+    try { await idbSet('session:' + name, { snap: snapshot(), photos, t: Date.now() }); }
+    catch (e) { alert('Could not save the session (storage limit).'); return; }
+    const idx = loadIndex(); idx[name] = { t: Date.now(), photos: photos.length }; saveIndex(idx);
+    nameInput.value = ''; renderList();
   }
 
   $('btn-sessions')?.addEventListener('click', openPanel);
@@ -4083,7 +4162,9 @@ function sliderFromFriendly(r, n) {
     else if ((e.metaKey || e.ctrlKey) && k === 'y') { e.preventDefault(); redo(); }
   });
 
-  setTimeout(function init() {
+  setTimeout(async function init() {
+    // Restore this user's own last setup: their photos first, then settings.
+    try { const photos = await idbGet('autosave-photos'); if (photos && photos.length) await restorePhotos(photos); } catch (e) {}
     try { const auto = JSON.parse(localStorage.getItem(LS_AUTO) || 'null'); if (auto) applySnapshot(auto); } catch (e) {}
     history = [snapshot()]; ptr = 0; updateBtns();
   }, 250);
@@ -4190,6 +4271,7 @@ $('btn-clear')?.addEventListener('click', () => {
   state.images = [];
   state.scatter.items = [];
   pendingLoads = 0;
+  if (window._loSchedulePhotoSave) window._loSchedulePhotoSave();
   updateLoadingPill();
   renderThumbs();
   if (state.mode === 'scatter') renderScatterItemsList();
