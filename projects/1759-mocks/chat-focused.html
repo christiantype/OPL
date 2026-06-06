@@ -2,7 +2,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap');
   @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
   @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
-  .m1759 .m1759__block-title { font-family: 'Sorts Mill Goudy', Georgia, serif !important; font-weight: 400 !important; letter-spacing: 0 !important; }
+  .m1759 .m1759__block-title { font-family: var(--m-sans) !important; font-weight: 600 !important; font-size: 11px !important; letter-spacing: 0.14em !important; text-transform: uppercase; color: var(--m-mid) !important; }
   /* NOTE: every mockup defines `.m1759 {...}` globally, so the dark chat theme
      must be scoped to `.m1759-chat` to outrank the other (light) mockups. */
   .m1759.m1759-chat {
@@ -46,6 +46,14 @@
     opacity: 0; transform: translateY(-26px) scale(0.92); transform-origin: center bottom;
   }
 
+  /* Clear speaker labels above each centered message. */
+  .m1759__fmsg::before {
+    display: block; font-family: var(--m-sans);
+    font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .m1759__fmsg--user::before { content: 'You'; color: rgba(255,255,255,0.5); }
+  .m1759__fmsg--ai::before { content: 'Agentic'; color: var(--m-cobalt); }
   .m1759__fmsg--user .m1759__bubble {
     display: inline-block; background: rgba(255,255,255,0.12); color: #fff;
     padding: 10px 18px; border-radius: 18px; font-size: 16px; line-height: 1.5;
@@ -97,22 +105,22 @@
 <div class="m1759 m1759-chat">
   <div class="m1759__stage" data-stage>
     <div class="m1759__reel" data-reel>
-      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">A client just sold his business — about $100M, most of it tied up in real estate. How does he pass it to his kids without taxes taking half?</span></div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">One of the biggest questions in wealth planning. Let me put real numbers on it.</div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">First — with no planning at all, how much of that fortune actually reaches his kids?</div>
-      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">Honestly? No idea. That's the problem.</span></div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Here's the gap most families never see coming:</div>
+      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">Client just sold his company — $100M, mostly illiquid real estate. How do we move it to his kids without losing half to transfer tax?</span></div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">A Gen-Skip Split-Dollar plan, funded into an ILIT.</div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">The difference it makes:</div>
       <div class="m1759__fmsg m1759__fmsg--ai is-hidden">
-        <div class="m1759__block-title">What actually reaches the next generation</div>
+        <div class="m1759__block-title">After-tax legacy</div>
         <div class="m1759__numbers">
           <div class="m1759__numcell"><div class="m1759__numcell-label">No planning</div><div class="m1759__numcell-value">$118M</div></div>
           <div class="m1759__numcell"><div class="m1759__numcell-label">With planning</div><div class="m1759__numcell-value">$179M</div></div>
-          <div class="m1759__numcell m1759__numcell--accent"><div class="m1759__numcell-label">The difference</div><div class="m1759__numcell-value m1759__numcell-value--cobalt">+$61M</div></div>
+          <div class="m1759__numcell m1759__numcell--accent"><div class="m1759__numcell-label">Difference</div><div class="m1759__numcell-value m1759__numcell-value--cobalt">+$61M</div></div>
         </div>
       </div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">The move: a life-insurance trust funded through a <b>Gen-Skip Split-Dollar</b> arrangement — built to keep illiquid assets like real estate in the family for generations.</div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Net result: about <b>$61 million more</b> reaches his kids and grandkids — completely transfer-tax free.</div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Want me to turn this into a client-ready summary?</div>
+      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">Does the economic-benefit structure still hold after the Levine ruling?</span></div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Yes — as economic benefit, the premiums aren't treated as gifts.</div>
+      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">And if he's uninsurable?</span></div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Insure a younger life; the payout still routes through the trust.</div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Want the full client-ready plan?</div>
       <div class="m1759__typing" data-typing><span></span><span></span><span></span></div>
     </div>
   </div>
@@ -125,8 +133,8 @@
     if (!root || root.dataset.init) return; root.dataset.init = '1';
     var typing = root.querySelector('[data-typing]');
     var msgs = Array.from(root.querySelectorAll('.m1759__fmsg'));
-    var beats = [1400, 1800, 2000, 1400, 1600, 3400, 3000, 2700, 2400];
-    var TYPE = 750, PAUSE = 3800;
+    var beats = [2600, 2400, 2200, 5000, 3000, 2800, 2600, 2800, 3600];
+    var TYPE = 1100, PAUSE = 5500;
     var i = 0, timers = [], typeIv = null;
 
     // Cache each user question's text so we can re-type it on every loop.
@@ -181,9 +189,9 @@
           if (n >= full.length) {
             clearTypeIv();
             m.classList.remove('is-typing');
-            timers.push(setTimeout(advance, 650));
+            timers.push(setTimeout(advance, 1100));
           }
-        }, 26);
+        }, 38);
       }
     }
     timers.push(setTimeout(reveal, 900));

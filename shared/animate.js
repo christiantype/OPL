@@ -22,7 +22,9 @@
           // Mockups (.m1759) run their own animations and inject after this
           // script — never apply the scroll-reveal opacity to their content,
           // or semantic h1/h3/p inside a mockup can get stranded at opacity:0.
-          !el.closest('.m1759')
+          !el.closest('.m1759') &&
+          // Same for the extracted-feature vignettes (the dark card band).
+          !el.closest('.proj-cards-band')
   );
 
   els.forEach(el => {
