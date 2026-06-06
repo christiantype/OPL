@@ -365,6 +365,38 @@
   }
   .glyph-presets__act:hover { text-decoration: underline; }
 
+  /* Undo/redo + sessions */
+  #btn-undo, #btn-redo { padding: 9px 12px; }
+  .stage-actions button:disabled { opacity: 0.35; cursor: default; }
+  .sessions { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; }
+  .sessions[hidden] { display: none; }
+  .sessions__scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.45); }
+  .sessions__panel {
+    position: relative; width: min(420px, 92vw); max-height: 80vh; overflow: hidden;
+    background: var(--bg, #fff); color: var(--text); border: 1px solid var(--hairline);
+    border-radius: 8px; box-shadow: 0 30px 80px -20px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+  }
+  .sessions__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid var(--hairline); }
+  .sessions__title { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
+  .sessions__x { font-size: 20px; color: var(--text-mid); cursor: pointer; background: none; border: none; line-height: 1; }
+  .sessions__save { display: flex; gap: 8px; padding: 14px 18px 6px; }
+  .sessions__save input {
+    flex: 1; padding: 9px 11px; background: var(--panel); color: var(--text);
+    border: 1px solid var(--hairline); border-radius: 4px; font-family: var(--sans); font-size: 13px;
+  }
+  .sessions__save input:focus { outline: none; border-color: var(--accent); }
+  .sessions__save button { padding: 9px 16px; background: var(--accent); color: #111; border: none; border-radius: 4px; font-weight: 600; font-size: 12px; cursor: pointer; }
+  .sessions__hint { padding: 8px 18px 12px; font-size: 11px; line-height: 1.5; color: var(--text-dim); }
+  .sessions__list { list-style: none; margin: 0; padding: 0 8px 10px; overflow-y: auto; }
+  .sessions__item { display: flex; align-items: center; gap: 8px; padding: 10px 10px; border-top: 1px solid var(--hairline); }
+  .sessions__item-name { flex: 1; font-size: 13px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sessions__item-name small { color: var(--text-dim); font-size: 10px; margin-left: 8px; }
+  .sessions__item button { font-size: 11px; padding: 6px 10px; border: 1px solid var(--hairline); background: var(--panel); color: var(--text); border-radius: 4px; cursor: pointer; }
+  .sessions__item button:hover { border-color: var(--accent); }
+  .sessions__item .sessions__del:hover { border-color: #e03; color: #e03; }
+  .sessions__empty { padding: 14px 12px; font-size: 12px; color: var(--text-dim); text-align: center; }
+
   input[type=range] {
     -webkit-appearance: none; appearance: none;
     width: 100%; height: 22px;
@@ -568,9 +600,29 @@
     </div>
     <div class="stage-info" id="stage-info">— / —</div>
     <div class="stage-actions">
+      <button id="btn-undo" title="Undo (⌘Z)" disabled>↶</button>
+      <button id="btn-redo" title="Redo (⌘⇧Z)" disabled>↷</button>
+      <button id="btn-sessions" title="Saved sessions">⧉ Sessions</button>
       <button id="btn-reroll">↻ Re-roll</button>
       <button id="btn-export-svg">Export SVG</button>
       <button id="btn-export" class="btn-primary">Export PNG</button>
+    </div>
+
+    <!-- Sessions panel -->
+    <div class="sessions" id="sessions" hidden>
+      <div class="sessions__scrim" id="sessions-scrim"></div>
+      <div class="sessions__panel">
+        <div class="sessions__head">
+          <span class="sessions__title">Sessions</span>
+          <button class="sessions__x" id="sessions-close" aria-label="Close">×</button>
+        </div>
+        <div class="sessions__save">
+          <input type="text" id="session-name" placeholder="Name this session…" maxlength="40">
+          <button id="btn-session-save">Save</button>
+        </div>
+        <div class="sessions__hint">Saves your settings (modes, sliders, glyphs) in this browser. Photos aren't included — re-add them. Autosave keeps your last setup automatically.</div>
+        <ul class="sessions__list" id="sessions-list"></ul>
+      </div>
     </div>
   </section>
 
@@ -1538,6 +1590,9 @@ function renderThumbs() {
 
 // ── Render dispatch ───────────────────────────────────────────
 function render(target = canvas) {
+  // While restoring a snapshot we set many controls at once; skip the main
+  // canvas repaint until the restore finishes (one final render at the end).
+  if (window._loSuspendRender && target === canvas) return;
   const active = state.images.filter(s => s.enabled);
   if (!active.length) {
     const x = target.getContext('2d');
@@ -3914,6 +3969,124 @@ function sliderFromFriendly(r, n) {
     r.addEventListener('input', paint);   // fires after each bind's own handler
     paint();                              // initialize the label
   });
+})();
+
+// ── Undo / Redo · Autosave · Sessions ─────────────────────────
+// Generic: snapshots every control (sliders, toggles, segment buttons, text
+// fields) and re-applies them by driving the existing handlers. Photos are
+// not captured — sessions store the *settings* recipe.
+(function () {
+  const LS_AUTO = 'lakeopeka:autosave';
+  const LS_SESS = 'lakeopeka:sessions';
+  const panelEl = document.querySelector('.controls');
+
+  function snapshot() {
+    const ranges = {}, checks = {}, texts = {}, segs = {};
+    document.querySelectorAll('input[type=range]').forEach(r => { ranges[r.id] = r.value; });
+    document.querySelectorAll('.controls input[type=checkbox]').forEach(c => { checks[c.id] = c.checked; });
+    document.querySelectorAll('.controls input[type=text]').forEach(t => {
+      if (!t.classList.contains('row__val')) texts[t.id] = t.value;
+    });
+    document.querySelectorAll('.controls .seg, #seg-mode').forEach(seg => {
+      const btns = [...seg.querySelectorAll('button')];
+      segs[seg.id] = btns.findIndex(b => b.classList.contains('is-active'));
+    });
+    return { v: 1, ranges, checks, texts, segs };
+  }
+
+  function applySnapshot(snap) {
+    if (!snap) return;
+    window._loSuspendRender = true; window._loApplying = true;
+    try {
+      Object.entries(snap.segs || {}).forEach(([id, idx]) => {
+        const seg = document.getElementById(id); if (!seg || idx < 0) return;
+        const b = seg.querySelectorAll('button')[idx];
+        if (b && !b.classList.contains('is-active')) b.click();
+      });
+      Object.entries(snap.checks || {}).forEach(([id, val]) => {
+        const c = document.getElementById(id);
+        if (c && c.checked !== val) { c.checked = val; c.dispatchEvent(new Event('change', { bubbles: true })); }
+      });
+      Object.entries(snap.texts || {}).forEach(([id, val]) => {
+        const t = document.getElementById(id);
+        if (t && t.value !== val) { t.value = val; t.dispatchEvent(new Event('input', { bubbles: true })); }
+      });
+      Object.entries(snap.ranges || {}).forEach(([id, val]) => {
+        const r = document.getElementById(id);
+        if (r && r.value !== String(val)) { r.value = val; r.dispatchEvent(new Event('input', { bubbles: true })); }
+      });
+    } finally {
+      window._loSuspendRender = false; window._loApplying = false;
+      try { render(); } catch (e) {}
+    }
+  }
+
+  let history = [], ptr = -1, recT = null;
+  const btnUndo = $('btn-undo'), btnRedo = $('btn-redo');
+  const sig = s => JSON.stringify(s);
+  function updateBtns() { if (btnUndo) btnUndo.disabled = ptr <= 0; if (btnRedo) btnRedo.disabled = ptr >= history.length - 1; }
+  function saveAuto(snap) { try { localStorage.setItem(LS_AUTO, sig(snap || snapshot())); } catch (e) {} }
+  function pushHistory() {
+    const snap = snapshot();
+    if (ptr >= 0 && sig(snap) === sig(history[ptr])) return;   // no real change
+    history = history.slice(0, ptr + 1);
+    history.push(snap);
+    if (history.length > 60) history.shift();
+    ptr = history.length - 1;
+    updateBtns(); saveAuto(snap);
+  }
+  function scheduleRecord() { if (window._loApplying) return; clearTimeout(recT); recT = setTimeout(pushHistory, 450); }
+  function undo() { if (ptr > 0) { ptr--; applySnapshot(history[ptr]); updateBtns(); saveAuto(history[ptr]); } }
+  function redo() { if (ptr < history.length - 1) { ptr++; applySnapshot(history[ptr]); updateBtns(); saveAuto(history[ptr]); } }
+
+  function loadSessions() { try { return JSON.parse(localStorage.getItem(LS_SESS) || '{}'); } catch (e) { return {}; } }
+  function storeSessions(o) { try { localStorage.setItem(LS_SESS, JSON.stringify(o)); } catch (e) { alert('Storage full — could not save the session.'); } }
+
+  const panel = $('sessions'), listEl = $('sessions-list'), nameInput = $('session-name');
+  function renderList() {
+    const sess = loadSessions();
+    const keys = Object.keys(sess).sort((a, b) => (sess[b].t || 0) - (sess[a].t || 0));
+    listEl.innerHTML = keys.length ? '' : '<li class="sessions__empty">No saved sessions yet.</li>';
+    keys.forEach(name => {
+      const li = document.createElement('li'); li.className = 'sessions__item';
+      const nm = document.createElement('span'); nm.className = 'sessions__item-name'; nm.textContent = name; nm.title = 'Open “' + name + '”';
+      const when = sess[name].t ? new Date(sess[name].t).toLocaleDateString() : '';
+      if (when) { const s = document.createElement('small'); s.textContent = when; nm.appendChild(s); }
+      const open = () => { applySnapshot(sess[name].snap); pushHistory(); closePanel(); };
+      nm.addEventListener('click', open);
+      const openBtn = document.createElement('button'); openBtn.textContent = 'Open'; openBtn.addEventListener('click', open);
+      const del = document.createElement('button'); del.className = 'sessions__del'; del.textContent = '×'; del.title = 'Delete';
+      del.addEventListener('click', () => { const s = loadSessions(); delete s[name]; storeSessions(s); renderList(); });
+      li.append(nm, openBtn, del); listEl.appendChild(li);
+    });
+  }
+  function openPanel() { renderList(); panel.hidden = false; nameInput && nameInput.focus(); }
+  function closePanel() { panel.hidden = true; }
+  function saveSession() {
+    const name = (nameInput.value || '').trim() || ('Session ' + new Date().toLocaleString());
+    const sess = loadSessions(); sess[name] = { snap: snapshot(), t: Date.now() };
+    storeSessions(sess); nameInput.value = ''; renderList();
+  }
+
+  $('btn-sessions')?.addEventListener('click', openPanel);
+  $('sessions-close')?.addEventListener('click', closePanel);
+  $('sessions-scrim')?.addEventListener('click', closePanel);
+  $('btn-session-save')?.addEventListener('click', saveSession);
+  nameInput?.addEventListener('keydown', e => { if (e.key === 'Enter') saveSession(); });
+  btnUndo?.addEventListener('click', undo);
+  btnRedo?.addEventListener('click', redo);
+  if (panelEl) { panelEl.addEventListener('input', scheduleRecord, true); panelEl.addEventListener('change', scheduleRecord, true); panelEl.addEventListener('click', scheduleRecord, true); }
+
+  window.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if ((e.metaKey || e.ctrlKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+    else if ((e.metaKey || e.ctrlKey) && k === 'y') { e.preventDefault(); redo(); }
+  });
+
+  setTimeout(function init() {
+    try { const auto = JSON.parse(localStorage.getItem(LS_AUTO) || 'null'); if (auto) applySnapshot(auto); } catch (e) {}
+    history = [snapshot()]; ptr = 0; updateBtns();
+  }, 250);
 })();
 
 // ── Help overlay ─────────────────────────────────────────────
