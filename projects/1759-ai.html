@@ -4,14 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agentic — OP/AL</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../shared/styles.css">
 </head>
 <body>
   <script>
     const PROJECT = {
       title:       "Agentic",
-      description: "Agentic — an AI platform that scales advanced markets expertise across an enterprise of independent insurance producers. The hardest part of legacy planning isn't the math; it's getting an expert in the room.",
-      body: "Advanced markets experts are rare and expensive. Agentic puts that expertise on demand. Led by Christian Solorzano — nearly a decade designing for Fortune 500 brands across global consulting.",
+      description: "An AI platform that scales advanced markets expertise across an enterprise of independent insurance producers. The hardest part of legacy planning isn't the math; it's getting an expert in the room.",
+      body: "Advanced markets experts are rare and expensive. Agentic puts that expertise on demand. The hard part was making a learning platform flexible enough to meet users at every stage — surfacing the right information through clear information architecture and agentic flows. Agentic is proprietary software; the screens shown here have been redacted and simplified for presentation purposes.",
       client:      "Zofo Digital",
       medium:      "AI Agent",
       year:        "2025",
@@ -23,61 +26,208 @@
       // imageFrame off — the window-chrome wrapper provides framing instead
       imageFrame:  false,
       images: [
-        { tour: {
-            mockup: "1759-mocks/dashboard.html",
-            windowTitle: "Agent · Home",
-            // initial: no x/y → full view fits to frame
-            stops: [
-              { num: "01", title: "Agent Home",
-                body: "<p>The first screen meets the agent where they are. Latest pulls in what's just been published, Trending shows what other agents are working through right now, and Recommended learns from past behavior. The chat sits one tap away — the entire platform addressable from the first surface.</p>" },
-              { num: "02", title: "Bookmarks", x: 0.760, y: 0.045, zoom: 3.2,
-                body: "Saved content the agent can come back to later. The bookmark icon stays available on every strategy detail page." },
-              { num: "03", title: "Sales Vault", x: 0.835, y: 0.045, zoom: 3.2,
-                body: "Centralized hub for every strategy and the sales content that goes with it. The agent's library, always one click away." },
-              { num: "04", title: "Latest", x: 0.180, y: 0.380, zoom: 2.0,
-                body: "Most recently published content surfaces here — fresh court case summaries, new strategies, updates to existing ones." },
-              { num: "05", title: "Trending", x: 0.685, y: 0.380, zoom: 2.0,
-                body: "What other agents are actively consuming. Trending is a signal: when peer producers are studying a strategy, it's worth a second look." },
-              { num: "06", title: "Recommended for you", x: 0.300, y: 0.700, zoom: 1.6,
-                body: "Personal content suggestions based on past behavior — the strategies the agent has worked through, bookmarked, or asked the AI about." },
-              { num: "07", title: "Personal Advanced Markets Expert", x: 0.500, y: 0.910, zoom: 1.9,
-                body: "<p>The chat sits at the bottom of every screen. An always-available subject matter expert that scales — the rare specialist, made on-demand.</p>" }
-            ]
-          } },
+        // 1 — The full home dashboard ("Good morning, David").
+        { scenes: [
+          { mockup: "1759-mocks/dashboard.html", alt: "Agent home screen",
+            num: "01", title: "Home",
+            body: "<p>The first surface meets the agent where they are. <strong>Latest</strong> pulls in what's just been published, <strong>Trending</strong> shows what other producers are studying, and <strong>Recommended</strong> learns from past behavior — the whole platform from one screen, with the AI expert one tap away.</p>" }
+        ] },
 
-        { section: { num: "02", title: "Personal Advanced Markets Expert",
-          body: "<p>The AI is built like a senior strategist, not a chatbot. Hand it a client case and it brainstorms the structure, surfaces the strategies by name, walks through the math, and holds onto the human stakes that financial advice always touches. <strong>One rare expert turned into a tool every agent can use.</strong></p>" } },
-        { mockup: "1759-mocks/chat-flow.html", alt: "AI chat — full conversation flow", cols: 12, windowTitle: "Agent · AI Chat",
-          annotations: [
-            { x: 0.090, y: 0.190, title: "Recent Conversations", body: "Past sessions saved as named conversations — easy to come back and pick up where the agent left off." },
-            { x: 0.110, y: 0.815, title: "Personal Advanced Markets Expert",  body: "The AI is the scarce expert, made always-available. It brainstorms in real time, asks clarifying questions one at a time, and produces client-ready strategies." }
-          ] },
+        // 2 — Two of those signals, extracted side by side, with a line on what each is.
+        { cards: [
+          { num: "01", label: "Trending",
+            headline: "What the floor is studying.",
+            body: "A live, ranked list of the strategies the rest of the team is opening this week — so you can see what's gaining momentum and why.",
+            html: `<div class="pf-trend" data-pftrend>
+              <div class="pf-trend__head"><span class="pf-trend__dot"></span>Trending</div>
+              <div class="pf-trend__row" data-count="2410"><span class="pf-trend__n">01</span><span class="pf-trend__name">Gen-Skip Split-Dollar</span><span class="pf-trend__m"><span class="pf-trend__v">2.4k</span><svg viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2 1h10v15l-5-3.4L2 16z"/></svg></span></div>
+              <div class="pf-trend__row" data-count="1920"><span class="pf-trend__n">02</span><span class="pf-trend__name">Rolling GRATs</span><span class="pf-trend__m"><span class="pf-trend__v">1.9k</span><svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 7s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="7" r="2.5"/></svg></span></div>
+              <div class="pf-trend__row" data-count="1630"><span class="pf-trend__n">03</span><span class="pf-trend__name">Survivorship ILIT</span><span class="pf-trend__m"><span class="pf-trend__v">1.6k</span><svg viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2 1h10v15l-5-3.4L2 16z"/></svg></span></div>
+              <div class="pf-trend__row" data-count="1320"><span class="pf-trend__n">04</span><span class="pf-trend__name">SLATs</span><span class="pf-trend__m"><span class="pf-trend__v">1.3k</span><svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 7s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="10" cy="7" r="2.5"/></svg></span></div>
+            </div>` },
+          { num: "02", label: "Recommended",
+            headline: "Picked from how you work.",
+            body: "Strategies surfaced from the agent's own reading and saves — the platform quietly learning what they care about and pointing them to what's next.",
+            html: `<div class="pf-recs"><div class="pf-recs__track">
+              <div class="pf-rec"><span class="pf-rec__tag">Gen-Skip Split-Dollar</span><span class="pf-rec__t">Skip a generation</span></div>
+              <div class="pf-rec"><span class="pf-rec__tag">Court Case</span><span class="pf-rec__t">The new ruling</span></div>
+              <div class="pf-rec"><span class="pf-rec__tag">Rolling GRATs</span><span class="pf-rec__t">For choppy markets</span></div>
+              <div class="pf-rec"><span class="pf-rec__tag">SLATs</span><span class="pf-rec__t">Spousal access, kept</span></div>
+              <div class="pf-rec"><span class="pf-rec__tag">Survivorship ILIT</span><span class="pf-rec__t">Two lives, one policy</span></div>
+              <div class="pf-rec" aria-hidden="true"><span class="pf-rec__tag">Gen-Skip Split-Dollar</span><span class="pf-rec__t">Skip a generation</span></div>
+              <div class="pf-rec" aria-hidden="true"><span class="pf-rec__tag">Court Case</span><span class="pf-rec__t">The new ruling</span></div>
+              <div class="pf-rec" aria-hidden="true"><span class="pf-rec__tag">Rolling GRATs</span><span class="pf-rec__t">For choppy markets</span></div>
+              <div class="pf-rec" aria-hidden="true"><span class="pf-rec__tag">SLATs</span><span class="pf-rec__t">Spousal access, kept</span></div>
+              <div class="pf-rec" aria-hidden="true"><span class="pf-rec__tag">Survivorship ILIT</span><span class="pf-rec__t">Two lives, one policy</span></div>
+            </div></div>` }
+        ] },
 
-        { section: { num: "03", title: "Strategy Library",
-          body: "<p>Every advanced-markets strategy in one place — the Prospect Curator that surfaces who it's right for, the back-of-the-napkin diagram, and the financial breakdown that lets an agent walk into a meeting and own the room. The math is shown, not hidden.</p>" } },
-        { mockup: "1759-mocks/strategy-prospect.html", alt: "Strategy detail", cols: 12, windowTitle: "Agent · Strategy · Gen-Skip Split-Dollar",
-          annotations: [
-            { x: 0.100, y: 0.170, title: "Content by Strategy", body: "Collection of related sales content grouped by strategy." },
-            { x: 0.440, y: 0.330, title: "Bookmarked",          body: "View number of users who have saved this resource." },
-            { x: 0.100, y: 0.560, title: "Related Materials",   body: "Content that supports or complements the main content the user is viewing." },
-            { x: 0.962, y: 0.180, title: "Notes",               body: "Ability for users to capture notes within the platform." }
-          ] },
+        // 3 — The chat, focused: just the conversation + the input bar.
+        { scenes: [
+          { mockup: "1759-mocks/chat-focused.html", alt: "AI chat conversation playing through",
+            num: "02", title: "AI Chat", bare: true, h: 600,
+            body: "<p>A senior strategist, not a chatbot. Hand it a client case and it brainstorms the structure, names the strategies, and walks the math. <strong>Shown here in action — start to finished plan.</strong></p>" }
+        ] },
 
-        { section: { num: "04", title: "Notes Mapped to Strategies",
-          body: "<p>Whatever an agent writes down stays mapped to the strategy it came from. Notes sync to where they already work — Apple Notes, Google Drive — so nothing gets stranded in another tool. The platform plays nice with the agent's existing workflow instead of demanding a new one.</p>" } },
-        { mockup: "1759-mocks/notes-list.html", alt: "Notes — cross-functional sync", cols: 12, windowTitle: "Agent · Notes" },
+        // 4 — The full Prospect Curator strategy screen.
+        { scenes: [
+          { mockup: "1759-mocks/strategy-prospect.html", alt: "Strategy detail page",
+            num: "03", title: "Prospect Finder",
+            body: "<p>Every advanced-markets strategy in one place — who it's right for, the back-of-the-napkin diagram, and the financial breakdown an agent can walk into a meeting and own. The math is shown, not hidden.</p>" }
+        ] },
 
-        { section: { num: "05", title: "Enterprise Performance",
-          body: "<p>The other side of the platform. The CEO sees what's landing, what isn't, and which study groups are engaged. Programming decisions get made with evidence — not gut. The dashboard answers a single question: <strong>where should we invest next?</strong></p>" } },
-        { mockup: "1759-mocks/admin-dashboard.html", alt: "Admin dashboard", cols: 12, windowTitle: "Enterprise · Admin",
-          annotations: [
-            { x: 0.060, y: 0.350, title: "AI Platform Engagement", body: "Surfaces the underlying intent in user queries or conversations with chat." },
-            { x: 0.060, y: 0.640, title: "Content Performance",    body: "Measures content relevance and value to the organization." }
-          ] }
+        // 5 — Notes: two columns — the list, and an open note (scrolls).
+        { cards: [
+          { label: "All notes",
+            headline: "Mapped to the strategy it came from.",
+            body: "Every note the agent writes stays tied to its strategy and syncs to Apple Notes and Drive.",
+            html: `<div class="pf-nl">
+              <div class="pf-nl__row is-active"><div class="pf-nl__map">Gen-Skip Split-Dollar</div><div class="pf-nl__t">Marion Levine follow-up</div><div class="pf-nl__meta">2h ago · Apple Notes</div></div>
+              <div class="pf-nl__row"><div class="pf-nl__map">Wealth Transfer</div><div class="pf-nl__t">Goldsmith family — meeting prep</div><div class="pf-nl__meta">Yesterday · Drive</div></div>
+              <div class="pf-nl__row"><div class="pf-nl__map">Court Case</div><div class="pf-nl__t">Petersons — revisit Gen-Skip</div><div class="pf-nl__meta">2 days ago · Apple Notes</div></div>
+              <div class="pf-nl__row"><div class="pf-nl__map">Survivorship ILIT</div><div class="pf-nl__t">K. Tan — survivorship vs single-life</div><div class="pf-nl__meta">Mar 28 · Syncing…</div></div>
+              <div class="pf-nl__row"><div class="pf-nl__map">ILIT Funding</div><div class="pf-nl__t">Funding options for HNW clients</div><div class="pf-nl__meta">Mar 24 · Drive</div></div>
+              <div class="pf-nl__row"><div class="pf-nl__map">Rolling GRATs</div><div class="pf-nl__t">Whitfield trust — choppy-market hedge</div><div class="pf-nl__meta">Mar 21 · Apple Notes</div></div>
+            </div>` },
+          { label: "An open note",
+            headline: "A full working doc.",
+            body: "The write-up, a live checklist, and the strategy it links back to — synced everywhere.",
+            html: `<div class="pf-no">
+              <div class="pf-no__crumb">↳ Gen-Skip Split-Dollar · Prospect Finder</div>
+              <div class="pf-no__title">Marion Levine follow-up — the IRS position</div>
+              <div class="pf-no__meta">Edited 2 hours ago · ✓ Synced to Apple Notes</div>
+              <p class="pf-no__p">The Tax Court sided with the estate on the <b>economic-benefit</b> regime — the premiums weren't gifts because the arrangement was structured as economic benefit, not a loan.</p>
+              <p class="pf-no__p">For the Hendersons, the part that matters is the <b>valuation discount on the receivable</b>. It held up here — pull the exact discount the court accepted into the back-of-the-napkin.</p>
+              <div class="pf-no__check-h">Before the Henderson meeting</div>
+              <div class="pf-no__chk is-done">Confirm grandchildren ages drive the GST math</div>
+              <div class="pf-no__chk">Get the updated §7520 rate from the Sales Vault</div>
+              <div class="pf-no__chk">Draft the three-trust diagram with the AI</div>
+              <div class="pf-no__chips"><span>Apple Notes</span><span>Google Drive</span></div>
+            </div>` }
+        ] },
+
+        // 6 — The admin view as a story: Weekly Wrapped over "Good morning, Michael".
+        { scenes: [
+          { mockup: "1759-mocks/admin-dashboard.html", alt: "Enterprise admin dashboard with Weekly Wrapped",
+            num: "05", title: "Admin · Weekly Wrapped",
+            body: "<p>The enterprise view gets a story. A Spotify-Wrapped recap of the team's week — who set the pace, what everyone studied, the questions they asked — so leadership sees engagement, not just numbers.</p>" }
+        ] },
+
+        // 7 — Two of the admin's signals, pulled out side by side.
+        { cards: [
+          { label: "Active producers",
+            headline: "See who showed up.",
+            body: "Hover any day on the line to see exactly which producers were active.",
+            html: `<div class="pf-au">
+              <div class="pf-au__top"><span class="pf-au__num">184</span><span class="pf-au__up">▲ 12%</span><span class="pf-au__cap">vs last week</span></div>
+              <div class="pf-au__figure">
+                <svg class="pf-au__svg" viewBox="0 0 300 110" preserveAspectRatio="none" aria-hidden="true">
+                  <defs><linearGradient id="pf-aufill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1257d6" stop-opacity="0.18"></stop><stop offset="100%" stop-color="#1257d6" stop-opacity="0"></stop></linearGradient></defs>
+                  <path fill="url(#pf-aufill)" d="M0,86 L50,72 L100,78 L150,50 L200,56 L250,29 L300,16 L300,110 L0,110 Z"></path>
+                  <path class="pf-au__line" d="M0,86 L50,72 L100,78 L150,50 L200,56 L250,29 L300,16"></path>
+                </svg>
+                <div class="pf-au__pts">
+                  <button class="pf-au__pt" style="left:0%;top:78%" type="button"><span class="pf-au__pop"><span class="pf-au__pop-h">Mon · 121 active</span><span class="pf-au__u"><span class="pf-au__av" style="background:#1257d6">SK</span>Sarah Klein</span><span class="pf-au__u"><span class="pf-au__av" style="background:#0a6577">DM</span>Dana Mehta</span><span class="pf-au__more">+119 more</span></span></button>
+                  <button class="pf-au__pt" style="left:16.6%;top:65%" type="button"><span class="pf-au__pop"><span class="pf-au__pop-h">Tue · 138 active</span><span class="pf-au__u"><span class="pf-au__av" style="background:#d6336c">LR</span>Lena Ruiz</span><span class="pf-au__u"><span class="pf-au__av" style="background:#E04403">OK</span>Omar Khan</span><span class="pf-au__more">+136 more</span></span></button>
+                  <button class="pf-au__pt" style="left:33.3%;top:71%" type="button"><span class="pf-au__pop"><span class="pf-au__pop-h">Wed · 131 active</span><span class="pf-au__u"><span class="pf-au__av" style="background:#7a4fd6">TC</span>Tom Cho</span><span class="pf-au__u"><span class="pf-au__av" style="background:#1257d6">AP</span>Ava Park</span><span class="pf-au__more">+129 more</span></span></button>
+                  <button class="pf-au__pt is-open" style="left:50%;top:45%" type="button"><span class="pf-au__pop"><span class="pf-au__pop-h">Thu · 162 active</span><span class="pf-au__u"><span class="pf-au__av" style="background:#1257d6">SK</span>Sarah Klein</span><span class="pf-au__u"><span class="pf-au__av" style="background:#0a6577">DK</span>David Kim</span><span class="pf-au__u"><span class="pf-au__av" style="background:#d6336c">LR</span>Lena Ruiz</span><span class="pf-au__more">+159 more</span></span></button>
+                  <button class="pf-au__pt" style="left:66.6%;top:51%" type="button"><span class="pf-au__pop"><span class="pf-au__pop-h">Fri · 156 active</span><span class="pf-au__u"><span class="pf-au__av" style="background:#E04403">OK</span>Omar Khan</span><span class="pf-au__u"><span class="pf-au__av" style="background:#7a4fd6">TC</span>Tom Cho</span><span class="pf-au__more">+154 more</span></span></button>
+                  <button class="pf-au__pt" style="left:83.3%;top:26%" type="button"><span class="pf-au__pop pf-au__pop--left"><span class="pf-au__pop-h">Sat · 176 active</span><span class="pf-au__u"><span class="pf-au__av" style="background:#0a6577">DM</span>Dana Mehta</span><span class="pf-au__u"><span class="pf-au__av" style="background:#1257d6">AP</span>Ava Park</span><span class="pf-au__more">+174 more</span></span></button>
+                  <button class="pf-au__pt" style="left:100%;top:15%" type="button"><span class="pf-au__pop pf-au__pop--left"><span class="pf-au__pop-h">Sun · 184 active</span><span class="pf-au__u"><span class="pf-au__av" style="background:#1257d6">SK</span>Sarah Klein</span><span class="pf-au__u"><span class="pf-au__av" style="background:#0a6577">DK</span>David Kim</span><span class="pf-au__more">+182 more</span></span></button>
+                </div>
+              </div>
+              <div class="pf-au__x"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+            </div>` },
+          { label: "Content performance",
+            headline: "What's landing, what isn't.",
+            body: "Views, time on page, and which study groups each strategy reached.",
+            html: `<div class="pf-cp">
+              <div class="pf-cp__row pf-cp__row--head"><span>Strategy</span><span>Views</span><span>Avg. time</span><span>Groups</span></div>
+              <div class="pf-cp__row"><span class="pf-cp__name">ILIT</span><span class="pf-cp__v"><span class="pf-cp__bar" style="--w:100%"></span>272</span><span>1h 02m</span><span class="pf-cp__g">4</span></div>
+              <div class="pf-cp__row"><span class="pf-cp__name">Gen-Skip Split-Dollar</span><span class="pf-cp__v"><span class="pf-cp__bar" style="--w:71%"></span>193</span><span>48m</span><span class="pf-cp__g">3</span></div>
+              <div class="pf-cp__row"><span class="pf-cp__name">Rolling GRATs</span><span class="pf-cp__v"><span class="pf-cp__bar" style="--w:45%"></span>122</span><span>36m</span><span class="pf-cp__g">2</span></div>
+              <div class="pf-cp__row"><span class="pf-cp__name">QPRT</span><span class="pf-cp__v"><span class="pf-cp__bar" style="--w:31%"></span>84</span><span>22m</span><span class="pf-cp__g">1</span></div>
+              <div class="pf-cp__row"><span class="pf-cp__name">DING</span><span class="pf-cp__v"><span class="pf-cp__bar" style="--w:13%"></span>36</span><span>18m</span><span class="pf-cp__g">—</span></div>
+            </div>` }
+        ] }
       ],
       next: { title: "BR AI NS", url: "br-ai-ns.html" }
     };
   </script>
   <script src="../shared/project.js"></script>
+  <script>
+    // Trending micro-animation: counts tick up and the list re-sorts itself,
+    // sliding rows past each other (FLIP) so the ranking feels live.
+    (function () {
+      function fmt(n) { return (n / 1000).toFixed(1) + 'k'; }
+      function initTrend(t) {
+        if (t.dataset.init) return; t.dataset.init = '1';
+        var rows = function () { return Array.from(t.querySelectorAll('.pf-trend__row')); };
+        function tick() {
+          var before = rows();
+          var oldTops = before.map(function (r) { return r.getBoundingClientRect().top; });
+          before.forEach(function (r, i) {
+            r.dataset.count = +r.dataset.count + Math.floor(Math.random() * 60);
+            if (i === Math.floor(Math.random() * before.length))
+              r.dataset.count = +r.dataset.count + 140 + Math.floor(Math.random() * 320);
+          });
+          var sorted = rows().sort(function (a, b) { return b.dataset.count - a.dataset.count; });
+          sorted.forEach(function (r, i) {
+            r.querySelector('.pf-trend__v').textContent = fmt(+r.dataset.count);
+            r.querySelector('.pf-trend__n').textContent = String(i + 1).padStart(2, '0');
+            t.appendChild(r);
+          });
+          rows().forEach(function (r) {
+            var dy = oldTops[before.indexOf(r)] - r.getBoundingClientRect().top;
+            if (dy) {
+              r.style.transition = 'none';
+              r.style.transform = 'translateY(' + dy + 'px)';
+              requestAnimationFrame(function () { r.style.transition = ''; r.style.transform = ''; });
+            }
+          });
+          var top = sorted[0].querySelector('.pf-trend__m');
+          if (top) { top.classList.add('is-bump'); setTimeout(function () { top.classList.remove('is-bump'); }, 600); }
+        }
+        setInterval(tick, 2600);
+      }
+      function boot() {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        document.querySelectorAll('[data-pftrend]').forEach(initTrend);
+      }
+      setTimeout(boot, 1000);
+    })();
+
+    // Rotating chat-bar prompts — every chat input cycles through example
+    // questions (typed out) instead of one static placeholder.
+    (function () {
+      var prompts = [
+        'How can I help you today?',
+        'Help me brainstorm a strategy for a client',
+        'Which structure holds up under the new ruling?',
+        'Who is a Gen-Skip Split-Dollar right for?',
+        'Walk me through the back-of-the-napkin',
+        'Draft a client summary letter'
+      ];
+      function wire(input) {
+        if (input.dataset.rot) return; input.dataset.rot = '1';
+        var i = 0;
+        function next() {
+          i = (i + 1) % prompts.length;
+          var text = prompts[i], n = 0;
+          input.setAttribute('placeholder', '');
+          var t = setInterval(function () {
+            n++; input.setAttribute('placeholder', text.slice(0, n));
+            if (n >= text.length) { clearInterval(t); setTimeout(next, 2800); }
+          }, 30);
+        }
+        setTimeout(next, 2800);
+      }
+      var runs = 0;
+      var iv = setInterval(function () {
+        document.querySelectorAll('.m1759__chat-input:not([data-rot])').forEach(wire);
+        if (++runs > 8) clearInterval(iv);
+      }, 1500);
+    })();
+  </script>
 </body>
 </html>

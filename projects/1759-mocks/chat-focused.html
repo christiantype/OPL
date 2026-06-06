@@ -1,0 +1,165 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap');
+  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+  .m1759 .m1759__block-title { font-family: 'Sorts Mill Goudy', Georgia, serif !important; font-weight: 400 !important; letter-spacing: 0 !important; }
+  /* NOTE: every mockup defines `.m1759 {...}` globally, so the dark chat theme
+     must be scoped to `.m1759-chat` to outrank the other (light) mockups. */
+  .m1759.m1759-chat {
+    /* Dark — the conversation floats on the site's black surface. */
+    --m-bg: transparent;
+    --m-ink: #ffffff; --m-body: rgba(255,255,255,0.92); --m-mid: rgba(255,255,255,0.55);
+    --m-hair: rgba(255,255,255,0.22); --m-cobalt: #6f9bff;
+    --m-sans: 'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    position: relative; background: transparent; color: var(--m-ink);
+    font-family: var(--m-sans); font-size: 13px; line-height: 1.5;
+    border: none; overflow: hidden; height: 600px;
+    display: flex; flex-direction: column;
+  }
+  .m1759 *, .m1759 *::before, .m1759 *::after { box-sizing: border-box; font-family: inherit; }
+  .m1759 button { font: inherit; background: none; border: none; padding: 0; color: inherit; cursor: pointer; }
+  .m1759 input { font: inherit; background: none; border: none; outline: none; color: inherit; min-width: 0; }
+
+  /* FOCUS REEL — the current message sits centered; the prior one recedes
+     above it. Flexbox keeps it centered (no measurement) so it's robust. */
+  .m1759__stage { position: relative; flex: 1; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 0 56px;
+    /* gentle fade at the top/bottom edges so nothing ends abruptly */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
+  }
+  .m1759__reel { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .m1759__fmsg { max-width: 620px; text-align: center;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .m1759__fmsg.is-hidden, .m1759__fmsg.is-gone { display: none; }
+  /* the in-flow current message is the only flex child, so it sits dead-center */
+  .m1759__fmsg.is-current { opacity: 1; position: relative; }
+  /* the prior message becomes a single faded line floating above center —
+     no reflow, no awkward wrapping as it shrinks */
+  .m1759__fmsg.is-past {
+    position: absolute; left: 0; right: 0; bottom: calc(50% + 34px);
+    margin: 0 auto;                 /* stay centered, not anchored to the left */
+    opacity: 0.3; transform: scale(0.88); transform-origin: center bottom;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m1759__fmsg.is-past .m1759__bubble { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .m1759__fmsg--user .m1759__bubble {
+    display: inline-block; background: rgba(255,255,255,0.12); color: #fff;
+    padding: 10px 18px; border-radius: 18px; font-size: 16px; line-height: 1.5;
+  }
+  .m1759__fmsg--ai { color: var(--m-body); font-size: 17px; line-height: 1.55; }
+  .m1759__fmsg.is-current.m1759__fmsg--ai { font-size: 19px; }
+  .m1759__fmsg.is-current.m1759__fmsg--user .m1759__bubble { font-size: 17px; }
+  .m1759__fmsg--ai b { color: #fff; font-weight: 600; }
+
+  /* Rich blocks — kept legible on black, centered */
+  .m1759__block-title { font-size: 16px; color: #fff; margin-bottom: 10px; }
+  .m1759__numbers { display: inline-grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--m-hair); border-radius: 10px; overflow: hidden; text-align: left; }
+  .m1759__numcell { padding: 13px 18px; border-right: 1px solid var(--m-hair); }
+  .m1759__numcell:last-child { border-right: none; }
+  .m1759__numcell--accent { background: rgba(255,255,255,0.05); }
+  .m1759__numcell-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--m-mid); margin-bottom: 7px; }
+  .m1759__numcell-value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; color: #fff; }
+  .m1759__numcell-value--cobalt { color: var(--m-cobalt); }
+  .m1759__strategies { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; text-align: left; }
+  .m1759__strat { padding: 13px 16px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+  .m1759__strat-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--m-mid); margin-bottom: 4px; }
+  .m1759__strat-body { font-size: 13px; line-height: 1.5; color: var(--m-body); }
+  .m1759__chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
+  .m1759__chip { font-size: 12px; padding: 7px 14px; border: 1px solid var(--m-hair); border-radius: 999px; color: #fff; }
+
+  .m1759__typing { display: none; gap: 4px; padding: 6px 0; }
+  .m1759__typing.is-on { display: inline-flex; }
+  .m1759__typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--m-mid); animation: m1759-bounce 1.2s infinite ease-in-out; }
+  .m1759__typing span:nth-child(2) { animation-delay: 0.15s; }
+  .m1759__typing span:nth-child(3) { animation-delay: 0.30s; }
+  @keyframes m1759-bounce { 0%, 80%, 100% { transform: scale(0.5); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
+
+  .m1759-chat .m1759__chat { padding: 14px 56px 26px; }
+  .m1759-chat .m1759__chat-inner { width: 100%; max-width: 620px; margin: 0 auto; }
+  .m1759-chat .m1759__chat-form { display: flex; align-items: center; gap: 10px; padding: 13px 18px; border: 1px solid var(--m-hair); border-radius: 999px; background: rgba(255,255,255,0.04); }
+  .m1759-chat .m1759__chat-prompt { font-size: 14px; color: var(--m-cobalt); font-weight: 700; }
+  .m1759-chat .m1759__chat-input { flex: 1; font-size: 13px; color: #fff; }
+  .m1759-chat .m1759__chat-input::placeholder { color: var(--m-mid); }
+  .m1759-chat .m1759__chat-send { font-size: 14px; color: #fff; }
+</style>
+
+<div class="m1759 m1759-chat">
+  <div class="m1759__stage" data-stage>
+    <div class="m1759__reel" data-reel>
+      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">A client just sold his business — about $100M, most of it tied up in real estate. How does he pass it to his kids without taxes taking half?</span></div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">One of the biggest questions in wealth planning. Let me put real numbers on it.</div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">First — with no planning at all, how much of that fortune actually reaches his kids?</div>
+      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">Honestly? No idea. That's the problem.</span></div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Here's the gap most families never see coming:</div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">
+        <div class="m1759__block-title">What actually reaches the next generation</div>
+        <div class="m1759__numbers">
+          <div class="m1759__numcell"><div class="m1759__numcell-label">No planning</div><div class="m1759__numcell-value">$118M</div></div>
+          <div class="m1759__numcell"><div class="m1759__numcell-label">With planning</div><div class="m1759__numcell-value">$179M</div></div>
+          <div class="m1759__numcell m1759__numcell--accent"><div class="m1759__numcell-label">The difference</div><div class="m1759__numcell-value m1759__numcell-value--cobalt">+$61M</div></div>
+        </div>
+      </div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">The move: a life-insurance trust funded through a <b>Gen-Skip Split-Dollar</b> arrangement — built to keep illiquid assets like real estate in the family for generations.</div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Net result: about <b>$61 million more</b> reaches his kids and grandkids — completely transfer-tax free.</div>
+      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Want me to turn this into a client-ready summary?</div>
+      <div class="m1759__typing" data-typing><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <div class="m1759__chat">
+    <div class="m1759__chat-inner">
+      <form class="m1759__chat-form" onsubmit="event.preventDefault();">
+        <span class="m1759__chat-prompt">›</span>
+        <input class="m1759__chat-input" type="text" placeholder="How can I help you today?" />
+        <button class="m1759__chat-send" type="submit" aria-label="Send">↵</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var root = document.querySelector('.m1759-chat');
+    if (!root || root.dataset.init) return; root.dataset.init = '1';
+    var typing = root.querySelector('[data-typing]');
+    var msgs = Array.from(root.querySelectorAll('.m1759__fmsg'));
+    var beats = [2200, 1800, 2000, 1500, 1600, 3400, 3000, 2700, 2400];
+    var TYPE = 750, PAUSE = 3800;
+    var i = 0, timers = [];
+
+    function reset() {
+      msgs.forEach(function (m) { m.classList.add('is-hidden'); m.classList.remove('is-gone', 'is-past', 'is-current'); });
+      typing.classList.remove('is-on'); i = 0;
+      timers.push(setTimeout(reveal, 700));
+    }
+    function demote() {
+      // current message → single faded line above center; older → gone
+      msgs.forEach(function (x, k) {
+        if (x.classList.contains('is-current')) { x.classList.remove('is-current'); x.classList.add('is-past'); }
+        if (k < i - 1) { x.classList.add('is-gone'); x.classList.remove('is-past'); }
+      });
+    }
+    function reveal() {
+      if (i >= msgs.length) { timers.push(setTimeout(reset, PAUSE)); return; }
+      var m = msgs[i];
+      var isAi = m.classList.contains('m1759__fmsg--ai');
+      var show = function () {
+        typing.classList.remove('is-on');
+        demote();
+        m.classList.remove('is-hidden', 'is-past', 'is-gone'); m.classList.add('is-current');
+        i++;
+        timers.push(setTimeout(reveal, beats[i - 1] || 1800));
+      };
+      if (isAi) {
+        demote();                 // clear the centre so the typing dots sit centered
+        typing.classList.add('is-on');
+        timers.push(setTimeout(show, TYPE));
+      } else { show(); }
+    }
+    timers.push(setTimeout(reveal, 900));
+  })();
+</script>

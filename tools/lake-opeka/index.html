@@ -3,9 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OP/AL — Imagix</title>
-<script src="/tools/shared/gate.js"></script>
-<style>
+<title>OP/AL — Imagix</title><style>
   /* ── Brand font ─────────────────────────────────────────────── */
   @font-face {
     font-family: 'Sidepiece-HoneyPie';
@@ -170,6 +168,16 @@
   }
   .images__clear:hover { color: var(--pink); }
   .images__clear:disabled { opacity: 0.3; cursor: default; }
+  .images__actions {
+    margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid var(--hairline);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .images__actions .ctrl-btn { margin-top: 0; }
+  .images__actions .ctrl-btn:disabled {
+    opacity: 0.35; cursor: default;
+    border-color: var(--hairline); color: var(--text-dim);
+  }
   .drop {
     display: block;
     border: 1px dashed var(--hairline);
@@ -323,8 +331,8 @@
   input.row__val {
     -webkit-appearance: none; appearance: none;
     background: transparent; border: none;
-    color: var(--accent);
-    font-family: var(--mono); font-size: 11px;
+    color: var(--text);
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
     text-align: right; padding: 2px 4px;
     width: 72px; cursor: text;
     transition: background 0.15s ease, outline-color 0.15s ease;
@@ -333,6 +341,29 @@
   }
   input.row__val:hover { background: rgba(255, 212, 0, 0.06); outline-color: var(--hairline); }
   input.row__val:focus { background: rgba(255, 212, 0, 0.12); outline-color: var(--accent); }
+
+  /* Lake Opeka glyph presets — multi-select gallery */
+  .glyph-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+  .glyph-preset {
+    aspect-ratio: 1; background: #f2f2f0; border: 1px solid var(--hairline);
+    border-radius: 4px; cursor: pointer; padding: 7px; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .glyph-preset img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+  .glyph-preset:hover { border-color: var(--text-dim); }
+  .glyph-preset.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .glyph-preset.is-active::after {
+    content: ''; position: absolute; top: 3px; right: 3px;
+    width: 12px; height: 12px; border-radius: 50%; background: var(--accent);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.2 2.2 4.8-4.8' stroke='%23111' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-size: contain;
+  }
+  .glyph-presets__act {
+    background: none; border: none; color: var(--accent); cursor: pointer;
+    font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 0;
+  }
+  .glyph-presets__act:hover { text-decoration: underline; }
 
   input[type=range] {
     -webkit-appearance: none; appearance: none;
@@ -516,13 +547,16 @@
   <aside class="images">
     <div class="images__label">
       <span>Sources <span class="images__count" id="count-display">0</span></span>
-      <button class="images__clear" id="btn-clear" type="button" title="Clear all sources">Clear all</button>
     </div>
     <label class="drop" id="drop">
       ↑ Drag photos here<span class="drop__hint">or click to choose</span>
       <input type="file" accept="image/*" multiple style="display:none" id="file-input">
     </label>
     <div class="thumbs" id="thumbs"></div>
+    <div class="images__actions">
+      <button class="ctrl-btn" id="btn-add-collection" type="button" title="Load the built-in photo collection">+ Add collection</button>
+      <button class="ctrl-btn" id="btn-clear" type="button" title="Remove all photos">Clear all</button>
+    </div>
   </aside>
 
   <!-- CENTER: CANVAS -->
@@ -814,6 +848,14 @@
           <img id="glyph-preview-img" style="width:36px;height:36px;object-fit:contain;background:repeating-conic-gradient(#e0e0e0 0% 25%,#f5f5f5 25% 50%) 50% / 12px 12px">
           <span id="glyph-preview-name" style="font-size:11px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
         </div>
+
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:16px 0 7px;display:flex;justify-content:space-between;align-items:center">
+          <span>Lake Opeka glyphs</span>
+          <span><button id="btn-glyphPresetsAll" class="glyph-presets__act" type="button">All</button><button id="btn-glyphPresetsNone" class="glyph-presets__act" type="button" style="margin-left:10px">None</button></span>
+        </div>
+        <div id="glyph-presets" class="glyph-presets"></div>
+        <p id="glyph-presets-hint" style="font-size:10px;color:var(--text-dim);line-height:1.4;margin:0 0 14px">Pick one, several, or all — the grid mixes the selected glyphs.</p>
+
         <div class="row"><span class="row__label">Resolution</span><input class="row__val" id="v-gRes" type="text" value="4"></div>
         <input type="range" id="r-gRes" min="1" max="8" step="1" value="4">
         <div class="row"><span class="row__label">Size</span><input class="row__val" id="v-gSize" type="text" value="4"></div>
@@ -1076,6 +1118,7 @@ const state = {
     customImg:  null,         // HTMLImageElement of an uploaded SVG/PNG
     customName: '',
     tint:       true,         // tint custom glyph with sampled color
+    selectedImgs: [],         // built-in Lake Opeka glyph presets in use
   },
   strata: {
     bands:     7,
@@ -2261,7 +2304,12 @@ function glyphRender(target, active) {
   x.textAlign = 'center';
   x.textBaseline = 'middle';
 
-  const customImg = g.customImg;
+  // Glyph pool: selected Lake Opeka presets take priority, then an uploaded
+  // glyph, otherwise the typed character. With several presets selected the
+  // grid mixes them (deterministic by cell + seed).
+  const pool = (g.selectedImgs && g.selectedImgs.length)
+    ? g.selectedImgs.filter(im => im && im.complete)
+    : (g.customImg && g.customImg.complete ? [g.customImg] : null);
   const customSize = fontPx * 0.95; // visually matches typed character sizing
   const cellsX = N;
   const cellsY = Math.ceil(H / step);
@@ -2276,6 +2324,9 @@ function glyphRender(target, active) {
       const i = (sy * W + sx) * 4;
       const r = data[i], gg = data[i + 1], b = data[i + 2], a = data[i + 3] / 255;
       const rot = (rng() - 0.5) * 2 * rotRange;
+      const customImg = pool
+        ? pool[Math.abs((xx * 73856093) ^ (yy * 19349663) ^ (state.seed * 83492791)) % pool.length]
+        : null;
 
       if (customImg && customImg.complete) {
         // Stamp the uploaded glyph at this cell. Tint with sampled color
@@ -3444,6 +3495,64 @@ function wireGlyph() {
 }
 wireGlyph();
 
+// ── Built-in Lake Opeka glyph presets (multi-select) ──────────
+// Pick one, several, or all; the Glyph grid mixes the selected shapes.
+function wireGlyphPresets() {
+  const wrap = $('glyph-presets');
+  if (!wrap) return;
+  const PRESETS = [
+    { n: 'Opitus Season',            f: 'glyphs/g1.svg' },
+    { n: 'Ships in the Night',       f: 'glyphs/g2.svg' },
+    { n: 'Jazz Relapse',             f: 'glyphs/g3.svg' },
+    { n: 'Walk of the Bird',         f: 'glyphs/g4.svg' },
+    { n: 'Good Evening',             f: 'glyphs/g5.svg' },
+    { n: 'Cherry Blossom Interlude', f: 'glyphs/g6.svg' },
+    { n: 'Off in the Distance',      f: 'glyphs/g7.svg' },
+    { n: 'A Little Nervous',         f: 'glyphs/g8.svg' },
+  ];
+  const items = [];
+  function syncSelected() {
+    state.glyph.selectedImgs = items.filter(it => it.on && it.img && it.img.complete).map(it => it.img);
+    render();
+  }
+  PRESETS.forEach(p => {
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'glyph-preset'; el.title = p.n;
+    const thumb = document.createElement('img');
+    thumb.src = p.f; thumb.alt = p.n;
+    el.appendChild(thumb);
+    wrap.appendChild(el);
+    const item = { meta: p, el, img: null, on: false };
+    // Load a taint-free stamping image (data URI) so PNG export never breaks;
+    // fall back to a direct load if fetch is unavailable (e.g. file://).
+    const finish = im => { item.img = im; if (item.on) syncSelected(); };
+    fetch(p.f).then(r => r.text()).then(txt => {
+      const im = new Image();
+      im.onload = () => finish(im);
+      im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(txt);
+    }).catch(() => {
+      const im = new Image();
+      im.onload = () => finish(im);
+      im.src = p.f;
+    });
+    el.addEventListener('click', () => {
+      item.on = !item.on;
+      el.classList.toggle('is-active', item.on);
+      syncSelected();
+    });
+    items.push(item);
+  });
+  $('btn-glyphPresetsAll')?.addEventListener('click', () => {
+    items.forEach(it => { it.on = true; it.el.classList.add('is-active'); });
+    syncSelected();
+  });
+  $('btn-glyphPresetsNone')?.addEventListener('click', () => {
+    items.forEach(it => { it.on = false; it.el.classList.remove('is-active'); });
+    syncSelected();
+  });
+}
+wireGlyphPresets();
+
 // ── Strata mode wiring ────────────────────────────────────────
 function wireStrata() {
   const bind = (id, valId, key, fmt) => {
@@ -3843,6 +3952,10 @@ $('btn-clear')?.addEventListener('click', () => {
   renderThumbs();
   if (state.mode === 'scatter') renderScatterItemsList();
   render();
+  // Re-arm the collection button so it can be re-added after a clear.
+  collectionLoaded = false;
+  const addBtn = $('btn-add-collection');
+  if (addBtn) addBtn.disabled = false;
 });
 document.querySelectorAll('#seg-pick button').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -3939,16 +4052,20 @@ setInterval(() => {
   try { localStorage.setItem(LS, JSON.stringify({ params: state.params, mode: state.mode })); } catch (e) {}
 }, 2000);
 
-// ── Default starting kit ──────────────────────────────────────
-// Loads a curated set of photos on first paint so the canvas isn't
-// empty. Cass can remove any (×) or hit "Clear all" to start fresh;
-// her uploads just push onto the same list.
+// ── Built-in collection ───────────────────────────────────────
+// A curated set of photos. No longer auto-loads — the canvas starts
+// empty. Hit "Add collection" to drop them in; uploads push onto the
+// same list, "Clear all" empties it and re-arms the button.
 const DEFAULT_IMAGES = [
   'defaults/01.jpg','defaults/02.jpg','defaults/03.jpg','defaults/04.jpg',
   'defaults/05.jpg','defaults/06.jpg','defaults/07.jpg','defaults/08.jpg',
 ];
-(function loadDefaults() {
-  if (state.images.length) return;
+let collectionLoaded = false;
+function loadCollection() {
+  if (collectionLoaded) return;
+  collectionLoaded = true;
+  const addBtn = $('btn-add-collection');
+  if (addBtn) addBtn.disabled = true;
   pendingLoads += DEFAULT_IMAGES.length;
   updateLoadingPill();
   let remaining = DEFAULT_IMAGES.length;
@@ -3977,10 +4094,11 @@ const DEFAULT_IMAGES = [
       });
       finish();
     };
-    img.onerror = () => { console.warn('Default failed:', path); finish(); };
+    img.onerror = () => { console.warn('Collection image failed:', path); finish(); };
     img.src = path;
   });
-})();
+}
+$('btn-add-collection')?.addEventListener('click', loadCollection);
 </script>
 </body>
 </html>

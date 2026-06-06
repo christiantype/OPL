@@ -167,18 +167,24 @@
         return;
       }
 
-      // A scroll-driven product tour: pinned mockup + steps on the side.
-      // Each step crops/zooms the mockup onto a specific feature as the
-      // user scrolls. Mobile falls back to a static stack.
+      // A broken-up feature walkthrough: a vertical run of discrete "scenes",
+      // each its own framed mockup zoomed onto the feature it calls out, with
+      // the caption beside it (alternating left/right). No pinned panning —
+      // every scene is a settled, static crop that reveals on scroll-in.
       // Shape:
-      //   { tour: {
-      //       mockup: 'path.html', windowTitle: 'Agent · Home',
-      //       initial: { x?, y?, zoom? },   // opening framing
-      //       stops: [{ num, title, body, x?, y?, zoom? }]
-      //     } }
-      if (item.tour) {
+      //   { scenes: [
+      //       { mockup, windowTitle, num, title, body, x?, y?, zoom?, alt? },
+      //       …   // omit x/y/zoom for a full establishing view
+      //     ] }
+      if (item.scenes) {
         if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
-        groups.push({ type: 'tour', item });
+        groups.push({ type: 'scenes', item });
+        return;
+      }
+
+      if (item.cards) {
+        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
+        groups.push({ type: 'cards', item });
         return;
       }
 
@@ -355,15 +361,10 @@
     };
 
     function wrapInWindow(inner, item, isFull) {
+      // Window framing without the chrome bar — the mockup's own header reads
+      // as the top of the screen; no portfolio chrome on top of it.
       const winCols = isFull ? 'proj-window proj-window--full' : `col-${item.cols} proj-window`;
-      const status = item.windowStatus || 'Proof of Concept';
-      const title = item.windowTitle;
       return `<div class="${winCols}">`
-           +   `<header class="proj-window__bar">`
-           +     `<span class="proj-window__mark" aria-hidden="true">/</span>`
-           +     `<span class="proj-window__title">${title}</span>`
-           +     `<span class="proj-window__status">${status}</span>`
-           +   `</header>`
            +   `<div class="proj-window__body">${inner}</div>`
            + `</div>`;
     }
@@ -413,50 +414,73 @@
             </section>
           </div>
         `;
-      } else if (g.type === 'tour') {
-        const t = g.item.tour;
-        const init = t.initial || {};
-        const safeSrc = (t.mockup || '').replace(/"/g, '&quot;');
-        const winBar = t.windowTitle ? `
-          <header class="proj-window__bar proj-tour__bar" aria-hidden="true">
-            <span class="proj-window__mark">/</span>
-            <span class="proj-window__title">${t.windowTitle}</span>
-            <span class="proj-window__status">Proof of Concept</span>
-          </header>` : '';
-        const stepsHtml = (t.stops || []).map((s, i) => {
-          const dx = s.x   != null ? ` data-x="${s.x}"`       : '';
-          const dy = s.y   != null ? ` data-y="${s.y}"`       : '';
-          const dz = s.zoom!= null ? ` data-zoom="${s.zoom}"` : '';
+      } else if (g.type === 'scenes') {
+        // Each screen is a full-width mockup with one liquid-glass note pinned
+        // to its bottom-left corner: collapsed it shows the title; click/tap to
+        // expand and read more. Same pattern at every screen size.
+        const screens = g.item.scenes || [];
+        const html = screens.map((s, i) => {
+          const safeSrc = (s.mockup || '').replace(/"/g, '&quot;');
+          const aria = (s.alt || s.title || '').replace(/"/g, '&quot;');
+          const num = s.num || String(i + 1).padStart(2, '0');
+          const body = s.body ? `<div class="proj-screen__note-body">${s.body}</div>` : '';
+          const bare = s.bare ? ' proj-screen--bare' : '';
+          const mh = s.h || 880;
+          const cap = s.body ? `<div class="proj-screen__cap-body">${s.body}</div>` : '';
           return `
-            <li class="proj-tour__step"${dx}${dy}${dz}>
-              ${s.num   ? `<span class="proj-tour__step-num">${s.num} /</span>` : `<span class="proj-tour__step-num">${String(i+1).padStart(2,'0')} /</span>`}
-              ${s.title ? `<h3 class="proj-tour__step-title">${s.title}</h3>` : ''}
-              ${s.body  ? `<div class="proj-tour__step-body">${s.body}</div>` : ''}
-            </li>`;
-        }).join('');
-        const initAttrs =
-          (init.x    != null ? ` data-init-x="${init.x}"`       : '') +
-          (init.y    != null ? ` data-init-y="${init.y}"`       : '') +
-          (init.zoom != null ? ` data-init-zoom="${init.zoom}"` : '');
-        return `
-          <div class="container">
-            <div class="proj-tour"${initAttrs}>
-              <div class="proj-tour__layout">
-                <div class="proj-tour__sticky">
-                  <div class="proj-window proj-tour__window">
-                    ${winBar}
-                    <div class="proj-window__body proj-tour__frame">
-                      <div class="proj-tour__mockup">
-                        <div class="project-image project-mockup" data-mockup-src="${safeSrc}"></div>
-                      </div>
-                    </div>
+            <section class="proj-screen${bare}" style="--mh:${mh}" data-mh="${mh}">
+              <figcaption class="proj-screen__caption">
+                <span class="proj-screen__cap-num">${num}</span>
+                <span class="proj-screen__cap-title">${s.title || ''}</span>
+                ${cap}
+              </figcaption>
+              <div class="proj-window proj-screen__window">
+                <div class="proj-window__body proj-screen__frame">
+                  <div class="proj-screen__mockup">
+                    <div class="project-image project-mockup" data-mockup-src="${safeSrc}" role="img" aria-label="${aria}"></div>
                   </div>
                 </div>
-                <ol class="proj-tour__steps">${stepsHtml}</ol>
               </div>
-            </div>
-          </div>
-        `;
+            </section>`;
+        }).join('');
+        return `<div class="container"><div class="proj-screens">${html}</div></div>`;
+      } else if (g.type === 'cards') {
+        // Feature-set presentation (Instrument "Evolved Visual Identity" style):
+        // each screen becomes a dark card on the site's dark stage — a big index
+        // number, the live mockup as the visual, a serif headline, a line of
+        // copy, and an "Open" link. Same content as `scenes`, different rhythm.
+        const cards = g.item.cards || [];
+        const eyebrow = g.item.eyebrow
+          ? `<p class="proj-cards__eyebrow">${g.item.eyebrow}</p>` : '';
+        const html = cards.map((c, i) => {
+          const safeSrc = (c.mockup || '').replace(/"/g, '&quot;');
+          const aria = (c.alt || c.headline || '').replace(/"/g, '&quot;');
+          const num = c.num || String(i + 1).padStart(2, '0');
+          const body = c.body ? `<p class="proj-card__body">${c.body}</p>` : '';
+          // Vignette mode: the feature is extracted and rebuilt clean on a dark
+          // field (just the chat bubbles, just the cards) — no surrounding UI.
+          const media = c.html
+            ? `<div class="proj-card__vig">${c.html}</div>`
+            : `<div class="proj-card__media">
+                 <div class="proj-card__frame">
+                   <div class="proj-card__shot">
+                     <div class="project-mockup" data-mockup-src="${safeSrc}" role="img" aria-label="${aria}"></div>
+                   </div>
+                 </div>
+               </div>`;
+          return `
+            <article class="proj-card">
+              <div class="proj-card__head">
+                <span class="proj-card__label">${c.label || ''}</span>
+              </div>
+              ${media}
+              <div class="proj-card__foot">
+                <h3 class="proj-card__title">${c.headline || ''}</h3>
+                ${body}
+              </div>
+            </article>`;
+        }).join('');
+        return `<div class="proj-cards-band"><div class="container"><div class="proj-cards">${eyebrow}<div class="proj-cards__row">${html}</div></div></div></div>`;
       } else if (g.type === 'tilt') {
         const t = g.item;
         const deg = (tiltN++ % 2 === 0) ? '-2.5deg' : '2.8deg';   // alternate the lean
@@ -685,90 +709,70 @@
        it into the placeholder div rendered by renderMedia(). The mockup is
        a self-contained chunk of HTML (+ scoped <style> + optional <script>)
        living under /projects/<mock-dir>/ — fetched relative to this page. ── */
-  // Scroll-driven product tour. Pinned mockup on the left, steps on the
-  // right; as a step crosses the viewport center, transform the mockup to
-  // crop/zoom on the step's (x, y) at the requested zoom factor.
-  function initTours() {
-    const tours = document.querySelectorAll('.proj-tour');
-    if (!tours.length) return;
-    const isMobile = window.matchMedia('(max-width: 48em)').matches;
+  // Feature screens: each is a full-width mockup with one liquid-glass note
+  // pinned to its corner. Just fit the mockup into its frame and reveal the
+  // screen as it scrolls in — the note expands/collapses natively (<details>).
+  function initScenes() {
+    const screens = document.querySelectorAll('.proj-screen');
+    const cards   = document.querySelectorAll('.proj-card');
+    if (!screens.length && !cards.length) return;
     const MW = 1120, MH = 880; // mockup design dimensions
 
-    tours.forEach(tour => {
-      const frame   = tour.querySelector('.proj-tour__frame');
-      const mockEl  = tour.querySelector('.proj-tour__mockup');
-      const steps   = Array.from(tour.querySelectorAll('.proj-tour__step'));
+    // Fit a mockup into its frame by scaling to the frame width and centering
+    // vertically (or top-aligning for cards, where the header reads best).
+    // Safe to call repeatedly (on load, on mockup-inject, on resize).
+    function fit(host, frameSel, mockSel, align) {
+      const frame  = host.querySelector(frameSel);
+      const mockEl = host.querySelector(mockSel);
       if (!frame || !mockEl) return;
-      // If a prior init already wired listeners, just reapply the current
-      // framing (the mockup may have finished loading and grown).
-      if (tour._tourInit) {
-        const cur = tour.querySelector('.proj-tour__step.is-active') || steps[0];
-        if (cur) tour._tourApply(tour._tourStopOpts(cur));
+      const fw = frame.clientWidth, fh = frame.clientHeight;
+      if (!fw) return;
+      const MHh = +host.dataset.mh || MH;   // per-scene mockup height
+      // Focus crop: zoom into a region [x,y,w,h] of the mockup and cover-fill
+      // the frame, centered on that region (an Oura-style feature vignette).
+      if (host.dataset.fw) {
+        const x = +host.dataset.fx, y = +host.dataset.fy,
+              w = +host.dataset.fw, h = +host.dataset.fh;
+        const scale = Math.max(fw / w, fh / h);
+        const tx = fw / 2 - (x + w / 2) * scale;
+        const ty = fh / 2 - (y + h / 2) * scale;
+        mockEl.style.transform =
+          `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${scale.toFixed(4)})`;
         return;
       }
-      tour._tourInit = true;
+      const scale = fw / MW;
+      const dy = align === 'top' ? 0 : (fh - MHh * scale) / 2;
+      mockEl.style.transform = `translate(0px, ${dy.toFixed(1)}px) scale(${scale.toFixed(4)})`;
+    }
 
-      function applyStop(opts) {
-        const fw = frame.clientWidth;
-        const fh = frame.clientHeight;
-        const baseScale = fw / MW;             // fit mockup width to frame
-        const zoom = opts.zoom || 1;
-        const eff  = baseScale * zoom;
-        let tx, ty;
-        if (opts.x == null || opts.y == null) {
-          tx = 0;
-          ty = (fh - MH * baseScale) / 2;       // vertically center the full view
-        } else {
-          // Center the focus point in the frame.
-          tx = fw/2 - opts.x * MW * eff;
-          ty = fh/2 - opts.y * MH * eff;
-        }
-        mockEl.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${eff.toFixed(4)})`;
-      }
+    screens.forEach(screen => {
+      screen._fit = () => fit(screen, '.proj-screen__frame', '.proj-screen__mockup');
+      screen._fit();
+    });
+    cards.forEach(card => {
+      card._fit = () => fit(card, '.proj-card__frame', '.proj-card__shot', 'top');
+      card._fit();
+    });
 
-      function stopOpts(el) {
-        const d = el?.dataset || {};
-        return {
-          x:    d.x    != null ? parseFloat(d.x)    : (tour.dataset.initX    != null ? parseFloat(tour.dataset.initX) : null),
-          y:    d.y    != null ? parseFloat(d.y)    : (tour.dataset.initY    != null ? parseFloat(tour.dataset.initY) : null),
-          zoom: d.zoom != null ? parseFloat(d.zoom) : (tour.dataset.initZoom != null ? parseFloat(tour.dataset.initZoom) : 1),
-        };
-      }
-      tour._tourApply = applyStop;
-      tour._tourStopOpts = stopOpts;
-
-      // First paint: the tour's initial framing.
-      applyStop({
-        x:    tour.dataset.initX    != null ? parseFloat(tour.dataset.initX)    : null,
-        y:    tour.dataset.initY    != null ? parseFloat(tour.dataset.initY)    : null,
-        zoom: tour.dataset.initZoom != null ? parseFloat(tour.dataset.initZoom) : 1,
-      });
-      if (steps[0]) steps[0].classList.add('is-active');
-
-      if (isMobile) return; // mobile fallback: steps stack, no scroll-zoom.
-
-      // Activate steps as they cross viewport center. Two-sided rootMargin
-      // creates a thin "trigger band" in the middle 30% of the viewport.
-      const observer = new IntersectionObserver(entries => {
+    if (!initScenes._wired) {
+      initScenes._wired = true;
+      const reveal = new IntersectionObserver(entries => {
         entries.forEach(e => {
-          if (!e.isIntersecting) return;
-          steps.forEach(s => s.classList.remove('is-active'));
-          e.target.classList.add('is-active');
-          applyStop(stopOpts(e.target));
+          if (e.isIntersecting) { e.target.classList.add('is-in'); reveal.unobserve(e.target); }
         });
-      }, { threshold: 0, rootMargin: '-40% 0px -40% 0px' });
-      steps.forEach(s => observer.observe(s));
+      }, { threshold: 0.12 });
+      screens.forEach(s => reveal.observe(s));
+      cards.forEach(c => reveal.observe(c));
 
-      // Recompute on resize (the base-scale depends on frame width).
       let rT;
       window.addEventListener('resize', () => {
         clearTimeout(rT);
         rT = setTimeout(() => {
-          const active = tour.querySelector('.proj-tour__step.is-active') || steps[0];
-          applyStop(stopOpts(active));
+          document.querySelectorAll('.proj-screen').forEach(s => s._fit && s._fit());
+          document.querySelectorAll('.proj-card').forEach(c => c._fit && c._fit());
         }, 80);
       });
-    });
+    }
   }
 
   // On mobile, scale each .project-mockup down so the desktop-dimension
@@ -810,10 +814,12 @@
         // scrolls internally.
         rehoistAnnotationsInto(el);
         setMobileMockupScale();
-        // If this mockup lives inside a tour, kick the tour to re-apply
-        // its initial framing now that the mockup has real dimensions.
-        const tour = el.closest('.proj-tour');
-        if (tour) initTours();
+        // If this mockup lives inside a screen, re-fit it now that the
+        // mockup has real dimensions.
+        const screen = el.closest('.proj-screen');
+        if (screen && screen._fit) screen._fit();
+        const card = el.closest('.proj-card');
+        if (card && card._fit) card._fit();
       } catch (e) {
         el.innerHTML = '<div class="project-mockup__err">Mockup failed to load: ' + src + '</div>';
         console.warn('Mockup load failed:', src, e);
@@ -821,10 +827,9 @@
     });
   })();
 
-  // Wire up any tours present on the page (one-shot — mockup-load
-  // callbacks call initTours() again to reapply framing once mockup
-  // dimensions are settled, but listeners only attach once).
-  initTours();
+  // Wire up any feature scenes present on the page (mockup-load callbacks
+  // re-apply each scene's crop once dimensions settle; observers attach once).
+  initScenes();
 
   // Move .annot-anchor elements from the .annot-stage into the mockup's
   // .m1759 scroll container, converting top% (which was relative to the

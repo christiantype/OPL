@@ -1,4 +1,5 @@
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap');
   /* Klim's Untitled Sans — Christian's licensed copy in /shared/fonts/. */
   @font-face {
     font-family: 'Untitled Sans';
@@ -20,7 +21,9 @@
     --m-mid: #595959;
     --m-hair: #ececec;
     --m-amber: #FFED00;
-    --m-cobalt: #1c39bb;
+    --m-cobalt: #1257d6;   /* primary — a true blue (no longer indigo/purple) */
+    --m-teal: #0a6577;     /* secondary green-blue */
+    --m-lime: #c6ff3a;     /* fluorescent accent — highlight/indicator only, never text on white */
     --m-pad-x: 48px;
     --m-sans: 'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont,
               'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -139,137 +142,157 @@
 
   /* ANNOUNCEMENT STRIP */
   .m1759__strip {
-    display: flex; align-items: center; gap: 14px;
-    padding: 10px var(--m-pad-x);
-    background: var(--m-cobalt);
-    font-family: var(--m-mono);
-    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px var(--m-pad-x);
+    /* Left-to-right blue→teal gradient. Both stops stay dark enough that white
+       text clears WCAG AA (≥6:1) anywhere along the bar. */
+    background: linear-gradient(90deg, #1257d6 0%, #0a6577 100%);
+    font-family: var(--m-sans);
+    font-size: 11px; letter-spacing: 0; text-transform: none; font-weight: 400;
   }
-  .m1759__strip-label { color: rgba(255,255,255,0.65); }
-  .m1759__strip-content { color: #fff; letter-spacing: 0.06em; text-transform: none; font-size: 11px; }
+  .m1759__strip-label { color: rgba(255,255,255,0.82); font-weight: 600; }
+  .m1759__strip-content { color: #fff; font-size: 11px; }
   .m1759__strip-time { color: var(--m-mid); margin-left: auto; }
 
   /* HERO */
   .m1759__hero {
     display: flex; align-items: flex-end; justify-content: space-between; gap: 32px;
-    padding: 64px var(--m-pad-x) 36px;
+    padding: 30px var(--m-pad-x) 24px;
   }
   .m1759__greeting {
     font-family: var(--m-sans);
-    font-size: 22px;
-    line-height: 1.25; letter-spacing: -0.01em;
-    color: var(--m-ink); font-weight: 500;
+    font-size: 18px;
+    line-height: 1.3; letter-spacing: 0;
+    color: var(--m-ink); font-weight: 400; text-transform: none;
   }
   .m1759__greeting-name { font-style: normal; color: var(--m-cobalt); font-weight: 500; }
   .m1759__since { text-align: right; font-family: var(--m-mono); }
   .m1759__meta {
-    display: block; color: var(--m-mid);
-    font-size: 9px; letter-spacing: 0.20em; text-transform: uppercase;
+    display: block; color: var(--m-ink);
+    font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 500;
   }
   .m1759__meta-value {
     display: block; color: var(--m-ink);
     font-size: 14px; letter-spacing: 0.06em; margin-top: 4px;
   }
 
-  /* CONTENT GRID */
+  /* CONTENT GRID — editorial / news layout. White panels, hairline rules,
+     no gray text (kickers cobalt, everything else ink). */
   .m1759__grid {
     display: grid; grid-template-columns: repeat(12, 1fr); gap: 0;
   }
-  .m1759__panel { padding: 28px var(--m-pad-x); }
-  .m1759__panel--latest    { grid-column: span 6; background: #F5F5F5; }
-  .m1759__panel--trending  { grid-column: span 6; background: #F5F5F5; }
-  .m1759__panel--rec       { grid-column: span 12; padding-top: 28px; }
+  .m1759__panel { padding: 22px var(--m-pad-x); }
+  .m1759__panel--latest    { grid-column: span 8; border-right: 1px solid var(--m-hair); }
+  .m1759__panel--trending  { grid-column: span 4; }
+  .m1759__panel--rec       { grid-column: span 12; border-top: 1px solid var(--m-hair); }
 
   .m1759__panel-head {
     display: flex; align-items: baseline; gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
     font-family: var(--m-sans);
-    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--m-mid);
-    font-weight: 500;
-  }
-  .m1759__num { color: var(--m-mid); }
-  .m1759__label { color: var(--m-ink); }
-
-  /* Latest — feature */
-  .m1759__feature { padding: 8px 0 16px; }
-  .m1759__feature-eyebrow {
-    display: block;
-    font-family: var(--m-mono);
-    font-size: 9px; letter-spacing: 0.20em; text-transform: uppercase;
-    color: var(--m-cobalt); margin-bottom: 14px;
-  }
-  .m1759__feature-title {
-    font-family: var(--m-sans);
-    font-size: 16px;
-    line-height: 1.3; letter-spacing: -0.005em;
-    color: var(--m-ink); margin-bottom: 8px;
-    font-weight: 500;
-  }
-  .m1759__feature-deck {
-    font-family: var(--m-sans);
-    font-size: 13px; line-height: 1.5;
-    color: var(--m-body); max-width: 58ch;
-    font-weight: 400;
-    margin-bottom: 16px;
-  }
-  .m1759__feature-cta {
-    font-family: var(--m-mono);
-    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    font-size: 13px; letter-spacing: 0; text-transform: none;
     color: var(--m-ink);
-    padding-bottom: 3px;
-    border-bottom: 1px solid var(--m-ink);
-   
+    font-weight: 400;
   }
-  .m1759__feature-cta:hover { color: var(--m-cobalt); border-color: var(--m-cobalt); }
+  .m1759__label { color: var(--m-ink); }
+  /* "View all" — far right of a section head */
+  .m1759__panel-more {
+    margin-left: auto;
+    font-family: var(--m-sans);
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--m-cobalt); font-weight: 600; cursor: pointer;
+  }
+  .m1759__panel-more:hover { color: #14299c; }
 
-  /* Trending — pills */
-  .m1759__pills { display: flex; flex-wrap: wrap; gap: 6px; }
-  .m1759__pills li {
-    font-family: var(--m-mono);
-    font-size: 11px; letter-spacing: 0.04em;
-    padding: 6px 10px;
-    border: 1px solid var(--m-hair);
-    color: var(--m-ink); cursor: pointer;
-   
+  /* Latest — lead story */
+  .m1759__lead-kicker {
+    display: inline-block;
+    font-family: var(--m-sans);
+    font-size: 13px; letter-spacing: 0; text-transform: none;
+    color: var(--m-ink); margin-bottom: 16px; font-weight: 400;
   }
-  .m1759__pills li:hover {
-    background: var(--m-amber);
-    border-color: var(--m-ink);
+  .m1759__lead-title {
+    font-family: 'Sorts Mill Goudy', Georgia, serif;
+    font-size: 35px; line-height: 1.12; letter-spacing: -0.025em;
+    color: var(--m-ink); margin-bottom: 26px; font-weight: 400;
+    white-space: nowrap;
   }
-  .m1759__pills li.is-active {
-    background: var(--m-ink);
-    border-color: var(--m-ink);
-    color: var(--m-bg);
+  .m1759__lead-deck {
+    font-family: var(--m-sans);
+    font-size: 14px; line-height: 1.6;
+    color: var(--m-body); max-width: 54ch;
+    font-weight: 400; margin-bottom: 24px;
   }
+  .m1759__lead-cta {
+    font-family: var(--m-sans);
+    font-size: 13px; letter-spacing: 0;
+    color: var(--m-cobalt); font-weight: 500;
+  }
+  .m1759__lead-cta:hover { color: #14299c; }
 
-  /* Recommended — cards (live inside the panel padding so they align
-     with the other content; gaps between cards instead of vertical rules) */
+  /* Trending — ranked "most read" list with live engagement */
+  .m1759__trend-live {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--m-sans); font-size: 11px; font-weight: 600;
+    color: var(--m-ink); text-transform: none; letter-spacing: 0;
+  }
+  .m1759__trend-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--m-lime);
+    border: 1px solid rgba(0,0,0,0.15);
+    animation: m1759-pulse 1.8s ease-out infinite;
+  }
+  @keyframes m1759-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(150,210,20,0.6); }
+    70%  { box-shadow: 0 0 0 7px rgba(150,210,20,0); }
+    100% { box-shadow: 0 0 0 0 rgba(150,210,20,0); }
+  }
+  .m1759__trend-list { display: flex; flex-direction: column; }
+  .m1759__trend-item {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 10px 0; border-top: 1px solid var(--m-hair);
+    cursor: pointer;
+  }
+  .m1759__trend-item:first-child { border-top: 0; padding-top: 2px; }
+  .m1759__trend-rank {
+    font-family: var(--m-sans); font-size: 12px; font-weight: 400;
+    color: var(--m-cobalt); width: 1.4em; flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .m1759__trend-name {
+    flex: 1; font-family: var(--m-sans); font-size: 13.5px; line-height: 1.25;
+    color: var(--m-ink); font-weight: 500; letter-spacing: -0.005em;
+  }
+  .m1759__trend-metric {
+    flex-shrink: 0; font-family: var(--m-sans); font-size: 12px;
+    color: var(--m-teal); font-weight: 600; font-variant-numeric: tabular-nums;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .m1759__trend-metric svg { width: 13px; height: 13px; flex-shrink: 0; opacity: 0.5; }
+  .m1759__trend-item:hover .m1759__trend-name { color: var(--m-cobalt); }
+
+  /* Recommended — editorial cards with an ink top rule */
   .m1759__cards {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
-    margin-top: 12px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px;
   }
   .m1759__card {
-    padding: 22px 22px 22px 0; cursor: pointer;
-   
+    padding: 0; cursor: pointer;
   }
   .m1759__card:hover .m1759__card-title { color: var(--m-cobalt); }
   .m1759__card-tag {
     display: block;
-    font-family: var(--m-mono);
-    font-size: 9px; letter-spacing: 0.20em; text-transform: uppercase;
-    color: var(--m-mid); margin-bottom: 12px;
+    font-family: var(--m-sans);
+    font-size: 13px; letter-spacing: 0; text-transform: none;
+    color: var(--m-ink); margin-bottom: 8px; font-weight: 400;
   }
   .m1759__card-title {
-    font-family: var(--m-sans);
-    font-size: 13px; line-height: 1.3; letter-spacing: -0.003em;
-    color: var(--m-ink); margin-bottom: 6px;
-    font-weight: 500;
-   
+    font-family: 'Sorts Mill Goudy', Georgia, serif;
+    font-size: 18px; line-height: 1.18; letter-spacing: 0;
+    color: var(--m-ink); margin-bottom: 8px;
+    font-weight: 400; white-space: nowrap;
   }
   .m1759__card-deck {
     font-family: var(--m-sans);
-    font-size: 11px; line-height: 1.5;
+    font-size: 12.5px; line-height: 1.5;
     color: var(--m-body);
     font-weight: 400;
   }
@@ -405,7 +428,7 @@
   </div>
 
   <div class="m1759__hero">
-    <h1 class="m1759__greeting">Good morning, <span class="m1759__greeting-name">David.</span></h1>
+    <h1 class="m1759__greeting">Good morning, <span class="m1759__greeting-name">David</span>.</h1>
     <aside class="m1759__since">
       <span class="m1759__meta">Member since</span>
       <span class="m1759__meta-value">2023</span>
@@ -417,71 +440,65 @@
       <header class="m1759__panel-head">
         <span class="m1759__label">Latest</span>
       </header>
-      <article class="m1759__feature">
-        <h2 class="m1759__feature-title">Split-Dollar EB or Split-Dollar Loan</h2>
-        <p class="m1759__feature-deck">A new court case summary has been added.</p>
+      <article class="m1759__lead">
+        <span class="m1759__lead-kicker">Split-Dollar EB or Split-Dollar Loan</span>
+        <h2 class="m1759__lead-title">Which structure actually holds up?</h2>
+        <p class="m1759__lead-deck">A new ruling sharpens how intergenerational split-dollar arrangements hold up under IRS scrutiny — and what it changes when you're structuring plans for ultra-high-net-worth clients.</p>
+        <a class="m1759__lead-cta">Read the summary →</a>
       </article>
     </section>
 
     <section class="m1759__panel m1759__panel--trending">
       <header class="m1759__panel-head">
         <span class="m1759__label">Trending</span>
+        <span class="m1759__trend-dot" title="Live"></span>
       </header>
-      <ul class="m1759__pills">
-        <li>SLATs</li>
-        <li>Split-Dollar EB</li>
-        <li>Split-Dollar Loan</li>
-        <li>GRATs</li>
-        <li>Rolling GRATs</li>
-        <li>Annual Exclusion Gifts In Trust</li>
-        <li>Survivorship ILIT</li>
-        <li>Single-life ILIT</li>
-      </ul>
+      <ol class="m1759__trend-list">
+        <li class="m1759__trend-item"><span class="m1759__trend-rank">01</span><span class="m1759__trend-name">Gen-Skip Split-Dollar</span><span class="m1759__trend-metric">2.4k<svg viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-label="saves"><path d="M2 1h10v15l-5-3.4L2 16z"/></svg></span></li>
+        <li class="m1759__trend-item"><span class="m1759__trend-rank">02</span><span class="m1759__trend-name">Rolling GRATs</span><span class="m1759__trend-metric">1.9k<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-label="views"><path d="M1 7s3-5 9-5 9 5 9 5-3 5-9 5-9-5-9-5z"/><circle cx="10" cy="7" r="2.4"/></svg></span></li>
+        <li class="m1759__trend-item"><span class="m1759__trend-rank">03</span><span class="m1759__trend-name">Survivorship ILIT</span><span class="m1759__trend-metric">1.6k<svg viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-label="saves"><path d="M2 1h10v15l-5-3.4L2 16z"/></svg></span></li>
+        <li class="m1759__trend-item"><span class="m1759__trend-rank">04</span><span class="m1759__trend-name">SLATs</span><span class="m1759__trend-metric">1.3k<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-label="views"><path d="M1 7s3-5 9-5 9 5 9 5-3 5-9 5-9-5-9-5z"/><circle cx="10" cy="7" r="2.4"/></svg></span></li>
+        <li class="m1759__trend-item"><span class="m1759__trend-rank">05</span><span class="m1759__trend-name">Annual Exclusion Gifts</span><span class="m1759__trend-metric">980<svg viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-label="saves"><path d="M2 1h10v15l-5-3.4L2 16z"/></svg></span></li>
+      </ol>
     </section>
 
     <section class="m1759__panel m1759__panel--rec">
       <header class="m1759__panel-head">
         <span class="m1759__label">Recommended for you</span>
+        <a class="m1759__panel-more">View all →</a>
       </header>
       <div class="m1759__cards">
         <article class="m1759__card">
-          <span class="m1759__card-tag">Prospect Curator</span>
-          <h3 class="m1759__card-title">Gen-Skip Split-Dollar</h3>
-          <p class="m1759__card-deck">Advanced planning strategy that preserves illiquid family legacy assets for descendants with unmatched tax-efficiency.</p>
+          <span class="m1759__card-tag">Gen-Skip Split-Dollar</span>
+          <h3 class="m1759__card-title">Skip a generation</h3>
+          <p class="m1759__card-deck">Move illiquid family assets down two generations and keep the tax bill remarkably small.</p>
         </article>
         <article class="m1759__card">
-          <span class="m1759__card-tag">Court Case Summary</span>
-          <h3 class="m1759__card-title">Marion Levine V. Commissioner</h3>
-          <p class="m1759__card-deck">Blueprint for how to structure intergenerational split-dollar life insurance arrangements to withstand IRS scrutiny.</p>
+          <span class="m1759__card-tag">Court Case</span>
+          <h3 class="m1759__card-title">The new ruling</h3>
+          <p class="m1759__card-deck">What Marion Levine v. Commissioner means for any split-dollar plan you put in front of a client.</p>
         </article>
         <article class="m1759__card">
-          <span class="m1759__card-tag">Prospect Curator</span>
-          <h3 class="m1759__card-title">GRATs</h3>
-          <p class="m1759__card-deck">A planning strategy used primarily to transfer wealth appreciation to heirs while minimizing gift and estate taxes.</p>
+          <span class="m1759__card-tag">GRATs</span>
+          <h3 class="m1759__card-title">Pass on the upside</h3>
+          <p class="m1759__card-deck">A clean way to hand appreciation to heirs while barely touching the gift and estate exemption.</p>
         </article>
         <article class="m1759__card">
-          <span class="m1759__card-tag">Prospect Curator</span>
-          <h3 class="m1759__card-title">Rolling GRATs</h3>
-          <p class="m1759__card-deck">An advanced GRAT strategy used to mitigate market fluctuations and hedge mortality.</p>
+          <span class="m1759__card-tag">Rolling GRATs</span>
+          <h3 class="m1759__card-title">For choppy markets</h3>
+          <p class="m1759__card-deck">When markets swing, rolling GRATs keep the strategy working instead of leaving it stranded.</p>
         </article>
       </div>
     </section>
   </div>
 
   <div class="m1759__chat">
-    <div class="m1759__chat-head">
-      <span class="m1759__label">Personal Advanced Markets Expert</span>
-    </div>
     <div class="m1759__chat-reply" data-reply>I'm happy to help. Tell me about the client — age, net worth, family structure, and the planning question you're working through.</div>
     <form class="m1759__chat-form" data-chat-form>
       <span class="m1759__chat-prompt">›</span>
       <input class="m1759__chat-input" type="text" placeholder="How can I help you today?" data-chat-input />
       <button class="m1759__chat-send" type="submit" aria-label="Send">↵</button>
     </form>
-    <div class="m1759__chat-suggestions">
-      <button type="button" data-suggestion>Help me understand a specific strategy</button>
-      <button type="button" data-suggestion>Help me brainstorm a strategy for a client</button>
-    </div>
   </div>
 </div>
 

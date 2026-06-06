@@ -1,9 +1,12 @@
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap');
   @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+  .m1759__strat-h, .m1759__strat-title { font-family: 'Sorts Mill Goudy', Georgia, serif !important; font-weight: 400 !important; letter-spacing: 0 !important; }
+  .m1759__strat-h { font-size: 26px !important; }
   @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
   .m1759 {
     --m-bg: #FFFFFF; --m-ink: #0e0e0e; --m-body: #1a1a1a; --m-mid: #595959;
-    --m-hair: #ececec; --m-cobalt: #1c39bb; --m-pad-x: 48px;
+    --m-hair: #ececec; --m-cobalt: #1257d6; --m-pad-x: 48px;
     --m-sans: 'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
     position: relative; background: var(--m-bg); color: var(--m-ink);
     font-family: var(--m-sans); font-size: 13px; line-height: 1.5;
@@ -173,7 +176,7 @@
     <aside class="m1759__strat-side">
       <div class="m1759__strat-title">Gen-Skip Split Dollar</div>
       <div class="m1759__strat-list">
-        <button class="m1759__strat-item is-active" type="button">Prospect Curator</button>
+        <button class="m1759__strat-item is-active" type="button">Prospect Finder</button>
         <button class="m1759__strat-item" type="button">Court Case Summaries</button>
         <button class="m1759__strat-item" type="button">Proof of Concept</button>
         <button class="m1759__strat-item" type="button">Client Letters</button>
@@ -185,8 +188,8 @@
     </aside>
 
     <section class="m1759__strat-main">
-      <div class="m1759__strat-eyebrow">Prospect Curator</div>
-      <h2 class="m1759__strat-h">Prospect Curator</h2>
+      <div class="m1759__strat-eyebrow">Prospect Finder</div>
+      <h2 class="m1759__strat-h">Prospect Finder</h2>
       <p class="m1759__strat-sub">Advanced planning strategy that preserves illiquid family legacy assets.</p>
 
       <div class="m1759__strat-bookmark">
@@ -298,3 +301,24 @@
     </form>
   </div>
 </div>
+
+<script>
+  // Slowly auto-scroll the Prospect Finder page so the whole layout reveals
+  // itself, then eases back to the top and loops.
+  (function () {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var root = document.querySelector('.m1759-strategy');
+    if (!root || root.dataset.autoscroll) return; root.dataset.autoscroll = '1';
+    var dir = 1, paused = 0;
+    function step() {
+      var max = root.scrollHeight - root.clientHeight;
+      if (max > 4 && !paused) {
+        root.scrollTop += 0.45 * dir;
+        if (root.scrollTop >= max - 0.5) { dir = -1; paused = 90; }
+        else if (root.scrollTop <= 0.5) { dir = 1; paused = 90; }
+      } else if (paused) { paused--; }
+      requestAnimationFrame(step);
+    }
+    setTimeout(function () { requestAnimationFrame(step); }, 1600);
+  })();
+</script>

@@ -1,8 +1,14 @@
 (function () {
-  // sha-256("murocks") — set 2026-05-26 (rotated from the original).
-  const HASH = 'a15e05cdc0fec666ee9f4acd1547dc1dc5a52d99076a8ba6ca617f9dee364fef';
-  // Bumped key — invalidates any session still unlocked under the old password.
-  const KEY = 'opal-ai-unlocked-v2';
+  // Default password for the tools: sha-256("opal2026") — set 2026-06-05.
+  // A page can override per-tool by adding data-hash / data-scope to the
+  // <script src="/tools/shared/gate.js"> tag (see Lake Opeka → "happyface").
+  const DEFAULT_HASH = '1ba4dc1c0bfa792dac52ba0652964809628c667bd7cb44acc5ac254b544cfb26';
+  const DEFAULT_SCOPE = 'opal-ai-unlocked-v3';
+
+  const ds = (document.currentScript && document.currentScript.dataset) || {};
+  const HASH = ds.hash || DEFAULT_HASH;
+  // Per-scope session key so unlocking one password group doesn't unlock another.
+  const KEY = ds.scope ? 'opal-gate-' + ds.scope : DEFAULT_SCOPE;
 
   if (sessionStorage.getItem(KEY) === '1') return;
 

@@ -17,7 +17,12 @@
   ].join(', ');
 
   const els = [...document.querySelectorAll(sel)].filter(
-    el => !el.closest('nav') && !el.closest('.project-row') && !el.classList.contains('project-mockup')
+    el => !el.closest('nav') && !el.closest('.project-row') &&
+          !el.classList.contains('project-mockup') &&
+          // Mockups (.m1759) run their own animations and inject after this
+          // script — never apply the scroll-reveal opacity to their content,
+          // or semantic h1/h3/p inside a mockup can get stranded at opacity:0.
+          !el.closest('.m1759')
   );
 
   els.forEach(el => {
@@ -50,6 +55,12 @@
 
   function colorPeriods(node) {
     if (skip.has(node.nodeName)) return;
+    // Leave product-UI mockups alone — the Agentic interface keeps plain,
+    // un-recolored punctuation (the colored-punctuation treatment is OP/AL's,
+    // not the product's).
+    if (node.nodeType === Node.ELEMENT_NODE && node.classList &&
+        (node.classList.contains('m1759') ||
+         node.classList.contains('proj-card__vig'))) return;
     const punctRe = /([.,\-–—:;!?()[\]{}"'\/\\&@#])/;
     if (node.nodeType === Node.TEXT_NODE && punctRe.test(node.textContent)) {
       const frag = document.createDocumentFragment();

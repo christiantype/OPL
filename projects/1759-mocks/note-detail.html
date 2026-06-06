@@ -1,0 +1,181 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap');
+  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+  .m1759 .m1759__nd-title, .m1759 .m1759__nd-list-title { font-family: 'Sorts Mill Goudy', Georgia, serif !important; font-weight: 400 !important; letter-spacing: 0 !important; text-transform: none !important; }
+  .m1759 {
+    --m-bg: #FFFFFF; --m-ink: #0e0e0e; --m-body: #1a1a1a; --m-mid: #595959;
+    --m-hair: #ececec; --m-cobalt: #1257d6; --m-pad-x: 48px;
+    --m-sans: 'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    position: relative; background: var(--m-bg); color: var(--m-ink);
+    font-family: var(--m-sans); font-size: 13px; line-height: 1.5;
+    border: 1px solid var(--m-hair); overflow: hidden; height: 880px;
+    display: flex; flex-direction: column;
+  }
+  .m1759 *, .m1759 *::before, .m1759 *::after { box-sizing: border-box; font-family: inherit; }
+  .m1759 button { font: inherit; background: none; border: none; padding: 0; color: inherit; cursor: pointer; }
+  .m1759 ul, .m1759 ol { list-style: none; padding: 0; margin: 0; }
+  .m1759 h1, .m1759 h2, .m1759 h3, .m1759 h4 { margin: 0; font-weight: 400; }
+  .m1759 p { margin: 0; }
+  body.project .m1759 p, body.project .m1759 h1, body.project .m1759 h2, body.project .m1759 h3, body.project .m1759 h4 { color: var(--m-ink); }
+
+  .m1759__top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px var(--m-pad-x); border-bottom: 1px solid var(--m-hair); flex-shrink: 0; }
+  .m1759__brand-mark { font-size: 24px; font-weight: 500; color: var(--m-cobalt); line-height: 1; letter-spacing: -0.02em; }
+  .m1759__nav { display: flex; align-items: center; gap: 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .m1759__navitem { display: inline-flex; align-items: center; gap: 7px; color: var(--m-ink); padding: 7px 10px; font-weight: 500; }
+  .m1759__navdivider { width: 1px; height: 18px; background: var(--m-hair); margin: 0 6px; }
+  .m1759__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--m-cobalt); color: var(--m-bg); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-left: 6px; }
+
+  /* NOTES APP — master list + open note, side by side, equal height */
+  .m1759__nd { flex: 1; display: grid; grid-template-columns: 348px 1fr; min-height: 0; }
+
+  .m1759__nd-side { border-right: 1px solid var(--m-hair); display: flex; flex-direction: column; min-height: 0; }
+  .m1759__nd-side-head { height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; border-bottom: 1px solid var(--m-hair); }
+  .m1759__nd-list-title { font-size: 18px; color: var(--m-ink); }
+  .m1759__nd-count { font-size: 11px; color: var(--m-mid); font-weight: 500; }
+  .m1759__nd-add { font-size: 11px; font-weight: 500; padding: 7px 11px; background: var(--m-cobalt); color: var(--m-bg); border-radius: 6px; }
+  .m1759__nd-list { flex: 1; overflow-y: auto; }
+  .m1759__nd-item { display: block; width: 100%; text-align: left; padding: 13px 22px; border-bottom: 1px solid #F5F5F5; cursor: pointer; border-left: 2px solid transparent; }
+  .m1759__nd-item:hover { background: #FAFAFA; }
+  .m1759__nd-item.is-active { background: #F4F7FF; border-left-color: var(--m-cobalt); }
+  .m1759__nd-item-map { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--m-cobalt); font-weight: 600; margin-bottom: 4px; }
+  .m1759__nd-item-t { font-size: 12.5px; font-weight: 500; color: var(--m-ink); margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m1759__nd-item-time { font-size: 10px; color: var(--m-mid); font-weight: 500; }
+
+  /* Open note */
+  .m1759__nd-doc { display: flex; flex-direction: column; min-height: 0; }
+  .m1759__nd-doc-bar { height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid var(--m-hair); }
+  .m1759__nd-crumb { display: inline-flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--m-cobalt); font-weight: 600; }
+  .m1759__nd-crumb::before { content: '↳'; font-weight: 700; }
+  .m1759__nd-bar-actions { display: flex; gap: 8px; }
+  .m1759__nd-bar-btn { font-size: 11px; font-weight: 500; color: var(--m-body); padding: 7px 13px; border: 1px solid var(--m-hair); border-radius: 6px; }
+  .m1759__nd-bar-btn:hover { border-color: var(--m-cobalt); color: var(--m-cobalt); }
+  .m1759__nd-doc-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+  .m1759__nd-doc-inner { max-width: 640px; padding: 30px 40px 44px; }
+  .m1759__nd-title { font-size: 27px; color: var(--m-ink); line-height: 1.16; margin-bottom: 12px; }
+  .m1759__nd-meta { display: flex; align-items: center; gap: 14px; font-size: 11px; color: var(--m-mid); font-weight: 500; padding-bottom: 20px; margin-bottom: 22px; border-bottom: 1px solid var(--m-hair); }
+  .m1759__nd-meta-sync { display: inline-flex; align-items: center; gap: 5px; color: #2a8b3f; }
+  .m1759__nd-meta-sync::before { content: '✓'; font-weight: 700; }
+  .m1759__nd-body p { font-size: 14px; line-height: 1.66; color: var(--m-body); margin: 0 0 16px; }
+  .m1759__nd-body strong { font-weight: 600; color: var(--m-ink); }
+  .m1759__nd-check { margin: 6px 0 20px; }
+  .m1759__nd-check-h { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--m-mid); font-weight: 600; margin-bottom: 10px; }
+  .m1759__nd-check-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 13.5px; color: var(--m-body); line-height: 1.45; }
+  .m1759__nd-box { width: 16px; height: 16px; border: 1.5px solid #cfcfcf; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+  .m1759__nd-box.is-done { background: var(--m-cobalt); border-color: var(--m-cobalt); position: relative; }
+  .m1759__nd-box.is-done::after { content: '✓'; position: absolute; inset: 0; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .m1759__nd-done-text { color: var(--m-mid); text-decoration: line-through; }
+
+  /* Linked strategy card */
+  .m1759__nd-link { display: flex; align-items: center; gap: 14px; margin-top: 8px; padding: 16px 18px; border: 1px solid var(--m-hair); border-radius: 10px; cursor: pointer; }
+  .m1759__nd-link:hover { border-color: var(--m-cobalt); }
+  .m1759__nd-link-ic { width: 40px; height: 40px; border-radius: 8px; background: #F4F7FF; display: inline-flex; align-items: center; justify-content: center; color: var(--m-cobalt); flex-shrink: 0; }
+  .m1759__nd-link-k { font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--m-mid); font-weight: 600; }
+  .m1759__nd-link-t { font-size: 14px; font-weight: 500; color: var(--m-ink); margin-top: 2px; }
+  .m1759__nd-link-arrow { margin-left: auto; color: var(--m-mid); font-size: 16px; }
+
+  .m1759__nd-chips { display: flex; gap: 8px; margin-top: 22px; }
+  .m1759__nd-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; color: var(--m-ink); padding: 6px 12px; border: 1px solid var(--m-hair); border-radius: 999px; }
+  .m1759__nd-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--m-cobalt); }
+</style>
+
+<div class="m1759 m1759-notedetail">
+  <header class="m1759__top">
+    <span class="m1759__brand-mark">Agentic</span>
+    <div class="m1759__nav" role="navigation">
+      <button class="m1759__navitem" type="button">Bookmarks</button>
+      <button class="m1759__navitem" type="button">Sales Vault</button>
+      <span class="m1759__navdivider"></span>
+      <span class="m1759__avatar" aria-label="David Kim">DK</span>
+    </div>
+  </header>
+
+  <div class="m1759__nd">
+    <aside class="m1759__nd-side">
+      <div class="m1759__nd-side-head">
+        <div>
+          <div class="m1759__nd-list-title">Notes</div>
+          <div class="m1759__nd-count">12 mapped to strategies</div>
+        </div>
+        <button class="m1759__nd-add" type="button">+ New</button>
+      </div>
+      <div class="m1759__nd-list">
+        <button class="m1759__nd-item is-active" type="button">
+          <div class="m1759__nd-item-map">Gen-Skip Split-Dollar</div>
+          <div class="m1759__nd-item-t">Marion Levine follow-up — IRS position</div>
+          <div class="m1759__nd-item-time">2h ago · Apple Notes</div>
+        </button>
+        <button class="m1759__nd-item" type="button">
+          <div class="m1759__nd-item-map">Wealth Transfer</div>
+          <div class="m1759__nd-item-t">Goldsmith family — meeting prep</div>
+          <div class="m1759__nd-item-time">Yesterday · Google Drive</div>
+        </button>
+        <button class="m1759__nd-item" type="button">
+          <div class="m1759__nd-item-map">Court Case</div>
+          <div class="m1759__nd-item-t">Petersons — revisit Gen-Skip</div>
+          <div class="m1759__nd-item-time">2 days ago · Apple Notes</div>
+        </button>
+        <button class="m1759__nd-item" type="button">
+          <div class="m1759__nd-item-map">Survivorship ILIT</div>
+          <div class="m1759__nd-item-t">K. Tan — survivorship vs single-life</div>
+          <div class="m1759__nd-item-time">Mar 28 · Syncing…</div>
+        </button>
+        <button class="m1759__nd-item" type="button">
+          <div class="m1759__nd-item-map">ILIT Funding</div>
+          <div class="m1759__nd-item-t">Funding options for HNW clients</div>
+          <div class="m1759__nd-item-time">Mar 24 · Google Drive</div>
+        </button>
+        <button class="m1759__nd-item" type="button">
+          <div class="m1759__nd-item-map">Rolling GRATs</div>
+          <div class="m1759__nd-item-t">Whitfield trust — choppy-market hedge</div>
+          <div class="m1759__nd-item-time">Mar 21 · Apple Notes</div>
+        </button>
+      </div>
+    </aside>
+
+    <section class="m1759__nd-doc">
+      <div class="m1759__nd-doc-bar">
+        <span class="m1759__nd-crumb">Gen-Skip Split-Dollar · Prospect Finder</span>
+        <div class="m1759__nd-bar-actions">
+          <button class="m1759__nd-bar-btn" type="button">Share</button>
+          <button class="m1759__nd-bar-btn" type="button">Export</button>
+        </div>
+      </div>
+      <div class="m1759__nd-doc-scroll">
+      <div class="m1759__nd-doc-inner">
+        <h1 class="m1759__nd-title">Marion Levine follow-up — the IRS position</h1>
+        <div class="m1759__nd-meta">
+          <span>Edited 2 hours ago</span>
+          <span class="m1759__nd-meta-sync">Synced to Apple Notes</span>
+        </div>
+
+        <div class="m1759__nd-body">
+          <p>The Tax Court sided with the estate on the <strong>economic-benefit</strong> regime — the premiums weren't treated as gifts because the arrangement was structured as economic benefit, not as a loan. That distinction is the whole strategy.</p>
+          <p>For the Hendersons, the part that matters is the <strong>valuation discount on the receivable</strong>. It held up here, and that's what makes the intergenerational split-dollar worth running. Pull the exact discount the court accepted and carry it into the back-of-the-napkin.</p>
+        </div>
+
+        <div class="m1759__nd-check">
+          <div class="m1759__nd-check-h">Before the Henderson meeting</div>
+          <div class="m1759__nd-check-row"><span class="m1759__nd-box is-done"></span><span class="m1759__nd-done-text">Confirm grandchildren ages drive the GST exemption math</span></div>
+          <div class="m1759__nd-check-row"><span class="m1759__nd-box"></span><span>Get the updated §7520 rate from the Sales Vault</span></div>
+          <div class="m1759__nd-check-row"><span class="m1759__nd-box"></span><span>Draft the three-trust diagram and have the AI walk the premium flow</span></div>
+        </div>
+
+        <div class="m1759__nd-link">
+          <span class="m1759__nd-link-ic"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h10v12H2z"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span>
+          <div>
+            <div class="m1759__nd-link-k">Mapped to strategy</div>
+            <div class="m1759__nd-link-t">Prospect Finder — Gen-Skip Split-Dollar</div>
+          </div>
+          <span class="m1759__nd-link-arrow">↗</span>
+        </div>
+
+        <div class="m1759__nd-chips">
+          <span class="m1759__nd-chip">Apple Notes</span>
+          <span class="m1759__nd-chip">Google Drive</span>
+        </div>
+      </div>
+      </div>
+    </section>
+  </div>
+</div>

@@ -762,6 +762,7 @@ nav {
 
 @media (prefers-reduced-motion: reduce) {
   .spread-tilt { transition: none; }
+  .proj-screen__window { opacity: 1; transform: none; transition: none; }
 }
 
 // Cameo — a clickable portrait that opens its animated preview in an overlay.
@@ -1738,128 +1739,440 @@ body.annotate-mode {
 //   crops/zooms the mockup onto a specific feature as the user
 //   scrolls. Mobile collapses to a static stack.
 // ============================================================
-.proj-tour {
+// Full-width (within the 12 cols) spotlight experiences. The screen is held
+// still while scroll triggers light one feature at a time — the spotlit
+// region keeps its colour, everything else dims — and the caption swaps.
+.proj-screens { display: block; }
+
+// Keep each screen's chat bar flush to the bottom of the frame even when the
+// content is shorter than it (sticky alone only pins on overflow).
+.proj-screen__mockup .m1759 { display: flex; flex-direction: column; }
+.proj-screen__mockup .m1759 > .m1759__chat,
+.proj-screen__mockup .m1759 > .m1759__chat-footer { margin-top: auto; }
+.proj-screen__mockup .m1759-chat .m1759__chat-shell {
+  flex: 1 1 auto; height: auto; min-height: 0;
+}
+
+.proj-screen {
   position: relative;
-  padding-top: var(--space-12, 6em);
-  padding-bottom: var(--space-12, 6em);
-
-  &__layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-    gap: clamp(2em, 4vw, 5em);
-    align-items: start;
-  }
-
-  &__sticky {
-    position: sticky;
-    top: 10vh;
-    align-self: start;
-  }
+  padding: clamp(2.5em, 6vh, 6em) 0;
 
   &__window {
+    position: relative;        // anchors the corner note
+    width: 100%;
     background: $light;
+    border-radius: 12px;
     box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.55),
                 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    // Cinematic entrance — rises and settles as the screen scrolls in.
+    opacity: 0;
+    transform: translateY(28px) scale(0.99);
+    transition: opacity 0.8s ease, transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  &.is-in &__window { opacity: 1; transform: none; }
+
+  &__frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1120 / var(--mh, 880);   // per-scene height override
+    background: $light;
+    border-radius: 12px;
+    overflow: hidden;
   }
 
-  &__bar {
-    background: #ECECEC;
-    padding: 11px 16px;
+  // The mockup — design dimensions, scaled to fit by JS (whole screen shown).
+  &__mockup {
+    position: absolute;
+    inset: 0;
+    width: 1120px;
+    height: calc(var(--mh, 880) * 1px);
+    transform-origin: top left;
+    will-change: transform;
+  }
+  &__mockup .project-mockup {
+    width: 1120px !important;
+    height: calc(var(--mh, 880) * 1px) !important;
+    transform: none !important; // override the mobile-scale rule
+    pointer-events: none;
+    user-select: none;          // the UI is a picture, not selectable text
+    -webkit-user-select: none;
+  }
+
+  // ── Liquid-glass note, pinned to the screen's bottom-left corner ──
+  // Collapsed it shows the number + title; click/tap expands to read more.
+  &__note {
+    position: absolute;
+    left: clamp(14px, 1.6vw, 22px);
+    bottom: clamp(14px, 1.6vw, 22px);
+    z-index: 4;
+    width: max-content;
+    max-width: min(27em, calc(100% - clamp(28px, 3.2vw, 44px)));
+    overflow: hidden;
+    border-radius: 15px;
+    background: linear-gradient(157deg,
+                  rgba(48, 52, 68, 0.6),
+                  rgba(14, 16, 25, 0.7));
+    -webkit-backdrop-filter: blur(26px) saturate(190%);
+    backdrop-filter: blur(26px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 46px -18px rgba(0, 0, 0, 0.55),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  &__note-head {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 15px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    &::-webkit-details-marker { display: none; }
+  }
+  &__note-num {
+    font-family: 'Untitled Sans', system-ui, sans-serif;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.85); flex-shrink: 0;
+  }
+  &__note-title {
+    font-family: 'Sidepiece-HoneyPie', sans-serif;
+    font-size: 15px; line-height: 1.2; color: $light; font-weight: 400;
+    white-space: nowrap;
+  }
+  // Chevron — points down when collapsed, flips up when open.
+  &__note-toggle {
+    width: 7px; height: 7px; margin-left: auto; flex-shrink: 0;
+    border-right: 1.5px solid rgba(255, 255, 255, 0.65);
+    border-bottom: 1.5px solid rgba(255, 255, 255, 0.65);
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.28s ease;
+  }
+  &__note[open] &__note-toggle { transform: translateY(1px) rotate(-135deg); }
+
+  &__note-body {
+    padding: 0 15px 14px;
+    max-width: 27em;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13.5px; line-height: 1.55; color: rgba(255, 255, 255, 0.82);
+    animation: proj-note-in 0.32s ease;
+  }
+  &__note-body p { margin: 0 0 0.6em; }
+  &__note-body p:last-child { margin-bottom: 0; }
+  &__note-body strong { color: $light; font-weight: 500; }
+
+  @media (max-width: 48em) {
+    padding: 1.6em 0;
+    &__note { max-width: calc(100% - 24px); }
+    &__note-title { white-space: normal; }
+    &__note-body { font-size: 13px; }
+  }
+
+  // Bare scene — no white window/shadow; the mockup floats directly on the
+  // page's dark background (used for the chat-on-black surface).
+  &--bare &__window {
+    background: transparent;
+    box-shadow: none;
+  }
+  &--bare &__frame { background: transparent; }
+
+  // ── Caption below the UI (OPAL annotation voice) ──
+  // Sits under each screen so it never covers content. Sidepiece display
+  // type for the title; light copy on the page's dark surface.
+  &__caption {
+    display: block;
+    margin: 0 0 clamp(16px, 2vw, 24px);   // sits above the screen
+    max-width: 64ch;
+  }
+  &__cap-num {
+    font-family: 'Untitled Sans', system-ui, sans-serif;
+    font-size: 12px; font-weight: 500; letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.5); margin-right: 13px;
+  }
+  &__cap-title {
+    font-family: 'Sidepiece-HoneyPie', sans-serif;
+    font-size: clamp(19px, 2vw, 23px); font-weight: 400; line-height: 1.1;
+    color: $light;
+  }
+  &__cap-body {
+    margin-top: 11px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px; line-height: 1.62;
+    color: rgba(255, 255, 255, 0.72);
+  }
+  &__cap-body p { margin: 0 0 0.6em; }
+  &__cap-body p:last-child { margin-bottom: 0; }
+  &__cap-body strong { color: $light; font-weight: 500; }
+}
+
+@keyframes proj-note-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Feature-set cards (Instrument "Evolved Visual Identity" presentation) ──
+   Same Agentic screens shown as a row of dark cards on the site's dark stage:
+   index number, the live mockup as the visual, a serif headline + one line of
+   copy. An alternate rhythm to .proj-screen, kept side-by-side for comparison. */
+.proj-cards-band {
+  background: $dark;
+  padding: clamp(3em, 8vh, 7em) 0;
+  margin: clamp(2.5em, 6vh, 6em) 0;
+}
+.proj-cards {
+  &__eyebrow {
+    text-align: center;
+    margin: 0 0 clamp(1.8em, 4vh, 3em);
+    font-family: 'Untitled Sans', system-ui, sans-serif;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+  }
+  &__row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: clamp(16px, 1.8vw, 26px);
+  }
+}
+.proj-card {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(168deg, #1b1f27, #0b0d12);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  &.is-in { opacity: 1; transform: none; }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 22px 14px;
+  }
+  &__label {
+    font-family: 'Untitled Sans', system-ui, sans-serif;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
   }
 
   &__frame {
     position: relative;
     width: 100%;
-    aspect-ratio: 1120 / 880;
-    background: $light;
+    aspect-ratio: 4 / 3;
     overflow: hidden;
+    background: $light;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
   }
-
-  // The mockup container — absolute, design dimensions, transformed by JS.
-  &__mockup {
+  &__shot {
     position: absolute;
     inset: 0;
-    width: 1120px;
-    height: 880px;
+    width: 1120px; height: 880px;
     transform-origin: top left;
-    transition: transform 0.85s cubic-bezier(0.22, 0.61, 0.36, 1);
     will-change: transform;
   }
-  &__mockup .project-mockup {
+  &__shot .project-mockup {
     width: 1120px !important;
     height: 880px !important;
-    transform: none !important; // override the mobile-scale rule
+    transform: none !important;   // override the mobile-scale rule
     pointer-events: none;
+    user-select: none;            // the UI is a picture, not selectable text
+    -webkit-user-select: none;
   }
 
-  // Steps on the right — one per stop, each centered to the viewport.
-  &__steps {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  &__step {
-    min-height: 90vh;
+  // Vignette: the extracted feature, rebuilt to look like the real product
+  // interface — a clean white panel framed by the dark card.
+  &__vig {
+    background: #fff;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    padding: 26px 28px;
+    min-height: 250px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 3em 0;
-    opacity: 0.35;
-    transition: opacity 0.45s ease;
-    max-width: 36em;
+    font-family: 'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    color: #1a1a1a;
   }
-  &__step.is-active { opacity: 1; }
 
-  &__step-num {
-    display: block;
-    font-family: 'Untitled Sans', system-ui, sans-serif;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: $accent;
-    margin-bottom: 14px;
-  }
-  &__step-title {
+  &__foot { padding: 20px 22px 24px; }
+  // OPAL annotation voice — uses the site display font, not the Agentic serif.
+  &__title {
     font-family: 'Sidepiece-HoneyPie', sans-serif;
-    font-size: clamp(24px, 2.6vw, 36px);
     font-weight: 400;
-    line-height: 1.15;
-    letter-spacing: -0.005em;
+    font-size: 20px; line-height: 1.2;
     color: $light;
-    margin: 0 0 14px;
+    margin: 0;
   }
-  &__step-body {
+  &__body {
+    margin: 0.55em 0 0;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: clamp(14px, 1.1vw, 16px);
-    line-height: 1.6;
-    color: $mid-light;
+    font-size: 13.5px; line-height: 1.55;
+    color: rgba(255, 255, 255, 0.7);
   }
-  &__step-body p { margin: 0 0 0.7em; }
-  &__step-body p:last-child { margin-bottom: 0; }
-  &__step-body strong { color: $light; font-weight: 500; }
 
-  // Mobile: collapse to a static stack. The sticky pin un-pins, the frame
-  // sits above each step, and the JS skips the scroll-driven transform.
-  @media (max-width: 48em) {
-    padding-top: 2.5em;
-    padding-bottom: 2.5em;
-
-    &__layout {
-      grid-template-columns: 1fr;
-      gap: 1.5em;
-    }
-    &__sticky {
-      position: static;
-      height: auto;
-    }
-    &__step {
-      min-height: 0;
-      padding: 1.5em 0;
-      opacity: 1;
-      max-width: none;
-    }
-    &__step-title { font-size: clamp(20px, 6vw, 28px); }
-    &__step-body { font-size: 14px; }
+  @media (max-width: 60em) {
+    // collapse to a single readable column on narrow screens
   }
 }
+@media (max-width: 60em) {
+  .proj-cards__row { grid-template-columns: 1fr; max-width: 30em; margin: 0 auto; }
+}
+
+/* ── Extracted-feature vignettes (live inside .proj-card__vig) ──
+   Each is a clean rebuild of one product feature — styled to look like the
+   real Agentic interface. Product palette: cobalt #1257d6, lime #c6ff3a,
+   ink #0e0e0e / body #1a1a1a / mid #595959, hairline #ececec. */
+.pf-chat {
+  display: flex; flex-direction: column; gap: 12px; width: 100%;
+}
+.pf-msg { max-width: 84%; font-size: 13px; line-height: 1.46; }
+.pf-msg--user {
+  align-self: flex-end; background: #f0f0f0; color: #1a1a1a;
+  padding: 9px 14px; border-radius: 16px;
+}
+.pf-msg--ai { align-self: flex-start; color: #1a1a1a; }   // plain text, as in-product
+.pf-msg--ai b { font-weight: 600; }
+
+/* Recommended — a row of cards that drifts left→right, subtly, on a loop. */
+.pf-recs {
+  width: 100%; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
+.pf-recs__track {
+  display: flex; gap: 14px; width: max-content;
+  animation: pf-marquee 55s linear infinite;
+}
+.pf-recs:hover .pf-recs__track { animation-play-state: paused; }
+.pf-rec {
+  flex: 0 0 auto; min-height: 140px;
+  display: flex; flex-direction: column;
+  border: 1px solid #ececec; border-radius: 14px;
+  padding: 20px 22px; background: #fff; box-shadow: none;
+}
+.pf-rec__tag {
+  display: block;
+  font-size: 13px; font-weight: 400; letter-spacing: 0;
+  color: #1257d6;
+}
+.pf-rec__t {
+  display: block; margin-top: 9px; white-space: nowrap;   // titles never wrap
+  font-family: 'Sorts Mill Goudy', Georgia, serif;
+  font-size: 23px; line-height: 1.1; color: #1a1a1a;
+}
+@keyframes pf-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .pf-recs__track { animation: none; } }
+
+/* Trending — rows that re-sort as the counts tick up (see the inline script). */
+.pf-trend__row { transition: transform 0.6s cubic-bezier(0.2,0.7,0.2,1); will-change: transform; }
+.pf-trend__m { transition: color 0.3s ease; }
+.pf-trend__m.is-bump { color: #1257d6; }
+
+.pf-trend { width: 100%; }
+.pf-trend__head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.16em;
+  text-transform: uppercase; color: #595959;
+}
+.pf-trend__dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #c6ff3a;
+  box-shadow: 0 0 0 0 rgba(198, 255, 58, 0.6);
+  animation: pf-pulse 1.8s ease-out infinite;
+}
+.pf-trend__row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid #ececec;
+}
+.pf-trend__row:last-child { border-bottom: 0; }
+.pf-trend__n {
+  font-size: 13px; font-weight: 400; color: #1257d6;
+  width: 18px; flex-shrink: 0; font-variant-numeric: tabular-nums;
+}
+.pf-trend__name { flex: 1; font-size: 13px; color: #1a1a1a; }
+.pf-trend__m {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: #595959; font-variant-numeric: tabular-nums;
+}
+.pf-trend__m svg { width: 12px; height: 12px; opacity: 0.5; }
+
+.pf-note { width: 100%; }
+.pf-note__t {
+  font-family: 'Sorts Mill Goudy', Georgia, serif;
+  font-size: 18px; color: #1a1a1a; margin-bottom: 6px;
+}
+.pf-note__b {
+  font-size: 12.5px; line-height: 1.5; color: #595959; margin-bottom: 14px;
+}
+.pf-note__chips { display: flex; gap: 8px; }
+.pf-note__chips span {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; font-weight: 500; color: #1a1a1a;
+  padding: 5px 10px; border: 1px solid #ececec; border-radius: 999px;
+}
+.pf-note__chips span::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%; background: #1257d6;
+}
+
+@keyframes pf-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(198, 255, 58, 0.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(198, 255, 58, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(198, 255, 58, 0); }
+}
+
+/* Notes — list column */
+.pf-nl { width: 100%; height: 320px; overflow-y: auto; }
+.pf-nl__row { padding: 11px 2px; border-bottom: 1px solid #ececec; }
+.pf-nl__row:last-child { border-bottom: 0; }
+.pf-nl__row.is-active { background: #f4f7ff; box-shadow: inset 2px 0 0 #1257d6; margin: 0 -8px; padding: 11px 10px; border-radius: 0 6px 6px 0; }
+.pf-nl__map { font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: #1257d6; font-weight: 600; }
+.pf-nl__t { font-size: 13px; color: #1a1a1a; margin-top: 3px; font-weight: 500; }
+.pf-nl__meta { font-size: 10.5px; color: #888; margin-top: 3px; }
+
+/* Notes — open note column (scrolls) */
+.pf-no { width: 100%; height: 320px; overflow-y: auto; padding-right: 8px; }
+.pf-no__crumb { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #1257d6; font-weight: 600; }
+.pf-no__title { font-family: 'Sorts Mill Goudy', Georgia, serif; font-size: 20px; line-height: 1.18; color: #1a1a1a; margin: 8px 0 6px; }
+.pf-no__meta { font-size: 10.5px; color: #2a8b3f; font-weight: 500; padding-bottom: 12px; border-bottom: 1px solid #ececec; margin-bottom: 13px; }
+.pf-no__p { font-size: 12.5px; line-height: 1.58; color: #4a4a4a; margin: 0 0 11px; }
+.pf-no__p b { color: #1a1a1a; font-weight: 600; }
+.pf-no__check-h { font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #888; font-weight: 600; margin: 4px 0 8px; }
+.pf-no__chk { font-size: 12px; color: #4a4a4a; padding: 6px 0 6px 25px; position: relative; }
+.pf-no__chk::before { content: ''; position: absolute; left: 0; top: 6px; width: 15px; height: 15px; border: 1.5px solid #cfcfcf; border-radius: 4px; }
+.pf-no__chk.is-done { color: #9a9a9a; text-decoration: line-through; }
+.pf-no__chk.is-done::before { background: #1257d6; border-color: #1257d6; }
+.pf-no__chk.is-done::after { content: '✓'; position: absolute; left: 3px; top: 4px; color: #fff; font-size: 10px; font-weight: 700; }
+.pf-no__chips { display: flex; gap: 8px; margin-top: 15px; }
+.pf-no__chips span { font-size: 10.5px; color: #1a1a1a; padding: 5px 11px; border: 1px solid #ececec; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; }
+.pf-no__chips span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #1257d6; }
+
+/* Admin — active producers (chart + hover-to-avatars) */
+.pf-au { width: 100%; }
+.pf-au__top { display: flex; align-items: baseline; gap: 9px; margin-bottom: 8px; }
+.pf-au__num { font-size: 30px; font-weight: 600; color: #1a1a1a; letter-spacing: -0.02em; line-height: 1; }
+.pf-au__up { font-size: 12px; font-weight: 600; color: #1f9d57; }
+.pf-au__cap { font-size: 11px; color: #888; }
+.pf-au__figure { position: relative; height: 132px; }
+.pf-au__svg { width: 100%; height: 100%; display: block; }
+.pf-au__line { fill: none; stroke: #1257d6; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.pf-au__pts { position: absolute; inset: 0; }
+.pf-au__pt { position: absolute; width: 12px; height: 12px; transform: translate(-50%, -50%); border-radius: 50%; background: #1257d6; border: 2.5px solid #fff; box-shadow: 0 0 0 1px #ececec; cursor: pointer; padding: 0; }
+.pf-au__pt:hover { background: #0a3a9e; }
+.pf-au__pop { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(6px); width: 180px; opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease; background: #fff; border: 1px solid #ececec; border-radius: 11px; box-shadow: 0 16px 40px -12px rgba(0,0,0,0.26); padding: 11px 12px; z-index: 6; display: flex; flex-direction: column; text-align: left; }
+.pf-au__pop--left { left: auto; right: -4px; transform: translateX(0) translateY(6px); }
+.pf-au__pt:hover .pf-au__pop, .pf-au__pt.is-open .pf-au__pop { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+.pf-au__pt:hover .pf-au__pop--left, .pf-au__pt.is-open .pf-au__pop--left { transform: translateX(0) translateY(0); }
+.pf-au__pop-h { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 6px; }
+.pf-au__u { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #1a1a1a; padding: 2px 0; }
+.pf-au__av { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.pf-au__more { font-size: 10.5px; color: #1257d6; font-weight: 500; margin-top: 4px; }
+.pf-au__x { display: flex; justify-content: space-between; font-size: 9.5px; color: #999; margin-top: 7px; }
+
+/* Admin — content performance */
+.pf-cp { width: 100%; font-variant-numeric: tabular-nums; }
+.pf-cp__row { display: grid; grid-template-columns: 1.7fr 1fr 0.8fr 0.5fr; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid #ececec; font-size: 12px; color: #1a1a1a; }
+.pf-cp__row:last-child { border-bottom: 0; }
+.pf-cp__row--head { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #888; font-weight: 600; }
+.pf-cp__name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-cp__v { display: inline-flex; align-items: center; gap: 8px; }
+.pf-cp__bar { height: 4px; border-radius: 2px; background: #1257d6; width: var(--w); max-width: 56px; flex-shrink: 0; }
+.pf-cp__g { color: #888; }
