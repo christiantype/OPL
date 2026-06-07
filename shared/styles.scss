@@ -1902,6 +1902,22 @@ body.annotate-mode {
   &__cap-body p { margin: 0 0 0.6em; }
   &__cap-body p:last-child { margin-bottom: 0; }
   &__cap-body strong { color: $light; font-weight: 500; }
+
+  // ── Phones ──
+  // Fitting a 1120px desktop UI into a ~360px phone shrinks it to ~0.3× and
+  // makes it unreadable. Instead, render each screen at a legible width and
+  // let it scroll sideways inside its frame (a hint sits under the caption).
+  @media (max-width: 40em) {
+    &__window { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+    &__frame { min-width: 780px; }
+    &__caption { position: relative; }
+    &__caption::after {
+      content: 'Swipe the screen sideways to explore →';
+      display: block; margin-top: 10px;
+      font-family: 'Untitled Sans', system-ui, sans-serif;
+      font-size: 11px; letter-spacing: 0.04em; color: rgba(255,255,255,0.4);
+    }
+  }
 }
 
 @keyframes proj-note-in { from { opacity: 0; } to { opacity: 1; } }
@@ -1987,6 +2003,7 @@ body.annotate-mode {
     border-top: 1px solid rgba(255, 255, 255, 0.09);
     padding: 26px 28px;
     min-height: 250px;
+    flex: 1;                 // fill the card so two columns match height
     display: flex;
     flex-direction: column;
     justify-content: center;

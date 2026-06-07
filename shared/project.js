@@ -468,16 +468,16 @@
                    </div>
                  </div>
                </div>`;
+          const foot = (c.headline || c.body)
+            ? `<div class="proj-card__foot"><h3 class="proj-card__title">${c.headline || ''}</h3>${body}</div>`
+            : '';
           return `
             <article class="proj-card">
               <div class="proj-card__head">
                 <span class="proj-card__label">${c.label || ''}</span>
               </div>
               ${media}
-              <div class="proj-card__foot">
-                <h3 class="proj-card__title">${c.headline || ''}</h3>
-                ${body}
-              </div>
+              ${foot}
             </article>`;
         }).join('');
         return `<div class="proj-cards-band"><div class="container"><div class="proj-cards">${eyebrow}<div class="proj-cards__row">${html}</div></div></div></div>`;
