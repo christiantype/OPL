@@ -2,7 +2,7 @@
 /* Edit contact info, address, and social links here */
 
 const FOOTER_COL1 = `More than Design<br>Since 2026`;
-const FOOTER_COL2 = `hi<span style="color:var(--color-accent);">@</span>opal.design<br>224.443.6415`;
+const FOOTER_COL2 = `hi<span style="color:var(--color-accent);">@</span>opal.design<a href="https://www.instagram.com/this.is.opal/" target="_blank" rel="noopener" aria-label="OP/AL on Instagram" style="display:inline-flex;vertical-align:middle;margin-left:9px;color:inherit;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.4" cy="6.6" r="1.15" fill="currentColor" stroke="none"/></svg></a><br>224.443.6415`;
 const FOOTER_COL3 = `1029 Lake St., Suite 104<br>Oak Park IL 60301`;
 
 /* Path to the footer wordmark SVG — drop opl-footer.svg at the project root */
