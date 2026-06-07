@@ -782,6 +782,9 @@
   function setMobileMockupScale() {
     const isMobile = window.innerWidth <= 768;
     document.querySelectorAll('.project-mockup').forEach(m => {
+      // Scenes and cards run their own fit() (scaled to a legible 780px frame
+      // that scrolls sideways on phones) — don't let the mobile shrink fight it.
+      if (m.closest('.proj-screen') || m.closest('.proj-card')) return;
       if (isMobile) {
         const scale = Math.min(1, (window.innerWidth - 40) / 1120);
         m.style.setProperty('transform', `scale(${scale})`, 'important');
