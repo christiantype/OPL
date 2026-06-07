@@ -26,10 +26,17 @@
       // imageFrame off — the window-chrome wrapper provides framing instead
       imageFrame:  false,
       images: [
-        // 1 — The full home dashboard ("Good morning, David").
+        // 1 — AI Chat first, full-screen.
+        { scenes: [
+          { mockup: "1759-mocks/chat-focused.html", alt: "AI chat conversation playing through",
+            num: "01", title: "AI Chat", bare: true, vh: true, h: 680,
+            body: "<p>A senior strategist, not a chatbot. Hand it a client case and it brainstorms the structure, names the strategies, and walks the math. <strong>Shown here in action — start to finished plan.</strong></p>" }
+        ] },
+
+        // 2 — The full home dashboard ("Good morning, David").
         { scenes: [
           { mockup: "1759-mocks/dashboard.html", alt: "Agent home screen",
-            num: "01", title: "Home",
+            num: "02", title: "Home",
             body: "<p>The first surface meets the agent where they are. <strong>Latest</strong> pulls in what's just been published, <strong>Trending</strong> shows what other producers are studying, and <strong>Recommended</strong> learns from past behavior — the whole platform from one screen, with the AI expert one tap away.</p>" }
         ] },
 
@@ -60,13 +67,6 @@
             </div></div>` }
         ] },
 
-        // 3 — The chat, focused: just the conversation + the input bar.
-        { scenes: [
-          { mockup: "1759-mocks/chat-focused.html", alt: "AI chat conversation playing through",
-            num: "02", title: "AI Chat", bare: true, h: 240,
-            body: "<p>A senior strategist, not a chatbot. Hand it a client case and it brainstorms the structure, names the strategies, and walks the math. <strong>Shown here in action — start to finished plan.</strong></p>" }
-        ] },
-
         // 4 — The full Prospect Curator strategy screen.
         { scenes: [
           { mockup: "1759-mocks/strategy-prospect.html", alt: "Strategy detail page", h: 720,
@@ -74,29 +74,25 @@
             body: "<p>Every advanced-markets strategy in one place — who it's right for, the back-of-the-napkin diagram, and the financial breakdown an agent can walk into a meeting and own. The math is shown, not hidden.</p>" }
         ] },
 
-        // 5 — Notes: two columns — the list, and an open note — floating on black.
+        // 5 — Notes: the list, and an open note written live — floating on black.
         { cards: [
-          { label: "All notes",
+          { num: "04", label: "Notes",
+            headline: "Every note, mapped.",
+            body: "Whatever the agent writes stays tied to the strategy it came from — so the thinking never gets stranded in another tool.",
             html: `<div class="pf-nl">
               <div class="pf-nl__row is-active"><div class="pf-nl__map">Gen-Skip Split-Dollar</div><div class="pf-nl__t">Marion Levine follow-up</div><div class="pf-nl__meta">2h ago · Apple Notes</div></div>
               <div class="pf-nl__row"><div class="pf-nl__map">Wealth Transfer</div><div class="pf-nl__t">Goldsmith family — meeting prep</div><div class="pf-nl__meta">Yesterday · Drive</div></div>
               <div class="pf-nl__row"><div class="pf-nl__map">Court Case</div><div class="pf-nl__t">Petersons — revisit Gen-Skip</div><div class="pf-nl__meta">2 days ago · Apple Notes</div></div>
-              <div class="pf-nl__row"><div class="pf-nl__map">Survivorship ILIT</div><div class="pf-nl__t">K. Tan — survivorship vs single-life</div><div class="pf-nl__meta">Mar 28 · Syncing…</div></div>
-              <div class="pf-nl__row"><div class="pf-nl__map">ILIT Funding</div><div class="pf-nl__t">Funding options for HNW clients</div><div class="pf-nl__meta">Mar 24 · Drive</div></div>
-              <div class="pf-nl__row"><div class="pf-nl__map">Rolling GRATs</div><div class="pf-nl__t">Whitfield trust — choppy-market hedge</div><div class="pf-nl__meta">Mar 21 · Apple Notes</div></div>
             </div>` },
-          { label: "An open note",
-            html: `<div class="pf-no">
+          { num: "05", label: "Written live",
+            headline: "Write it. Save it. Share it.",
+            body: "A note is captured, synced to Apple Notes and Drive, and handed to the team — all without leaving the platform.",
+            html: `<div class="pf-no" data-pfnote>
               <div class="pf-no__crumb">↳ Gen-Skip Split-Dollar · Prospect Finder</div>
-              <div class="pf-no__title">Marion Levine follow-up — the IRS position</div>
-              <div class="pf-no__meta">Edited 2 hours ago · ✓ Synced to Apple Notes</div>
-              <p class="pf-no__p">The Tax Court sided with the estate on the <b>economic-benefit</b> regime — the premiums weren't gifts because the arrangement was structured as economic benefit, not a loan.</p>
-              <p class="pf-no__p">For the Hendersons, the part that matters is the <b>valuation discount on the receivable</b>. It held up here — pull the exact discount the court accepted into the back-of-the-napkin.</p>
-              <div class="pf-no__check-h">Before the Henderson meeting</div>
-              <div class="pf-no__chk is-done">Confirm grandchildren ages drive the GST math</div>
-              <div class="pf-no__chk">Get the updated §7520 rate from the Sales Vault</div>
-              <div class="pf-no__chk">Draft the three-trust diagram with the AI</div>
-              <div class="pf-no__chips"><span>Apple Notes</span><span>Google Drive</span></div>
+              <div class="pf-no__title" data-note-title></div>
+              <p class="pf-no__p" data-note-body></p>
+              <div class="pf-no__status" data-note-status></div>
+              <div class="pf-no__chips" data-note-chips><span>Apple Notes</span><span>Google Drive</span></div>
             </div>` }
         ] },
 
@@ -184,9 +180,56 @@
         }
         setInterval(tick, 2600);
       }
+      // Animated note: types the note, saves it, then shares it — on a loop.
+      function initNote(el) {
+        if (el.dataset.init) return; el.dataset.init = '1';
+        var titleEl = el.querySelector('[data-note-title]');
+        var bodyEl = el.querySelector('[data-note-body]');
+        var statusEl = el.querySelector('[data-note-status]');
+        var chipsEl = el.querySelector('[data-note-chips]');
+        var TITLE = 'Marion Levine follow-up';
+        var BODY = "Economic-benefit regime held — the premiums aren't gifts. Pull the valuation discount into the napkin.";
+        var timers = [], iv = null;
+        function clearAll() { timers.forEach(clearTimeout); timers = []; if (iv) { clearInterval(iv); iv = null; } }
+        function type(elm, text, speed, done) {
+          elm.classList.add('is-typing'); var i = 0;
+          iv = setInterval(function () {
+            i++; elm.textContent = text.slice(0, i);
+            if (i >= text.length) { clearInterval(iv); iv = null; elm.classList.remove('is-typing'); done && done(); }
+          }, speed);
+        }
+        function after(ms, fn) { timers.push(setTimeout(fn, ms)); }
+        function run() {
+          clearAll();
+          titleEl.textContent = ''; bodyEl.textContent = '';
+          statusEl.textContent = ''; statusEl.className = 'pf-no__status';
+          chipsEl.classList.remove('is-shown');
+          after(600, function () {
+            type(titleEl, TITLE, 58, function () {
+              after(450, function () {
+                type(bodyEl, BODY, 27, function () {
+                  after(700, function () {
+                    statusEl.className = 'pf-no__status is-saving'; statusEl.textContent = 'Saving…';
+                    after(1500, function () {
+                      statusEl.className = 'pf-no__status is-saved'; statusEl.textContent = 'Saved to Apple Notes';
+                      after(1600, function () {
+                        statusEl.className = 'pf-no__status is-shared'; statusEl.textContent = 'Shared with your team';
+                        chipsEl.classList.add('is-shown');
+                        after(4200, run);
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        }
+        run();
+      }
       function boot() {
         if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         document.querySelectorAll('[data-pftrend]').forEach(initTrend);
+        document.querySelectorAll('[data-pfnote]').forEach(initNote);
       }
       setTimeout(boot, 1000);
     })();

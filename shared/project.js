@@ -425,10 +425,11 @@
           const num = s.num || String(i + 1).padStart(2, '0');
           const body = s.body ? `<div class="proj-screen__note-body">${s.body}</div>` : '';
           const bare = s.bare ? ' proj-screen--bare' : '';
+          const vh = s.vh ? ' proj-screen--vh' : '';
           const mh = s.h || 880;
           const cap = s.body ? `<div class="proj-screen__cap-body">${s.body}</div>` : '';
           return `
-            <section class="proj-screen${bare}" style="--mh:${mh}" data-mh="${mh}">
+            <section class="proj-screen${bare}${vh}" style="--mh:${mh}" data-mh="${mh}">
               <figcaption class="proj-screen__caption">
                 <span class="proj-screen__cap-num">${num}</span>
                 <span class="proj-screen__cap-title">${s.title || ''}</span>

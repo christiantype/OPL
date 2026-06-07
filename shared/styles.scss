@@ -1879,6 +1879,22 @@ body.annotate-mode {
   }
   &--bare &__frame { background: transparent; }
 
+  // Full-viewport hero (the AI chat opener) — centered chat on a brand-tinted
+  // radial glow over the black page.
+  &--vh {
+    min-height: 100vh;
+    padding: clamp(2em, 6vh, 5em) 0 clamp(2em, 5vh, 4em);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background:
+      radial-gradient(ellipse 72% 56% at 50% 48%,
+        rgba(18, 87, 214, 0.26), rgba(10, 101, 119, 0.10) 44%, rgba(0,0,0,0) 72%);
+  }
+  &--vh &__window { flex: 1; display: flex; align-items: center; }
+  &--vh &__frame { height: min(72vh, 720px); aspect-ratio: auto; }
+  &--vh &__caption { order: 2; margin-top: clamp(1.5em, 4vh, 3em); }
+
   // ── Caption below the UI (OPAL annotation voice) ──
   // Sits under each screen so it never covers content. Sidepiece display
   // type for the title; light copy on the page's dark surface.
@@ -1947,16 +1963,18 @@ body.annotate-mode {
   &__row {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: clamp(16px, 1.8vw, 26px);
+    gap: clamp(28px, 4vw, 64px);
+    align-items: start;        // size each column to its content — no stretch void
   }
 }
 .proj-card {
   display: flex;
   flex-direction: column;
-  // The feature data floats directly on the black page — no white UI panel.
+  // Light data on the black page, inside a thin-rule container.
   background: none;
-  border: none;
-  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  overflow: hidden;
   opacity: 0;
   transform: translateY(24px);
   transition: opacity 0.7s ease, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -2005,9 +2023,9 @@ body.annotate-mode {
   &__vig {
     background: transparent;
     border-top: none;
-    padding: 18px 4px 4px;
+    padding: 10px 26px 14px;
     min-height: 0;
-    flex: 1;                 // fill the card so two columns match height
+    flex: none;              // size to content — no stretch void
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -2144,25 +2162,42 @@ body.annotate-mode {
   100% { box-shadow: 0 0 0 0 rgba(198, 255, 58, 0); }
 }
 
-/* Notes — list column (no scroll; grows to fit) */
+/* Notes — list column, aired out (just three notes) */
 .pf-nl { width: 100%; }
-.pf-nl__row { padding: 11px 2px; border-bottom: 1px solid #ececec; }
+.pf-nl__row { padding: 18px 2px; border-bottom: 1px solid #ececec; }
 .pf-nl__row:last-child { border-bottom: 0; }
-.pf-nl__row.is-active { background: #f4f7ff; box-shadow: inset 2px 0 0 #1257d6; margin: 0 -8px; padding: 11px 10px; border-radius: 0 6px 6px 0; }
+.pf-nl__row.is-active { background: #f4f7ff; box-shadow: inset 2px 0 0 #1257d6; margin: 0 -10px; padding: 18px 12px; border-radius: 0 6px 6px 0; }
 .pf-nl__map { font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: #1257d6; font-weight: 600; }
-.pf-nl__t { font-size: 13px; color: #1a1a1a; margin-top: 3px; font-weight: 500; }
-.pf-nl__meta { font-size: 10.5px; color: #888; margin-top: 3px; }
+.pf-nl__t { font-size: 14.5px; color: #1a1a1a; margin-top: 5px; font-weight: 500; }
+.pf-nl__meta { font-size: 11px; color: #888; margin-top: 5px; }
 
-/* Notes — open note column (no scroll; grows to fit) */
+/* Notes — open note column, written live */
 .pf-no { width: 100%; }
-/* Both note columns fill from the top so they read as equal-height panels
-   (the 2-col grid already stretches the cards to the same height). */
 .proj-card__vig:has(.pf-nl), .proj-card__vig:has(.pf-no) { justify-content: flex-start; }
 .pf-no__crumb { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #1257d6; font-weight: 600; }
-.pf-no__title { font-family: 'Sorts Mill Goudy', Georgia, serif; font-size: 23px; line-height: 1.2; letter-spacing: -0.01em; color: #1a1a1a; margin: 9px 0 8px; }
-.pf-no__meta { font-size: 10.5px; color: #2a8b3f; font-weight: 500; padding-bottom: 14px; border-bottom: 1px solid #ececec; margin-bottom: 15px; }
-.pf-no__p { font-size: 13px; line-height: 1.62; color: #2e2e2e; margin: 0 0 12px; }
+/* note copy uses the product UI sans — not a display face */
+.pf-no__title { font-family: 'Untitled Sans', system-ui, sans-serif; font-size: 18px; line-height: 1.25; letter-spacing: -0.005em; color: #1a1a1a; font-weight: 600; margin: 12px 0 12px; min-height: 1.25em; }
+.pf-no__p { font-family: 'Untitled Sans', system-ui, sans-serif; font-size: 13.5px; line-height: 1.62; color: #2e2e2e; margin: 0 0 16px; min-height: 4.8em; }
 .pf-no__p b { color: #1a1a1a; font-weight: 600; }
+/* blinking caret while the note is being typed */
+.pf-no__title.is-typing::after, .pf-no__p.is-typing::after {
+  content: ''; display: inline-block; width: 2px; height: 1em; margin-left: 2px;
+  vertical-align: -2px; background: currentColor; animation: pf-caret 0.85s steps(1) infinite;
+}
+@keyframes pf-caret { 0%,50%{ opacity: 1 } 50.01%,100%{ opacity: 0 } }
+/* save / share status line */
+.pf-no__status { font-size: 11.5px; font-weight: 600; min-height: 1.4em; display: flex; align-items: center; gap: 7px; color: #888; transition: color 0.3s ease; }
+.pf-no__status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.pf-no__status.is-saving { color: #888; }
+.pf-no__status.is-saving::before { background: none; border: 1.6px solid currentColor; border-top-color: transparent; animation: pf-spin 0.7s linear infinite; }
+.pf-no__status.is-saved { color: #2a8b3f; }
+.pf-no__status.is-shared { color: #1257d6; }
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+/* sync chips appear only once the note is shared */
+.pf-no__chips { display: flex; gap: 8px; margin-top: 16px; opacity: 0; transform: translateY(6px); transition: opacity 0.4s ease, transform 0.4s ease; }
+.pf-no__chips.is-shown { opacity: 1; transform: none; }
+.pf-no__chips span { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: #1a1a1a; padding: 5px 11px; border: 1px solid #ececec; border-radius: 999px; }
+.pf-no__chips span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #1257d6; }
 /* The site forces body.project p to light text (for the dark page); paragraphs
    inside the white vignette panels must stay dark. Higher specificity wins. */
 body.project .proj-card__vig p { color: #2e2e2e; }
@@ -2241,8 +2276,10 @@ body.project .proj-card__vig p { color: #2e2e2e; }
   .pf-au__pop { background: #14171f; border-color: rgba(255,255,255,0.16); box-shadow: 0 16px 40px -12px rgba(0,0,0,0.6); }
   .pf-au__pt { border-color: #0b0d12; box-shadow: 0 0 0 1px rgba(255,255,255,0.18); }
 
-  // sync line stays green, slightly brighter
-  .pf-no__meta { color: #57c97a; }
+  // save / share status — lighten for the black bg
+  .pf-no__status.is-saving { color: rgba(255,255,255,0.6); }
+  .pf-no__status.is-saved { color: #57c97a; }
+  .pf-no__status.is-shared { color: #6f9bff; }
 
   // checklist
   .pf-no__chk { color: rgba(255,255,255,0.72); }
