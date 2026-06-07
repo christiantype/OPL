@@ -57,7 +57,7 @@
 
   function colorPeriods(node) {
     if (skip.has(node.nodeName)) return;
-    // Leave product-UI mockups alone — the Agentic interface keeps plain,
+    // Leave product-UI mockups alone — the Lumen interface keeps plain,
     // un-recolored punctuation (the colored-punctuation treatment is OP/AL's,
     // not the product's).
     if (node.nodeType === Node.ELEMENT_NODE && node.classList &&
