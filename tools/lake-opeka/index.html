@@ -537,9 +537,8 @@
         <h3>Modes</h3>
         <ul>
           <li><strong>Slice</strong> — cuts the canvas into parallel strips at any angle; each strip pulls a slice from one of your photos. Sliders: Count, Angle, Variation (uneven widths), Offset / Rotation / Scale jitter, Source pick (Random / In order / Alternating).</li>
-          <li><strong>Dot</strong> — composites your photos to an underlay, samples the result at a grid, draws colored circles. Resolution / Spacing / Size / Grain / Image opacity (underlay strength) / Image blur (smooths colors).</li>
-          <li><strong>Glyph</strong> — same grid sampling but the dot is a typed character or uploaded SVG/PNG. Type your own char or pick a preset; <em>Upload glyph</em> stamps an SVG or PNG at each cell, tinted by the sampled color.</li>
-          <li><strong>Strata</strong> — hard horizontal bands, each band a different photo cover-fit. Bands · Height variation · Shift (slide left/right) · Gap · Shift mode (Alternate / Random / Cascade).</li>
+          <li><strong>Glyph</strong> — grid sampling where each cell is a typed character or uploaded SVG/PNG. Type your own char or pick a preset; <em>Upload glyph</em> stamps an SVG or PNG at each cell, tinted by the sampled color.</li>
+          <li><strong>Smudge</strong> — an ASYNC-style directional drag. The photo's pixels are pulled along one axis from a source line, so detail across the line survives while the smear axis turns to long painterly streaks. Direction (Horizontal / Vertical) · Origin (the source line) · Reach (how far the streak pulls) · Blend (soft photo↔streak transition) · Bands + Jitter + Gap (break it into brushed lanes).</li>
           <li><strong>Scatter</strong> — photos as squares with optional connecting trails. Drag a square on the canvas to move; per-image numeric fields edit it precisely. Each photo gets a <em>subject point</em> auto-detected (saliency + chroma); trails anchor there, not the bounding box.</li>
           <li><strong>Window</strong> — one bold character (or several) carved into the canvas, photo shows through it. Shape · Count · Size · Position jitter.</li>
           <li><strong>Echo</strong> — each photo repeated N times with offset + decreasing opacity. Direction is set by Offset X / Y; Scale step grows or shrinks each echo.</li>
@@ -632,15 +631,14 @@
       <div class="ctrl-label">Mode</div>
       <div class="seg" id="seg-mode" style="grid-template-columns:repeat(3,1fr);row-gap:4px">
         <button data-mode="slice" class="is-active">Slice</button>
-        <button data-mode="dot">Dot</button>
         <button data-mode="glyph">Glyph</button>
-        <button data-mode="strata">Strata</button>
         <button data-mode="scatter">Scatter</button>
         <button data-mode="window">Window</button>
         <button data-mode="echo">Echo</button>
         <button data-mode="grid">Grid</button>
         <button data-mode="circle">Circle</button>
         <button data-mode="nest">Nest</button>
+        <button data-mode="smudge">Smudge</button>
       </div>
     </div>
 
@@ -930,26 +928,6 @@
       </div>
     </div>
 
-    <!-- STRATA MODE CONTROLS -->
-    <div class="mode-group" data-mode-show="strata" style="display:none">
-      <div class="ctrl-group">
-        <div class="ctrl-label">Strata</div>
-        <div class="row"><span class="row__label">Bands</span><input class="row__val" id="v-stBands" type="text" value="7"></div>
-        <input type="range" id="r-stBands" min="2" max="24" step="1" value="7">
-        <div class="row"><span class="row__label">Height variation</span><input class="row__val" id="v-stVar" type="text" value="0.40"></div>
-        <input type="range" id="r-stVar" min="0" max="1" step="0.01" value="0.40">
-        <div class="row"><span class="row__label">Shift</span><input class="row__val" id="v-stShift" type="text" value="0.20"></div>
-        <input type="range" id="r-stShift" min="0" max="1" step="0.01" value="0.20">
-        <div class="row"><span class="row__label">Gap</span><input class="row__val" id="v-stGap" type="text" value="0"></div>
-        <input type="range" id="r-stGap" min="0" max="30" step="1" value="0">
-        <div class="seg" id="seg-stShiftMode" style="grid-template-columns:repeat(3,1fr);margin-top:10px">
-          <button data-sm="alternate" class="is-active">Alternate</button>
-          <button data-sm="random">Random</button>
-          <button data-sm="cascade">Cascade</button>
-        </div>
-      </div>
-    </div>
-
     <!-- SCATTER MODE CONTROLS -->
     <div class="mode-group" data-mode-show="scatter" style="display:none">
       <div class="ctrl-group">
@@ -1024,67 +1002,6 @@
       </div>
     </div>
 
-    <!-- DOT MODE CONTROLS -->
-    <div class="mode-group" data-mode-show="dot" style="display:none">
-      <div class="ctrl-group">
-        <div class="ctrl-label">Dot</div>
-        <div class="row"><span class="row__label">Resolution</span><input class="row__val" id="v-resolution" type="text" value="4"></div>
-        <input type="range" id="r-resolution" min="1" max="8" step="1" value="4">
-        <div class="row"><span class="row__label">Spacing</span><input class="row__val" id="v-spacing" type="text" value="4"></div>
-        <input type="range" id="r-spacing" min="1" max="8" step="1" value="4">
-        <div class="row"><span class="row__label">Size</span><input class="row__val" id="v-dotSize" type="text" value="4"></div>
-        <input type="range" id="r-dotSize" min="1" max="8" step="1" value="4">
-        <div class="row"><span class="row__label">Grain</span><input class="row__val" id="v-grain" type="text" value="2"></div>
-        <input type="range" id="r-grain" min="1" max="8" step="1" value="2">
-
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Shape</div>
-        <div class="seg" id="seg-dotShape" style="grid-template-columns:repeat(5,1fr)">
-          <button data-ds="circle" class="is-active">●</button>
-          <button data-ds="square">■</button>
-          <button data-ds="diamond">◆</button>
-          <button data-ds="ring">○</button>
-          <button data-ds="cross">✕</button>
-        </div>
-
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Grid</div>
-        <div class="seg" id="seg-dotGrid" style="grid-template-columns:1fr 1fr 1fr">
-          <button data-dg="square" class="is-active">Square</button>
-          <button data-dg="hex">Hex</button>
-          <button data-dg="brick">Brick</button>
-        </div>
-
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Size mode</div>
-        <div class="seg" id="seg-dotSizeMode" style="grid-template-columns:repeat(3,1fr)">
-          <button data-dsm="uniform" class="is-active">Uniform</button>
-          <button data-dsm="halftone">Halftone</button>
-          <button data-dsm="inverse">Inverse</button>
-        </div>
-
-        <div class="row" style="margin-top:14px"><span class="row__label">Color mode</span></div>
-        <div class="seg" id="seg-dotColor" style="grid-template-columns:repeat(3,1fr)">
-          <button data-dc="rgb" class="is-active">RGB</button>
-          <button data-dc="mono">Mono</button>
-          <button data-dc="duotone">Duotone</button>
-        </div>
-        <div id="duotone-row" style="display:none;margin-top:10px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <input type="color" id="r-duoLight" value="#FFD400" style="width:100%;height:28px;border:1px solid var(--hairline);background:var(--panel);cursor:pointer">
-            <input type="color" id="r-duoDark"  value="#1c39bb" style="width:100%;height:28px;border:1px solid var(--hairline);background:var(--panel);cursor:pointer">
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:14px"><span class="row__label">Outline</span><input class="row__val" id="v-dotOutline" type="text" value="0"></div>
-        <input type="range" id="r-dotOutline" min="0" max="4" step="0.5" value="0">
-      </div>
-      <div class="ctrl-group">
-        <div class="ctrl-label">Underlay</div>
-        <div class="row"><span class="row__label">Image opacity</span><input class="row__val" id="v-imageOpacity" type="text" value="1"></div>
-        <input type="range" id="r-imageOpacity" min="1" max="8" step="1" value="1">
-        <div class="row"><span class="row__label">Image blur</span><input class="row__val" id="v-imageBlur" type="text" value="6"></div>
-        <input type="range" id="r-imageBlur" min="1" max="8" step="1" value="6">
-      </div>
-    </div>
-
     <!-- SLICE MODE CONTROLS -->
     <div class="mode-group" data-mode-show="slice">
     <div class="ctrl-group">
@@ -1116,6 +1033,33 @@
       </div>
     </div>
     </div><!-- /slice mode group -->
+
+    <!-- SMUDGE MODE CONTROLS — ASYNC-style directional pixel smear -->
+    <div class="mode-group" data-mode-show="smudge" style="display:none">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Smudge</div>
+        <div class="row"><span class="row__label">Direction</span></div>
+        <div class="seg" id="seg-smAxis" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+          <button data-sm="h" class="is-active">Horizontal</button>
+          <button data-sm="v">Vertical</button>
+        </div>
+        <div class="row"><span class="row__label">Origin</span><input class="row__val" id="v-smOrigin" type="text" value="0.50"></div>
+        <input type="range" id="r-smOrigin" min="0" max="1" step="0.01" value="0.5">
+        <div class="row"><span class="row__label">Reach</span><input class="row__val" id="v-smReach" type="text" value="1.00"></div>
+        <input type="range" id="r-smReach" min="0" max="1" step="0.01" value="1">
+        <div class="row"><span class="row__label">Blend</span><input class="row__val" id="v-smBlend" type="text" value="0.30"></div>
+        <input type="range" id="r-smBlend" min="0" max="1" step="0.01" value="0.3">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Brush</div>
+        <div class="row"><span class="row__label">Bands</span><input class="row__val" id="v-smBands" type="text" value="1"></div>
+        <input type="range" id="r-smBands" min="1" max="80" step="1" value="1">
+        <div class="row"><span class="row__label">Jitter</span><input class="row__val" id="v-smJitter" type="text" value="0.00"></div>
+        <input type="range" id="r-smJitter" min="0" max="1" step="0.01" value="0">
+        <div class="row"><span class="row__label">Gap</span><input class="row__val" id="v-smGap" type="text" value="0"></div>
+        <input type="range" id="r-smGap" min="0" max="24" step="1" value="0">
+      </div>
+    </div><!-- /smudge mode group -->
 
     <!-- SHARED CONTROLS -->
     <div class="ctrl-group">
@@ -1240,6 +1184,15 @@ const state = {
     beadStagger:  false,    // alternate rings offset by half-step
     beadOpacity:  1,        // 0..1
     beadOutline:  false,    // hairline ring around each bead
+  },
+  smudge: {
+    axis:   'h',     // 'h' = horizontal smear, 'v' = vertical smear
+    origin: 0.5,     // position of the smudge source line (0..1 along the axis)
+    reach:  1.0,     // how strongly the streak replaces the photo at the far edges
+    blend:  0.3,     // soft transition width photo↔streak (the "perfect" smudge)
+    bands:  1,       // subdivide the cross-axis into N lanes for organic variation
+    jitter: 0,       // per-band origin variance (0..1)
+    gap:    0,       // px gap (bg) between bands
   },
   // ── EFFECT LAYER ─────────────────────────────────────────────
   // A Dot or Glyph overlay whose colors are SAMPLED from the just-
@@ -1625,15 +1578,14 @@ function render(target = canvas) {
   }
   empty.style.display = 'none';
   canvas.style.visibility = 'visible';
-  if      (state.mode === 'dot')     dotRender(target, active);
-  else if (state.mode === 'glyph')   glyphRender(target, active);
-  else if (state.mode === 'strata')  strataRender(target, active);
+  if      (state.mode === 'glyph')   glyphRender(target, active);
   else if (state.mode === 'scatter') scatterRender(target, active);
   else if (state.mode === 'window')  windowRender(target, active);
   else if (state.mode === 'echo')    echoRender(target, active);
   else if (state.mode === 'grid')    gridRender(target, active);
   else if (state.mode === 'circle')  circleRender(target, active);
   else if (state.mode === 'nest')    nestRender(target, active);
+  else if (state.mode === 'smudge')  smudgeRender(target, active);
   else                               sliceRender(target, active);
 
   // ── EFFECT LAYER overlay ────────────────────────────────────
@@ -2449,76 +2401,6 @@ function glyphRender(target, active) {
   seedDisplay.textContent = `seed ${state.seed}`;
 }
 
-// ── Strata render ─────────────────────────────────────────────
-// Hard horizontal bands; each band fills with one image (chain in
-// add-order). Bands shift horizontally per shiftMode.
-function strataRender(target, active) {
-  const c = target;
-  const x = c.getContext('2d');
-  const W = c.width, H = c.height;
-
-  // Background
-  x.save();
-  x.globalCompositeOperation = 'source-over';
-  if (state.params.bg === 'transparent') x.clearRect(0, 0, W, H);
-  else { x.fillStyle = state.params.bg; x.fillRect(0, 0, W, H); }
-  x.restore();
-
-  const s = state.strata;
-  const rng = mulberry32(state.seed);
-
-  // Generate band heights summing to H (accounting for gaps)
-  const totalGap = s.gap * Math.max(0, s.bands - 1);
-  const usable = H - totalGap;
-  const weights = [];
-  let sumW = 0;
-  for (let i = 0; i < s.bands; i++) {
-    const w = 1 + (rng() - 0.5) * 2 * s.variation;
-    weights.push(Math.max(0.15, w)); sumW += weights[weights.length - 1];
-  }
-  // Normalize
-  const bandHeights = weights.map(w => (w / sumW) * usable);
-
-  // Generate shifts per band
-  const shifts = [];
-  for (let i = 0; i < s.bands; i++) {
-    let f;
-    if (s.shiftMode === 'alternate') f = (i % 2 === 0 ? 1 : -1) * 0.5;
-    else if (s.shiftMode === 'random') f = rng() - 0.5;
-    else /* cascade */ f = (i / Math.max(1, s.bands - 1)) - 0.5;
-    shifts.push(f * 2 * s.shift * W);
-  }
-
-  // Draw bands
-  let y = 0;
-  for (let i = 0; i < s.bands; i++) {
-    const bh = bandHeights[i];
-    const src = active[i % active.length];
-    if (!src) { y += bh + s.gap; continue; }
-    const img = src.img;
-    // Cover-fit horizontally to W, crop vertically to band proportion
-    // Center the source image's "band slice" at band index
-    const aspect = img.width / img.height;
-    const dw = W;
-    const dh = dw / aspect;
-    // Vertical source crop: chunk from image based on band index
-    const sliceH = img.height / s.bands;
-    const sy = Math.floor(sliceH * (i % s.bands));
-    x.save();
-    x.translate(shifts[i], 0);
-    x.drawImage(
-      img,
-      0, sy, img.width, Math.min(sliceH, img.height - sy),
-      0, y, W, bh
-    );
-    x.restore();
-    y += bh + s.gap;
-  }
-
-  stageInfo.textContent = `${active.length} src · ${s.bands} bands · ${s.shiftMode}`;
-  seedDisplay.textContent = `seed ${state.seed}`;
-}
-
 // ── Window render ─────────────────────────────────────────────
 // One or more bold shapes/chars carved into the canvas; each shape is
 // a "window" through which a photo shows. The shape IS the composition.
@@ -2964,6 +2846,120 @@ function drawCoverIntoRect(ctx, img, cx, cy, w, h) {
   ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
 }
 
+// ── Smudge render ─────────────────────────────────────────────
+// ASYNC-style directional smear. The photo is "dragged" along one axis
+// from a source line (origin): the 1px line of pixels at that position
+// is stretched across the frame so vertical/horizontal detail survives
+// while the smear axis turns to long painterly streaks. `blend` keeps
+// the photo intact near the origin and fades into pure streak outward,
+// so the smudge reads as continuous, not a hard band. Subdivide into
+// `bands` lanes (each with a jittered origin) for a brushed, broken feel.
+function smudgeRender(target, active) {
+  const c = target;
+  const x = c.getContext('2d');
+  const W = c.width, H = c.height;
+
+  // Background
+  x.save();
+  x.globalCompositeOperation = 'source-over';
+  if (state.params.bg === 'transparent') x.clearRect(0, 0, W, H);
+  else { x.fillStyle = state.params.bg; x.fillRect(0, 0, W, H); }
+  x.restore();
+
+  const s = state.smudge;
+  const rng = mulberry32(state.seed);
+  const horizontal = s.axis === 'h';
+  const along = horizontal ? W : H;   // smear axis length
+  const cross = horizontal ? H : W;   // band-stacking axis length
+  const bands = Math.max(1, Math.round(s.bands));
+  const gap   = Math.max(0, s.gap);
+  const totalGap = gap * Math.max(0, bands - 1);
+  const laneLen  = (cross - totalGap) / bands;
+
+  // Base composition rendered once (cover-fit; per-band image when several
+  // photos are loaded), then sampled column-by-column for the smear.
+  const base = document.createElement('canvas');
+  base.width = W; base.height = H;
+  const bx = base.getContext('2d');
+
+  for (let i = 0; i < bands; i++) {
+    const start = i * (laneLen + gap);
+    const img = active[i % active.length].img;
+    bx.save();
+    bx.beginPath();
+    if (horizontal) bx.rect(0, start, W, laneLen);
+    else            bx.rect(start, 0, laneLen, H);
+    bx.clip();
+    drawCoverIntoRect(bx, img, W / 2, H / 2, W, H);
+    bx.restore();
+  }
+
+  // Lay the photo down first; the streaks ride over it so the image stays
+  // visible at the origin and is progressively swallowed toward the edges.
+  x.drawImage(base, 0, 0);
+
+  // Smear each lane: stretch the origin column of `base` across the lane,
+  // masked so it's transparent at the origin and ramps to `reach` outward.
+  for (let i = 0; i < bands; i++) {
+    const start = Math.round(i * (laneLen + gap));
+    const len   = Math.round(laneLen);
+    if (len < 1) continue;
+
+    let o = s.origin + (rng() - 0.5) * 2 * s.jitter;
+    o = Math.max(0, Math.min(1, o));
+    const oPx = Math.round(o * (along - 1));
+
+    // Strip canvas in along×lane space (rotated mentally for vertical).
+    const sw = horizontal ? W : len;
+    const sh = horizontal ? len : along;   // vertical strips are along-tall
+    const strip = document.createElement('canvas');
+    strip.width = sw; strip.height = sh;
+    const sc = strip.getContext('2d');
+
+    if (horizontal) {
+      // Stretch base column at (oPx, start..start+len) across full width.
+      sc.drawImage(base, oPx, start, 1, len, 0, 0, W, len);
+    } else {
+      // Stretch base row at (start..start+len, oPx) down the full height.
+      sc.drawImage(base, start, oPx, len, 1, 0, 0, len, along);
+    }
+
+    // Valley mask: alpha 0 at the origin, ramping to `reach` over `blend`.
+    const transPx = Math.max(1, s.blend * along * 0.5);
+    const stops = [];
+    const push = (p, a) => stops.push({ p: Math.max(0, Math.min(1, p)), a });
+    push(0, s.reach);
+    push((oPx - transPx) / along, s.reach);
+    push(oPx / along, 0);
+    push((oPx + transPx) / along, s.reach);
+    push(1, s.reach);
+    stops.sort((a, b) => a.p - b.p);
+
+    const grad = horizontal
+      ? sc.createLinearGradient(0, 0, sw, 0)
+      : sc.createLinearGradient(0, 0, 0, sh);
+    let last = -1;
+    for (const st of stops) {
+      let p = st.p;
+      if (p <= last) p = last + 1e-4;        // keep stops strictly ascending
+      if (p > 1) p = 1;
+      last = p;
+      grad.addColorStop(p, `rgba(255,255,255,${st.a})`);
+    }
+    sc.globalCompositeOperation = 'destination-in';
+    sc.fillStyle = grad;
+    sc.fillRect(0, 0, sw, sh);
+    sc.globalCompositeOperation = 'source-over';
+
+    if (horizontal) x.drawImage(strip, 0, start);
+    else            x.drawImage(strip, start, 0);
+  }
+
+  stageInfo.textContent =
+    `${active.length} src · ${horizontal ? 'horizontal' : 'vertical'} · ${bands} band${bands > 1 ? 's' : ''}`;
+  seedDisplay.textContent = `seed ${state.seed}`;
+}
+
 // Render a single nest frame whose container is a glyph silhouette
 // (instead of a rectangle). Uses composite operations on an offscreen
 // canvas: outer glyph alpha → fills with photo → cuts inner glyph
@@ -3170,132 +3166,6 @@ function compositeSources(W, H, active, blur = 0) {
   return off;
 }
 
-// ── Dot render — sample composite at a grid, draw colored circles ──
-function dotRender(target, active) {
-  const c = target;
-  const x = c.getContext('2d');
-  const W = c.width, H = c.height;
-  const p = state.params;
-  const N    = DOT.resolution[p.resolution - 1];
-  const pack = DOT.spacing[p.spacing - 1];        // packing factor (>1 = overlap)
-  const sz   = DOT.dotSize[p.dotSize - 1];        // dot diameter as fraction of cell
-  const grain= DOT.grain[p.grain - 1];            // jitter
-  const ovr  = DOT.imageOpacity[p.imageOpacity - 1]; // underlay opacity
-  const blr  = DOT.imageBlur[p.imageBlur - 1] * (W / 1000); // scale blur to canvas
-  const rng  = mulberry32(state.seed);
-
-  const comp = compositeSources(W, H, active, blr);
-  const imgData = comp.getContext('2d').getImageData(0, 0, W, H).data;
-
-  // Background
-  if (p.bg === 'transparent') x.clearRect(0, 0, W, H);
-  else { x.fillStyle = p.bg; x.fillRect(0, 0, W, H); }
-
-  // Optional source underlay
-  if (ovr > 0) {
-    x.save();
-    x.globalAlpha = ovr;
-    x.drawImage(comp, 0, 0);
-    x.restore();
-  }
-
-  // Grid of dots — shape / layout / size-by-luminance / color mode aware.
-  const step  = W / N;
-  const maxR  = (step * sz * pack) / 2;
-  const shape = p.dotShape || 'circle';
-  const grid  = p.dotGrid || 'square';
-  const mode  = p.dotSizeMode || 'uniform';
-  const cmode = p.dotColor || 'rgb';
-  const outline = p.dotOutline || 0;
-  const duoLight = hexToRgb(p.duoLight || '#FFD400');
-  const duoDark  = hexToRgb(p.duoDark  || '#1c39bb');
-
-  for (let yi = 0; yi < N; yi++) {
-    // Hex / brick offset shifts every other row by half a step.
-    const rowOffset = (grid !== 'square' && yi % 2) ? step / 2 : 0;
-    for (let xi = 0; xi < N; xi++) {
-      const cx = xi * step + step / 2 + rowOffset + (rng() - 0.5) * grain * step;
-      // Hex compacts row spacing by sqrt(3)/2; brick keeps full step.
-      const rowStep = grid === 'hex' ? step * 0.866 : step;
-      const cy = yi * rowStep + step / 2 + (rng() - 0.5) * grain * step;
-      const sxPx = Math.max(0, Math.min(W - 1, Math.floor(cx)));
-      const syPx = Math.max(0, Math.min(H - 1, Math.floor(cy)));
-      const i = (syPx * W + sxPx) * 4;
-      const r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
-      const a = imgData[i + 3] / 255;
-      // Luminance 0..1 (Rec. 709).
-      const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-      // Halftone: dark areas get big dots, light areas tiny (classic
-      // newspaper print). Inverse: opposite. Uniform: full size always.
-      let sizeF = 1;
-      if (mode === 'halftone') sizeF = Math.max(0.05, 1 - lum);
-      else if (mode === 'inverse') sizeF = Math.max(0.05, lum);
-      const radius = maxR * sizeF;
-      // Color: mono uses luminance against bg; duotone interpolates
-      // light↔dark across luminance; rgb uses the raw sample.
-      let fill;
-      if (cmode === 'mono') {
-        const v = Math.round(lum * 255);
-        fill = `rgba(${v},${v},${v},${a})`;
-      } else if (cmode === 'duotone') {
-        const t = lum;
-        const dr = Math.round(duoDark.r + (duoLight.r - duoDark.r) * t);
-        const dg = Math.round(duoDark.g + (duoLight.g - duoDark.g) * t);
-        const db = Math.round(duoDark.b + (duoLight.b - duoDark.b) * t);
-        fill = `rgba(${dr},${dg},${db},${a})`;
-      } else {
-        fill = `rgba(${r},${g},${b},${a})`;
-      }
-      x.fillStyle = fill;
-      drawDotShape(x, cx, cy, radius, shape);
-      if (outline > 0 && radius > 1) {
-        x.save();
-        x.strokeStyle = 'rgba(0,0,0,0.55)';
-        x.lineWidth = outline;
-        strokeDotShape(x, cx, cy, radius, shape);
-        x.restore();
-      }
-    }
-  }
-
-  stageInfo.textContent = `${active.length} src · ${N}² ${shape} · ${grid} · ${mode}`;
-  seedDisplay.textContent = `seed ${state.seed}`;
-}
-
-// ── Build SVG (dot mode) — same algorithm, but emit <circle> ──
-function buildSVG(size, active) {
-  const p = state.params;
-  const N    = DOT.resolution[p.resolution - 1];
-  const pack = DOT.spacing[p.spacing - 1];
-  const sz   = DOT.dotSize[p.dotSize - 1];
-  const grain= DOT.grain[p.grain - 1];
-  const ovr  = DOT.imageOpacity[p.imageOpacity - 1];
-  const blr  = DOT.imageBlur[p.imageBlur - 1] * (size / 1000);
-  const rng  = mulberry32(state.seed);
-  const comp = compositeSources(size, size, active, blr);
-  const imgData = comp.getContext('2d').getImageData(0, 0, size, size).data;
-
-  const step = size / N;
-  const radius = (step * sz * pack) / 2;
-  const bg = p.bg === 'transparent' ? '' : `<rect width="${size}" height="${size}" fill="${p.bg}"/>`;
-  let underlay = '';
-  if (ovr > 0) underlay = `<image href="${comp.toDataURL()}" width="${size}" height="${size}" opacity="${ovr.toFixed(2)}"/>`;
-  let circles = '';
-  for (let yi = 0; yi < N; yi++) {
-    for (let xi = 0; xi < N; xi++) {
-      const cx = xi * step + step / 2 + (rng() - 0.5) * grain * step;
-      const cy = yi * step + step / 2 + (rng() - 0.5) * grain * step;
-      const sx = Math.max(0, Math.min(size - 1, Math.floor(cx)));
-      const sy = Math.max(0, Math.min(size - 1, Math.floor(cy)));
-      const i = (sy * size + sx) * 4;
-      const r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
-      circles += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${radius.toFixed(2)}" fill="rgb(${r},${g},${b})"/>`;
-    }
-  }
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${bg}${underlay}${circles}</svg>`;
-}
-
 // SVG export of the EFFECT LAYER — vector circles/glyphs that sample
 // colors from the base composition rendered at export size. Transparent
 // background so the SVG can be dropped onto the PNG (or any photo) as a
@@ -3409,6 +3279,7 @@ function setVal(v, txt) {
 }
 function wireSlider(rangeId, valueId, key, fmt) {
   const r = $(rangeId), v = $(valueId);
+  if (!r) return;
   r.addEventListener('input', () => {
     state.params[key] = parseFloat(r.value);
     setVal(v, fmt(state.params[key]));
@@ -3423,12 +3294,6 @@ wireSlider('r-offset',    'v-offset',    'offset',    v => v.toFixed(2));
 wireSlider('r-rot',       'v-rot',       'rot',       v => v.toFixed(1) + '°');
 wireSlider('r-scale',     'v-scale',     'scale',     v => v.toFixed(2));
 // Dot dials (1..8 integer)
-wireSlider('r-resolution',   'v-resolution',   'resolution',   v => String(v));
-wireSlider('r-spacing',      'v-spacing',      'spacing',      v => String(v));
-wireSlider('r-dotSize',      'v-dotSize',      'dotSize',      v => String(v));
-wireSlider('r-grain',        'v-grain',        'grain',        v => String(v));
-wireSlider('r-imageOpacity', 'v-imageOpacity', 'imageOpacity', v => String(v));
-wireSlider('r-imageBlur',    'v-imageBlur',    'imageBlur',    v => String(v));
 
 // Mode picker
 function applyMode() {
@@ -3721,6 +3586,33 @@ function wireWindow() {
   });
 }
 wireWindow();
+
+// ── Smudge mode wiring ────────────────────────────────────────
+function wireSmudge() {
+  const bind = (id, valId, key, fmt) => {
+    const r = $(id), v = $(valId); if (!r) return;
+    r.addEventListener('input', () => {
+      state.smudge[key] = parseFloat(r.value);
+      setVal(v, fmt(state.smudge[key]));
+      render();
+    });
+  };
+  bind('r-smOrigin', 'v-smOrigin', 'origin', v => v.toFixed(2));
+  bind('r-smReach',  'v-smReach',  'reach',  v => v.toFixed(2));
+  bind('r-smBlend',  'v-smBlend',  'blend',  v => v.toFixed(2));
+  bind('r-smBands',  'v-smBands',  'bands',  v => String(Math.round(v)));
+  bind('r-smJitter', 'v-smJitter', 'jitter', v => v.toFixed(2));
+  bind('r-smGap',    'v-smGap',    'gap',    v => String(Math.round(v)));
+  document.querySelectorAll('#seg-smAxis button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#seg-smAxis button').forEach(x => x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      state.smudge.axis = b.dataset.sm;
+      render();
+    });
+  });
+}
+wireSmudge();
 
 // ── Echo mode wiring ──────────────────────────────────────────
 function wireEcho() {
@@ -4290,10 +4182,9 @@ document.querySelectorAll('#seg-pick button').forEach(btn => {
   });
 });
 
-// SVG export — exports the EFFECT-LAYER fragments (transparent bg)
-// when a layer is enabled, otherwise the Dot mode renders as SVG.
-// Slice/Strata/Scatter/Window/Echo/Grid bases are photographic and
-// stay raster (use PNG); the SVG is the vector overlay.
+// SVG export — exports the EFFECT-LAYER fragments (transparent bg) as
+// vector circles/glyphs. The photographic modes (Slice, Smudge, Scatter,
+// Window, Echo, Grid, …) stay raster — use PNG for those.
 $('btn-export-svg').addEventListener('click', () => {
   const active = state.images.filter(s => s.enabled);
   if (!active.length) { alert('Add some photos first.'); return; }
@@ -4302,11 +4193,8 @@ $('btn-export-svg').addEventListener('click', () => {
   if (state.layer.enabled) {
     svg  = buildLayerSVG(size, active);
     name = `opal-imagix-fragments-${state.layer.effect}-${state.seed}-${size}.svg`;
-  } else if (state.mode === 'dot') {
-    svg  = buildSVG(size, active);
-    name = `opal-imagix-dot-${state.seed}-${size}.svg`;
   } else {
-    alert('SVG export needs Dot mode or an enabled Effect Layer.\nUse PNG for raster modes (Slice, Strata, etc.).');
+    alert('SVG export needs an enabled Effect Layer.\nUse PNG for the raster modes (Slice, Smudge, etc.).');
     return;
   }
   const blob = new Blob([svg], { type: 'image/svg+xml' });
@@ -4349,7 +4237,8 @@ try {
   const saved = JSON.parse(localStorage.getItem(LS) || 'null');
   if (saved && saved.params) {
     Object.assign(state.params, saved.params);
-    if (saved.mode) state.mode = saved.mode;
+    // 'dot' and 'strata' were retired — fall back to slice for old sessions.
+    if (saved.mode && saved.mode !== 'dot' && saved.mode !== 'strata') state.mode = saved.mode;
     // Push values back into UI
     const set = (id, vId, val, fmt) => { const r = $(id), v = $(vId); if (r) r.value = val; if (v && fmt) v.value = fmt(val); };
     set('r-count',     'v-count',     state.params.count,     v => String(v));
