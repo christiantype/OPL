@@ -2,10 +2,10 @@
   @import url('https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap');
   @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
   @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
-  .m1759 .m1759__block-title { font-family: var(--m-sans) !important; font-weight: 500 !important; font-size: 11px !important; letter-spacing: 0.14em !important; text-transform: uppercase; color: var(--m-mid) !important; }
-  /* NOTE: every mockup defines `.m1759 {...}` globally, so the dark chat theme
-     must be scoped to `.m1759-chat` to outrank the other (light) mockups. */
-  .m1759.m1759-chat {
+  .lumen .lumen__block-title { font-family: var(--m-sans) !important; font-weight: 500 !important; font-size: 11px !important; letter-spacing: 0.14em !important; text-transform: uppercase; color: var(--m-mid) !important; }
+  /* NOTE: every mockup defines `.lumen {...}` globally, so the dark chat theme
+     must be scoped to `.lumen-chat` to outrank the other (light) mockups. */
+  .lumen.lumen-chat {
     /* Light — the conversation floats on a green→white radial glow. */
     --m-bg: transparent;
     --m-ink: #0a2014; --m-body: rgba(10,32,20,0.9); --m-mid: rgba(10,32,20,0.55);
@@ -16,42 +16,42 @@
     border: none; overflow: hidden; height: 680px;
     display: flex; flex-direction: column;
   }
-  .m1759 *, .m1759 *::before, .m1759 *::after { box-sizing: border-box; font-family: inherit; }
-  .m1759 button { font: inherit; background: none; border: none; padding: 0; color: inherit; cursor: pointer; }
-  .m1759 input { font: inherit; background: none; border: none; outline: none; color: inherit; min-width: 0; }
+  .lumen *, .lumen *::before, .lumen *::after { box-sizing: border-box; font-family: inherit; }
+  .lumen button { font: inherit; background: none; border: none; padding: 0; color: inherit; cursor: pointer; }
+  .lumen input { font: inherit; background: none; border: none; outline: none; color: inherit; min-width: 0; }
 
   /* FOCUS REEL — the current message sits centered; the prior one recedes
      above it. Flexbox keeps it centered (no measurement) so it's robust. */
-  .m1759__stage { position: relative; flex: 1; overflow: hidden;
+  .lumen__stage { position: relative; flex: 1; overflow: hidden;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 0 56px;
     /* gentle fade at the top/bottom edges so nothing ends abruptly */
     -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
     mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
   }
-  .m1759__reel { display: flex; flex-direction: column; align-items: center; width: 100%; }
-  .m1759__fmsg { max-width: 620px; text-align: center;
+  .lumen__reel { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .lumen__fmsg { max-width: 620px; text-align: center;
     transition: opacity 0.5s ease, transform 0.5s ease;
   }
-  .m1759__fmsg.is-hidden, .m1759__fmsg.is-gone { display: none; }
+  .lumen__fmsg.is-hidden, .lumen__fmsg.is-gone { display: none; }
   /* the in-flow current message is the only flex child, so it sits dead-center */
-  .m1759__fmsg.is-current { opacity: 1; position: relative; }
+  .lumen__fmsg.is-current { opacity: 1; position: relative; }
   /* the prior message becomes a single faded line floating above center —
      no reflow, no awkward wrapping as it shrinks */
   /* The previous message simply rises and fades out of the way — it never
      lingers in the background, so nothing reflows or truncates. */
-  .m1759__fmsg.is-past {
+  .lumen__fmsg.is-past {
     position: absolute; left: 0; right: 0; bottom: 50%;
     margin: 0 auto; pointer-events: none;
     opacity: 0; transform: translateY(-26px) scale(0.92); transform-origin: center bottom;
   }
 
   /* Speaker icon badge, centered above each message. */
-  .m1759__fmsg::before {
+  .lumen__fmsg::before {
     content: ''; display: block; width: 32px; height: 32px; margin: 0 auto 16px;
     border-radius: 50%; background-repeat: no-repeat; background-position: center; background-size: 17px 17px;
   }
-  .m1759__fmsg--ai::before {
+  .lumen__fmsg--ai::before {
     content: 'A';
     background-color: var(--m-cobalt);
     box-shadow: 0 4px 16px -4px rgba(52,211,154,0.6);
@@ -59,80 +59,80 @@
     font-family: var(--m-sans); font-weight: 800; font-size: 15px; line-height: 1;
     color: #ffffff; background-image: none;
   }
-  .m1759__fmsg--user::before {
+  .lumen__fmsg--user::before {
     background-color: rgba(10,40,25,0.10);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='3.6' fill='%230a2014'/%3E%3Cpath d='M5 20c0-3.9 3.1-6.4 7-6.4s7 2.5 7 6.4z' fill='%230a2014'/%3E%3C/svg%3E");
   }
-  .m1759__fmsg--user { max-width: none; }
-  .m1759__fmsg--user .m1759__bubble {
+  .lumen__fmsg--user { max-width: none; }
+  .lumen__fmsg--user .lumen__bubble {
     display: inline-block; background: rgba(10,60,35,0.08); color: var(--m-ink);
     padding: 11px 20px; border-radius: 20px; font-size: 18px; line-height: 1.5;
     white-space: nowrap;   /* every question stays on one line */
   }
-  .m1759__fmsg--ai { color: var(--m-body); font-size: 18px; line-height: 1.5; }
-  .m1759__fmsg.is-current.m1759__fmsg--ai { font-size: 24px; line-height: 1.4; }
-  .m1759__fmsg.is-current.m1759__fmsg--user .m1759__bubble { font-size: 20px; }
-  .m1759__fmsg--ai b { color: var(--m-ink); font-weight: 600; }
+  .lumen__fmsg--ai { color: var(--m-body); font-size: 18px; line-height: 1.5; }
+  .lumen__fmsg.is-current.lumen__fmsg--ai { font-size: 24px; line-height: 1.4; }
+  .lumen__fmsg.is-current.lumen__fmsg--user .lumen__bubble { font-size: 20px; }
+  .lumen__fmsg--ai b { color: var(--m-ink); font-weight: 600; }
   /* blinking caret while a question is being typed */
-  .m1759__fmsg.is-typing .m1759__bubble::after {
+  .lumen__fmsg.is-typing .lumen__bubble::after {
     content: ''; display: inline-block; width: 2px; height: 1.05em;
     background: var(--m-ink); margin-left: 3px; vertical-align: -2px;
-    animation: m1759-caret 0.85s steps(1) infinite;
+    animation: lumen-caret 0.85s steps(1) infinite;
   }
-  @keyframes m1759-caret { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+  @keyframes lumen-caret { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
 
   /* Rich blocks — legible on the light glow, centered */
-  .m1759__block-title { font-size: 16px; color: var(--m-mid); margin-bottom: 10px; }
-  .m1759__numbers { display: inline-grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--m-hair); border-radius: 10px; overflow: hidden; text-align: left; background: rgba(255,255,255,0.45); }
-  .m1759__numcell { padding: 13px 18px; border-right: 1px solid var(--m-hair); }
-  .m1759__numcell:last-child { border-right: none; }
-  .m1759__numcell--accent { background: rgba(12,139,80,0.10); }
-  .m1759__numcell-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--m-mid); margin-bottom: 7px; }
-  .m1759__numcell-value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; color: var(--m-ink); }
-  .m1759__numcell-value--cobalt { color: var(--m-cobalt); }
-  .m1759__strategies { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; text-align: left; }
-  .m1759__strat { padding: 13px 16px; background: rgba(10,40,25,0.05); border-radius: 8px; }
-  .m1759__strat-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--m-mid); margin-bottom: 4px; }
-  .m1759__strat-body { font-size: 13px; line-height: 1.5; color: var(--m-body); }
-  .m1759__chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
-  .m1759__chip { font-size: 12px; padding: 7px 14px; border: 1px solid var(--m-hair); border-radius: 999px; color: var(--m-ink); }
+  .lumen__block-title { font-size: 16px; color: var(--m-mid); margin-bottom: 10px; }
+  .lumen__numbers { display: inline-grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--m-hair); border-radius: 10px; overflow: hidden; text-align: left; background: rgba(255,255,255,0.45); }
+  .lumen__numcell { padding: 13px 18px; border-right: 1px solid var(--m-hair); }
+  .lumen__numcell:last-child { border-right: none; }
+  .lumen__numcell--accent { background: rgba(12,139,80,0.10); }
+  .lumen__numcell-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--m-mid); margin-bottom: 7px; }
+  .lumen__numcell-value { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; color: var(--m-ink); }
+  .lumen__numcell-value--cobalt { color: var(--m-cobalt); }
+  .lumen__strategies { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; text-align: left; }
+  .lumen__strat { padding: 13px 16px; background: rgba(10,40,25,0.05); border-radius: 8px; }
+  .lumen__strat-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--m-mid); margin-bottom: 4px; }
+  .lumen__strat-body { font-size: 13px; line-height: 1.5; color: var(--m-body); }
+  .lumen__chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
+  .lumen__chip { font-size: 12px; padding: 7px 14px; border: 1px solid var(--m-hair); border-radius: 999px; color: var(--m-ink); }
 
-  .m1759__typing { display: none; gap: 4px; padding: 6px 0; }
-  .m1759__typing.is-on { display: inline-flex; }
-  .m1759__typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--m-mid); animation: m1759-bounce 1.2s infinite ease-in-out; }
-  .m1759__typing span:nth-child(2) { animation-delay: 0.15s; }
-  .m1759__typing span:nth-child(3) { animation-delay: 0.30s; }
-  @keyframes m1759-bounce { 0%, 80%, 100% { transform: scale(0.5); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
+  .lumen__typing { display: none; gap: 4px; padding: 6px 0; }
+  .lumen__typing.is-on { display: inline-flex; }
+  .lumen__typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--m-mid); animation: lumen-bounce 1.2s infinite ease-in-out; }
+  .lumen__typing span:nth-child(2) { animation-delay: 0.15s; }
+  .lumen__typing span:nth-child(3) { animation-delay: 0.30s; }
+  @keyframes lumen-bounce { 0%, 80%, 100% { transform: scale(0.5); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
 
-  .m1759-chat .m1759__chat { padding: 14px 56px 26px; }
-  .m1759-chat .m1759__chat-inner { width: 100%; max-width: 620px; margin: 0 auto; }
-  .m1759-chat .m1759__chat-form { display: flex; align-items: center; gap: 10px; padding: 13px 18px; border: 1px solid var(--m-hair); border-radius: 999px; background: rgba(255,255,255,0.04); }
-  .m1759-chat .m1759__chat-prompt { font-size: 14px; color: var(--m-cobalt); font-weight: 700; }
-  .m1759-chat .m1759__chat-input { flex: 1; font-size: 13px; color: #fff; }
-  .m1759-chat .m1759__chat-input::placeholder { color: var(--m-mid); }
-  .m1759-chat .m1759__chat-send { font-size: 14px; color: #fff; }
+  .lumen-chat .lumen__chat { padding: 14px 56px 26px; }
+  .lumen-chat .lumen__chat-inner { width: 100%; max-width: 620px; margin: 0 auto; }
+  .lumen-chat .lumen__chat-form { display: flex; align-items: center; gap: 10px; padding: 13px 18px; border: 1px solid var(--m-hair); border-radius: 999px; background: rgba(255,255,255,0.04); }
+  .lumen-chat .lumen__chat-prompt { font-size: 14px; color: var(--m-cobalt); font-weight: 700; }
+  .lumen-chat .lumen__chat-input { flex: 1; font-size: 13px; color: #fff; }
+  .lumen-chat .lumen__chat-input::placeholder { color: var(--m-mid); }
+  .lumen-chat .lumen__chat-send { font-size: 14px; color: #fff; }
 </style>
 
-<div class="m1759 m1759-chat">
-  <div class="m1759__stage" data-stage>
-    <div class="m1759__reel" data-reel>
-      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">How do we pass $100M to his kids without losing half to tax?</span></div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">A Gen-Skip Split-Dollar plan, funded into an ILIT.</div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">The difference it makes:</div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">
-        <div class="m1759__block-title">After-tax legacy</div>
-        <div class="m1759__numbers">
-          <div class="m1759__numcell"><div class="m1759__numcell-label">No planning</div><div class="m1759__numcell-value">$118M</div></div>
-          <div class="m1759__numcell"><div class="m1759__numcell-label">With planning</div><div class="m1759__numcell-value">$179M</div></div>
-          <div class="m1759__numcell m1759__numcell--accent"><div class="m1759__numcell-label">Difference</div><div class="m1759__numcell-value m1759__numcell-value--cobalt">+$61M</div></div>
+<div class="lumen lumen-chat">
+  <div class="lumen__stage" data-stage>
+    <div class="lumen__reel" data-reel>
+      <div class="lumen__fmsg lumen__fmsg--user is-hidden"><span class="lumen__bubble">How do we pass $100M to his kids without losing half to tax?</span></div>
+      <div class="lumen__fmsg lumen__fmsg--ai is-hidden">A Gen-Skip Split-Dollar plan, funded into an ILIT.</div>
+      <div class="lumen__fmsg lumen__fmsg--ai is-hidden">The difference it makes:</div>
+      <div class="lumen__fmsg lumen__fmsg--ai is-hidden">
+        <div class="lumen__block-title">After-tax legacy</div>
+        <div class="lumen__numbers">
+          <div class="lumen__numcell"><div class="lumen__numcell-label">No planning</div><div class="lumen__numcell-value">$118M</div></div>
+          <div class="lumen__numcell"><div class="lumen__numcell-label">With planning</div><div class="lumen__numcell-value">$179M</div></div>
+          <div class="lumen__numcell lumen__numcell--accent"><div class="lumen__numcell-label">Difference</div><div class="lumen__numcell-value lumen__numcell-value--cobalt">+$61M</div></div>
         </div>
       </div>
-      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">Does economic-benefit hold after the Levine ruling?</span></div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Yes — as economic benefit, the premiums aren't treated as gifts.</div>
-      <div class="m1759__fmsg m1759__fmsg--user is-hidden"><span class="m1759__bubble">And if he's uninsurable?</span></div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Insure a younger life; the payout still routes through the trust.</div>
-      <div class="m1759__fmsg m1759__fmsg--ai is-hidden">Want the full client-ready plan?</div>
-      <div class="m1759__typing" data-typing><span></span><span></span><span></span></div>
+      <div class="lumen__fmsg lumen__fmsg--user is-hidden"><span class="lumen__bubble">Does economic-benefit hold after the Levine ruling?</span></div>
+      <div class="lumen__fmsg lumen__fmsg--ai is-hidden">Yes — as economic benefit, the premiums aren't treated as gifts.</div>
+      <div class="lumen__fmsg lumen__fmsg--user is-hidden"><span class="lumen__bubble">And if he's uninsurable?</span></div>
+      <div class="lumen__fmsg lumen__fmsg--ai is-hidden">Insure a younger life; the payout still routes through the trust.</div>
+      <div class="lumen__fmsg lumen__fmsg--ai is-hidden">Want the full client-ready plan?</div>
+      <div class="lumen__typing" data-typing><span></span><span></span><span></span></div>
     </div>
   </div>
 
@@ -140,17 +140,17 @@
 
 <script>
   (function () {
-    var root = document.querySelector('.m1759-chat');
+    var root = document.querySelector('.lumen-chat');
     if (!root || root.dataset.init) return; root.dataset.init = '1';
     var typing = root.querySelector('[data-typing]');
-    var msgs = Array.from(root.querySelectorAll('.m1759__fmsg'));
+    var msgs = Array.from(root.querySelectorAll('.lumen__fmsg'));
     var beats = [2600, 2400, 2200, 5000, 3000, 2800, 2600, 2800, 3600];
     var TYPE = 1100, PAUSE = 5500;
     var i = 0, timers = [], typeIv = null;
 
     // Cache each user question's text so we can re-type it on every loop.
     msgs.forEach(function (m) {
-      var b = m.querySelector('.m1759__bubble');
+      var b = m.querySelector('.lumen__bubble');
       if (b) b.setAttribute('data-text', b.textContent);
     });
 
@@ -159,7 +159,7 @@
       clearTypeIv();
       msgs.forEach(function (m) {
         m.classList.add('is-hidden'); m.classList.remove('is-gone', 'is-past', 'is-current', 'is-typing');
-        var b = m.querySelector('.m1759__bubble');
+        var b = m.querySelector('.lumen__bubble');
         if (b) b.textContent = b.getAttribute('data-text') || b.textContent;
       });
       typing.classList.remove('is-on'); i = 0;
@@ -176,7 +176,7 @@
     function reveal() {
       if (i >= msgs.length) { timers.push(setTimeout(reset, PAUSE)); return; }
       var m = msgs[i];
-      var isAi = m.classList.contains('m1759__fmsg--ai');
+      var isAi = m.classList.contains('lumen__fmsg--ai');
       if (isAi) {
         demote();                 // clear the centre so the typing dots sit centered
         typing.classList.add('is-on');
@@ -190,7 +190,7 @@
         // User question — type it out, character by character, with a caret.
         demote();
         m.classList.remove('is-hidden', 'is-past', 'is-gone'); m.classList.add('is-current', 'is-typing');
-        var bubble = m.querySelector('.m1759__bubble');
+        var bubble = m.querySelector('.lumen__bubble');
         var full = bubble ? (bubble.getAttribute('data-text') || bubble.textContent) : '';
         if (bubble) bubble.textContent = '';
         var n = 0;

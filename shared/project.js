@@ -836,14 +836,14 @@
   initScenes();
 
   // Move .annot-anchor elements from the .annot-stage into the mockup's
-  // .m1759 scroll container, converting top% (which was relative to the
+  // .lumen scroll container, converting top% (which was relative to the
   // visible stage) to absolute pixels of the mockup's full scrollHeight.
   // Runs on mobile too — the mockup renders at desktop dimensions (just
   // scaled down to fit), so the same coordinates apply.
   function rehoistAnnotationsInto(mockupEl) {
     const stage = mockupEl.closest('.annot-stage');
     if (!stage) return;
-    const m = mockupEl.querySelector('.m1759');
+    const m = mockupEl.querySelector('.lumen');
     if (!m) return;
     // Wait two frames so the mockup's own layout (custom @font-face,
     // sticky chat, etc.) settles and scrollHeight is final.

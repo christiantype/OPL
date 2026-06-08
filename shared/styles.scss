@@ -1301,7 +1301,7 @@ body.about {
 // ============================================================
 //   Annotations — numbered hotspots on a project image, with a
 //   click-to-reveal card on desktop and a stacked list on mobile.
-//   Used to narrate UI decisions (see e.g. /projects/1759-ai.html).
+//   Used to narrate UI decisions (see e.g. /projects/lumen.html).
 // ============================================================
 
 .annot-wrap {
@@ -1488,14 +1488,14 @@ body.about {
 // They read as design artifacts, not live software. Annotation markers
 // re-enable pointer-events so the user can still tap to read.
 .annot-stage .project-mockup,
-.annot-stage .m1759 {
+.annot-stage .lumen {
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
 }
-.annot-stage .m1759 *,
-.annot-stage .m1759 *::before,
-.annot-stage .m1759 *::after { cursor: default !important; }
+.annot-stage .lumen *,
+.annot-stage .lumen *::before,
+.annot-stage .lumen *::after { cursor: default !important; }
 .annot-stage .annot-anchor,
 .annot-stage .annot-marker { pointer-events: auto; }
 
@@ -1666,10 +1666,10 @@ body.annotate-mode {
     flex-shrink: 0;
   }
 
-  // The mockup inside has its own border (.m1759 root) — kill it so the
+  // The mockup inside has its own border (.lumen root) — kill it so the
   // window provides the only frame. !important because the inline CSS in
   // each mockup sets border: 1px solid var(--m-hair).
-  &__body .m1759 { border: 0 !important; border-radius: 0 !important; }
+  &__body .lumen { border: 0 !important; border-radius: 0 !important; }
 
   @media (max-width: 48em) {
     &__bar { padding: 9px 12px; gap: 10px; }
@@ -1746,10 +1746,10 @@ body.annotate-mode {
 
 // Keep each screen's chat bar flush to the bottom of the frame even when the
 // content is shorter than it (sticky alone only pins on overflow).
-.proj-screen__mockup .m1759 { display: flex; flex-direction: column; }
-.proj-screen__mockup .m1759 > .m1759__chat,
-.proj-screen__mockup .m1759 > .m1759__chat-footer { margin-top: auto; }
-.proj-screen__mockup .m1759-chat .m1759__chat-shell {
+.proj-screen__mockup .lumen { display: flex; flex-direction: column; }
+.proj-screen__mockup .lumen > .lumen__chat,
+.proj-screen__mockup .lumen > .lumen__chat-footer { margin-top: auto; }
+.proj-screen__mockup .lumen-chat .lumen__chat-shell {
   flex: 1 1 auto; height: auto; min-height: 0;
 }
 
@@ -1893,7 +1893,16 @@ body.annotate-mode {
         #15a05c 0%, #6fd3a0 24%, #d9f2e4 54%, #ffffff 84%);
   }
   &--vh &__window { flex: 1; display: flex; align-items: center; }
-  &--vh &__frame { height: min(80vh, 780px); aspect-ratio: auto; }
+  &--vh &__frame {
+    height: min(80vh, 780px); aspect-ratio: auto;
+    // Rounded panel like the other UI — a soft frosted card so the green
+    // glow still reads around and faintly through it.
+    border-radius: 22px; overflow: hidden;
+    border: 1px solid rgba(10, 32, 20, 0.10);
+    background: rgba(255, 255, 255, 0.30);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+    box-shadow: 0 18px 60px rgba(10, 40, 25, 0.12);
+  }
   &--vh &__caption { display: none; }   // the chat opener stands on its own
 
   // ── Caption below the UI (OPAL annotation voice) ──
