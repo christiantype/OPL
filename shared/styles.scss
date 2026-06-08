@@ -1768,6 +1768,22 @@ body.annotate-mode {
 .proj-screen__mockup .lumen-chat .lumen__chat-shell {
   flex: 1 1 auto; height: auto; min-height: 0;
 }
+// Prospect Finder is a tall scrolling document with a pinned chat footer. It's
+// a flex column: the body scrolls inside `.lumen__strat-scroll` while the footer
+// stays put. Re-assert the column here so the global `.lumen` leak (admin's
+// overflow:hidden + dashboard's display:flex) can't collapse it, and force the
+// inner wrapper to own the scroll (pinning the footer reliably, incl. iOS).
+.proj-screen__mockup .lumen-strategy {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+.proj-screen__mockup .lumen-strategy .lumen__strat-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
 
 .proj-screen {
   position: relative;
@@ -2177,13 +2193,13 @@ body.annotate-mode {
 }
 .pf-trend__row:last-child { border-bottom: 0; }
 .pf-trend__n {
-  font-size: 13px; font-weight: 600; color: #0c8b50;
+  font-size: 13px; font-weight: 300; color: #0c8b50;
   width: 18px; flex-shrink: 0; font-variant-numeric: tabular-nums;
 }
 .pf-trend__name { flex: 1; font-size: 13px; color: #1a1a1a; }
 .pf-trend__m {
   display: inline-flex; align-items: center; gap: 5px;
-  font-size: 12px; font-weight: 600; color: #595959; font-variant-numeric: tabular-nums;
+  font-size: 12px; font-weight: 300; color: #595959; font-variant-numeric: tabular-nums;
 }
 .pf-trend__m svg { width: 12px; height: 12px; opacity: 0.5; }
 
@@ -2285,7 +2301,7 @@ body.project .proj-card__vig p { color: #2e2e2e; }
 // their popover inward (--left = right edge, --start = left edge) instead of
 // centering off-screen. Each variant's hidden + open transforms are paired so
 // the eased entrance lands cleanly whatever the anchor.
-.pf-au__pop { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(8px) scale(.97); transform-origin: bottom center; width: 180px; opacity: 0; pointer-events: none; transition: opacity .42s ease, transform .42s cubic-bezier(.22,.61,.36,1); background: #fff; border: 1px solid #ececec; border-radius: 11px; box-shadow: 0 16px 40px -12px rgba(0,0,0,0.26); padding: 11px 12px; z-index: 6; display: flex; flex-direction: column; text-align: left; }
+.pf-au__pop { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(8px) scale(.97); transform-origin: bottom center; width: 150px; opacity: 0; pointer-events: none; transition: opacity .42s ease, transform .42s cubic-bezier(.22,.61,.36,1); background: #fff; border: 1px solid #ececec; border-radius: 10px; box-shadow: 0 14px 34px -12px rgba(0,0,0,0.26); padding: 9px 10px; z-index: 6; display: flex; flex-direction: column; text-align: left; }
 .pf-au__pop--left  { left: auto; right: -4px; transform: translateX(0) translateY(8px) scale(.97); transform-origin: bottom right; }
 .pf-au__pop--start { left: -4px; transform: translateX(0) translateY(8px) scale(.97); transform-origin: bottom left; }
 // Flip below the dot (for points high in the chart, where "above" would clip).
@@ -2296,10 +2312,10 @@ body.project .proj-card__vig p { color: #2e2e2e; }
 .pf-au__pt:hover .pf-au__pop, .pf-au__pt.is-open .pf-au__pop { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); pointer-events: auto; }
 .pf-au__pt:hover .pf-au__pop--left,  .pf-au__pt.is-open .pf-au__pop--left,
 .pf-au__pt:hover .pf-au__pop--start, .pf-au__pt.is-open .pf-au__pop--start { transform: translateX(0) translateY(0) scale(1); }
-.pf-au__pop-h { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #888; font-weight: 500; margin-bottom: 6px; }
-.pf-au__u { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #1a1a1a; padding: 2px 0; }
-.pf-au__av { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; flex-shrink: 0; }
-.pf-au__more { font-size: 10.5px; color: #0c8b50; font-weight: 500; margin-top: 4px; }
+.pf-au__pop-h { font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: #888; font-weight: 500; margin-bottom: 5px; }
+.pf-au__u { display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: #1a1a1a; padding: 1.5px 0; }
+.pf-au__av { width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.pf-au__more { font-size: 9.5px; color: #0c8b50; font-weight: 500; margin-top: 3px; }
 .pf-au__x { display: flex; justify-content: space-between; font-size: 9.5px; color: #999; margin-top: 7px; }
 
 /* Admin — content performance */
