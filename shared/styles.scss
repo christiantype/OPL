@@ -410,6 +410,18 @@ nav {
   transition: color 0.2s;
 }
 
+// ── Always-legible brand marks ──
+// The whole nav inverts against whatever scrolls behind it: white ⊕
+// `difference` reads black on light, white on dark, and contrasts on colour —
+// so the marks stay legible site-wide with no per-page colour swaps. The blend
+// must live on `nav` itself (not its children): nav's own z-index makes it a
+// stacking context, so a blend on a child would only mix within the empty nav.
+// Forced-white marks beat the body.project / body.about nav colour overrides;
+// transparent nav areas blend to nothing, so only the marks show through.
+nav { mix-blend-mode: difference; }
+.nav-logo-link,
+.nav-menu-btn { color: #fff !important; }
+
 
 // ============================================================
 //   11. PROJECT TEMPLATE
@@ -2080,7 +2092,8 @@ body.annotate-mode {
   }
   &__body {
     margin: 0.55em 0 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    // Site body font (matches the hero/case-study copy), not a system sans.
+    font-family: 'Sidepiece-HoneyPie', sans-serif;
     font-size: 13.5px; line-height: 1.55;
     color: rgba(255, 255, 255, 0.7);
   }
@@ -2267,10 +2280,22 @@ body.project .proj-card__vig p { color: #2e2e2e; }
 // The active day reads as a gently travelling highlight — the dot lifts and a
 // soft ring blooms around it as the popover eases in.
 .pf-au__pt.is-open { background: #0a6e3f; transform: translate(-50%, -50%) scale(1.4); box-shadow: 0 0 0 5px rgba(12,139,80,0.16), 0 0 0 1px rgba(12,139,80,0.4); }
+// The popover stays inside the card: it sits ABOVE low dots and flips BELOW
+// high ones (--below) so it never crops past the top edge; edge days anchor
+// their popover inward (--left = right edge, --start = left edge) instead of
+// centering off-screen. Each variant's hidden + open transforms are paired so
+// the eased entrance lands cleanly whatever the anchor.
 .pf-au__pop { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(8px) scale(.97); transform-origin: bottom center; width: 180px; opacity: 0; pointer-events: none; transition: opacity .42s ease, transform .42s cubic-bezier(.22,.61,.36,1); background: #fff; border: 1px solid #ececec; border-radius: 11px; box-shadow: 0 16px 40px -12px rgba(0,0,0,0.26); padding: 11px 12px; z-index: 6; display: flex; flex-direction: column; text-align: left; }
-.pf-au__pop--left { left: auto; right: -4px; transform: translateX(0) translateY(8px) scale(.97); transform-origin: bottom right; }
+.pf-au__pop--left  { left: auto; right: -4px; transform: translateX(0) translateY(8px) scale(.97); transform-origin: bottom right; }
+.pf-au__pop--start { left: -4px; transform: translateX(0) translateY(8px) scale(.97); transform-origin: bottom left; }
+// Flip below the dot (for points high in the chart, where "above" would clip).
+.pf-au__pop--below { bottom: auto; top: 22px; transform: translateX(-50%) translateY(-8px) scale(.97); transform-origin: top center; }
+.pf-au__pop--below.pf-au__pop--left  { transform: translateX(0) translateY(-8px) scale(.97); transform-origin: top right; }
+.pf-au__pop--below.pf-au__pop--start { transform: translateX(0) translateY(-8px) scale(.97); transform-origin: top left; }
+// Open state — by variant.
 .pf-au__pt:hover .pf-au__pop, .pf-au__pt.is-open .pf-au__pop { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); pointer-events: auto; }
-.pf-au__pt:hover .pf-au__pop--left, .pf-au__pt.is-open .pf-au__pop--left { transform: translateX(0) translateY(0) scale(1); }
+.pf-au__pt:hover .pf-au__pop--left,  .pf-au__pt.is-open .pf-au__pop--left,
+.pf-au__pt:hover .pf-au__pop--start, .pf-au__pt.is-open .pf-au__pop--start { transform: translateX(0) translateY(0) scale(1); }
 .pf-au__pop-h { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #888; font-weight: 500; margin-bottom: 6px; }
 .pf-au__u { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #1a1a1a; padding: 2px 0; }
 .pf-au__av { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; flex-shrink: 0; }
