@@ -426,10 +426,14 @@
           const body = s.body ? `<div class="proj-screen__note-body">${s.body}</div>` : '';
           const bare = s.bare ? ' proj-screen--bare' : '';
           const vh = s.vh ? ' proj-screen--vh' : '';
+          // Native: on phones this screen renders at the real viewport width
+          // (its own mobile layout) instead of a scaled-down desktop UI that
+          // scrolls sideways.
+          const native = s.native ? ' proj-screen--native' : '';
           const mh = s.h || 880;
           const cap = s.body ? `<div class="proj-screen__cap-body">${s.body}</div>` : '';
           return `
-            <section class="proj-screen${bare}${vh}" style="--mh:${mh}" data-mh="${mh}">
+            <section class="proj-screen${bare}${vh}${native}" style="--mh:${mh}" data-mh="${mh}">
               <figcaption class="proj-screen__caption">
                 <span class="proj-screen__cap-num">${num}</span>
                 <span class="proj-screen__cap-title">${s.title || ''}</span>
