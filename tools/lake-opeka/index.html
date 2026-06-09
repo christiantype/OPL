@@ -389,6 +389,23 @@
   }
   .row:last-child { margin-bottom: 0; }
   .row__label { font-size: 12px; color: var(--text); }
+  /* Per-slider info icon + its hover/tap tooltip. */
+  .info {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 13px; height: 13px; margin-left: 6px; border-radius: 50%;
+    border: 1px solid var(--text-dim); color: var(--text-dim);
+    font-family: var(--mono); font-size: 9px; font-style: normal; line-height: 1;
+    cursor: help; vertical-align: middle; user-select: none; flex: none;
+    transition: border-color 0.12s ease, color 0.12s ease;
+  }
+  .info:hover { border-color: var(--accent); color: var(--accent); }
+  .tip-pop {
+    position: fixed; z-index: 1200; max-width: 248px;
+    background: var(--text); color: #fff;
+    font-family: var(--sans); font-size: 11px; line-height: 1.45;
+    padding: 8px 11px; border-radius: 5px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35); pointer-events: none;
+  }
   /* Type-or-slide: the value display is an editable text input that
      looks like a label by default, becomes a field on hover/focus. */
   input.row__val {
@@ -4457,6 +4474,132 @@ Object.entries(tips).forEach(([id, txt]) => {
   const el = document.getElementById(id);
   if (el) el.title = txt;
 });
+
+// ── Per-slider info icons ─────────────────────────────────────
+// One plain-language explanation per slider, keyed by its range id. An
+// ⓘ icon is injected into each slider's label; hover (or tap) shows the
+// note in a fixed tooltip that can't be clipped by the scrolling panel.
+const EXPLAIN = {
+  // Effect layer
+  'r-layRes':    'How fine the overlay grid is — higher packs in more, smaller dots/glyphs sampled from the picture beneath.',
+  'r-laySize':   'Diameter of each overlay dot/glyph as a fraction of its grid cell.',
+  'r-layBlur':   'Blurs the base before sampling, so each dot takes an averaged color instead of one sharp pixel.',
+  'r-layOpacity':'Overall opacity of the whole overlay layer.',
+  'r-layRadius': 'Radius of each brush pool you drop on the canvas — only matters once you’ve clicked to add points.',
+  'r-layFalloff':'How softly each pool fades at its edge — 0 is a hard circle, 1 is a soft cloud.',
+  // Window
+  'r-winCount':  'How many window shapes are cut into the canvas.',
+  'r-winSize':   'Size of each window as a fraction of the canvas.',
+  'r-winJitter': 'Randomness in window placement — 0 centers them, higher scatters them.',
+  // Echo
+  'r-ecCount':   'How many copies of each photo are stamped to form the trail.',
+  'r-ecDx':      'Horizontal shift between each echo — sets the trail’s left/right direction.',
+  'r-ecDy':      'Vertical shift between each echo — sets the trail’s up/down direction.',
+  'r-ecFade':    'How much each successive echo fades — lower fades out faster.',
+  'r-ecScale':   'Grows (+) or shrinks (−) each echo relative to the one before it.',
+  'r-ecBase':    'Size of the first (front) copy as a fraction of the canvas.',
+  // Grid
+  'r-grDens':    'Base number of cells across the magazine grid — higher means more, smaller cells.',
+  'r-grAsym':    'How uneven the grid is — 0 is regular, 1 lets cells span wildly different sizes.',
+  'r-grGap':     'Gutter, in pixels, between grid cells.',
+  // Circle
+  'r-cCount':    'Number of rings, wedges, or bead-rings, depending on the style.',
+  'r-cInner':    'Radius of the empty hole at the center, as a fraction of the canvas.',
+  'r-cOuter':    'Outer radius of the whole composition, as a fraction of the canvas.',
+  'r-cRot':      'Rotates the entire composition.',
+  'r-cSpin':     'Adds a little extra rotation to each successive ring/wedge.',
+  'r-cGap':      'Spacing between rings, or the angular gap between wedges (no effect in Beads).',
+  'r-cBeads':    'How many beads sit around each ring. Beads style only.',
+  'r-cBeadSize': 'Diameter of each bead as a fraction of the canvas. Beads style only.',
+  'r-cBeadJit':  'Random per-bead size variation. Beads style only.',
+  'r-cBeadFall': 'Grows (+) or shrinks (−) beads toward the outer rings. Beads style only.',
+  'r-cBeadOpac': 'Opacity of the beads. Beads style only.',
+  // Nest
+  'r-nCount':    'How many concentric frames recede into the tunnel.',
+  'r-nWidth':    'Thickness of each frame band, as a fraction of the canvas.',
+  'r-nFall':     'Tapers the band thickness thinner (−) or thicker (+) toward the center.',
+  'r-nScale':    'How much each inner frame shrinks from the previous one — the perspective depth.',
+  'r-nAspect':   'Width-to-height ratio of the outermost frame.',
+  'r-nVx':       'Shifts the vanishing point left/right off-center.',
+  'r-nVy':       'Shifts the vanishing point up/down off-center.',
+  'r-nRot':      'Random rotation per frame, for a hand-drawn wobble.',
+  'r-nPos':      'Random position offset per frame.',
+  'r-nOpac':     'Fades the frames toward the outside (+) or toward the center (−).',
+  // Glyph
+  'r-gRes':      'How fine the sampling grid is — higher means more, smaller glyphs.',
+  'r-gSize':     'Size of each stamped glyph relative to its grid cell.',
+  'r-gRot':      'Random rotation applied to each glyph.',
+  'r-gJitter':   'Random position offset for each glyph.',
+  'r-gBlur':     'Blurs the photo before sampling, so glyph colors average rather than read one pixel.',
+  // Scatter
+  'r-sqSize':    'Base size of each photo square, in pixels.',
+  'r-sqVar':     'Random size variation between the squares.',
+  'r-sqRot':     'Maximum random tilt applied to each square.',
+  'r-curv':      'How much Curved / Wavy trails bow away from a straight line.',
+  'r-lineW':     'Thickness of the connecting trails.',
+  'r-lineA':     'Opacity of the trails.',
+  'r-markerSize':'Size of the marker drawn on each photo’s subject point.',
+  // Slice
+  'r-count':     'How many parallel strips the canvas is cut into.',
+  'r-angle':     'Angle of the strips, in degrees.',
+  'r-variation': 'How uneven the strip widths are — 0 makes them equal.',
+  'r-offset':    'Randomly shifts each strip’s source slice for a broken-glass offset.',
+  'r-rot':       'Random rotation jitter applied per strip.',
+  'r-scale':     'Random scale jitter applied per strip.',
+  // Smudge
+  'r-smOrigin':  'Position of the source line the pixels are dragged from — 0 is one edge, 1 the other.',
+  'r-smReach':   'How strongly the streak takes over the photo toward the edges.',
+  'r-smBlend':   'Width of the soft transition from crisp photo to pure streak.',
+  'r-smBands':   'Splits the canvas into this many lanes, each smeared independently.',
+  'r-smJitter':  'Randomly varies each lane’s origin line for a broken, brushed feel.',
+  'r-smGap':     'Background gap left between lanes.',
+  // Output
+  'r-export':    'Pixel size of the exported PNG/SVG — the on-screen preview scales to match.',
+};
+
+(function attachInfoIcons() {
+  let missing = 0;
+  document.querySelectorAll('.controls input[type=range]').forEach(r => {
+    const tip = EXPLAIN[r.id];
+    if (!tip) { missing++; console.warn('No explanation for slider', r.id); return; }
+    const row = r.previousElementSibling;          // the label row sits just above
+    const label = row && row.querySelector && row.querySelector('.row__label');
+    if (!label || label.querySelector('.info')) return;
+    const icon = document.createElement('span');
+    icon.className = 'info';
+    icon.textContent = 'i';
+    icon.setAttribute('data-tip', tip);
+    icon.setAttribute('aria-label', tip);
+    label.appendChild(icon);
+  });
+  if (missing) console.warn(missing + ' slider(s) without an explanation');
+
+  // Fixed-position tooltip — immune to the panel's overflow clipping.
+  let tipEl = null;
+  function show(icon) {
+    hide();
+    tipEl = document.createElement('div');
+    tipEl.className = 'tip-pop';
+    tipEl.textContent = icon.getAttribute('data-tip');
+    document.body.appendChild(tipEl);
+    const r = icon.getBoundingClientRect();
+    const tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
+    let left = r.left - tw - 10;                    // prefer left of the icon
+    if (left < 8) left = Math.min(window.innerWidth - tw - 8, r.right + 10);
+    let top = r.top + r.height / 2 - th / 2;
+    top = Math.max(8, Math.min(window.innerHeight - th - 8, top));
+    tipEl.style.left = left + 'px';
+    tipEl.style.top = top + 'px';
+  }
+  function hide() { if (tipEl) { tipEl.remove(); tipEl = null; } }
+  document.addEventListener('mouseover', e => { const i = e.target.closest('.info'); if (i) show(i); });
+  document.addEventListener('mouseout',  e => { const i = e.target.closest('.info'); if (i) hide(); });
+  document.addEventListener('click', e => {       // tap support on touch
+    const i = e.target.closest('.info');
+    if (i) { tipEl ? hide() : show(i); } else hide();
+  });
+  window.addEventListener('scroll', hide, true);
+})();
 
 // ── Effect Layer wiring ───────────────────────────────────────
 function wireLayer() {
