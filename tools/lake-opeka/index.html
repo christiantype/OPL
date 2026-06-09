@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OP/AL — Imagix</title><style>
+<title>OP/AL — Lake Opeka</title><style>
   /* ── Brand font ─────────────────────────────────────────────── */
   @font-face {
     font-family: 'Sidepiece-HoneyPie';
@@ -108,6 +108,22 @@
   }
   #btn-record.is-recording { background: #e0202a; color: #fff; border-color: #e0202a; }
   #btn-record.is-recording .rec-dot { background: #fff; animation: rec-blink 1s steps(2,start) infinite; }
+  #btn-record.is-counting { background: var(--text); color: #fff; border-color: var(--text); }
+  #btn-record.is-counting .rec-dot { background: #fff; }
+  /* Pre-roll countdown — big number centered on the canvas (not recorded). */
+  .rec-countdown {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 70; pointer-events: none;
+    font-family: var(--display); font-size: 180px; line-height: 1;
+    color: #fff; text-shadow: 0 6px 40px rgba(0,0,0,0.55);
+  }
+  .rec-countdown[hidden] { display: none; }
+  .rec-countdown--pop { animation: rec-pop 0.9s ease-out; }
+  @keyframes rec-pop {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(1.6); }
+    18%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0.15; transform: translate(-50%, -50%) scale(0.85); }
+  }
   .rec-dot--live { animation: rec-blink 1s steps(2,start) infinite; }
   @keyframes rec-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
   .rec-indicator {
@@ -576,7 +592,7 @@
     <div class="help__scrim"></div>
     <div class="help__panel">
       <header class="help__head">
-        <h2 id="help-title">Imagix · Quick reference</h2>
+        <h2 id="help-title">Lake Opeka · Quick reference</h2>
         <button id="help-close" type="button" aria-label="Close help">×</button>
       </header>
       <div class="help__body">
@@ -609,7 +625,7 @@
 
         <h3>Output</h3>
         <p>Export size is in pixels. <strong>PNG</strong> rasterizes the full composition (base + effect layer). <strong>SVG</strong> exports the Effect Layer fragments as vector circles / glyphs when the layer is on. The photographic bases (Slice / Smudge / Scatter / Window / Echo / Grid / Circle / Nest) stay raster — use PNG for those.</p>
-        <p><strong>Record</strong> captures the live canvas to a video — hit <strong>Record</strong> (or press <strong>R</strong>), tweak sliders / re-roll, then stop to download a WebM.</p>
+        <p><strong>Record</strong> captures the live canvas to a video — hit <strong>Record</strong> (or press <strong>R</strong>) for a 3-second bird-chirp countdown, then it rolls; tweak sliders / re-roll while it runs, and stop to download an <strong>MP4</strong>.</p>
         <p>Filenames include the seed so you can re-find a look later by re-typing the seed (coming soon — for now, screenshot the seed shown top-right).</p>
 
         <h3>Shortcuts</h3>
@@ -681,7 +697,7 @@
         <h3>8 · Export &amp; Record</h3>
         <p><strong>PNG</strong> re-runs <code>render()</code> into an off-screen canvas at the export resolution and calls <code>canvas.toBlob()</code>. Because every mode sizes itself from the canvas width/height, the 3000px export is the same composition as the on-screen preview, just sharper.</p>
         <p><strong>SVG</strong> (Effect Layer only) emits real <code>&lt;circle&gt;</code> / glyph vector elements instead of pixels.</p>
-        <p><strong>Record</strong> uses two browser APIs: <code>canvas.captureStream(fps)</code> turns the live canvas into a video <em>MediaStream</em>, and <code>MediaRecorder</code> encodes that stream into a WebM file as you work. Anything that repaints the canvas while recording — moving a slider, dragging a scatter square, hitting Re-roll — shows up in the video. Stop and the chunks are stitched into a downloadable clip.</p>
+        <p><strong>Record</strong> uses two browser APIs: <code>canvas.captureStream(fps)</code> turns the live canvas into a video <em>MediaStream</em>, and <code>MediaRecorder</code> encodes that stream — into <strong>MP4</strong> (H.264) where the browser supports it, WebM otherwise. Hitting Record first runs a 3-second countdown (a <em>Web Audio</em>–synthesized bird chirp per count, with a generated reverb tail — no sound file), and only <em>then</em> starts capturing, so the countdown stays out of the clip. Anything that repaints the canvas while recording — a slider, a drag, a Re-roll — shows up in the video. Stop and the chunks are stitched into a downloadable file.</p>
 
         <h3>9 · Why one file?</h3>
         <p>Keeping the whole tool in a single HTML document means it's portable (open it anywhere), there's nothing to install or build, and the source <em>is</em> the documentation — <strong>View Source</strong> on this page and everything above is right there to read and tinker with. That's the point: these tools are meant to be taken apart.</p>
@@ -722,8 +738,9 @@
       <button id="btn-export-svg">Export SVG</button>
       <button id="btn-export" class="btn-primary">Export PNG</button>
     </div>
-    <!-- Recording indicator -->
+    <!-- Recording indicator + pre-roll countdown -->
     <div class="rec-indicator" id="rec-indicator" hidden><span class="rec-dot rec-dot--live"></span> REC <span id="rec-time">0:00</span></div>
+    <div class="rec-countdown" id="rec-countdown" hidden>3</div>
 
     <!-- Sessions panel -->
     <div class="sessions" id="sessions" hidden>
@@ -1155,11 +1172,17 @@
     <!-- SMUDGE MODE CONTROLS — ASYNC-style directional pixel smear -->
     <div class="mode-group" data-mode-show="smudge" style="display:none">
       <div class="ctrl-group">
-        <div class="ctrl-label">Smudge</div>
+        <div class="ctrl-label">Drag</div>
         <div class="row"><span class="row__label">Direction</span></div>
-        <div class="seg" id="seg-smAxis" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+        <div class="seg" id="seg-smAxis" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
           <button data-sm="h" class="is-active">Horizontal</button>
           <button data-sm="v">Vertical</button>
+        </div>
+        <div class="row"><span class="row__label">Pull</span></div>
+        <div class="seg" id="seg-smPull" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+          <button data-smpull="both" class="is-active">Both</button>
+          <button data-smpull="start">Start</button>
+          <button data-smpull="end">End</button>
         </div>
         <div class="row"><span class="row__label">Origin</span><input class="row__val" id="v-smOrigin" type="text" value="0.50"></div>
         <input type="range" id="r-smOrigin" min="0" max="1" step="0.01" value="0.5">
@@ -1167,15 +1190,27 @@
         <input type="range" id="r-smReach" min="0" max="1" step="0.01" value="1">
         <div class="row"><span class="row__label">Blend</span><input class="row__val" id="v-smBlend" type="text" value="0.30"></div>
         <input type="range" id="r-smBlend" min="0" max="1" step="0.01" value="0.3">
+        <div class="row"><span class="row__label">Edge</span></div>
+        <div class="seg" id="seg-smProfile" style="grid-template-columns:repeat(3,1fr)">
+          <button data-smprof="linear" class="is-active">Linear</button>
+          <button data-smprof="smooth">Smooth</button>
+          <button data-smprof="hard">Hard</button>
+        </div>
       </div>
       <div class="ctrl-group">
-        <div class="ctrl-label">Brush</div>
+        <div class="ctrl-label">Lanes</div>
         <div class="row"><span class="row__label">Bands</span><input class="row__val" id="v-smBands" type="text" value="1"></div>
         <input type="range" id="r-smBands" min="1" max="80" step="1" value="1">
         <div class="row"><span class="row__label">Jitter</span><input class="row__val" id="v-smJitter" type="text" value="0.00"></div>
         <input type="range" id="r-smJitter" min="0" max="1" step="0.01" value="0">
         <div class="row"><span class="row__label">Gap</span><input class="row__val" id="v-smGap" type="text" value="0"></div>
         <input type="range" id="r-smGap" min="0" max="24" step="1" value="0">
+        <div class="row" style="margin-top:4px"><span class="row__label">Source</span></div>
+        <div class="seg" id="seg-smSource" style="grid-template-columns:repeat(3,1fr)">
+          <button data-smsrc="order" class="is-active">In order</button>
+          <button data-smsrc="random">Random</button>
+          <button data-smsrc="single">Single</button>
+        </div>
       </div>
     </div><!-- /smudge mode group -->
 
@@ -1215,7 +1250,7 @@
 
 <script>
 /* ============================================================
-   OP/AL — IMAGIX
+   OP/AL — LAKE OPEKA
    Slice + composite photographs into album-cover variations.
    Multiple sources, seed-driven so a composition can be recovered.
    ============================================================ */
@@ -1304,13 +1339,16 @@ const state = {
     beadOutline:  false,    // hairline ring around each bead
   },
   smudge: {
-    axis:   'h',     // 'h' = horizontal smear, 'v' = vertical smear
-    origin: 0.5,     // position of the smudge source line (0..1 along the axis)
-    reach:  1.0,     // how strongly the streak replaces the photo at the far edges
-    blend:  0.3,     // soft transition width photo↔streak (the "perfect" smudge)
-    bands:  1,       // subdivide the cross-axis into N lanes for organic variation
-    jitter: 0,       // per-band origin variance (0..1)
-    gap:    0,       // px gap (bg) between bands
+    axis:    'h',      // 'h' = horizontal smear, 'v' = vertical smear
+    pull:    'both',   // 'both' | 'start' | 'end' — which way the drag extends
+    origin:  0.5,      // position of the smudge source line (0..1 along the axis)
+    reach:   1.0,      // how strongly the streak replaces the photo at the far edges
+    blend:   0.3,      // soft transition width photo↔streak (the "perfect" smudge)
+    profile: 'linear', // 'linear' | 'smooth' | 'hard' — transition curve at the edge
+    bands:   1,        // subdivide the cross-axis into N lanes for organic variation
+    jitter:  0,        // per-band origin variance (0..1)
+    gap:     0,        // px gap (bg) between bands
+    source:  'order',  // 'order' | 'random' | 'single' — which photo each lane pulls
   },
   // ── EFFECT LAYER ─────────────────────────────────────────────
   // A Dot or Glyph overlay whose colors are SAMPLED from the just-
@@ -1639,7 +1677,7 @@ function renderThumbs() {
       // Set text so the dragenter/over filter (which checks for "Files"
       // in dataTransfer.types) treats this as NOT a file drop and the
       // window-level drop handler short-circuits.
-      e.dataTransfer.setData('text/imagix-thumb', String(s.id));
+      e.dataTransfer.setData('text/lake-opeka-thumb', String(s.id));
     });
     t.addEventListener('dragend', () => {
       t.classList.remove('is-dragging');
@@ -2994,21 +3032,33 @@ function smudgeRender(target, active) {
   const totalGap = gap * Math.max(0, bands - 1);
   const laneLen  = (cross - totalGap) / bands;
 
-  // Base composition rendered once (cover-fit; per-band image when several
-  // photos are loaded), then sampled column-by-column for the smear.
+  // Pre-compute each lane's source photo + (jittered) origin in one pass so
+  // the result is fully seed-deterministic regardless of which options pull
+  // from the RNG.
+  const lanes = [];
+  for (let i = 0; i < bands; i++) {
+    let pick;
+    if (s.source === 'single')      pick = active[0];
+    else if (s.source === 'random') pick = active[Math.floor(rng() * active.length)] || active[0];
+    else                            pick = active[i % active.length];
+    let o = s.origin + (rng() - 0.5) * 2 * s.jitter;
+    o = Math.max(0, Math.min(1, o));
+    lanes.push({ img: pick.img, o });
+  }
+
+  // Base composition rendered once (cover-fit; per-lane photo), then sampled
+  // line-by-line for the smear.
   const base = document.createElement('canvas');
   base.width = W; base.height = H;
   const bx = base.getContext('2d');
-
   for (let i = 0; i < bands; i++) {
     const start = i * (laneLen + gap);
-    const img = active[i % active.length].img;
     bx.save();
     bx.beginPath();
     if (horizontal) bx.rect(0, start, W, laneLen);
     else            bx.rect(start, 0, laneLen, H);
     bx.clip();
-    drawCoverIntoRect(bx, img, W / 2, H / 2, W, H);
+    drawCoverIntoRect(bx, lanes[i].img, W / 2, H / 2, W, H);
     bx.restore();
   }
 
@@ -3016,16 +3066,22 @@ function smudgeRender(target, active) {
   // visible at the origin and is progressively swallowed toward the edges.
   x.drawImage(base, 0, 0);
 
-  // Smear each lane: stretch the origin column of `base` across the lane,
+  // Edge transition curve: how alpha climbs from the origin (0) out to the
+  // streak plateau (reach). Linear ramp, eased S-curve, or a hard edge.
+  const ease = u => s.profile === 'hard'   ? Math.pow(u, 0.3)
+                  : s.profile === 'smooth' ? (u * u * (3 - 2 * u))
+                  : u;
+  const leftReach  = (s.pull === 'end')   ? 0 : s.reach;   // toward the start edge
+  const rightReach = (s.pull === 'start') ? 0 : s.reach;   // toward the end edge
+
+  // Smear each lane: stretch the origin line of `base` across the lane,
   // masked so it's transparent at the origin and ramps to `reach` outward.
   for (let i = 0; i < bands; i++) {
     const start = Math.round(i * (laneLen + gap));
     const len   = Math.round(laneLen);
     if (len < 1) continue;
 
-    let o = s.origin + (rng() - 0.5) * 2 * s.jitter;
-    o = Math.max(0, Math.min(1, o));
-    const oPx = Math.round(o * (along - 1));
+    const oPx = Math.round(lanes[i].o * (along - 1));
 
     // Strip canvas in along×lane space (rotated mentally for vertical).
     const sw = horizontal ? W : len;
@@ -3042,15 +3098,17 @@ function smudgeRender(target, active) {
       sc.drawImage(base, start, oPx, len, 1, 0, 0, len, along);
     }
 
-    // Valley mask: alpha 0 at the origin, ramping to `reach` over `blend`.
+    // Valley mask: alpha 0 at the origin, ramping to `reach` outward over
+    // `blend`, shaped by the Edge profile and limited by the Pull direction.
     const transPx = Math.max(1, s.blend * along * 0.5);
-    const stops = [];
-    const push = (p, a) => stops.push({ p: Math.max(0, Math.min(1, p)), a });
-    push(0, s.reach);
-    push((oPx - transPx) / along, s.reach);
-    push(oPx / along, 0);
-    push((oPx + transPx) / along, s.reach);
-    push(1, s.reach);
+    const cPos = oPx / along;
+    const stops = [{ p: 0, a: leftReach }, { p: 1, a: rightReach }, { p: cPos, a: 0 }];
+    const STEPS = 6;
+    for (let k = 1; k <= STEPS; k++) {
+      const u = k / STEPS;
+      stops.push({ p: cPos - (transPx / along) * u, a: leftReach  * ease(u) });
+      stops.push({ p: cPos + (transPx / along) * u, a: rightReach * ease(u) });
+    }
     stops.sort((a, b) => a.p - b.p);
 
     const grad = horizontal
@@ -3058,9 +3116,8 @@ function smudgeRender(target, active) {
       : sc.createLinearGradient(0, 0, 0, sh);
     let last = -1;
     for (const st of stops) {
-      let p = st.p;
-      if (p <= last) p = last + 1e-4;        // keep stops strictly ascending
-      if (p > 1) p = 1;
+      let p = Math.max(0, Math.min(1, st.p));
+      if (p <= last) p = Math.min(1, last + 1e-4);  // strictly ascending
       last = p;
       grad.addColorStop(p, `rgba(255,255,255,${st.a})`);
     }
@@ -3721,14 +3778,21 @@ function wireSmudge() {
   bind('r-smBands',  'v-smBands',  'bands',  v => String(Math.round(v)));
   bind('r-smJitter', 'v-smJitter', 'jitter', v => v.toFixed(2));
   bind('r-smGap',    'v-smGap',    'gap',    v => String(Math.round(v)));
-  document.querySelectorAll('#seg-smAxis button').forEach(b => {
-    b.addEventListener('click', () => {
-      document.querySelectorAll('#seg-smAxis button').forEach(x => x.classList.remove('is-active'));
-      b.classList.add('is-active');
-      state.smudge.axis = b.dataset.sm;
-      render();
+  // Segmented pickers: axis, pull direction, edge profile, lane source.
+  const seg = (sel, attr, key) => {
+    document.querySelectorAll(`${sel} button`).forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll(`${sel} button`).forEach(x => x.classList.remove('is-active'));
+        b.classList.add('is-active');
+        state.smudge[key] = b.dataset[attr];
+        render();
+      });
     });
-  });
+  };
+  seg('#seg-smAxis',    'sm',     'axis');
+  seg('#seg-smPull',    'smpull', 'pull');
+  seg('#seg-smProfile', 'smprof', 'profile');
+  seg('#seg-smSource',  'smsrc',  'source');
 }
 wireSmudge();
 
@@ -4200,25 +4264,35 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
 
 // ── Canvas video recording ────────────────────────────────────
 // captureStream() turns the live canvas into a MediaStream; MediaRecorder
-// encodes it to a downloadable WebM. Anything that repaints the canvas
-// while recording (sliders, drags, re-roll) lands in the clip. Toggle with
+// encodes it to a downloadable MP4 (WebM fallback). Hitting Record runs a
+// 3-second bird-chirp countdown first, THEN starts capturing — so the
+// countdown never ends up in the clip. Anything that repaints the canvas
+// while recording (sliders, drags, re-roll) lands in the video. Toggle with
 // the Record button or the R key.
 (function () {
   const btn = $('btn-record');
   const indicator = $('rec-indicator');
   const timeEl = $('rec-time');
+  const countEl = $('rec-countdown');
   if (!btn || !canvas.captureStream || typeof MediaRecorder === 'undefined') {
     if (btn) { btn.disabled = true; btn.title = 'Recording is not supported in this browser'; }
     return;
   }
 
   let recorder = null, chunks = [], startedAt = 0, timer = null;
+  let counting = false, cancelCountdown = false;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  // Pick the best container/codec this browser can actually write.
+  // Prefer MP4 (H.264) so clips drop straight into Keynote / iMovie / etc.;
+  // fall back to WebM on browsers that can't encode MP4.
   function pickMime() {
     const candidates = [
-      'video/webm;codecs=vp9', 'video/webm;codecs=vp8',
-      'video/webm', 'video/mp4',
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4;codecs=avc1',
+      'video/mp4',
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm',
     ];
     return candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
   }
@@ -4228,14 +4302,68 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   }
 
-  function start() {
-    if (recorder) return;
-    if (!state.images.some(s => s.enabled)) { alert('Add some photos first.'); return; }
+  // ── A calming bird chirp via Web Audio (no asset, works offline) ──
+  // Soft sine glides with a touch of vibrato, fed through a generated
+  // reverb tail for an airy, atmospheric feel. The three counts rise in
+  // pitch (a gentle pentatonic step up) so it reads as a soothing cue.
+  let actx = null, reverbSend = null, dryBus = null;
+  function audioGraph() {
+    if (actx) return;
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    const master = actx.createGain();
+    master.gain.value = 0.55;            // gentle overall level
+    master.connect(actx.destination);
+    dryBus = actx.createGain(); dryBus.gain.value = 0.9; dryBus.connect(master);
+    // Generated impulse → a small, soft reverb for "atmosphere".
+    const conv = actx.createConvolver();
+    const len = Math.floor(actx.sampleRate * 2.2);
+    const imp = actx.createBuffer(2, len, actx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = imp.getChannelData(ch);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
+    }
+    conv.buffer = imp;
+    const wet = actx.createGain(); wet.gain.value = 0.5;
+    conv.connect(wet); wet.connect(master);
+    reverbSend = actx.createGain(); reverbSend.gain.value = 0.6; reverbSend.connect(conv);
+  }
+  // Pentatonic-ish rising notes for counts 3 → 2 → 1 (step = 0,1,2).
+  const CHIRP_NOTES = [784, 988, 1175];   // G5, B5, D6
+  function chirp(step) {
+    try {
+      audioGraph();
+      if (actx.state === 'suspended') actx.resume();
+      const t = actx.currentTime;
+      const base = CHIRP_NOTES[Math.max(0, Math.min(2, step))] || 880;
+      // Two quick "tweet" syllables for a bird-like character.
+      [0, 0.13].forEach((delay, k) => {
+        const o = actx.createOscillator(); o.type = 'sine';
+        const start = t + delay;
+        const f = base * (k ? 1.12 : 1);
+        o.frequency.setValueAtTime(f * 0.8, start);
+        o.frequency.exponentialRampToValueAtTime(f * 1.5, start + 0.05);
+        o.frequency.exponentialRampToValueAtTime(f * 1.15, start + 0.12);
+        // gentle vibrato
+        const lfo = actx.createOscillator(); lfo.frequency.value = 16;
+        const lfoG = actx.createGain(); lfoG.gain.value = f * 0.03;
+        lfo.connect(lfoG); lfoG.connect(o.frequency);
+        lfo.start(start); lfo.stop(start + 0.26);
+        const g = actx.createGain();
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(k ? 0.22 : 0.3, start + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + 0.24);
+        o.connect(g); g.connect(dryBus); g.connect(reverbSend);
+        o.start(start); o.stop(start + 0.28);
+      });
+    } catch (e) {}
+  }
+
+  function beginRecording() {
     const stream = canvas.captureStream(30);   // 30 fps
     const mimeType = pickMime();
     try {
       recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-    } catch (e) { alert('Could not start recording: ' + e.message); return; }
+    } catch (e) { alert('Could not start recording: ' + e.message); resetButton(); return; }
     chunks = [];
     recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     recorder.onstop = () => {
@@ -4243,7 +4371,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
       const blob = new Blob(chunks, { type });
       const ext = type.includes('mp4') ? 'mp4' : 'webm';
       const a = document.createElement('a');
-      a.download = `opal-imagix-${state.seed}.${ext}`;
+      a.download = `lake-opeka-${state.seed}.${ext}`;
       a.href = URL.createObjectURL(blob);
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -4251,6 +4379,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     };
     recorder.start();
     startedAt = Date.now();
+    btn.classList.remove('is-counting');
     btn.classList.add('is-recording');
     btn.innerHTML = '<span class="rec-dot"></span> Stop';
     indicator.hidden = false;
@@ -4258,16 +4387,43 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     timer = setInterval(() => { timeEl.textContent = fmt(Date.now() - startedAt); }, 250);
   }
 
+  function resetButton() {
+    btn.classList.remove('is-recording', 'is-counting');
+    btn.innerHTML = '<span class="rec-dot"></span> Record';
+  }
+
+  async function start() {
+    if (recorder || counting) return;
+    if (!state.images.some(s => s.enabled)) { alert('Add some photos first.'); return; }
+    // 3… 2… 1… a soft rising bird chirp per count, then roll.
+    counting = true; cancelCountdown = false;
+    btn.classList.add('is-counting');
+    btn.innerHTML = '<span class="rec-dot"></span> Cancel';
+    countEl.hidden = false;
+    for (let n = 3; n >= 1; n--) {
+      if (cancelCountdown) break;
+      countEl.textContent = n;
+      countEl.classList.remove('rec-countdown--pop'); void countEl.offsetWidth;
+      countEl.classList.add('rec-countdown--pop');
+      chirp(3 - n);   // rising pitch: 3 → 2 → 1
+      await sleep(1000);
+    }
+    countEl.hidden = true;
+    counting = false;
+    if (cancelCountdown) { resetButton(); return; }
+    beginRecording();
+  }
+
   function stop() {
+    if (counting) { cancelCountdown = true; return; }  // bail out mid-countdown
     if (!recorder) return;
     clearInterval(timer); timer = null;
-    btn.classList.remove('is-recording');
-    btn.innerHTML = '<span class="rec-dot"></span> Record';
+    resetButton();
     indicator.hidden = true;
     recorder.stop();   // fires onstop → builds + downloads the file
   }
 
-  function toggle() { recorder ? stop() : start(); }
+  function toggle() { (recorder || counting) ? stop() : start(); }
 
   btn.addEventListener('click', toggle);
 
@@ -4403,7 +4559,7 @@ $('btn-export-svg').addEventListener('click', () => {
   let svg, name;
   if (state.layer.enabled) {
     svg  = buildLayerSVG(size, active);
-    name = `opal-imagix-fragments-${state.layer.effect}-${state.seed}-${size}.svg`;
+    name = `lake-opeka-fragments-${state.layer.effect}-${state.seed}-${size}.svg`;
   } else {
     alert('SVG export needs an enabled Effect Layer.\nUse PNG for the raster modes (Slice, Smudge, etc.).');
     return;
@@ -4430,7 +4586,7 @@ $('btn-export').addEventListener('click', () => {
   render(out);
   out.toBlob(blob => {
     const a = document.createElement('a');
-    a.download = `opal-imagix-${state.seed}-${size}.png`;
+    a.download = `lake-opeka-${state.seed}-${size}.png`;
     a.href = URL.createObjectURL(blob);
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -4443,7 +4599,7 @@ canvas.style.visibility = 'hidden';
 seedDisplay.textContent = `seed ${state.seed}`;
 
 // Persist last-used parameters (not images — those are blobs).
-const LS = 'opal-imagix.v1';
+const LS = 'lake-opeka.v1';
 try {
   const saved = JSON.parse(localStorage.getItem(LS) || 'null');
   if (saved && saved.params) {
