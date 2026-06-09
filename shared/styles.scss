@@ -1940,7 +1940,10 @@ body.annotate-mode {
   &--vh &__window {
     flex: 1; display: flex; align-items: center;
     border-radius: 26px; overflow: hidden;
+    // Smudge motif — soft horizontal color streaks smeared across the glow.
     background:
+      linear-gradient(90deg, transparent 4%, rgba(10,101,119,0.22) 38%, rgba(12,139,80,0.14) 64%, transparent 86%) no-repeat 0 27% / 100% 22%,
+      linear-gradient(90deg, transparent 10%, rgba(18,87,214,0.16) 48%, rgba(10,101,119,0.12) 72%, transparent 92%) no-repeat 0 61% / 100% 17%,
       radial-gradient(ellipse 92% 78% at 50% 44%,
         #15a05c 0%, #6fd3a0 24%, #d9f2e4 54%, #ffffff 84%);
   }
@@ -2252,7 +2255,15 @@ body.annotate-mode {
 .pf-nl__meta { font-size: 11px; color: #888; margin-top: 5px; }
 
 /* Notes — open note column, written live */
-.pf-no { width: 100%; }
+.pf-no { width: 100%; position: relative; isolation: isolate; }
+// Smudge motif — a soft streak smeared behind the live note's title.
+.pf-no::before {
+  content: ''; position: absolute; top: -4px; left: 0; right: 0; height: 116px;
+  z-index: -1; pointer-events: none; filter: blur(20px); opacity: 0.42;
+  background:
+    linear-gradient(90deg, transparent 2%, rgba(12,139,80,0.5) 30%, rgba(10,101,119,0.34) 56%, transparent 82%) no-repeat 0 42% / 116% 42%,
+    linear-gradient(90deg, transparent 12%, rgba(18,87,214,0.2) 48%, transparent 88%) no-repeat 0 82% / 110% 32%;
+}
 .proj-card__vig:has(.pf-nl), .proj-card__vig:has(.pf-no) { justify-content: flex-start; }
 .pf-no__crumb { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #0c8b50; font-weight: 500; }
 /* note copy uses the product UI sans — not a display face */
