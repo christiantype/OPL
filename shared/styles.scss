@@ -421,6 +421,11 @@ nav {
 nav { mix-blend-mode: difference; }
 .nav-logo-link,
 .nav-menu-btn { color: #fff !important; }
+// On case-study pages the fixed wordmark floated over the framed product
+// mockups as you scrolled, which read as a glitch. Anchor it to the top of
+// the page instead so it greets you at the top (still difference-blended)
+// and scrolls away over the content. The homepage hero keeps the fixed mark.
+body.project nav { position: absolute; }
 
 
 // ============================================================
@@ -2324,9 +2329,17 @@ body.project .proj-card__vig p { color: #2e2e2e; }
 .pf-cp__row:last-child { border-bottom: 0; }
 .pf-cp__row--head { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #888; font-weight: 500; }
 .pf-cp__name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pf-cp__v { display: inline-flex; align-items: center; gap: 8px; }
+.pf-cp__v { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .pf-cp__bar { height: 4px; border-radius: 2px; background: #0c8b50; width: var(--w); max-width: 56px; flex-shrink: 0; }
 .pf-cp__g { color: #888; }
+// Phones: at native width the Views cell (bar + number) was wider than its
+// grid track and spilled into the Avg-time column. Give Views more room,
+// shrink the bar, and tighten the gap so every column reads cleanly.
+@media (max-width: 40em) {
+  .pf-cp__row { grid-template-columns: 1.4fr 1fr 0.7fr 0.4fr; gap: 6px; }
+  .pf-cp__bar { max-width: 28px; }
+  .pf-cp__v { gap: 6px; }
+}
 
 /* ── Float on black: reverse the white-UI colors to light ── */
 .proj-cards-band {
