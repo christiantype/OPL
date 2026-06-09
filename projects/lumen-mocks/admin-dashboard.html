@@ -38,12 +38,14 @@
   @media (max-width: 64em) { .lumen__navlabel { display: none; } .lumen__navitem { padding: 7px 8px; } }
 
   /* HERO — greeting + live KPI strip */
-  .lumen-admin .lumen__hero { position: relative; isolation: isolate; overflow: hidden; }
-  /* Smudge motif — soft horizontal streaks blurred behind the greeting. */
-  .lumen-admin .lumen__hero::before { content: ''; position: absolute; inset: -30% -6% -10% -6%; z-index: -1; pointer-events: none; filter: blur(22px); opacity: 0.42;
+  .lumen-admin .lumen__hero { position: relative; isolation: isolate; }
+  /* Smudge motif — soft horizontal streaks blurred behind the greeting.
+     clip-path keeps the blur inside the hero without an overflow:hidden that
+     would crop the (flex-shrunk) greeting. */
+  .lumen-admin .lumen__hero::before { content: ''; position: absolute; inset: 0; clip-path: inset(0); z-index: -1; pointer-events: none; filter: blur(22px); opacity: 0.42;
     background:
-      linear-gradient(90deg, transparent 2%, rgba(12,139,80,0.5) 30%, rgba(10,101,119,0.36) 56%, transparent 82%) no-repeat 0 34% / 128% 24%,
-      linear-gradient(90deg, transparent 8%, rgba(18,87,214,0.24) 44%, rgba(12,139,80,0.26) 70%, transparent 92%) no-repeat 0 72% / 120% 18%; }
+      linear-gradient(90deg, transparent 2%, rgba(12,139,80,0.5) 30%, rgba(10,101,119,0.36) 56%, transparent 82%) no-repeat 0 34% / 128% 40%,
+      linear-gradient(90deg, transparent 8%, rgba(18,87,214,0.24) 44%, rgba(12,139,80,0.26) 70%, transparent 92%) no-repeat 0 76% / 120% 32%; }
   .lumen__hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding: 40px var(--m-pad-x) 24px; flex-wrap: wrap; }
   .lumen__greeting { font-family: 'Sorts Mill Goudy', Georgia, serif; font-size: clamp(34px, 4.4vw, 54px); line-height: 1.12; letter-spacing: -0.025em; color: var(--m-ink); font-weight: 400; }
   .lumen__greeting-name { font-style: normal; color: var(--m-cobalt); font-weight: 500; }
