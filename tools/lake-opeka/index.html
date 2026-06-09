@@ -26,16 +26,17 @@
        Canvas itself can be set black/white/transparent via the bg
        picker; the rails + topbar are always light. */
     --bg:           #ffffff;
-    --panel:       #fafafa;
-    --hairline:    #ececec;
-    --text:        #1a1a1a;
-    --text-mid:    #6a6a70;
-    --text-dim:    #a0a0a6;
-    --accent:      #FFD400;   /* OP/AL amber */
+    --panel:       #f4f4f4;
+    --hairline:    #e2e2e2;
+    --text:        #111111;
+    --text-mid:    #4d4d54;   /* darkened for contrast */
+    --text-dim:    #7c7c84;   /* darkened for contrast */
+    --accent:      #111111;   /* black accent (was OP/AL amber) */
+    --on-accent:   #ffffff;   /* text/marks that sit on the accent */
     --cobalt:      #1c39bb;
     --pink:        #ff94c9;
     --pad:         18px;
-    --sans:        'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --sans:        'Sidepiece-HoneyPie', 'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
     --display:     'Sidepiece-HoneyPie', sans-serif;
     --mono:        'JetBrains Mono', 'Courier New', monospace;
   }
@@ -238,21 +239,21 @@
   }
   .drop:hover {
     border-color: var(--accent);
-    background: rgba(255, 212, 0, 0.04);
+    background: rgba(0, 0, 0, 0.04);
     color: var(--text);
   }
   /* Whole window highlights when image files are being dragged from
      the OS — no flicker, no tiny target. */
   body.is-dragover .drop {
     border-color: var(--accent);
-    background: rgba(255, 212, 0, 0.08);
+    background: rgba(0, 0, 0, 0.06);
     color: var(--text);
   }
   body.is-dragover::after {
     content: 'Drop to add';
     position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(255, 212, 0, 0.12);
+    background: rgba(0, 0, 0, 0.08);
     border: 4px solid var(--accent);
     color: var(--text);
     font-family: var(--display);
@@ -341,8 +342,8 @@
     cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
   .stage-actions button:hover { border-color: var(--accent); }
-  .stage-actions .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
-  .stage-actions .btn-primary:hover { background: #ffe34d; }
+  .stage-actions .btn-primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .stage-actions .btn-primary:hover { background: #333333; border-color: #333333; }
   .stage-info {
     position: absolute; top: 18px; left: 18px;
     font-family: var(--mono); font-size: 10px;
@@ -385,8 +386,8 @@
     outline: 1px solid transparent; outline-offset: -1px;
     border-radius: 2px;
   }
-  input.row__val:hover { background: rgba(255, 212, 0, 0.06); outline-color: var(--hairline); }
-  input.row__val:focus { background: rgba(255, 212, 0, 0.12); outline-color: var(--accent); }
+  input.row__val:hover { background: rgba(0, 0, 0, 0.05); outline-color: var(--hairline); }
+  input.row__val:focus { background: rgba(0, 0, 0, 0.08); outline-color: var(--accent); }
 
   /* Lake Opeka glyph presets — multi-select gallery */
   .glyph-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
@@ -402,7 +403,7 @@
   .glyph-preset.is-active::after {
     content: ''; position: absolute; top: 3px; right: 3px;
     width: 12px; height: 12px; border-radius: 50%; background: var(--accent);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.2 2.2 4.8-4.8' stroke='%23111' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.2 2.2 4.8-4.8' stroke='%23fff' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-size: contain;
   }
   .glyph-presets__act {
@@ -432,7 +433,7 @@
     border: 1px solid var(--hairline); border-radius: 4px; font-family: var(--sans); font-size: 13px;
   }
   .sessions__save input:focus { outline: none; border-color: var(--accent); }
-  .sessions__save button { padding: 9px 16px; background: var(--accent); color: #111; border: none; border-radius: 4px; font-weight: 600; font-size: 12px; cursor: pointer; }
+  .sessions__save button { padding: 9px 16px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 4px; font-weight: 600; font-size: 12px; cursor: pointer; }
   .sessions__hint { padding: 8px 18px 12px; font-size: 11px; line-height: 1.5; color: var(--text-dim); }
   .sessions__list { list-style: none; margin: 0; padding: 0 8px 10px; overflow-y: auto; }
   .sessions__item { display: flex; align-items: center; gap: 8px; padding: 10px 10px; border-top: 1px solid var(--hairline); }
@@ -480,7 +481,7 @@
     cursor: pointer; transition: all 0.15s ease;
   }
   .seg button.is-active {
-    background: var(--accent); color: #000; border-color: var(--accent);
+    background: var(--accent); color: var(--on-accent); border-color: var(--accent);
   }
   .seg button:hover:not(.is-active) { color: var(--text); border-color: var(--text-dim); }
 
