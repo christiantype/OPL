@@ -361,10 +361,11 @@
     };
 
     function wrapInWindow(inner, item, isFull) {
-      // Window framing without the chrome bar — the mockup's own header reads
-      // as the top of the screen; no portfolio chrome on top of it.
       const winCols = isFull ? 'proj-window proj-window--full' : `col-${item.cols} proj-window`;
-      return `<div class="${winCols}">`
+      const bar = item.windowTitle
+        ? `<div class="proj-window__bar"><span class="proj-window__mark">/</span><span class="proj-window__title">${item.windowTitle}</span></div>`
+        : '';
+      return `<div class="${winCols}">${bar}`
            +   `<div class="proj-window__body">${inner}</div>`
            + `</div>`;
     }
