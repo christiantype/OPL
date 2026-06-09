@@ -1,535 +1,331 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap');
-  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
-  .lumen__strat-h, .lumen__strat-title { font-family: 'Sorts Mill Goudy', Georgia, serif !important; font-weight: 400 !important; letter-spacing: 0 !important; }
-  .lumen__strat-h { font-size: 26px !important; }
-  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Regular.otf') format('opentype'); font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'Untitled Sans'; src: url('/shared/fonts/UntitledSans-Bold.otf') format('opentype'); font-weight: 700; font-display: swap; }
+
   .lumen {
-    --m-bg: #FFFFFF; --m-ink: #0e0e0e; --m-body: #1a1a1a; --m-mid: #595959;
-    --m-hair: #ececec; --m-cobalt: #0c8b50; --m-pad-x: 48px;
-    --m-sans: 'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    position: relative; background: var(--m-bg); color: var(--m-ink);
-    font-family: var(--m-sans); font-size: 13px; line-height: 1.5;
-    border: 1px solid var(--m-hair); overflow: hidden; height: 720px;
-    display: flex; flex-direction: column;
+    --m-ink:    #ffffff;
+    --m-body:   rgba(255,255,255,0.78);
+    --m-mid:    rgba(255,255,255,0.40);
+    --m-hair:   rgba(255,255,255,0.08);
+    --m-cobalt: #3dba7e;
+    --m-pad-x:  24px;
+    --m-sans:   'Untitled Sans', system-ui, -apple-system, sans-serif;
+    position: relative;
+    background: transparent;
+    color: var(--m-ink);
+    font-family: var(--m-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100%;
+    overflow: hidden;
   }
-  /* The document scrolls inside this wrapper; the chat footer lives outside it
-     so it stays pinned to the bottom of the frame on every browser (sticky
-     inside a scaled/transformed scene fails on iOS Safari). */
-  .lumen__strat-scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 74px; }
-  /* Styled scrollbar — cobalt accent, always visible. */
-  .lumen__strat-scroll { scrollbar-color: var(--m-cobalt) #F0F0F0; scrollbar-width: thin; }
-  .lumen__strat-scroll::-webkit-scrollbar { width: 10px; }
-  .lumen__strat-scroll::-webkit-scrollbar-track { background: #F0F0F0; }
-  .lumen__strat-scroll::-webkit-scrollbar-thumb { background: var(--m-cobalt); border: 2px solid #F0F0F0; }
-  .lumen__strat-scroll::-webkit-scrollbar-thumb:hover { background: #0a6e3f; }
+  .lumen__strat-scroll {
+    position: absolute; inset: 0;
+    overflow-y: auto; overflow-x: hidden;
+    padding: 32px var(--m-pad-x) 56px;
+    scrollbar-width: none;
+  }
+  .lumen__strat-scroll::-webkit-scrollbar { display: none; }
   .lumen *, .lumen *::before, .lumen *::after { box-sizing: border-box; font-family: inherit; }
-  .lumen button { font: inherit; background: none; border: none; padding: 0; color: inherit; cursor: pointer; }
-  .lumen ul, .lumen ol { list-style: none; padding: 0; margin: 0; }
-  .lumen h1, .lumen h2, .lumen h3, .lumen h4 { margin: 0; font-weight: 400; }
-  .lumen p, .lumen h1, .lumen h2, .lumen h3, .lumen h4 { margin: 0; }
-  body.project .lumen p, body.project .lumen h1, body.project .lumen h2, body.project .lumen h3, body.project .lumen h4 { color: var(--m-ink); }
-  .lumen__corner { position: absolute; bottom: 8px; right: 12px; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; padding: 3px 7px; border: 1px solid var(--m-hair); background: rgba(255,255,255,0.92); z-index: 10; pointer-events: none; }
+  .lumen p, .lumen h1, .lumen h2, .lumen h3, .lumen h4 { margin: 0; font-weight: 400; }
+  body.project .lumen p,
+  body.project .lumen h2,
+  body.project .lumen h3 { color: var(--m-ink); }
 
-  .lumen__top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px var(--m-pad-x); border-bottom: 1px solid var(--m-hair); min-width: 0; }
-  .lumen__brand { display: flex; align-items: baseline; gap: 8px; flex-shrink: 0; }
-  .lumen__brand-mark { font-size: 24px; font-weight: 500; color: var(--m-cobalt); line-height: 1; letter-spacing: -0.02em; }
-  .lumen__brand-product { font-size: 12px; letter-spacing: 0.02em; color: var(--m-ink); font-weight: 500; }
-  .lumen__nav { display: flex; align-items: center; gap: 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; flex-shrink: 0; }
-  .lumen__navitem { display: inline-flex; align-items: center; gap: 7px; color: var(--m-ink); padding: 7px 10px; font-weight: 500; }
-  .lumen__navitem:hover { background: #f3f3f3; }
-  .lumen__navitem svg { display: block; flex-shrink: 0; }
-  .lumen__navitem--notify { padding: 7px 8px; position: relative; }
-  .lumen__navitem--notify::after { content: ''; position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; background: var(--m-cobalt); border: 2px solid var(--m-bg); border-radius: 50%; }
-  .lumen__navdivider { width: 1px; height: 18px; background: var(--m-hair); margin: 0 6px; }
-  .lumen__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--m-cobalt); color: var(--m-bg); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; margin-left: 6px; flex-shrink: 0; }
-  @media (max-width: 64em) { .lumen__navlabel { display: none; } .lumen__navitem { padding: 7px 8px; } }
+  .lumen__strat-eyebrow {
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--m-mid); font-weight: 500; margin-bottom: 10px;
+  }
+  .lumen__strat-h {
+    font-family: 'Sorts Mill Goudy', Georgia, serif;
+    font-size: 26px; font-weight: 400; color: var(--m-ink);
+    letter-spacing: -0.01em; margin-bottom: 8px; line-height: 1.2;
+  }
+  .lumen__strat-sub {
+    font-size: 14px; color: var(--m-body); margin-bottom: 20px; line-height: 1.55;
+  }
 
-  /* STRATEGY LAYOUT */
-  .lumen__strat-shell { display: grid; grid-template-columns: 240px 1fr 56px; min-height: 700px; }
-  .lumen__strat-side { padding: 28px var(--m-pad-x); border-right: 1px solid var(--m-hair); }
-  .lumen__strat-title { font-size: 14px; font-weight: 500; color: var(--m-ink); margin-bottom: 18px; letter-spacing: -0.005em; }
-  .lumen__strat-list { display: flex; flex-direction: column; gap: 4px; }
-  .lumen__strat-item { text-align: left; padding: 11px 14px 11px 16px; margin-right: 12px; border-radius: 4px; font-size: 13px; color: var(--m-body); font-weight: 400; cursor: pointer; border-left: 2px solid transparent; }
-  .lumen__strat-item:hover { background: #f6f6f6; }
-  .lumen__strat-item.is-active { background: #f6f6f6; border-left-color: var(--m-cobalt); color: var(--m-ink); font-weight: 500; }
-  .lumen__strat-related { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--m-hair); }
-  .lumen__strat-related-label { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; margin-bottom: 10px; }
-  .lumen__strat-related-item { font-size: 12px; color: var(--m-body); padding: 6px 0; cursor: pointer; }
-  .lumen__strat-related-item:hover { color: var(--m-cobalt); }
+  .lumen__tags { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 28px; }
+  .lumen__tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--m-cobalt); font-weight: 500; }
+  .lumen__tag::before { content: '✓'; font-size: 10px; color: var(--m-cobalt); font-weight: 700; }
 
-  .lumen__strat-main { padding: 28px var(--m-pad-x) 36px; min-width: 0; overflow: hidden; }
-  .lumen__strat-eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; margin-bottom: 10px; }
-  .lumen__strat-h { font-size: 22px; font-weight: 500; color: var(--m-ink); letter-spacing: -0.01em; margin-bottom: 6px; }
-  .lumen__strat-sub { font-size: 13px; color: var(--m-body); margin-bottom: 18px; line-height: 1.5; }
-  .lumen__strat-bookmark { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; font-size: 11px; color: var(--m-mid); }
-  .lumen__strat-bookmark-count { color: var(--m-ink); font-weight: 500; }
-  .lumen__strat-bookmark svg { color: var(--m-ink); }
-
-  .lumen__tags { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 28px; }
-  .lumen__tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--m-cobalt); font-weight: 500; }
-  .lumen__tag::before { content: '✓'; font-size: 11px; color: var(--m-cobalt); font-weight: 700; }
-
-  /* Dixon Baxi-inspired editorial section heading — numbered with a
-     cobalt rule that runs to the right edge. */
   .lumen .lumen__section-h {
     display: flex; align-items: center; gap: 14px;
-    font-size: 11px; font-weight: 500; color: var(--m-mid);
+    font-size: 10px; font-weight: 500; color: var(--m-mid);
     letter-spacing: 0.18em; text-transform: uppercase;
-    margin: 48px 0 18px !important; line-height: 1.3;
+    margin: 36px 0 16px; line-height: 1.3;
   }
   .lumen .lumen__section-h::before {
-    content: attr(data-num) ' /';
-    color: var(--m-cobalt); font-weight: 500; letter-spacing: 0.04em;
-    flex-shrink: 0;
+    content: attr(data-num) ' /'; color: var(--m-cobalt); font-weight: 500; flex-shrink: 0;
   }
-  .lumen .lumen__section-h::after {
-    content: ''; flex: 1; height: 1px; background: var(--m-hair);
-  }
-  /* The napkin — content hidden behind a 'confidential' panel so the actual
-     client structure isn't shown in a public portfolio piece. */
-  .lumen__napkin {
-    position: relative;
-    border: 1px solid var(--m-hair); padding: 56px 24px;
-    background:
-      repeating-linear-gradient(135deg, #FBFBFB 0 12px, #F4F4F4 12px 13px);
-    min-height: 240px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-  }
-  .lumen__confidential-tag {
-    position: absolute; top: 14px; right: 14px;
-    font-size: 9px; letter-spacing: 0.20em; text-transform: uppercase;
-    color: var(--m-mid); font-weight: 500;
-    padding: 5px 10px; background: rgba(255,255,255,0.96);
-    border: 1px solid var(--m-hair);
-  }
-  .lumen__confidential-body { text-align: center; max-width: 320px; }
-  .lumen__confidential-h {
-    font-size: 14px; color: var(--m-ink); font-weight: 500; margin-bottom: 6px;
-    letter-spacing: 0.02em;
-  }
-  .lumen__confidential-sub { font-size: 12px; color: var(--m-mid); line-height: 1.55; }
-  .lumen .lumen__pitch p { font-size: 13px; line-height: 1.65; color: var(--m-body); margin: 0 0 14px; max-width: 70ch; }
-  .lumen .lumen__pitch p:last-child { margin-bottom: 0; }
+  .lumen .lumen__section-h::after { content: ''; flex: 1; height: 1px; background: var(--m-hair); }
 
-  /* BIG NUMBERS — Bottom Line block. Lead with impact in dollars. */
-  .lumen__numbers {
-    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
-    border: 1px solid var(--m-hair);
+  .lumen__storystats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: var(--m-hair); border: 1px solid var(--m-hair); margin-bottom: 4px;
   }
-  .lumen__numcell { padding: 22px 24px; border-right: 1px solid var(--m-hair); }
-  .lumen__numcell:last-child { border-right: none; }
-  .lumen__numcell--accent { background: #FAFAFE; }
-  .lumen__numcell-label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; margin-bottom: 8px; }
-  .lumen__numcell-value {
-    font-size: 38px; font-weight: 500; color: var(--m-ink);
-    letter-spacing: -0.025em; line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  .lumen__numcell-value--cobalt { color: var(--m-cobalt); }
-  .lumen__numcell-sub { display: block; font-size: 11px; color: var(--m-mid); margin-top: 6px; font-weight: 500; }
-
-  @media (max-width: 64em) {
-    .lumen__numbers { grid-template-columns: 1fr; }
-    .lumen__numcell { border-right: none; border-bottom: 1px solid var(--m-hair); }
-    .lumen__numcell:last-child { border-bottom: none; }
-    .lumen__numcell-value { font-size: 32px; }
-  }
-
-  /* STORY STATS — a visual band of headline figures right under the tags */
-  .lumen__storystats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--m-hair); border: 1px solid var(--m-hair); margin: 28px 0 8px; }
-  .lumen__stat { background: var(--m-bg); padding: 20px 22px; }
-  .lumen__stat-v { font-size: 34px; font-weight: 500; letter-spacing: -0.03em; line-height: 1; color: var(--m-ink); font-variant-numeric: tabular-nums; }
+  .lumen__stat { background: rgba(255,255,255,0.03); padding: 18px 16px; }
+  .lumen__stat-v { font-size: 26px; font-weight: 500; letter-spacing: -0.03em; line-height: 1; color: var(--m-ink); }
   .lumen__stat-v--cobalt { color: var(--m-cobalt); }
-  .lumen__stat-l { font-size: 11px; color: var(--m-mid); margin-top: 9px; line-height: 1.45; }
+  .lumen__stat-l { font-size: 10px; color: var(--m-mid); margin-top: 7px; line-height: 1.4; }
 
-  /* GROWTH CHART — the gap between planning and no planning, widening over time */
-  .lumen__chart { margin: 8px 0 6px; border: 1px solid var(--m-hair); padding: 22px 24px 18px; }
-  .lumen__chart-cap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-  .lumen__chart-k { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; }
-  .lumen__chart-note { font-size: 11px; color: var(--m-mid); }
-  .lumen__chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-  .lumen__chart-legend { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 18px; font-size: 11px; color: var(--m-body); }
-  .lumen__legend-i { display: inline-flex; align-items: center; gap: 7px; }
-  .lumen__legend-sw { width: 14px; height: 3px; border-radius: 2px; flex-shrink: 0; }
-  .lumen__legend-sw--fill { height: 12px; opacity: 0.16; }
+  .lumen .lumen__pitch p { font-size: 14px; line-height: 1.65; color: var(--m-body); margin: 0 0 14px; }
+  .lumen .lumen__pitch p:last-child { margin-bottom: 0; }
+  .lumen .lumen__pitch em { color: var(--m-ink); font-style: italic; }
 
-  /* TAX EROSION — horizontal stacked bars: what each dollar of estate becomes */
-  .lumen__erode { margin: 22px 0 6px; }
-  .lumen__erode-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
-  .lumen__erode-row:last-child { margin-bottom: 0; }
-  .lumen__erode-name { width: 116px; font-size: 12px; color: var(--m-body); flex-shrink: 0; }
-  .lumen__erode-track { flex: 1; height: 30px; display: flex; border: 1px solid var(--m-hair); overflow: hidden; }
-  .lumen__erode-seg { display: flex; align-items: center; padding: 0 11px; font-size: 11px; font-weight: 500; color: #fff; white-space: nowrap; letter-spacing: 0.01em; }
-  .lumen__erode-seg--kept { background: var(--m-cobalt); }
-  .lumen__erode-seg--tax { background: #c4423a; }
-  .lumen__erode-seg--replaced { background: #0a6577; }
-  .lumen__erode-seg--ghost { background: repeating-linear-gradient(135deg, #f3f3f3 0 6px, #ececec 6px 7px); color: var(--m-mid); }
+  .lumen__signals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .lumen__signal { border: 1px solid var(--m-hair); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 7px; background: rgba(255,255,255,0.03); }
+  .lumen__signal-ic { width: 28px; height: 28px; border-radius: 7px; background: rgba(61,186,126,0.12); display: inline-flex; align-items: center; justify-content: center; color: var(--m-cobalt); }
+  .lumen__signal-ic svg { width: 14px; height: 14px; }
+  .lumen__signal-t { font-size: 13px; font-weight: 500; color: var(--m-ink); }
+  .lumen__signal-d { font-size: 11.5px; line-height: 1.5; color: var(--m-mid); }
 
-  /* CLIENT SIGNALS — who the curator surfaces this for (visual grid) */
-  .lumen__signals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 4px 0 6px; }
-  .lumen__signal { border: 1px solid var(--m-hair); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 9px; }
-  .lumen__signal-ic { width: 30px; height: 30px; border-radius: 8px; background: rgba(12,139,80,0.10); display: inline-flex; align-items: center; justify-content: center; color: var(--m-cobalt); }
-  .lumen__signal-ic svg { width: 16px; height: 16px; }
-  .lumen__signal-t { font-size: 13.5px; font-weight: 500; color: var(--m-ink); }
-  .lumen__signal-d { font-size: 12px; line-height: 1.5; color: var(--m-mid); }
-
-  /* STEP FLOW — how it works, as three connected steps */
-  .lumen__flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid var(--m-hair); border-radius: 10px; overflow: hidden; }
-  .lumen__flow-step { padding: 20px 20px 22px; border-right: 1px solid var(--m-hair); position: relative; }
-  .lumen__flow-step:last-child { border-right: none; }
-  .lumen__flow-n { width: 26px; height: 26px; border-radius: 50%; background: var(--m-cobalt); color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 13px; }
-  .lumen__flow-t { font-size: 13.5px; font-weight: 500; color: var(--m-ink); margin-bottom: 6px; }
-  .lumen__flow-d { font-size: 12px; line-height: 1.55; color: var(--m-mid); }
-  .lumen__flow-step::after { content: '→'; position: absolute; top: 26px; right: -9px; z-index: 2; color: var(--m-cobalt); font-size: 13px; background: var(--m-bg); width: 18px; text-align: center; }
+  .lumen__flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--m-hair); border: 1px solid var(--m-hair); border-radius: 10px; overflow: hidden; }
+  .lumen__flow-step { padding: 18px 18px 20px; background: rgba(255,255,255,0.03); position: relative; }
+  .lumen__flow-step::after { content: '→'; position: absolute; top: 22px; right: -9px; z-index: 2; color: var(--m-cobalt); font-size: 12px; background: rgba(14,14,14,0.98); width: 18px; text-align: center; }
   .lumen__flow-step:last-child::after { content: none; }
+  .lumen__flow-n { width: 24px; height: 24px; border-radius: 50%; background: var(--m-cobalt); color: #0e0e0e; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 11px; }
+  .lumen__flow-t { font-size: 13px; font-weight: 500; color: var(--m-ink); margin-bottom: 5px; }
+  .lumen__flow-d { font-size: 11.5px; line-height: 1.5; color: var(--m-mid); }
 
-  /* COMPARISON TABLE — how it stacks up against the alternatives */
-  .lumen__compare { width: 100%; border-collapse: collapse; border: 1px solid var(--m-hair); font-size: 12.5px; }
-  .lumen__compare th, .lumen__compare td { padding: 13px 14px; text-align: left; border-bottom: 1px solid var(--m-hair); }
-  .lumen__compare thead th { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; }
-  .lumen__compare thead th.is-this { color: var(--m-cobalt); }
-  .lumen__compare td.is-this { background: rgba(12,139,80,0.05); font-weight: 500; color: var(--m-ink); }
-  .lumen__compare tbody tr:last-child td { border-bottom: none; }
-  .lumen__compare .lumen__compare-row { color: var(--m-body); font-weight: 500; }
-  .lumen__compare td { color: var(--m-mid); }
+  .lumen__numbers { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--m-hair); border: 1px solid var(--m-hair); }
+  .lumen__numcell { padding: 20px 18px; background: rgba(255,255,255,0.03); }
+  .lumen__numcell--accent { background: rgba(61,186,126,0.07); }
+  .lumen__numcell-label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; margin-bottom: 8px; }
+  .lumen__numcell-value { font-size: 26px; font-weight: 500; color: var(--m-ink); letter-spacing: -0.025em; line-height: 1; }
+  .lumen__numcell-value--cobalt { color: var(--m-cobalt); }
+  .lumen__numcell-sub { display: block; font-size: 10px; color: var(--m-mid); margin-top: 5px; font-weight: 500; }
 
-  /* COURT CASE CARDS — proof in the case law */
-  .lumen__cases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .lumen__case { border: 1px solid var(--m-hair); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
-  .lumen__case-tag { align-self: flex-start; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; padding: 4px 9px; border-radius: 999px; }
-  .lumen__case-tag--win { color: #0a6e3f; background: rgba(12,139,80,0.12); }
-  .lumen__case-tag--caution { color: #b3541e; background: rgba(224,68,3,0.12); }
-  .lumen__case-tag--validate { color: #0a6577; background: rgba(10,101,119,0.12); }
-  .lumen__case-name { font-size: 13.5px; font-weight: 500; color: var(--m-ink); font-style: italic; font-family: 'Sorts Mill Goudy', Georgia, serif; }
-  .lumen__case-d { font-size: 12px; line-height: 1.5; color: var(--m-mid); }
-  .lumen__case-yr { font-size: 11px; color: var(--m-mid); font-variant-numeric: tabular-nums; margin-top: auto; padding-top: 4px; }
-
-  /* RISK CARDS — what to flag, with a severity indicator */
-  .lumen__risks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .lumen__risk { border: 1px solid var(--m-hair); border-radius: 10px; padding: 16px 18px; }
-  .lumen__risk-head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
-  .lumen__risk-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .lumen__risk-dot--high { background: #c4423a; }
-  .lumen__risk-dot--med { background: #e0a403; }
-  .lumen__risk-sev { font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--m-mid); font-weight: 600; }
-  .lumen__risk-t { font-size: 13.5px; font-weight: 500; color: var(--m-ink); margin-bottom: 6px; }
-  .lumen__risk-d { font-size: 12px; line-height: 1.55; color: var(--m-mid); }
-
-  /* Q&A — objections / client questions, as clean rows */
-  .lumen__qa { display: flex; flex-direction: column; border: 1px solid var(--m-hair); border-radius: 10px; overflow: hidden; }
-  .lumen__qa-item { padding: 16px 20px; border-bottom: 1px solid var(--m-hair); }
-  .lumen__qa-item:last-child { border-bottom: none; }
-  .lumen__qa-q { display: flex; gap: 10px; align-items: baseline; font-size: 13.5px; font-weight: 500; color: var(--m-ink); margin-bottom: 7px; }
-  .lumen__qa-q::before { content: 'Q'; flex-shrink: 0; color: var(--m-cobalt); font-weight: 700; font-size: 12px; }
-  .lumen__qa-a { display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; line-height: 1.55; color: var(--m-mid); }
-  .lumen__qa-a::before { content: 'A'; flex-shrink: 0; color: var(--m-mid); font-weight: 700; font-size: 12px; }
-
-  /* LEVERAGE — premiums funded in vs. benefit paid out, as scaled bars */
-  .lumen__lev { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 2px; }
-  .lumen__lev-row { display: grid; grid-template-columns: 168px 1fr; align-items: center; gap: 18px; }
-  .lumen__lev-label { font-size: 12px; color: var(--m-mid); }
-  .lumen__lev-label b { display: block; font-size: 23px; font-weight: 500; color: var(--m-ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-top: 3px; }
+  .lumen__lev { display: flex; flex-direction: column; gap: 12px; margin: 4px 0 2px; }
+  .lumen__lev-row { display: grid; grid-template-columns: 148px 1fr; align-items: center; gap: 14px; }
+  .lumen__lev-label { font-size: 11.5px; color: var(--m-mid); }
+  .lumen__lev-label b { display: block; font-size: 20px; font-weight: 500; color: var(--m-ink); letter-spacing: -0.02em; margin-top: 2px; }
   .lumen__lev-track { display: flex; align-items: center; }
-  .lumen__lev-bar { height: 34px; border-radius: 6px; display: flex; align-items: center; padding: 0 13px; color: #fff; font-size: 11.5px; font-weight: 500; white-space: nowrap; min-width: fit-content; }
-  .lumen__lev-bar--in { background: var(--m-teal); }
-  .lumen__lev-bar--out { background: var(--m-cobalt); }
-  /* CALLOUT — a single headline figure with a line of context */
-  .lumen__callout { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; gap: 18px; margin-top: 18px; padding: 18px 22px; border: 1px solid var(--m-hair); border-radius: 10px; background: linear-gradient(135deg, #f2f8f4 0%, #ffffff 62%); }
-  /* Smudge motif — soft horizontal color streaks blurred behind the stat. */
-  .lumen__callout::before { content: ''; position: absolute; inset: -22% -8%; z-index: -1; pointer-events: none; filter: blur(16px); opacity: 0.5;
+  .lumen__lev-bar { height: 30px; border-radius: 5px; display: flex; align-items: center; padding: 0 11px; color: #fff; font-size: 11px; font-weight: 500; white-space: nowrap; min-width: fit-content; }
+  .lumen__lev-bar--in  { background: rgba(61,186,126,0.35); }
+  .lumen__lev-bar--out { background: var(--m-cobalt); color: #0e0e0e; }
+
+  .lumen__callout {
+    position: relative; isolation: isolate; overflow: hidden;
+    display: flex; align-items: center; gap: 16px;
+    margin-top: 16px; padding: 16px 20px;
+    border: 1px solid var(--m-hair); border-radius: 10px;
+    background: rgba(61,186,126,0.06);
+  }
+  .lumen__callout::before {
+    content: ''; position: absolute; inset: -22% -8%; z-index: -1; pointer-events: none;
+    filter: blur(20px); opacity: 0.35;
     background:
-      linear-gradient(90deg, transparent 4%, rgba(12,139,80,0.55) 34%, rgba(10,101,119,0.40) 60%, transparent 86%) no-repeat 0 30% / 130% 16%,
-      linear-gradient(90deg, transparent 6%, rgba(18,87,214,0.26) 42%, rgba(12,139,80,0.28) 68%, transparent 92%) no-repeat 0 68% / 120% 13%; }
-  .lumen__callout-v { font-size: 42px; font-weight: 500; color: var(--m-cobalt); letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-  .lumen__callout-t { font-size: 13px; color: var(--m-body); line-height: 1.5; }
+      linear-gradient(90deg, transparent 4%, rgba(12,139,80,0.7) 34%, rgba(10,101,119,0.5) 60%, transparent 86%) no-repeat 0 30% / 130% 16%,
+      linear-gradient(90deg, transparent 6%, rgba(18,87,214,0.3) 42%, rgba(12,139,80,0.35) 68%, transparent 92%) no-repeat 0 68% / 120% 13%;
+  }
+  .lumen__callout-v { font-size: 34px; font-weight: 500; color: var(--m-cobalt); letter-spacing: -0.03em; line-height: 1; flex-shrink: 0; }
+  .lumen__callout-t { font-size: 12.5px; color: var(--m-body); line-height: 1.5; }
   .lumen__callout-t strong { color: var(--m-ink); font-weight: 500; }
 
-  @media (max-width: 40em) {
-    .lumen__signals { grid-template-columns: 1fr; }
-    .lumen__flow { grid-template-columns: 1fr; }
-    .lumen__flow-step { border-right: none; border-bottom: 1px solid var(--m-hair); }
-    .lumen__flow-step:last-child { border-bottom: none; }
+  .lumen__compare { width: 100%; border-collapse: collapse; border: 1px solid var(--m-hair); font-size: 12px; }
+  .lumen__compare th, .lumen__compare td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--m-hair); color: var(--m-body); }
+  .lumen__compare thead th { font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--m-mid); font-weight: 500; background: rgba(255,255,255,0.02); }
+  .lumen__compare thead th.is-this { color: var(--m-cobalt); }
+  .lumen__compare td.is-this { background: rgba(61,186,126,0.06); font-weight: 500; color: var(--m-ink); }
+  .lumen__compare tbody tr:last-child td { border-bottom: none; }
+  .lumen__compare .lumen__compare-row { color: var(--m-ink); font-weight: 500; }
+
+  .lumen__cases { display: flex; flex-direction: column; gap: 10px; }
+  .lumen__case { border: 1px solid var(--m-hair); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 7px; background: rgba(255,255,255,0.03); }
+  .lumen__case-tag { align-self: flex-start; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
+  .lumen__case-tag--win      { color: #3dba7e; background: rgba(61,186,126,0.15); }
+  .lumen__case-tag--caution  { color: #e07a5f; background: rgba(224,122,95,0.15); }
+  .lumen__case-tag--validate { color: #81b4ea; background: rgba(129,180,234,0.15); }
+  .lumen__case-name { font-size: 13px; font-weight: 500; color: var(--m-ink); font-style: italic; font-family: 'Sorts Mill Goudy', Georgia, serif; }
+  .lumen__case-d  { font-size: 12px; line-height: 1.5; color: var(--m-mid); }
+  .lumen__case-yr { font-size: 11px; color: var(--m-mid); padding-top: 2px; }
+
+  @media (max-width: 480px) {
+    .lumen__storystats,
+    .lumen__signals,
+    .lumen__numbers    { grid-template-columns: 1fr; }
+    .lumen__flow       { grid-template-columns: 1fr; }
     .lumen__flow-step::after { content: none; }
-    .lumen__cases, .lumen__risks { grid-template-columns: 1fr; }
-    .lumen__lev-row { grid-template-columns: 1fr; gap: 8px; }
-    .lumen__callout { flex-direction: column; align-items: flex-start; gap: 10px; }
-  }
-
-  .lumen__strat-rail { border-left: 1px solid var(--m-hair); padding: 28px 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-  .lumen__rail-btn { width: 36px; height: 36px; border: 1px solid var(--m-hair); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--m-ink); position: relative; cursor: pointer; }
-  .lumen__rail-btn:hover { background: #f6f6f6; }
-  .lumen__rail-badge { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; background: var(--m-cobalt); color: var(--m-bg); border-radius: 50%; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
-
-  /* Persistent chat footer */
-  .lumen__chat-footer { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px var(--m-pad-x) 20px; z-index: 5; background: var(--m-bg); border-top: 1px solid var(--m-hair); }
-  .lumen__chat-form { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--m-bg); border: 1px solid var(--m-hair); border-radius: 8px; }
-  .lumen__chat-form:focus-within { border-color: var(--m-cobalt); }
-  .lumen__chat-prompt { font-size: 14px; color: var(--m-cobalt); font-weight: 700; }
-  .lumen__chat-input { flex: 1; font-size: 13px; color: var(--m-ink); }
-  .lumen__chat-input::placeholder { color: var(--m-mid); }
-  .lumen__chat-send { font-size: 14px; color: var(--m-ink); padding: 0 4px; }
-  .lumen__chat-send:hover { color: var(--m-cobalt); }
-
-  @media (max-width: 640px) {
-    .lumen__top { padding: 12px 16px; gap: 10px; }
-    .lumen__strat-shell { grid-template-columns: 1fr; min-height: 0; }
-    .lumen__strat-side { display: none; }
-    .lumen__strat-main { padding: 18px 16px 24px; }
-    .lumen__strat-rail { display: none; }
-    .lumen__tags { gap: 6px 10px; }
-    .lumen__chat-footer { padding: 12px 16px 16px; }
+    .lumen__lev-row    { grid-template-columns: 1fr; gap: 6px; }
+    .lumen__callout    { flex-direction: column; align-items: flex-start; }
   }
 </style>
 
 <div class="lumen lumen-strategy">
   <div class="lumen__strat-scroll">
-  <header class="lumen__top">
-    <div class="lumen__brand">
-      <span class="lumen__brand-mark">Lumen</span>
+
+    <div class="lumen__strat-eyebrow">Prospect Finder</div>
+    <h2 class="lumen__strat-h">Gen-Skip Split-Dollar</h2>
+    <p class="lumen__strat-sub">Preserves illiquid family legacy assets across generations with minimal gift-tax cost.</p>
+
+    <div class="lumen__tags">
+      <span class="lumen__tag">High-Net-Worth</span>
+      <span class="lumen__tag">Liquidity Risk</span>
+      <span class="lumen__tag">Advanced Age / Uninsurable</span>
+      <span class="lumen__tag">Real Estate Developer</span>
+      <span class="lumen__tag">Closely-Held Business Owner</span>
     </div>
-    <div class="lumen__nav" role="navigation">
-      <button class="lumen__navitem" type="button"><svg viewBox="0 0 14 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M2 1h10v15l-5-3.4L2 16z"/></svg><span class="lumen__navlabel">Bookmarks</span></button>
-      <button class="lumen__navitem" type="button"><svg viewBox="0 0 18 14" width="14" height="14" fill="currentColor" aria-hidden="true"><rect x="0" y="8" width="3" height="6"/><rect x="5.5" y="4" width="3" height="10"/><rect x="11" y="0" width="3" height="14"/></svg><span class="lumen__navlabel">Sales Vault</span></button>
-      <span class="lumen__navdivider"></span>
-      <button class="lumen__navitem lumen__navitem--notify" type="button" aria-label="Notifications"><svg viewBox="0 0 18 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M9 1c-3.3 0-6 2.5-6 5.6V11l-2 3h16l-2-3V6.6C15 3.5 12.3 1 9 1z"/></svg></button>
-      <span class="lumen__avatar" aria-label="Barry Gibb">BG</span>
+
+    <div class="lumen__storystats">
+      <div class="lumen__stat">
+        <div class="lumen__stat-v lumen__stat-v--cobalt">+$61M</div>
+        <div class="lumen__stat-l">preserved on a $30M estate</div>
+      </div>
+      <div class="lumen__stat">
+        <div class="lumen__stat-v">40%</div>
+        <div class="lumen__stat-l">of an unplanned estate lost to tax</div>
+      </div>
+      <div class="lumen__stat">
+        <div class="lumen__stat-v">2.4k</div>
+        <div class="lumen__stat-l">advisors studying this week</div>
+      </div>
     </div>
-  </header>
 
-  <div class="lumen__strat-shell">
-    <aside class="lumen__strat-side">
-      <div class="lumen__strat-title">Gen-Skip Split Dollar</div>
-      <div class="lumen__strat-list">
-        <button class="lumen__strat-item is-active" type="button">Prospect Finder</button>
-        <button class="lumen__strat-item" type="button">Court Case Summaries</button>
-        <button class="lumen__strat-item" type="button">Proof of Concept</button>
-        <button class="lumen__strat-item" type="button">Client Letters</button>
+    <h3 class="lumen__section-h" data-num="1">The pitch</h3>
+    <div class="lumen__pitch">
+      <p>Gen-Skip Split-Dollar — an intergenerational split-dollar arrangement — preserves illiquid family assets (a business, real estate, private equity) for the next generation with unmatched tax-efficiency. A senior family member funds an ILIT to insure a junior life; at the junior's passing the death benefit lands in the trust, income-tax-free and outside the estate, funding the liquidity to keep the legacy intact.</p>
+    </div>
+
+    <h3 class="lumen__section-h" data-num="2">Who it's for</h3>
+    <div class="lumen__signals">
+      <div class="lumen__signal">
+        <span class="lumen__signal-ic"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 16h14M3 16V6l6-4 6 4v10M7 16v-4h4v4"/></svg></span>
+        <span class="lumen__signal-t">Illiquid estate</span>
+        <span class="lumen__signal-d">Wealth tied up in a business, real estate, or private equity that can't be sold to cover tax.</span>
       </div>
-      <div class="lumen__strat-related">
-        <div class="lumen__strat-related-label">Related Material</div>
-        <div class="lumen__strat-related-item">Irrevocable Life Insurance Trust (ILIT)</div>
+      <div class="lumen__signal">
+        <span class="lumen__signal-ic"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13a7 7 0 0 1 14 0"/><path d="M9 13l4-4"/></svg></span>
+        <span class="lumen__signal-t">Low remaining exemption</span>
+        <span class="lumen__signal-d">Little lifetime exemption left, so more of the estate is exposed to transfer tax.</span>
       </div>
-    </aside>
-
-    <section class="lumen__strat-main">
-      <div class="lumen__strat-eyebrow">Prospect Finder</div>
-      <h2 class="lumen__strat-h">Prospect Finder</h2>
-      <p class="lumen__strat-sub">Advanced planning strategy that preserves illiquid family legacy assets.</p>
-
-      <div class="lumen__strat-bookmark">
-        <span class="lumen__strat-bookmark-count">Bookmarked by 10 others</span>
-        <svg viewBox="0 0 14 18" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M2 1h10v17l-5-3.4L2 18z"/></svg>
+      <div class="lumen__signal">
+        <span class="lumen__signal-ic"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v14M3 5h12M5 5l-3 5h6zM13 5l3 5h-6z"/></svg></span>
+        <span class="lumen__signal-t">Asset-rich, liquidity-poor</span>
+        <span class="lumen__signal-d">A forced sale at death would mean selling the very thing the legacy is built on.</span>
       </div>
-
-      <div class="lumen__tags">
-        <span class="lumen__tag">High-Net-Worth</span>
-        <span class="lumen__tag">Liquidity Risk</span>
-        <span class="lumen__tag">Advanced Age/Uninsurable</span>
-        <span class="lumen__tag">Low Exemption</span>
-        <span class="lumen__tag">Private Equity Investor</span>
-        <span class="lumen__tag">Real Estate Developer</span>
-        <span class="lumen__tag">Closely-Held Business Owner</span>
+      <div class="lumen__signal">
+        <span class="lumen__signal-ic"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="13" cy="7" r="2"/><path d="M2 15c0-2.5 1.8-4 4-4s4 1.5 4 4M11 14c0-1.8 1.2-3 3-3s3 1.2 3 3"/></svg></span>
+        <span class="lumen__signal-t">Wants to keep it in the family</span>
+        <span class="lumen__signal-d">The goal is to pass the asset on intact — not liquidate it to pay the IRS.</span>
       </div>
+    </div>
 
-      <div class="lumen__storystats">
-        <div class="lumen__stat">
-          <div class="lumen__stat-v lumen__stat-v--cobalt">+$61M</div>
-          <div class="lumen__stat-l">preserved for the next generation on a $30M estate</div>
-        </div>
-        <div class="lumen__stat">
-          <div class="lumen__stat-v">40%</div>
-          <div class="lumen__stat-l">of an unplanned estate lost to transfer tax</div>
-        </div>
-        <div class="lumen__stat">
-          <div class="lumen__stat-v">2.4k</div>
-          <div class="lumen__stat-l">advisors studying this strategy this week</div>
-        </div>
+    <h3 class="lumen__section-h" data-num="3">How it works</h3>
+    <div class="lumen__flow">
+      <div class="lumen__flow-step">
+        <span class="lumen__flow-n">1</span>
+        <div class="lumen__flow-t">Fund the ILIT</div>
+        <div class="lumen__flow-d">A senior family member funds an irrevocable trust through economic-benefit split-dollar.</div>
       </div>
-
-      <h3 class="lumen__section-h" data-num="1">The pitch</h3>
-      <div class="lumen__pitch">
-        <p>Gen-Skip Split-Dollar — an intergenerational split-dollar arrangement — preserves illiquid family assets (a business, real estate, private equity) for the next generation with unmatched tax-efficiency. A senior family member funds an ILIT to insure a junior life; at the junior's passing the death benefit lands in the trust, income-tax-free and outside the estate, funding the liquidity to keep the legacy intact.</p>
+      <div class="lumen__flow-step">
+        <span class="lumen__flow-n">2</span>
+        <div class="lumen__flow-t">Insure a junior life</div>
+        <div class="lumen__flow-d">The ILIT buys insurance on a younger family member, compounding the benefit over a longer horizon.</div>
       </div>
-
-      <h3 class="lumen__section-h" data-num="2">Who it's for</h3>
-      <div class="lumen__signals">
-        <div class="lumen__signal">
-          <span class="lumen__signal-ic"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 16h14M3 16V6l6-4 6 4v10M7 16v-4h4v4"/></svg></span>
-          <span class="lumen__signal-t">Illiquid estate</span>
-          <span class="lumen__signal-d">Wealth tied up in a business, real estate, or private equity that can't be sold to cover tax.</span>
-        </div>
-        <div class="lumen__signal">
-          <span class="lumen__signal-ic"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13a7 7 0 0 1 14 0"/><path d="M9 13l4-4"/></svg></span>
-          <span class="lumen__signal-t">Low remaining exemption</span>
-          <span class="lumen__signal-d">Little lifetime exemption left, so more of the estate is exposed to transfer tax.</span>
-        </div>
-        <div class="lumen__signal">
-          <span class="lumen__signal-ic"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v14M3 5h12M5 5l-3 5h6zM13 5l3 5h-6z"/></svg></span>
-          <span class="lumen__signal-t">Asset-rich, liquidity-poor</span>
-          <span class="lumen__signal-d">A forced sale at death would mean selling the very thing the legacy is built on.</span>
-        </div>
-        <div class="lumen__signal">
-          <span class="lumen__signal-ic"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="13" cy="7" r="2"/><path d="M2 15c0-2.5 1.8-4 4-4s4 1.5 4 4M11 14c0-1.8 1.2-3 3-3s3 1.2 3 3"/></svg></span>
-          <span class="lumen__signal-t">Wants to keep it in the family</span>
-          <span class="lumen__signal-d">The goal is to pass the asset on intact — not liquidate it to pay the IRS.</span>
-        </div>
+      <div class="lumen__flow-step">
+        <span class="lumen__flow-n">3</span>
+        <div class="lumen__flow-t">Receive the benefit</div>
+        <div class="lumen__flow-d">Cash lands in the ILIT — income-tax-free, outside the estate — funding the liquidity to keep the legacy intact.</div>
       </div>
+    </div>
 
-      <h3 class="lumen__section-h" data-num="3">How it works</h3>
-      <div class="lumen__flow">
-        <div class="lumen__flow-step">
-          <span class="lumen__flow-n">1</span>
-          <div class="lumen__flow-t">Fund the ILIT</div>
-          <div class="lumen__flow-d">A senior family member funds an irrevocable trust through economic-benefit split-dollar — keeping gift-tax exposure minimal.</div>
-        </div>
-        <div class="lumen__flow-step">
-          <span class="lumen__flow-n">2</span>
-          <div class="lumen__flow-t">Insure a junior life</div>
-          <div class="lumen__flow-d">The ILIT buys insurance on a younger family member, so the benefit compounds across a longer horizon.</div>
-        </div>
-        <div class="lumen__flow-step">
-          <span class="lumen__flow-n">3</span>
-          <div class="lumen__flow-t">Receive the benefit</div>
-          <div class="lumen__flow-d">At the junior's passing, cash lands in the ILIT — income-tax-free, outside the estate — funding the liquidity to keep assets intact.</div>
-        </div>
+    <h3 class="lumen__section-h" data-num="4">The bottom line</h3>
+    <div class="lumen__numbers">
+      <div class="lumen__numcell">
+        <div class="lumen__numcell-label">Without planning</div>
+        <div class="lumen__numcell-value">$118M</div>
+        <span class="lumen__numcell-sub">after-tax legacy</span>
       </div>
-
-      <h3 class="lumen__section-h" data-num="4">The bottom line</h3>
-      <div class="lumen__numbers">
-        <div class="lumen__numcell">
-          <div class="lumen__numcell-label">Without planning</div>
-          <div class="lumen__numcell-value">$118M</div>
-          <span class="lumen__numcell-sub">after-tax legacy</span>
-        </div>
-        <div class="lumen__numcell">
-          <div class="lumen__numcell-label">With planning</div>
-          <div class="lumen__numcell-value">$179M</div>
-          <span class="lumen__numcell-sub">after-tax legacy</span>
-        </div>
-        <div class="lumen__numcell lumen__numcell--accent">
-          <div class="lumen__numcell-label">Net benefit</div>
-          <div class="lumen__numcell-value lumen__numcell-value--cobalt">$61M</div>
-          <span class="lumen__numcell-sub">preserved for the next generation</span>
-        </div>
+      <div class="lumen__numcell">
+        <div class="lumen__numcell-label">With planning</div>
+        <div class="lumen__numcell-value">$179M</div>
+        <span class="lumen__numcell-sub">after-tax legacy</span>
       </div>
-
-      <h3 class="lumen__section-h" data-num="5">Premiums in vs. benefit out</h3>
-      <p class="lumen__strat-sub" style="margin-bottom:16px;max-width:70ch">The whole strategy turns on leverage: a modest stream of premiums, funded through the trust, buys a death benefit many times larger — and it lands income-tax-free, outside the estate.</p>
-      <div class="lumen__lev">
-        <div class="lumen__lev-row">
-          <span class="lumen__lev-label">Premiums funded<b>$6.2M</b></span>
-          <div class="lumen__lev-track"><span class="lumen__lev-bar lumen__lev-bar--in" style="width:13%">in</span></div>
-        </div>
-        <div class="lumen__lev-row">
-          <span class="lumen__lev-label">Death benefit to the trust<b>$48M</b></span>
-          <div class="lumen__lev-track"><span class="lumen__lev-bar lumen__lev-bar--out" style="width:100%">out · income-tax-free</span></div>
-        </div>
+      <div class="lumen__numcell lumen__numcell--accent">
+        <div class="lumen__numcell-label">Net benefit</div>
+        <div class="lumen__numcell-value lumen__numcell-value--cobalt">$61M</div>
+        <span class="lumen__numcell-sub">preserved for the next generation</span>
       </div>
-      <div class="lumen__callout">
-        <span class="lumen__callout-v">7.7×</span>
-        <span class="lumen__callout-t">Every <strong>$1</strong> funded through the ILIT returns roughly <strong>$7.70</strong> to the next generation — the leverage that makes the after-tax gap possible.</span>
+    </div>
+
+    <h3 class="lumen__section-h" data-num="5">Premiums in vs. benefit out</h3>
+    <p class="lumen__strat-sub" style="margin-bottom:14px">A modest stream of premiums buys a death benefit many times larger — landing income-tax-free, outside the estate.</p>
+    <div class="lumen__lev">
+      <div class="lumen__lev-row">
+        <span class="lumen__lev-label">Premiums funded<b>$6.2M</b></span>
+        <div class="lumen__lev-track"><span class="lumen__lev-bar lumen__lev-bar--in" style="width:13%">in</span></div>
       </div>
-
-      <h3 class="lumen__section-h" data-num="6">How it compares</h3>
-      <table class="lumen__compare">
-        <thead>
-          <tr>
-            <th>On a $30M illiquid estate</th>
-            <th>Do nothing</th>
-            <th>ILIT alone</th>
-            <th class="is-this">Gen-Skip Split-Dollar</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="lumen__compare-row">Liquidity at death</td>
-            <td>None</td>
-            <td>Moderate</td>
-            <td class="is-this">Full</td>
-          </tr>
-          <tr>
-            <td class="lumen__compare-row">Gift-tax cost to fund</td>
-            <td>—</td>
-            <td>High</td>
-            <td class="is-this">Minimal</td>
-          </tr>
-          <tr>
-            <td class="lumen__compare-row">To heirs, after tax</td>
-            <td>$118M</td>
-            <td>$152M</td>
-            <td class="is-this">$179M</td>
-          </tr>
-          <tr>
-            <td class="lumen__compare-row">Assets kept in family</td>
-            <td>Often sold</td>
-            <td>Partial</td>
-            <td class="is-this">Intact</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3 class="lumen__section-h" data-num="7">Proven in court</h3>
-      <div class="lumen__cases">
-        <div class="lumen__case">
-          <span class="lumen__case-tag lumen__case-tag--win">Taxpayer win</span>
-          <span class="lumen__case-name">Estate of Levine v. Commissioner</span>
-          <span class="lumen__case-d">Anchors the economic-benefit approach — the receivable discount the court accepted is the figure to pull forward.</span>
-          <span class="lumen__case-yr">2022 · U.S. Tax Court</span>
-        </div>
-        <div class="lumen__case">
-          <span class="lumen__case-tag lumen__case-tag--caution">Cautionary</span>
-          <span class="lumen__case-name">Estate of Cahill v. Commissioner</span>
-          <span class="lumen__case-d">The reminder on retained control — structure matters, or the proceeds get pulled back into the estate.</span>
-          <span class="lumen__case-yr">2018 · U.S. Tax Court</span>
-        </div>
-        <div class="lumen__case">
-          <span class="lumen__case-tag lumen__case-tag--validate">Validation</span>
-          <span class="lumen__case-name">Estate of Morrissette v. Commissioner</span>
-          <span class="lumen__case-d">Early validation of the intergenerational split-dollar arrangement and the economic-benefit regime.</span>
-          <span class="lumen__case-yr">2016 · U.S. Tax Court</span>
-        </div>
+      <div class="lumen__lev-row">
+        <span class="lumen__lev-label">Death benefit to the trust<b>$48M</b></span>
+        <div class="lumen__lev-track"><span class="lumen__lev-bar lumen__lev-bar--out" style="width:100%">out · income-tax-free</span></div>
       </div>
+    </div>
+    <div class="lumen__callout">
+      <span class="lumen__callout-v">7.7×</span>
+      <span class="lumen__callout-t">Every <strong>$1</strong> funded through the ILIT returns roughly <strong>$7.70</strong> to the next generation.</span>
+    </div>
 
-      <h3 class="lumen__section-h" data-num="8">How to position it</h3>
-      <div class="lumen__pitch">
-        <p>Lead with the problem the client already feels: <em>"If something happened tomorrow, your family would have to sell the thing you spent a lifetime building, just to pay the tax."</em></p>
-        <p>Then show the gap — the two after-tax numbers, side by side — and let the difference do the talking. The goal isn't to dazzle with structure; it's for the client to understand exactly how their legacy stays intact.</p>
+    <h3 class="lumen__section-h" data-num="6">How it compares</h3>
+    <table class="lumen__compare">
+      <thead>
+        <tr>
+          <th>On a $30M estate</th><th>Do nothing</th><th>ILIT alone</th><th class="is-this">Gen-Skip Split-Dollar</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="lumen__compare-row">Liquidity at death</td><td>None</td><td>Moderate</td><td class="is-this">Full</td></tr>
+        <tr><td class="lumen__compare-row">Gift-tax cost</td><td>—</td><td>High</td><td class="is-this">Minimal</td></tr>
+        <tr><td class="lumen__compare-row">To heirs, after tax</td><td>$118M</td><td>$152M</td><td class="is-this">$179M</td></tr>
+        <tr><td class="lumen__compare-row">Assets in family</td><td>Often sold</td><td>Partial</td><td class="is-this">Intact</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="lumen__section-h" data-num="7">Proven in court</h3>
+    <div class="lumen__cases">
+      <div class="lumen__case">
+        <span class="lumen__case-tag lumen__case-tag--win">Taxpayer win</span>
+        <span class="lumen__case-name">Estate of Levine v. Commissioner</span>
+        <span class="lumen__case-d">Anchors the economic-benefit approach — the receivable discount the court accepted is the figure to pull forward.</span>
+        <span class="lumen__case-yr">2022 · U.S. Tax Court</span>
       </div>
-    </section>
+      <div class="lumen__case">
+        <span class="lumen__case-tag lumen__case-tag--caution">Cautionary</span>
+        <span class="lumen__case-name">Estate of Cahill v. Commissioner</span>
+        <span class="lumen__case-d">The reminder on retained control — structure matters, or the proceeds get pulled back into the estate.</span>
+        <span class="lumen__case-yr">2018 · U.S. Tax Court</span>
+      </div>
+      <div class="lumen__case">
+        <span class="lumen__case-tag lumen__case-tag--validate">Validation</span>
+        <span class="lumen__case-name">Estate of Morrissette v. Commissioner</span>
+        <span class="lumen__case-d">Early validation of the intergenerational split-dollar arrangement and the economic-benefit regime.</span>
+        <span class="lumen__case-yr">2016 · U.S. Tax Court</span>
+      </div>
+    </div>
 
-    <aside class="lumen__strat-rail" aria-label="Notes">
-      <button class="lumen__rail-btn" type="button" aria-label="Notes">
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 2h10v12H2z"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>
-        <span class="lumen__rail-badge">3</span>
-      </button>
-    </aside>
-  </div>
-  </div>
+    <h3 class="lumen__section-h" data-num="8">How to position it</h3>
+    <div class="lumen__pitch">
+      <p>Lead with the problem the client already feels: <em>"If something happened tomorrow, your family would have to sell the thing you spent a lifetime building, just to pay the tax."</em></p>
+      <p>Then show the gap — the two after-tax numbers, side by side — and let the difference do the talking. The goal isn't to dazzle with structure; it's for the client to understand exactly how their legacy stays intact.</p>
+    </div>
 
-  <div class="lumen__chat-footer">
-    <form class="lumen__chat-form" onsubmit="event.preventDefault();">
-      <span class="lumen__chat-prompt">›</span>
-      <input class="lumen__chat-input" type="text" placeholder="Ask the Personal Advanced Markets Expert…" />
-      <button class="lumen__chat-send" type="submit" aria-label="Send">↵</button>
-    </form>
   </div>
 </div>
 
 <script>
-  // Slowly auto-scroll the Prospect Finder page so the whole layout reveals
-  // itself, then eases back to the top and loops.
   (function () {
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    var root = document.querySelector('.lumen-strategy .lumen__strat-scroll') || document.querySelector('.lumen-strategy');
-    if (!root || root.dataset.autoscroll) return; root.dataset.autoscroll = '1';
+    var root = document.querySelector('.lumen-strategy .lumen__strat-scroll');
+    if (!root || root.dataset.autoscroll) return;
+    root.dataset.autoscroll = '1';
     var dir = 1, paused = 0;
     function step() {
       var max = root.scrollHeight - root.clientHeight;
       if (max > 4 && !paused) {
-        root.scrollTop += 0.7 * dir;
-        if (root.scrollTop >= max - 0.5) { dir = -1; paused = 120; }
-        else if (root.scrollTop <= 0.5) { dir = 1; paused = 120; }
+        root.scrollTop += 0.6 * dir;
+        if (root.scrollTop >= max - 0.5) { dir = -1; paused = 200; }
+        else if (root.scrollTop <= 0.5)  { dir =  1; paused = 200; }
       } else if (paused) { paused--; }
       requestAnimationFrame(step);
     }
