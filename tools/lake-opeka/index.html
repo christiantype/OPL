@@ -91,9 +91,36 @@
     transition: border-color 0.15s ease, color 0.15s ease;
   }
   #btn-help:hover { border-color: var(--cobalt); color: var(--cobalt); }
+  #btn-how {
+    background: transparent; border: 1px solid #ececec;
+    color: #1a1a1a; height: 26px; padding: 0 12px;
+    cursor: pointer; font-family: var(--sans);
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  #btn-how:hover { border-color: var(--cobalt); color: var(--cobalt); }
 
-  #help { position: fixed; inset: 0; z-index: 1000; }
-  #help[hidden] { display: none; }
+  /* Record button + live indicator */
+  .rec-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #e0202a; vertical-align: middle; margin-right: 2px;
+  }
+  #btn-record.is-recording { background: #e0202a; color: #fff; border-color: #e0202a; }
+  #btn-record.is-recording .rec-dot { background: #fff; animation: rec-blink 1s steps(2,start) infinite; }
+  .rec-dot--live { animation: rec-blink 1s steps(2,start) infinite; }
+  @keyframes rec-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+  .rec-indicator {
+    position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(20,20,22,0.86); color: #fff;
+    padding: 7px 14px; border-radius: 100px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
+    z-index: 60; pointer-events: none;
+  }
+  .rec-indicator[hidden] { display: none; }
+
+  #help, #how { position: fixed; inset: 0; z-index: 1000; }
+  #help[hidden], #how[hidden] { display: none; }
   .help__scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); }
   .help__panel {
     position: absolute;
@@ -112,12 +139,31 @@
     margin: 0; font-family: var(--display); font-weight: 400;
     font-size: 22px; color: var(--text); letter-spacing: -0.01em;
   }
-  #help-close {
+  #help-close, #how-close {
     background: transparent; border: 1px solid var(--hairline);
     color: var(--text); width: 32px; height: 32px;
     font-size: 20px; cursor: pointer;
   }
-  #help-close:hover { border-color: var(--pink); color: var(--pink); }
+  #help-close:hover, #how-close:hover { border-color: var(--pink); color: var(--pink); }
+  /* The How-it-works overlay is wider — it's long-form. */
+  #how .help__panel { width: min(760px, 92vw); }
+  /* Inline code + the data-flow strip in the deep dive. */
+  .help__body code {
+    font-family: var(--mono); font-size: 11.5px;
+    background: #f2f2f0; color: var(--text);
+    padding: 1px 5px; border-radius: 3px;
+    border: 1px solid var(--hairline);
+  }
+  .how__flow {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px;
+    font-size: 11px; color: var(--text-mid);
+    background: var(--panel); border: 1px solid var(--hairline);
+    padding: 12px 14px; border-radius: 4px; margin: 4px 0 12px !important;
+  }
+  .how__flow span {
+    background: var(--bg); border: 1px solid var(--hairline);
+    padding: 5px 9px; border-radius: 3px; color: var(--text);
+  }
   .help__body {
     padding: 22px;
     overflow-y: auto;
@@ -516,7 +562,8 @@
     </a>
     <div class="opl-right">
       <span class="opl-seed" id="seed-display">seed —</span>
-      <button id="btn-help" type="button" title="Open help" aria-label="Help">?</button>
+      <button id="btn-how" type="button" title="How this tool works — a deep dive into the code">How it works</button>
+      <button id="btn-help" type="button" title="Open quick reference" aria-label="Help">?</button>
       <a href="/tools/" class="opl-back" aria-label="Back to Tools">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 79.7 72" width="17" height="17" fill="currentColor"><path d="M29.3,72h22c16.1,0,28.4-13.1,28.4-28.8v-14.4C79.7,13.1,67.4,0,51.3,0h-22C13.2,0,0,13.1,0,28.8v14.4c0,15.7,13.1,28.8,29.2,28.8h0Z"/></svg>
       </a>
@@ -547,7 +594,7 @@
 
         <h3>Effect Layer</h3>
         <p>A Dot or Glyph overlay whose colors are sampled from the just-rendered base composition. With <strong>no points</strong> it covers the whole canvas. <strong>Click anywhere on the canvas</strong> to drop a point — the layer is then confined to those circular pools with the Brush radius + Falloff you set. Drag a point to move; Shift-click or use × in the list to remove.</p>
-        <p><em>Tip:</em> turn the base into something visual (Slice / Strata / Scatter), enable the layer, set Dot size small + Sample blur high → soft halftone fragments that adopt the base colors.</p>
+        <p><em>Tip:</em> turn the base into something visual (Slice / Smudge / Scatter), enable the layer, set Dot size small + Sample blur high → soft halftone fragments that adopt the base colors.</p>
 
         <h3>Scatter — Trails</h3>
         <p>The connective bit. Each photo's subject point gets used as a graph node; trails connect them.</p>
@@ -560,7 +607,8 @@
         </ul>
 
         <h3>Output</h3>
-        <p>Export size is in pixels. <strong>PNG</strong> rasterizes the full composition (base + effect layer). <strong>SVG</strong> exports the layer fragments as vector circles / glyphs when the layer is on (or the Dot mode as vectors when not). Slice / Strata / Scatter / Window / Echo / Grid bases are photographic and stay raster — use PNG for those.</p>
+        <p>Export size is in pixels. <strong>PNG</strong> rasterizes the full composition (base + effect layer). <strong>SVG</strong> exports the Effect Layer fragments as vector circles / glyphs when the layer is on. The photographic bases (Slice / Smudge / Scatter / Window / Echo / Grid / Circle / Nest) stay raster — use PNG for those.</p>
+        <p><strong>Record</strong> captures the live canvas to a video — hit <strong>Record</strong> (or press <strong>R</strong>), tweak sliders / re-roll, then stop to download a WebM.</p>
         <p>Filenames include the seed so you can re-find a look later by re-typing the seed (coming soon — for now, screenshot the seed shown top-right).</p>
 
         <h3>Shortcuts</h3>
@@ -569,7 +617,73 @@
           <li><strong>Click an image thumbnail</strong> to toggle it off / on (without removing).</li>
           <li><strong>×</strong> on a thumbnail removes it; <strong>Clear all</strong> wipes the source list.</li>
           <li><strong>Type a number</strong> in any value field next to a slider; Enter or Tab to commit.</li>
+          <li><strong>R</strong> starts / stops recording the canvas; <strong>⌘Z / ⌘⇧Z</strong> undo / redo.</li>
         </ul>
+        <p style="margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline)">Curious how it actually works? Hit <strong>How it works</strong> (top-right) for a deep dive into the code and the algorithm behind every mode.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW-IT-WORKS OVERLAY — the educational deep dive -->
+  <div id="how" class="help" role="dialog" aria-modal="true" aria-labelledby="how-title" hidden>
+    <div class="help__scrim"></div>
+    <div class="help__panel">
+      <header class="help__head">
+        <h2 id="how-title">How it works — under the hood</h2>
+        <button id="how-close" type="button" aria-label="Close">×</button>
+      </header>
+      <div class="help__body">
+        <p class="help__lede">Lake Opeka is one self-contained HTML file — no build step, no libraries, no server. The whole thing (interface, image compositing, color sampling, video recording, storage) is plain JavaScript driving the browser's <strong>Canvas 2D</strong> API. This page explains how the pieces fit, so you can read the source and change it.</p>
+
+        <h3>1 · The shape of the program</h3>
+        <p>There is exactly one source of truth: a JavaScript object called <code>state</code>. It holds your <strong>images</strong>, the current <strong>seed</strong>, the active <strong>mode</strong>, and a little settings bag for each mode (slice, smudge, glyph, scatter…).</p>
+        <p>The data flow is a loop with one direction:</p>
+        <p class="how__flow"><span>a control changes</span> → <span>write the new value into <code>state</code></span> → <span>call <code>render()</code></span> → <span>pixels appear</span></p>
+        <p><code>render()</code> never reads the DOM for values — it only reads <code>state</code>. That means the picture is a <em>pure function</em> of <code>state</code> + your photos: the same inputs always paint the same output. Almost every interesting bug or feature in a tool like this comes down to keeping that promise true.</p>
+
+        <h3>2 · Seeded randomness (why layouts are reproducible)</h3>
+        <p>Lots of modes place things "randomly" — jittered slice widths, scattered squares, per-band smudge origins. But if that used the real <code>Math.random()</code>, the layout would reshuffle on <em>every</em> repaint, so nudging one slider would scramble everything else.</p>
+        <p>Instead it uses <code>mulberry32(seed)</code> — a tiny <strong>deterministic</strong> pseudo-random generator. Seed it with a number and it produces the same stream of "random" values every time. So:</p>
+        <ul>
+          <li>While you tweak sliders, the seed is fixed → the layout stays put and only the thing you changed moves.</li>
+          <li><strong>Re-roll</strong> simply picks a new seed → a brand-new arrangement.</li>
+          <li>Because the seed is shown top-right, a composition can be recovered later.</li>
+        </ul>
+        <p>Each render starts by calling <code>mulberry32(state.seed)</code> fresh, so the random sequence restarts from the same place every frame.</p>
+
+        <h3>3 · Drawing: it's almost all <code>drawImage</code></h3>
+        <p>The Canvas 2D call <code>ctx.drawImage(img, sx,sy,sw,sh, dx,dy,dw,dh)</code> does the heavy lifting everywhere — it crops a rectangle out of a source (the <em>s</em> values) and scales it into a destination rectangle (the <em>d</em> values). Crop, scale, and stretch are all the same call with different numbers.</p>
+        <p><strong>Cover-fit</strong> (filling a box without distortion) is one helper, <code>drawCoverIntoRect</code>: pick the scale = <code>max(boxW/imgW, boxH/imgH)</code> so the image overflows the box on one axis, then center it and let the canvas clip the overflow. It's the same math CSS uses for <code>object-fit: cover</code>.</p>
+        <p>Two more canvas tools show up a lot: <code>globalCompositeOperation</code> (the blend modes — multiply, screen, difference…) and <strong>clipping</strong> + masking with <code>destination-in</code> (keep only the pixels that overlap a shape you draw next).</p>
+
+        <h3>4 · What each mode actually does</h3>
+        <ul>
+          <li><strong>Slice</strong> — rotate the canvas by <em>Angle</em>, then walk across it drawing <em>Count</em> parallel strips. Each strip is one <code>drawImage</code> pulling a slice from a source photo. The RNG jitters each strip's width (Variation) and its offset / rotation / scale.</li>
+          <li><strong>Smudge</strong> — the ASYNC drag. First the photo is cover-fit onto an offscreen <code>base</code> canvas. Then, for each horizontal lane, it takes a <em>single 1-pixel column</em> of <code>base</code> at the Origin and stretches it across the whole width: <code>drawImage(base, originX,y, 1,h, 0,y, W,h)</code>. That keeps the vertical detail of that column but smears it sideways. A <strong>linear-gradient alpha mask</strong> (transparent at the Origin, ramping to opaque outward) is applied with <code>destination-in</code>, and the streak is drawn <em>over</em> the untouched photo — so the image stays crisp at the Origin and dissolves into streaks toward the edges. Bands + Jitter just repeat this per lane with different origins.</li>
+          <li><strong>Glyph</strong> — lay an invisible grid over the composed image, read the average color of each cell with <code>getImageData</code>, then stamp a character (or an uploaded SVG/PNG silhouette) filled with that color at the cell.</li>
+          <li><strong>Scatter</strong> — each photo becomes a square placed in canvas coordinates (drag to move). A <em>subject point</em> is auto-found by scanning the image for the most salient / colorful region. The trails are a little graph drawn over those points — <em>chain</em>, <em>nearest-N</em>, <em>Prim's minimum spanning tree</em>, or <em>all pairs</em> — rendered as straight, curved, dashed, or wavy strokes.</li>
+          <li><strong>Window</strong> — draw a big character, then use it as a mask (<code>destination-in</code>) so a photo only shows <em>through</em> the letter.</li>
+          <li><strong>Echo</strong> — stamp the same photo N times, each offset a little and faded, for a motion-trail.</li>
+          <li><strong>Grid</strong> — generate an asymmetric magazine grid (cells span varied row/column units) and cover-fit one photo into each cell.</li>
+          <li><strong>Circle / Nest</strong> — polar compositions: concentric rings / wedges / beads, or nested shrinking frames toward a vanishing point.</li>
+        </ul>
+
+        <h3>5 · The Effect Layer (sampling colors back out)</h3>
+        <p>This is the one feature that reads the canvas after it's drawn. It makes a blurred copy of the current picture, reads its pixels with <code>getImageData</code>, and repaints a dot/glyph grid using those <em>sampled</em> colors — so the overlay always matches whatever is underneath. If you drop points on the canvas, it builds a soft radial mask (pools with falloff) and keeps the overlay only inside them, again via <code>destination-in</code>.</p>
+
+        <h3>6 · Sliders that read both directions</h3>
+        <p>Every slider has a number beside it that's actually an editable input. Drag the slider and the number updates; type a number and it drives the slider. Internally the displayed value is a friendly 0–10 scale that's mapped to the control's real min/max, so the UI stays consistent even when the underlying range is something odd like 0.05–0.48.</p>
+
+        <h3>7 · Undo, Sessions, Autosave</h3>
+        <p>A <strong>snapshot</strong> is just an object recording the value of every control. Undo/redo keep an array of snapshots and a pointer that walks back and forth. Named <strong>Sessions</strong> and your last setup are stored in <code>localStorage</code>; your actual photos are too big for that, so they live in <strong>IndexedDB</strong>. Settings are a recipe — reopen the tool and your last look comes back, then you re-add the photos.</p>
+
+        <h3>8 · Export &amp; Record</h3>
+        <p><strong>PNG</strong> re-runs <code>render()</code> into an off-screen canvas at the export resolution and calls <code>canvas.toBlob()</code>. Because every mode sizes itself from the canvas width/height, the 3000px export is the same composition as the on-screen preview, just sharper.</p>
+        <p><strong>SVG</strong> (Effect Layer only) emits real <code>&lt;circle&gt;</code> / glyph vector elements instead of pixels.</p>
+        <p><strong>Record</strong> uses two browser APIs: <code>canvas.captureStream(fps)</code> turns the live canvas into a video <em>MediaStream</em>, and <code>MediaRecorder</code> encodes that stream into a WebM file as you work. Anything that repaints the canvas while recording — moving a slider, dragging a scatter square, hitting Re-roll — shows up in the video. Stop and the chunks are stitched into a downloadable clip.</p>
+
+        <h3>9 · Why one file?</h3>
+        <p>Keeping the whole tool in a single HTML document means it's portable (open it anywhere), there's nothing to install or build, and the source <em>is</em> the documentation — <strong>View Source</strong> on this page and everything above is right there to read and tinker with. That's the point: these tools are meant to be taken apart.</p>
       </div>
     </div>
   </div>
@@ -602,10 +716,13 @@
       <button id="btn-undo" title="Undo (⌘Z)" disabled>↶</button>
       <button id="btn-redo" title="Redo (⌘⇧Z)" disabled>↷</button>
       <button id="btn-sessions" title="Saved sessions">⧉ Sessions</button>
+      <button id="btn-record" title="Record the canvas to video (R)"><span class="rec-dot"></span> Record</button>
       <button id="btn-reroll">↻ Re-roll</button>
       <button id="btn-export-svg">Export SVG</button>
       <button id="btn-export" class="btn-primary">Export PNG</button>
     </div>
+    <!-- Recording indicator -->
+    <div class="rec-indicator" id="rec-indicator" hidden><span class="rec-dot rec-dot--live"></span> REC <span id="rec-time">0:00</span></div>
 
     <!-- Sessions panel -->
     <div class="sessions" id="sessions" hidden>
@@ -4070,6 +4187,99 @@ $('btn-help')?.addEventListener('click', openHelp);
 $('help-close')?.addEventListener('click', closeHelp);
 helpEl?.querySelector('.help__scrim')?.addEventListener('click', closeHelp);
 window.addEventListener('keydown', e => { if (e.key === 'Escape' && !helpEl.hidden) closeHelp(); });
+
+// ── How-it-works overlay (the educational deep dive) ──────────
+const howEl = $('how');
+function openHow()  { howEl.hidden = false; }
+function closeHow() { howEl.hidden = true; }
+$('btn-how')?.addEventListener('click', openHow);
+$('how-close')?.addEventListener('click', closeHow);
+howEl?.querySelector('.help__scrim')?.addEventListener('click', closeHow);
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !howEl.hidden) closeHow(); });
+
+// ── Canvas video recording ────────────────────────────────────
+// captureStream() turns the live canvas into a MediaStream; MediaRecorder
+// encodes it to a downloadable WebM. Anything that repaints the canvas
+// while recording (sliders, drags, re-roll) lands in the clip. Toggle with
+// the Record button or the R key.
+(function () {
+  const btn = $('btn-record');
+  const indicator = $('rec-indicator');
+  const timeEl = $('rec-time');
+  if (!btn || !canvas.captureStream || typeof MediaRecorder === 'undefined') {
+    if (btn) { btn.disabled = true; btn.title = 'Recording is not supported in this browser'; }
+    return;
+  }
+
+  let recorder = null, chunks = [], startedAt = 0, timer = null;
+
+  // Pick the best container/codec this browser can actually write.
+  function pickMime() {
+    const candidates = [
+      'video/webm;codecs=vp9', 'video/webm;codecs=vp8',
+      'video/webm', 'video/mp4',
+    ];
+    return candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  function fmt(ms) {
+    const s = Math.floor(ms / 1000);
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  function start() {
+    if (recorder) return;
+    if (!state.images.some(s => s.enabled)) { alert('Add some photos first.'); return; }
+    const stream = canvas.captureStream(30);   // 30 fps
+    const mimeType = pickMime();
+    try {
+      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    } catch (e) { alert('Could not start recording: ' + e.message); return; }
+    chunks = [];
+    recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    recorder.onstop = () => {
+      const type = recorder.mimeType || mimeType || 'video/webm';
+      const blob = new Blob(chunks, { type });
+      const ext = type.includes('mp4') ? 'mp4' : 'webm';
+      const a = document.createElement('a');
+      a.download = `opal-imagix-${state.seed}.${ext}`;
+      a.href = URL.createObjectURL(blob);
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      recorder = null;
+    };
+    recorder.start();
+    startedAt = Date.now();
+    btn.classList.add('is-recording');
+    btn.innerHTML = '<span class="rec-dot"></span> Stop';
+    indicator.hidden = false;
+    timeEl.textContent = '0:00';
+    timer = setInterval(() => { timeEl.textContent = fmt(Date.now() - startedAt); }, 250);
+  }
+
+  function stop() {
+    if (!recorder) return;
+    clearInterval(timer); timer = null;
+    btn.classList.remove('is-recording');
+    btn.innerHTML = '<span class="rec-dot"></span> Record';
+    indicator.hidden = true;
+    recorder.stop();   // fires onstop → builds + downloads the file
+  }
+
+  function toggle() { recorder ? stop() : start(); }
+
+  btn.addEventListener('click', toggle);
+
+  // R toggles recording — but never while typing in a field or with a modifier.
+  window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() !== 'r') return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target;
+    if (t && (t.matches('input, textarea, select') || t.isContentEditable)) return;
+    e.preventDefault();
+    toggle();
+  });
+})();
 
 // ── Hover tooltips on key controls ───────────────────────────
 const tips = {
