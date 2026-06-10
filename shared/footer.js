@@ -39,6 +39,46 @@ const FOOTER_SVG = 'opl-footer.svg';
   `;
   document.body.appendChild(footer);
 
+  /* ── Smoke particles above wordmark ── */
+  if (!document.getElementById('opl-smoke-style')) {
+    const ss = document.createElement('style');
+    ss.id = 'opl-smoke-style';
+    ss.textContent = [
+      '.opl-smoke{position:relative;width:100%;height:120px;overflow:hidden;pointer-events:none;}',
+      '.opl-smoke-p{position:absolute;bottom:0;border-radius:50%;background:rgba(255,255,255,0.8);',
+        'animation:opl-smoke-rise ease-in-out infinite;will-change:transform,opacity;}',
+      '@keyframes opl-smoke-rise{',
+        '0%{transform:translateY(0) translateX(0);opacity:0;}',
+        '12%{opacity:var(--op,0.35);}',
+        '78%{opacity:var(--op,0.35);}',
+        '100%{transform:translateY(-130px) translateX(var(--drift,0px));opacity:0;}',
+      '}',
+    ].join('');
+    document.head.appendChild(ss);
+  }
+  const smoke = document.createElement('div');
+  smoke.className = 'opl-smoke';
+  for (let i = 0; i < 55; i++) {
+    const p = document.createElement('div');
+    p.className = 'opl-smoke-p';
+    const dur   = 5 + Math.random() * 6;
+    const neg   = -(Math.random() * dur);
+    const sz    = 1.5 + Math.random() * 3.5;
+    const blur  = 0.8 + Math.random() * 2;
+    const drift = (Math.random() - 0.5) * 50;
+    const op    = 0.15 + Math.random() * 0.3;
+    p.style.cssText =
+      'left:'   + (Math.random() * 100).toFixed(1) + '%;' +
+      'width:'  + sz.toFixed(1) + 'px;height:' + sz.toFixed(1) + 'px;' +
+      'filter:blur(' + blur.toFixed(1) + 'px);' +
+      '--drift:' + drift.toFixed(1) + 'px;' +
+      '--op:'   + op.toFixed(2) + ';' +
+      'animation-duration:' + dur.toFixed(1) + 's;' +
+      'animation-delay:'   + neg.toFixed(2) + 's;';
+    smoke.appendChild(p);
+  }
+  document.body.appendChild(smoke);
+
   /* ── Wordmark SVG — spans full viewport width ── */
   const wm = document.createElement('div');
   wm.style.cssText = 'position:relative;z-index:10;line-height:0;padding:0;margin:0;margin-bottom:0px;pointer-events:none;user-select:none;mix-blend-mode:difference;opacity:0.5;';
