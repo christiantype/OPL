@@ -804,7 +804,7 @@
     document.querySelectorAll('.project-mockup[data-mockup-src]').forEach(async el => {
       const src = el.getAttribute('data-mockup-src');
       try {
-        const res = await fetch(src);
+        const res = await fetch(src, { cache: 'no-store' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const html = await res.text();
         el.innerHTML = html;
