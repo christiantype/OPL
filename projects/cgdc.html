@@ -44,16 +44,26 @@
   (function () {
 
     var IMGS = [
-      '../images/CGDC-01.webp',
-      '../images/CGDC-02.webp',
-      '../images/CGDC-03.webp',
-      '../images/CGDC-04.webp',
-      '../images/CGDC-05.webp',
-      '../images/CGDC-06.webp',
-      '../images/CGDC-07.webp',
-      '../images/CGDC-08.webp',
-      '../images/CGDC-09.webp',
-      '../images/CGDC-10.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2021/11/DSCF1600.jpg',
+      'https://chicagographicdesign.club/wp-content/uploads/2025/08/L1002109.jpg',
+      'https://chicagographicdesign.club/wp-content/uploads/2026/04/Faculty-10.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2021/11/DSCF1413.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2024/06/DSCF6822.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2025/03/DSC_0490-mod-022525-1400w.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2021/11/DSCF8749.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2025/03/DSC_0520-mod-022525-1400w.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2026/04/33_fermoyle_chicago_house_11x17_poster_F-Sean-Fermoyle-scaled-1.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2025/12/Okay-Type-library.jpg',
+      'https://chicagographicdesign.club/wp-content/uploads/2021/11/DSCF4096.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2023/07/DSC_0652-071323-1600w.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2026/03/raygunMagazine_cover.jpg',
+      'https://chicagographicdesign.club/wp-content/uploads/2021/11/DSCF4247-2.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2025/08/DSCF1814.jpg',
+      'https://chicagographicdesign.club/wp-content/uploads/2025/08/L1000815.jpg',
+      'https://chicagographicdesign.club/wp-content/uploads/2026/04/46_BigShoulders_Poster_11x17in-Jeffrey-Hitchens.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2026/04/09_bautistaa_chicago1-Allison-Bautista.webp',
+      'https://chicagographicdesign.club/wp-content/uploads/2025/08/DSCF2026.jpg',
+      'https://chicagographicdesign.club/wp-content/uploads/2023/07/DSC_0637-071323-1600w.webp',
     ];
 
     // dx/dy in vw/vh — particles explode outward from center
@@ -87,15 +97,6 @@
       {dx:-78,dy: 35,sc:1.10,t:13},
       {dx: 42,dy: 80,sc:1.25,t:15},
       {dx:-48,dy:-82,sc:0.95,t:14},
-    ];
-
-    var WORDS = [
-      'poetic','magnetic','prolific','memorable','iconic',
-      'resilient','radical','honest','raw','modernist',
-      'essential','fearless','curious','enduring','forward',
-      'precise','alive','restless','distinct','vivid',
-      'bold','original','present','unstoppable','influential',
-      'relevant','engaged','critical','committed','alive',
     ];
 
     function buildStyles() {
@@ -145,47 +146,19 @@
           'width:max-content;',
           'max-width:90vw;',
         '}',
-        '.cgdc-eyebrow{',
-          'font-family:system-ui,-apple-system,sans-serif;',
-          'font-size:11px;',
-          'font-weight:500;',
-          'letter-spacing:0.22em;',
-          'text-transform:uppercase;',
-          'color:#111;',
-          'margin:0 0 2px;',
-          'background:#111;',
-          'color:#fff;',
-          'padding:5px 14px;',
-          'display:inline-block;',
-        '}',
         '.cgdc-headline{',
           'font-family:"Cormorant Garamond",Georgia,serif;',
           'font-weight:300;',
-          'font-size:clamp(22px,5.2vw,72px);',
-          'letter-spacing:0.09em;',
+          'font-size:clamp(16px,2.8vw,42px);',
+          'letter-spacing:0.12em;',
           'text-transform:uppercase;',
           'color:#fff;',
           'background:#111;',
           'margin:0;',
           'padding:8px 20px 10px;',
-          'line-height:1.15;',
+          'line-height:1.2;',
           'display:block;',
-        '}',
-        '.cgdc-subline{',
-          'margin:0;',
-          'background:#111;',
-          'display:inline-block;',
-          'padding:5px 14px;',
-        '}',
-        '.cgdc-typed{',
-          'font-family:system-ui,-apple-system,sans-serif;',
-          'font-size:11px;',
-          'font-weight:500;',
-          'letter-spacing:0.22em;',
-          'text-transform:uppercase;',
-          'color:#fff;',
-          'min-width:8ch;',
-          'display:inline-block;',
+          'text-align:center;',
         '}',
       ].join('');
       document.head.appendChild(s);
@@ -227,38 +200,10 @@
       var inner = document.createElement('div');
       inner.className = 'cgdc-inner';
       inner.innerHTML =
-        '<p class="cgdc-eyebrow">We are the</p>' +
-        '<h1 class="cgdc-headline">Chicago Graphic Design Club</h1>' +
-        '<p class="cgdc-subline"><span class="cgdc-typed">iconic</span></p>';
+        '<h1 class="cgdc-headline">Chicago Graphic Design Club</h1>';
       wrap.appendChild(inner);
 
       return wrap;
-    }
-
-    function initScramble(el) {
-      var pool = 'abcdefghijklmnopqrstuvwxyz';
-      var idx  = WORDS.indexOf('iconic');
-
-      function scramble(next) {
-        var start = Date.now(), dur = 700;
-        function tick() {
-          var t = Math.min(1, (Date.now() - start) / dur);
-          var resolved = Math.floor(t * next.length);
-          var out = '';
-          for (var i = 0; i < next.length; i++) {
-            out += i < resolved ? next[i] : pool[Math.floor(Math.random() * pool.length)];
-          }
-          el.textContent = out;
-          if (t < 1) setTimeout(tick, 35);
-          else el.textContent = next;
-        }
-        tick();
-      }
-
-      setInterval(function () {
-        idx = (idx + 1) % WORDS.length;
-        scramble(WORDS[idx]);
-      }, 2400);
     }
 
     // Insert before #images
@@ -270,9 +215,6 @@
     } else {
       document.body.appendChild(anim);
     }
-
-    var typed = anim.querySelector('.cgdc-typed');
-    if (typed) initScramble(typed);
 
   })();
   </script>
