@@ -74,7 +74,7 @@
       'underscore-episode_108.png'
     ];
 
-    var COLS = 4, ROWS = 4, CELLS = COLS * ROWS;
+    var COLS = 4, ROWS = 3, CELLS = COLS * ROWS;
     var BASE = '../images/underscore/';
 
     function shuffle(arr) {
@@ -93,8 +93,8 @@
         '.brady-grid{display:grid;grid-template-columns:repeat(' + COLS + ',1fr);}',
         '.brady-cell{position:relative;aspect-ratio:1/1;overflow:hidden;background:#111;}',
         '.brady-cell__img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}',
-        '.brady-cell__img--back{opacity:0;transition:opacity 0.8s ease-in-out;}',
-        '.brady-cell__img--front{opacity:1;transition:opacity 0.8s ease-in-out;}'
+        '.brady-cell__img--back{opacity:0;transition:opacity 0.45s ease-in-out;}',
+        '.brady-cell__img--front{opacity:1;transition:opacity 0.45s ease-in-out;}'
       ].join('');
       document.head.appendChild(style);
 
@@ -164,19 +164,19 @@
               cell.current             = next;
               busy[idx]                = false;
               schedule(idx);
-            }, 850);
+            }, 500);
           });
         });
       }
 
       function schedule(idx) {
-        var delay = 1200 + Math.random() * 2800;
+        var delay = 500 + Math.random() * 1000;
         setTimeout(function () { swap(idx); }, delay);
       }
 
       for (var i = 0; i < cells.length; i++) {
         (function (i) {
-          setTimeout(function () { schedule(i); }, Math.random() * 2000);
+          setTimeout(function () { schedule(i); }, Math.random() * 800);
         })(i);
       }
     }
