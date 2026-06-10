@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chicago Graphic Design Club — OP/AL</title>
   <link rel="stylesheet" href="../shared/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300&display=swap" rel="stylesheet">
 </head>
 <body>
   <script>
@@ -25,7 +28,6 @@
       ],
       role:        "Designer/Producer",
       images: [
-        { src: "../videos/cgdc-hero.mp4", type: "video", bleed: true },
         { src: "../images/CGDC-01.webp",  alt: "CGDC 01", cols: 12 },
         { src: "../images/CGDC-02.webp",  alt: "CGDC 02",  },
         { src: "../images/CGDC-03.webp",  alt: "CGDC 03",  },
@@ -38,5 +40,241 @@
     };
   </script>
   <script src="../shared/project.js"></script>
+  <script>
+  (function () {
+
+    var IMGS = [
+      '../images/CGDC-01.webp',
+      '../images/CGDC-02.webp',
+      '../images/CGDC-03.webp',
+      '../images/CGDC-04.webp',
+      '../images/CGDC-05.webp',
+      '../images/CGDC-06.webp',
+      '../images/CGDC-07.webp',
+      '../images/CGDC-08.webp',
+      '../images/CGDC-09.webp',
+      '../images/CGDC-10.webp',
+    ];
+
+    // dx/dy in vw/vh — particles explode outward from center
+    // dx/dy in vw/vh; t = duration(s); d values replaced at build time with negative delays
+    var PARTICLES = [
+      {dx:-37,dy:-97,sc:1.67,t:14},
+      {dx: 28,dy:-85,sc:1.20,t:16},
+      {dx: 75,dy:-45,sc:1.45,t:13},
+      {dx: 90,dy: 20,sc:1.10,t:15},
+      {dx: 65,dy: 75,sc:1.55,t:12},
+      {dx: 15,dy: 95,sc:1.30,t:14},
+      {dx:-30,dy: 85,sc:1.00,t:16},
+      {dx:-72,dy: 55,sc:1.40,t:13},
+      {dx:-88,dy: 10,sc:1.20,t:15},
+      {dx:-70,dy:-55,sc:1.60,t:14},
+      {dx: 48,dy:-78,sc:0.90,t:16},
+      {dx:-55,dy:-70,sc:1.35,t:12},
+      {dx:-20,dy: 95,sc:0.85,t:15},
+      {dx: 82,dy:-28,sc:1.15,t:13},
+      {dx:-45,dy: 82,sc:1.25,t:16},
+      {dx: 35,dy: 88,sc:0.95,t:14},
+      {dx:-92,dy:-18,sc:1.50,t:13},
+      {dx: 55,dy:-72,sc:1.10,t:15},
+      {dx:-25,dy:-92,sc:1.30,t:14},
+      {dx: 78,dy: 45,sc:0.80,t:16},
+      {dx:-60,dy: 65,sc:1.45,t:13},
+      {dx: 22,dy:-90,sc:1.00,t:15},
+      {dx: 92,dy: -8,sc:1.20,t:14},
+      {dx:-35,dy: 90,sc:1.35,t:12},
+      {dx: 60,dy:-65,sc:0.90,t:16},
+      {dx:-78,dy: 35,sc:1.10,t:13},
+      {dx: 42,dy: 80,sc:1.25,t:15},
+      {dx:-48,dy:-82,sc:0.95,t:14},
+    ];
+
+    var WORDS = [
+      'poetic','magnetic','prolific','memorable','iconic',
+      'resilient','radical','honest','raw','modernist',
+      'essential','fearless','curious','enduring','forward',
+      'precise','alive','restless','distinct','vivid',
+      'bold','original','present','unstoppable','influential',
+      'relevant','engaged','critical','committed','alive',
+    ];
+
+    function buildStyles() {
+      var s = document.createElement('style');
+      s.textContent = [
+        '.cgdc-anim{',
+          'width:100%;',
+          'height:100vh;',
+          'position:relative;',
+          'overflow:hidden;',
+          'background:#fff;',
+          'perspective:1400px;',
+          'transform-style:preserve-3d;',
+          'margin-bottom:var(--space-12);',
+        '}',
+        '.cgdc-particles{',
+          'position:absolute;',
+          'inset:0;',
+          'transform-style:preserve-3d;',
+        '}',
+        '.cgdc-particle{',
+          'position:absolute;',
+          'left:50%;top:50%;',
+          'width:clamp(120px,13vw,260px);',
+          'margin:0;padding:0;',
+          'animation:cgdc-explode linear infinite;',
+          'will-change:transform,opacity;',
+        '}',
+        '.cgdc-particle img{',
+          'width:100%;display:block;',
+          'aspect-ratio:3/4;',
+          'object-fit:cover;',
+        '}',
+        '@keyframes cgdc-explode{',
+          '0%{transform:translate(-50%,-50%) translate(0,0) translateZ(-1200px) scale(calc(var(--sc,1)*0.6));opacity:0}',
+          '10%{opacity:1}',
+          '85%{opacity:1}',
+          '100%{transform:translate(-50%,-50%) translate(calc(var(--dx,0)*1vw),calc(var(--dy,0)*1vh)) translateZ(0) scale(calc(var(--sc,1)*1.4));opacity:0}',
+        '}',
+        '.cgdc-inner{',
+          'position:absolute;',
+          'top:50%;left:50%;',
+          'transform:translate(-50%,-50%);',
+          'text-align:center;',
+          'z-index:10;',
+          'pointer-events:none;',
+          'width:max-content;',
+          'max-width:90vw;',
+        '}',
+        '.cgdc-eyebrow{',
+          'font-family:system-ui,-apple-system,sans-serif;',
+          'font-size:11px;',
+          'font-weight:500;',
+          'letter-spacing:0.22em;',
+          'text-transform:uppercase;',
+          'color:#111;',
+          'margin:0 0 2px;',
+          'background:#111;',
+          'color:#fff;',
+          'padding:5px 14px;',
+          'display:inline-block;',
+        '}',
+        '.cgdc-headline{',
+          'font-family:"Cormorant Garamond",Georgia,serif;',
+          'font-weight:300;',
+          'font-size:clamp(22px,5.2vw,72px);',
+          'letter-spacing:0.09em;',
+          'text-transform:uppercase;',
+          'color:#fff;',
+          'background:#111;',
+          'margin:0;',
+          'padding:8px 20px 10px;',
+          'line-height:1.15;',
+          'display:block;',
+        '}',
+        '.cgdc-subline{',
+          'margin:0;',
+          'background:#111;',
+          'display:inline-block;',
+          'padding:5px 14px;',
+        '}',
+        '.cgdc-typed{',
+          'font-family:system-ui,-apple-system,sans-serif;',
+          'font-size:11px;',
+          'font-weight:500;',
+          'letter-spacing:0.22em;',
+          'text-transform:uppercase;',
+          'color:#fff;',
+          'min-width:8ch;',
+          'display:inline-block;',
+        '}',
+      ].join('');
+      document.head.appendChild(s);
+    }
+
+    function buildHTML() {
+      var wrap = document.createElement('div');
+      wrap.className = 'cgdc-anim';
+
+      // Particles
+      var field = document.createElement('div');
+      field.className = 'cgdc-particles';
+      field.setAttribute('aria-hidden', 'true');
+
+      PARTICLES.forEach(function (p, i) {
+        var fig = document.createElement('figure');
+        fig.className = 'cgdc-particle';
+        // Spread particles from 10%→85% of their cycle so ~75% are always visible
+        var startFrac = 0.10 + (i / (PARTICLES.length - 1)) * 0.75;
+        var negDelay  = -(startFrac * p.t).toFixed(2);
+        fig.style.cssText =
+          '--dx:' + p.dx + ';' +
+          '--dy:' + p.dy + ';' +
+          '--sc:'  + p.sc + ';' +
+          'animation-delay:' + negDelay + 's;' +
+          'animation-duration:' + p.t + 's;';
+        var img = document.createElement('img');
+        img.src = IMGS[i % IMGS.length];
+        img.alt = '';
+        img.loading = 'eager';
+        img.decoding = 'async';
+        fig.appendChild(img);
+        field.appendChild(fig);
+      });
+
+      wrap.appendChild(field);
+
+      // Inner text
+      var inner = document.createElement('div');
+      inner.className = 'cgdc-inner';
+      inner.innerHTML =
+        '<p class="cgdc-eyebrow">We are the</p>' +
+        '<h1 class="cgdc-headline">Chicago Graphic Design Club</h1>' +
+        '<p class="cgdc-subline"><span class="cgdc-typed">iconic</span></p>';
+      wrap.appendChild(inner);
+
+      return wrap;
+    }
+
+    function initScramble(el) {
+      var pool = 'abcdefghijklmnopqrstuvwxyz';
+      var idx  = WORDS.indexOf('iconic');
+
+      function scramble(next) {
+        var start = Date.now(), dur = 700;
+        function tick() {
+          var t = Math.min(1, (Date.now() - start) / dur);
+          var resolved = Math.floor(t * next.length);
+          var out = '';
+          for (var i = 0; i < next.length; i++) {
+            out += i < resolved ? next[i] : pool[Math.floor(Math.random() * pool.length)];
+          }
+          el.textContent = out;
+          if (t < 1) setTimeout(tick, 35);
+          else el.textContent = next;
+        }
+        tick();
+      }
+
+      setInterval(function () {
+        idx = (idx + 1) % WORDS.length;
+        scramble(WORDS[idx]);
+      }, 2400);
+    }
+
+    // Insert before #images
+    var images = document.getElementById('images');
+    buildStyles();
+    var anim = buildHTML();
+    if (images) {
+      images.parentNode.insertBefore(anim, images);
+    } else {
+      document.body.appendChild(anim);
+    }
+
+    var typed = anim.querySelector('.cgdc-typed');
+    if (typed) initScramble(typed);
+
+  })();
+  </script>
 </body>
 </html>
