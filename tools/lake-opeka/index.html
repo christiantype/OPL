@@ -577,6 +577,19 @@
   #canvas.is-layer { cursor: crosshair; }
   #canvas.is-layer.is-hover-pt { cursor: grab; }
   #canvas.is-layer.is-dragging { cursor: grabbing; }
+  /* Smudge brush */
+  #canvas.is-brush { cursor: none; }
+  #brush-cursor {
+    position: absolute;
+    border: 1.5px solid rgba(255,255,255,0.9);
+    border-radius: 50%;
+    pointer-events: none;
+    mix-blend-mode: difference;
+    display: none;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+    transition: width 0.05s, height 0.05s;
+  }
 
   /* ── Mobile fallback (read-only) ────────────────────────────── */
   @media (max-width: 880px) {
@@ -741,6 +754,7 @@
   <!-- CENTER: CANVAS -->
   <section class="stage" id="stage">
     <canvas id="canvas" width="1000" height="1000"></canvas>
+    <div id="brush-cursor"></div>
     <div class="empty" id="empty" style="display:none">
       <strong>Drop your photos to start.</strong>
       Both of yours, all of them — the more the merrier.
@@ -1231,6 +1245,22 @@
       </div>
     </div><!-- /smudge mode group -->
 
+    <!-- Smudge Brush (post-render paint on any mode) -->
+    <div class="ctrl-group">
+      <div class="ctrl-label">Smudge Brush</div>
+      <label class="row toggle" style="cursor:pointer">
+        <span class="row__label">Enable</span>
+        <input type="checkbox" id="r-brushOn">
+      </label>
+      <div id="brush-controls" style="display:none">
+        <div class="row"><span class="row__label">Size</span><input class="row__val" id="v-brushSize" type="text" value="40"></div>
+        <input type="range" id="r-brushSize" min="5" max="150" step="1" value="40">
+        <div class="row"><span class="row__label">Strength</span><input class="row__val" id="v-brushStr" type="text" value="0.50"></div>
+        <input type="range" id="r-brushStr" min="0.05" max="1" step="0.01" value="0.5">
+        <button class="ctrl-btn" id="btn-brushClear" style="margin-top:6px">Clear strokes</button>
+      </div>
+    </div>
+
     <!-- SHARED CONTROLS -->
     <div class="ctrl-group">
       <div class="ctrl-label">Mix</div>
@@ -1383,6 +1413,11 @@ const state = {
     points:     [],        // [{ x, y }] — empty = whole canvas
     radius:     280,       // brush radius for each point (px on canvas)
     falloff:    0.55,      // 0=hard, 1=very soft
+  },
+  brush: {
+    on:       false,
+    size:     40,    // radius in canvas px
+    strength: 0.5,   // 0..1
   },
   scatter: {
     items: [],            // [{ imageId, x, y, size, rot }] — positions in canvas px
@@ -2314,6 +2349,7 @@ function drawSubjectMarker(ctx, x, y, color, size, style) {
 let scatterDrag = null;
 function onScatterPointerDown(e) {
   if (state.mode !== 'scatter') return;
+  if (state.brush.on) return;
   const rect = canvas.getBoundingClientRect();
   const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
   const sy = (e.clientY - rect.top)  * (canvas.height / rect.height);
@@ -2377,6 +2413,7 @@ function pointAtHit(sx, sy) {
 canvas.addEventListener('pointerdown', e => {
   if (!state.layer.enabled) return;
   if (scatterDrag) return;
+  if (state.brush.on) return;
   const { x, y } = canvasPoint(e);
   const hit = pointAtHit(x, y);
   if (hit) {
@@ -2401,7 +2438,7 @@ canvas.addEventListener('pointerdown', e => {
 window.addEventListener('pointermove', e => {
   if (!layerDrag) {
     // Hover-state cursor: grab if hovering an existing point.
-    if (state.layer.enabled && state.mode !== 'scatter') {
+    if (state.layer.enabled && state.mode !== 'scatter' && !state.brush.on) {
       const { x, y } = canvasPoint(e);
       canvas.classList.toggle('is-hover-pt', !!pointAtHit(x, y));
     }
@@ -2420,6 +2457,74 @@ window.addEventListener('pointerup', () => {
     canvas.classList.remove('is-dragging');
     renderLayerPoints();
   }
+});
+
+// ── Smudge Brush interaction ───────────────────────────────────
+let brushActive = false;
+let brushPrev   = null;
+const brushCursorEl = $('brush-cursor');
+
+function applySmudge(x, y, px, py) {
+  const dx = x - px, dy = y - py;
+  if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+  const r    = state.brush.size;
+  const s    = state.brush.strength;
+  const diam = r * 2;
+  const tmp  = document.createElement('canvas');
+  tmp.width  = diam;
+  tmp.height = diam;
+  const tc   = tmp.getContext('2d');
+  // Sample the current canvas shifted backward by drag dir × strength
+  tc.drawImage(canvas, -(x - r - dx * s), -(y - r - dy * s), canvas.width, canvas.height);
+  // Radial falloff mask
+  const grad = tc.createRadialGradient(r, r, 0, r, r, r);
+  grad.addColorStop(0, `rgba(0,0,0,${s})`);
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  tc.globalCompositeOperation = 'destination-in';
+  tc.fillStyle = grad;
+  tc.fillRect(0, 0, diam, diam);
+  // Paint smeared patch back
+  ctx.drawImage(tmp, x - r, y - r);
+}
+
+function updateBrushCursor(e) {
+  if (!brushCursorEl) return;
+  const rect  = canvas.getBoundingClientRect();
+  const scale = rect.width / canvas.width;
+  const r     = state.brush.size * scale;
+  const cx    = e.clientX - rect.left;
+  const cy    = e.clientY - rect.top;
+  const onStage = cx >= -r && cy >= -r && cx <= rect.width + r && cy <= rect.height + r;
+  brushCursorEl.style.left   = cx + 'px';
+  brushCursorEl.style.top    = cy + 'px';
+  brushCursorEl.style.width  = r * 2 + 'px';
+  brushCursorEl.style.height = r * 2 + 'px';
+  brushCursorEl.style.display = (state.brush.on && onStage) ? 'block' : 'none';
+}
+
+canvas.addEventListener('pointerdown', e => {
+  if (!state.brush.on) return;
+  brushActive = true;
+  brushPrev = canvasPoint(e);
+  canvas.setPointerCapture(e.pointerId);
+  e.preventDefault();
+  e.stopPropagation();
+});
+window.addEventListener('pointermove', e => {
+  if (state.brush.on) updateBrushCursor(e);
+  if (!brushActive) return;
+  const curr = canvasPoint(e);
+  applySmudge(curr.x, curr.y, brushPrev.x, brushPrev.y);
+  brushPrev = curr;
+});
+window.addEventListener('pointerup', e => {
+  if (brushActive) {
+    brushActive = false;
+    brushPrev   = null;
+  }
+});
+window.addEventListener('pointerleave', () => {
+  if (brushCursorEl) brushCursorEl.style.display = 'none';
 });
 
 function renderLayerPoints() {
@@ -3499,6 +3604,7 @@ function applyMode() {
   });
   canvas.classList.toggle('is-scatter', state.mode === 'scatter');
   canvas.classList.toggle('is-layer', state.layer.enabled && state.mode !== 'scatter');
+  canvas.classList.toggle('is-brush', state.brush.on);
   if (state.mode === 'scatter') renderScatterItemsList();
   render();
 }
@@ -4660,6 +4766,44 @@ function wireLayer() {
 }
 wireLayer();
 renderLayerPoints();
+
+// ── Smudge Brush wiring ───────────────────────────────────────
+(function wireBrush() {
+  const bindBrush = (rangeId, valId, key, fmt) => {
+    const r = $(rangeId), v = $(valId);
+    if (!r) return;
+    r.addEventListener('input', () => {
+      const n = parseFloat(r.value);
+      state.brush[key] = n;
+      if (v) v.value = fmt ? fmt(n) : String(n);
+      // Update cursor ring size live if size changed
+      if (key === 'size' && brushCursorEl) {
+        const rect  = canvas.getBoundingClientRect();
+        const scale = rect.width / canvas.width;
+        const px    = n * scale;
+        brushCursorEl.style.width  = px * 2 + 'px';
+        brushCursorEl.style.height = px * 2 + 'px';
+      }
+    });
+    if (v) v.addEventListener('change', () => {
+      const n = parseFloat(v.value);
+      if (!isNaN(n)) { r.value = n; state.brush[key] = n; }
+    });
+  };
+  bindBrush('r-brushSize', 'v-brushSize', 'size',     v => String(Math.round(v)));
+  bindBrush('r-brushStr',  'v-brushStr',  'strength', v => v.toFixed(2));
+
+  $('r-brushOn')?.addEventListener('change', e => {
+    state.brush.on = e.target.checked;
+    $('brush-controls').style.display = e.target.checked ? '' : 'none';
+    canvas.classList.toggle('is-brush', e.target.checked);
+    if (!e.target.checked && brushCursorEl) brushCursorEl.style.display = 'none';
+  });
+
+  $('btn-brushClear')?.addEventListener('click', () => {
+    render(); // full re-render wipes smudge strokes
+  });
+})();
 
 $('r-export').addEventListener('input', e => {
   state.params.export = parseInt(e.target.value, 10);
