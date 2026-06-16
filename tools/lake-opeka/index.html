@@ -1015,7 +1015,7 @@
 
         <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:6px 0 7px">Lake Opeka glyphs</div>
         <div id="nest-glyph-presets" class="glyph-presets"></div>
-        <p style="font-size:10px;color:var(--text-dim);line-height:1.4;margin:0 0 10px">Pick one to use its silhouette as the frame.</p>
+        <p style="font-size:10px;color:var(--text-dim);line-height:1.4;margin:0 0 10px">Pick one or more — frames cycle through your selection.</p>
 
         <label class="row toggle" style="margin-top:14px">
           <span class="row__label">Outline frames</span>
@@ -1333,7 +1333,8 @@ const state = {
     // to use its silhouette as the frame container. The silhouette is
     // squashed to fit each rect, so the aspect knob still applies.
     shape:        'rect',   // 'rect' | 'glyph'
-    glyphImg:     null,
+    glyphImg:     null,     // single uploaded image (fallback)
+    glyphImgs:    [],       // multi-select preset pool
     glyphName:    '',
   },
   circle: {
@@ -2931,7 +2932,8 @@ function nestRender(target, active) {
     ? Array.from({ length: drawCount }, (_, i) => drawCount - 1 - i)
     : Array.from({ length: drawCount }, (_, i) => i);
 
-  const useGlyph = N.shape === 'glyph' && N.glyphImg;
+  const glyphPool = (N.glyphImgs && N.glyphImgs.length) ? N.glyphImgs : (N.glyphImg ? [N.glyphImg] : []);
+  const useGlyph = N.shape === 'glyph' && glyphPool.length > 0;
 
   // Fill center first if requested (a solid photo at the innermost
   // rect, so the very middle isn't transparent).
@@ -2940,7 +2942,7 @@ function nestRender(target, active) {
     const src = active[drawCount % active.length];
     if (src) {
       if (useGlyph) {
-        const off = renderGlyphFrame(W, H, src.img, [center], null, N.glyphImg, 0, 0, 0);
+        const off = renderGlyphFrame(W, H, src.img, [center], null, glyphPool[drawCount % glyphPool.length], 0, 0, 0);
         x.drawImage(off, 0, 0);
       } else {
         x.save();
@@ -2974,15 +2976,15 @@ function nestRender(target, active) {
 
     if (useGlyph) {
       // Composite-op masking: photo → outer glyph alpha → MINUS inner glyph alpha.
-      const off = renderGlyphFrame(W, H, src.img, [outer], inner, N.glyphImg, jx, jy, jr);
+      const gi = glyphPool[i % glyphPool.length];
+      const off = renderGlyphFrame(W, H, src.img, [outer], inner, gi, jx, jy, jr);
       x.save();
       x.globalAlpha = Math.max(0.05, Math.min(1, opa));
       x.drawImage(off, 0, 0);
       if (N.outline) {
         x.strokeStyle = 'rgba(0,0,0,0.45)';
         x.lineWidth = 1;
-        // Outline the outer glyph silhouette by rendering it as a 1px stroke layer.
-        drawGlyphOutline(x, N.glyphImg, outer.cx + jx, outer.cy + jy, outer.w, outer.h, jr);
+        drawGlyphOutline(x, gi, outer.cx + jx, outer.cy + jy, outer.w, outer.h, jr);
       }
       x.restore();
       continue;
@@ -3699,24 +3701,37 @@ function wireGlyphPresets() {
     });
   }
 
-  // Nest mode — single silhouette for the frame container.
+  // Nest mode — multi-select silhouettes; frames cycle through the pool.
   const nestWrap = $('nest-glyph-presets');
   if (nestWrap) {
+    const nestSel = new Set();
+    const syncNest = () => {
+      state.nest.glyphImgs = [...nestSel].map(r => r.img).filter(Boolean);
+      if (nestSel.size > 0) {
+        state.nest.shape = 'glyph';
+        const seg = $('seg-nShape');
+        if (seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.ns === 'glyph'));
+      }
+      render();
+    };
     loaded.forEach(rec => {
       const el = mkThumb(rec, () => {
-        [...nestWrap.children].forEach(c => c.classList.remove('is-active'));
-        el.classList.add('is-active');
-        const apply = () => {
-          state.nest.glyphImg = rec.img;
-          state.nest.glyphName = rec.meta.n;
-          state.nest.shape = 'glyph';
-          const seg = $('seg-nShape');
-          if (seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.ns === 'glyph'));
-          const prev = $('nest-glyph-preview');
-          if (prev) { prev.style.display = 'flex'; $('nest-glyph-preview-img').src = rec.meta.f; $('nest-glyph-preview-name').textContent = rec.meta.n; }
-          render();
+        const toggle = () => {
+          if (nestSel.has(rec)) {
+            nestSel.delete(rec);
+            el.classList.remove('is-active');
+          } else {
+            nestSel.add(rec);
+            el.classList.add('is-active');
+          }
+          if (nestSel.size === 0) {
+            state.nest.shape = 'rect';
+            const seg = $('seg-nShape');
+            if (seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.ns === 'rect'));
+          }
+          syncNest();
         };
-        if (rec.img) apply(); else rec.waiters.push(apply);
+        if (rec.img) toggle(); else rec.waiters.push(toggle);
       });
       nestWrap.appendChild(el);
     });
@@ -3959,8 +3974,8 @@ function wireNest() {
     const img = new Image();
     img.onload = () => {
       state.nest.glyphImg = img;
+      state.nest.glyphImgs = [img];
       state.nest.glyphName = f.name;
-      // Auto-switch to glyph shape on successful upload.
       state.nest.shape = 'glyph';
       document.querySelectorAll('#seg-nShape button').forEach(x => x.classList.toggle('is-active', x.dataset.ns === 'glyph'));
       const prev = $('nest-glyph-preview');
@@ -3977,9 +3992,11 @@ function wireNest() {
   });
   $('btn-nGlyphClear')?.addEventListener('click', () => {
     state.nest.glyphImg = null;
+    state.nest.glyphImgs = [];
     state.nest.glyphName = '';
     state.nest.shape = 'rect';
     document.querySelectorAll('#seg-nShape button').forEach(x => x.classList.toggle('is-active', x.dataset.ns === 'rect'));
+    document.querySelectorAll('#nest-glyph-presets .glyph-preset').forEach(c => c.classList.remove('is-active'));
     const prev = $('nest-glyph-preview');
     if (prev) prev.style.display = 'none';
     render();
