@@ -2462,20 +2462,24 @@ window.addEventListener('pointerup', () => {
 // ── Smudge Brush interaction ───────────────────────────────────
 let brushActive = false;
 let brushPrev   = null;
+let brushDir    = null; // locked unit direction for current stroke
 const brushCursorEl = $('brush-cursor');
 
-function applySmudge(x, y, px, py) {
-  const dx = x - px, dy = y - py;
-  if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+function applySmudge(x, y) {
+  if (!brushDir) return;
   const r    = state.brush.size;
   const s    = state.brush.strength;
   const diam = r * 2;
+  const pull = r * 0.55 * s; // fixed pull distance along locked direction
   const tmp  = document.createElement('canvas');
   tmp.width  = diam;
   tmp.height = diam;
   const tc   = tmp.getContext('2d');
-  // Sample the current canvas shifted backward by drag dir × strength
-  tc.drawImage(canvas, -(x - r - dx * s), -(y - r - dy * s), canvas.width, canvas.height);
+  // Sample from behind the locked drag direction
+  tc.drawImage(canvas,
+    -(x - r - brushDir.x * pull),
+    -(y - r - brushDir.y * pull),
+    canvas.width, canvas.height);
   // Radial falloff mask
   const grad = tc.createRadialGradient(r, r, 0, r, r, r);
   grad.addColorStop(0, `rgba(0,0,0,${s})`);
@@ -2483,8 +2487,11 @@ function applySmudge(x, y, px, py) {
   tc.globalCompositeOperation = 'destination-in';
   tc.fillStyle = grad;
   tc.fillRect(0, 0, diam, diam);
-  // Paint smeared patch back
+  // Paint smeared patch back, forcing source-over so render() blend state doesn't interfere
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
   ctx.drawImage(tmp, x - r, y - r);
+  ctx.restore();
 }
 
 function updateBrushCursor(e) {
@@ -2505,22 +2512,30 @@ function updateBrushCursor(e) {
 canvas.addEventListener('pointerdown', e => {
   if (!state.brush.on) return;
   brushActive = true;
-  brushPrev = canvasPoint(e);
-  canvas.setPointerCapture(e.pointerId);
+  brushDir    = null; // reset per stroke
+  brushPrev   = canvasPoint(e);
   e.preventDefault();
-  e.stopPropagation();
 });
 window.addEventListener('pointermove', e => {
   if (state.brush.on) updateBrushCursor(e);
   if (!brushActive) return;
   const curr = canvasPoint(e);
-  applySmudge(curr.x, curr.y, brushPrev.x, brushPrev.y);
-  brushPrev = curr;
+  const dx = curr.x - brushPrev.x, dy = curr.y - brushPrev.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  // Lock direction after 4px of travel, then hold it for the whole stroke
+  if (!brushDir && dist > 4) {
+    brushDir = { x: dx / dist, y: dy / dist };
+  }
+  if (dist > 0.5) {
+    applySmudge(curr.x, curr.y);
+    brushPrev = curr;
+  }
 });
-window.addEventListener('pointerup', e => {
+window.addEventListener('pointerup', () => {
   if (brushActive) {
     brushActive = false;
     brushPrev   = null;
+    brushDir    = null;
   }
 });
 window.addEventListener('pointerleave', () => {
