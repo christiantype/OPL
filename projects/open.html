@@ -35,6 +35,8 @@
     body.project .text-mid { color: #000 !important; }
     body.project #open-sessions p { color: #000 !important; }
     body.project #open-sessions h2 { color: #000 !important; }
+    /* Footer — override white text from project.js inProject detection */
+    body.project footer div[style] { color: var(--color-ink) !important; }
     /* Application orb panel */
     .open-orb-panel { position: relative; overflow: hidden; }
   </style>
@@ -71,8 +73,8 @@
   <script>
     const PROJECT = {
       title:       "OP/EN",
-      description: "Most design education teaches you what to make. This teaches you who is making it. Through conversation, contemplative practice, and creative exercise, each session creates the conditions for a different kind of awareness to emerge — one that doesn't replace your craft but roots it in something more honest, more durable, and more alive.",
-      body: "This is not a workshop about typography. It is not a meditation retreat. It is not a leadership seminar or a branding course or a creativity hack. It is something design school never offered you and no job will ever assign you — a dedicated space to turn the tools you already have back on yourself, so that the work you send into the world carries something real.<br><br>Ten participants. Four Thursdays. In person only.",
+      description: "Education teaches you what to make. This teaches you who is making it. Through conversation, contemplative practice, and creative exercise, each session creates the conditions for a different kind of awareness to emerge — one that doesn't replace you but roots it in something more honest, more durable, and more alive.",
+      body: "This is not a leadership seminar or a branding course or a creativity hack. It is something school never offered you and no job will ever assign you — a dedicated space to turn the tools you already have back on yourself, so that the work you send into the world carries something real.<br><br>Ten participants. Four Thursdays. In person only.<br><br>Through group and facilitated conversation, we hold each other accountable, learn from one another, and explore ways to bring more authenticity and care into what we do.",
       client:      "World.",
       medium:      "Curriculum / Process",
       year:        "2026",
@@ -111,17 +113,20 @@
       '.open-application__n { flex-shrink: 0; font-size: var(--label); letter-spacing: var(--tracking-wide); color: rgba(0,0,0,0.5); padding-top: 0.15em; min-width: 1.5em; }',
       '.open-apply-btn { display: block; width: fit-content; margin-top: var(--space-6); background: transparent; color: #393939; border: 1px solid #393939; padding: 0.6em 1.2em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
       '.open-apply-btn:hover { background: var(--color-accent); border-color: var(--color-accent); color: #393939; }',
-      '#open-apply-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.97); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }',
+      '#open-apply-overlay { position: fixed; inset: 0; background: #fff; z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }',
       '#open-apply-overlay.is-open { opacity: 1; pointer-events: all; }',
       '.open-apply-inner { max-width: 560px; width: 90%; }',
-      '.open-apply-prompt { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(0,0,0,0.45); margin-bottom: var(--space-5); }',
-      '.open-apply-q { font-size: var(--h2); font-weight: var(--weight-regular); color: #000; line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); margin: 0 0 var(--space-6); }',
+      '.open-apply-prompt { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: #000; margin-bottom: var(--space-8); }',
+      '.open-apply-q { font-size: var(--h2); font-weight: var(--weight-regular); color: #000 !important; line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); margin: 0 0 var(--space-6); }',
       '.open-apply-inner textarea { width: 100%; height: 180px; border: none; border-bottom: 1px solid rgba(0,0,0,0.18); padding: var(--space-3) 0; font-size: 1em; font-family: inherit; resize: none; color: #000; background: transparent; box-sizing: border-box; outline: none; line-height: var(--leading-normal); }',
       '.open-apply-inner textarea::placeholder { color: rgba(0,0,0,0.25); }',
-      '.open-apply-actions { display: flex; align-items: center; gap: var(--space-6); margin-top: var(--space-5); }',
+      '.open-apply-actions { display: flex; align-items: center; gap: var(--space-6); margin-top: var(--space-8); }',
       '.open-apply-submit { background: transparent; color: #393939; border: 1px solid #393939; padding: 0.6em 1.2em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
       '.open-apply-submit:hover { background: var(--color-accent); border-color: var(--color-accent); }',
-      '.open-apply-close { background: none; border: none; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(0,0,0,0.35); cursor: pointer; font-family: inherit; padding: 0; }',
+      '.open-apply-close { background: none; border: none; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: #000; cursor: pointer; font-family: inherit; padding: 0; }',
+      '.open-apply-cta { height: 100vh; min-height: 560px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #f2f1ee; gap: var(--space-4); }',
+      '.open-apply-cta .open-session__eyebrow { margin-bottom: 0; }',
+      '.open-apply-cta .open-session__title { font-size: calc(var(--h1) * 2.5); margin-bottom: 0; }',
       '@media (max-width: 768px) {',
       '  .open-session { grid-template-columns: 1fr; height: auto; }',
       '  .open-session__image { height: 100vw; }',
@@ -135,7 +140,7 @@
         eyebrow: 'Session 1',
         title: 'Gather',
         bg: '#f2f1ee',
-        conversation: 'A council circle and one question: why did you become a designer? We begin naming what we\'ve been carrying into every room we enter.',
+        conversation: 'A council circle and one question: why did you become a designer? We begin naming what we\'ve been carrying into every room we enter. We will notice what goes missing — in a meeting, in a conversation, in the work. Just catch it.',
         activity: 'Twenty minutes of automatic writing, drawing, or thinking. No outcome, no editing. Ten minutes of silence with what came.',
         takeaway: 'Notice when you go missing this week — in a meeting, in a conversation, in the work. Just catch it.'
       },
@@ -143,7 +148,7 @@
         eyebrow: 'Session 2',
         title: 'The Container and the Lines',
         bg: '#eceaf4',
-        conversation: 'We look at the expectations that shaped your practice — the lines drawn by family, career, culture, and fear — and ask which ones you actually drew yourself.',
+        conversation: 'We look at the expectations that shaped your practice — the lines drawn by family, career, culture, and fear — and ask which ones you actually drew yourself. We\'ll ask when you sit down to work, whose voices are in the room?',
         activity: 'Each participant maps their container symbolically and marks one line they didn\'t draw.',
         takeaway: 'Before you sit down to work this week, ask once: whose voice is in the room with me?'
       },
@@ -151,7 +156,7 @@
         eyebrow: 'Session 3',
         title: 'Don\'t Go Missing',
         bg: '#f5f0e4',
-        conversation: 'We talk about why the answers arrive in the shower and not at the desk — and practice three questions: What am I feeling? What story am I telling myself? What does my body already know?',
+        conversation: 'We talk about why the answers arrive in the shower and not at the desk — and practice three questions: What am I feeling? What story am I telling myself? What does my body already know? And we\'ll run through questions before your next professional interaction. Then walk in.',
         activity: 'One sheet of paper, one mark-making tool, twenty minutes. No brief, no audience, no critique.',
         takeaway: 'Run the three questions before your next professional interaction. Then walk in.'
       }
@@ -165,7 +170,7 @@
       'Given unconstrained resources, what would you bring into life for the people around you.'
     ];
 
-    var html = '<div class="container"><div class="grid open-sessions__label"><div class="col-12"><span class="label">The Sessions</span></div></div></div>';
+    var html = '';
 
     SESSIONS.forEach(function (s) {
       html += '<div class="open-session"' + (s.bg ? ' style="background:' + s.bg + '"' : '') + '>';
@@ -173,9 +178,7 @@
       html += '<div class="open-session__content">';
       html += '<span class="open-session__eyebrow label">' + s.eyebrow + '</span>';
       html += '<h2 class="open-session__title">' + s.title + '</h2>';
-      if (s.conversation) html += '<span class="open-block__label">Conversation</span><p class="open-block__text">' + s.conversation + '</p>';
-      if (s.activity)     html += '<span class="open-block__label">Activity</span><p class="open-block__text">' + s.activity + '</p>';
-      if (s.takeaway)     html += '<span class="open-block__label">Takeaway</span><p class="open-block__text">' + s.takeaway + '</p>';
+      if (s.conversation) html += '<p class="open-block__text">' + s.conversation + '</p>';
       html += '</div>';
       html += '</div>';
     });
@@ -186,17 +189,18 @@
     html += '<div class="open-session__content">';
     html += '<span class="open-session__eyebrow label">Session 4</span>';
     html += '<h2 class="open-session__title">Consider &amp; Engage</h2>';
-    html += '<span class="open-block__label">Conversation</span>';
-    html += '<p class="open-block__text">What the work is for, not what it pays. We ask what it looks like to design for people rather than outcomes — and what remains when the title goes away.</p>';
-    html += '<span class="open-block__label">The Practice</span>';
-    html += '<p class="open-block__text">A letter to the designer you were before any of this started. Thirty minutes. Not shared unless you choose to.</p>';
-    html += '<span class="open-block__label">The Close</span>';
-    html += '<p class="open-block__text">A final council circle. One question: what are you leaving with? Two minutes of silence. Then we end.</p>';
-    html += '<span class="open-block__label">The Keepsake</span>';
-    html += '<p class="open-block__text">A coin. Unstamped, unexplained to anyone outside the room. It means what the four weeks made it mean.</p>';
+    html += '<p class="open-block__text">What the work is for, not what it pays. We ask what it looks like to design for people rather than outcomes — and what remains when the title goes away. We\'ll ask — who were we before? Who are we now? And who can we become?</p>';
+    html += '<p class="open-block__text" style="margin-top:var(--space-6)">This only works in a group. Through shared conversation, we hold each other accountable to what we find.</p>';
     html += '</div>';
     html += '</div>';
 
+    // Apply CTA
+    html += '<div class="open-apply-cta">';
+    html += '<span class="open-session__eyebrow label">OP/EN — 2026</span>';
+    html += '<h2 class="open-session__title">Apply</h2>';
+    html += '<span class="open-session__eyebrow label">10 spots available</span>';
+    html += '<button class="open-apply-btn open-apply-cta-btn">Apply Now</button>';
+    html += '</div>';
 
     var section = document.createElement('section');
     section.id = 'open-sessions';
@@ -217,15 +221,21 @@
       '<p class="open-apply-q">Given unconstrained resources, what would you bring into life for the people around you.</p>' +
       '<textarea placeholder="Write as long as you need to." id="open-apply-textarea"></textarea>' +
       '<div class="open-apply-actions">' +
-        '<button class="open-apply-submit" onclick="alert(\'Thank you.\')">Submit</button>' +
+        '<button class="open-apply-submit" onclick="var t=document.getElementById(\'open-apply-textarea\').value;window.location.href=\'mailto:hi@opal.design?subject=OP%2FEN%20Application&body=\'+encodeURIComponent(t);">Submit</button>' +
         '<button class="open-apply-close" onclick="document.getElementById(\'open-apply-overlay\').classList.remove(\'is-open\')">Close</button>' +
+        '<span style="margin-left:auto;font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">$600</span>' +
       '</div>' +
+      '<p style="margin-top:var(--space-4);font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">This course is $600 — application does not guarantee enrollment. Somebody will contact you to discuss next steps.</p>' +
     '</div>';
     document.body.appendChild(overlay);
     // Close on backdrop click
     overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.classList.remove('is-open'); });
     // Close on Escape
     document.addEventListener('keydown', function(e){ if(e.key==='Escape') overlay.classList.remove('is-open'); });
+
+    // Wire CTA apply button
+    var ctaBtn = document.querySelector('.open-apply-cta-btn');
+    if(ctaBtn) ctaBtn.onclick = function(){ overlay.classList.add('is-open'); };
 
     // Format + Apply button injected into hero
     (function(){
@@ -408,63 +418,68 @@
       }
 
       // Session 3 — Don't Go Missing
-      // Phyllotaxis (sunflower) spiral — nature's own packing.
-      // One amber dot pulses softly and silently jumps. The cluster breathes.
+      // Dense phyllotaxis field — each dot drifts on its own frequency,
+      // the whole cluster breathes and rotates, several amber dots glow and switch.
       function mkMissing(cv,ctx){
-        var N=44, pts=[];
+        var N=96, pts=[];
         for(var i=0;i<N;i++){
-          var angle=i*2.39996; // golden angle ≈ 137.5°
-          var rad=Math.sqrt(i/N)*0.40;
+          var angle=i*2.39996;
+          var rad=Math.sqrt(i/N)*0.42;
           pts.push({
-            x:Math.cos(angle)*rad,
-            y:Math.sin(angle)*rad*0.88, // residual squish from session 2
-            sz:0.7+Math.sqrt(i/N)*1.5   // dots grow toward the edge
+            x:  Math.cos(angle)*rad,
+            y:  Math.sin(angle)*rad,
+            sz: 0.5+Math.sqrt(i/N)*2.0,
+            ph: Math.random()*Math.PI*2,
+            spd:0.30+Math.random()*0.55
           });
         }
-        var specialIdx=7, nextSwitch=3.0, switchTime=-1, blinkF=1;
+        var specials=new Set(), nextSwitch=1.8;
+        function pickSpecials(){
+          specials.clear();
+          var count=2+Math.floor(Math.random()*3);
+          while(specials.size<count) specials.add(Math.floor(Math.random()*N));
+        }
+        pickSpecials();
         return function(t){
           var W=cv.width,H=cv.height,dpr=window.devicePixelRatio||1;
           ctx.clearRect(0,0,W,H);
-          var cx=W/2,cy=H/2,scale=Math.min(W,H)*0.30;
-
-          if(t>nextSwitch){
-            var prev=specialIdx;
-            do { specialIdx=Math.floor(Math.random()*N); } while(specialIdx===prev);
-            switchTime=t; nextSwitch=t+2.4+Math.random()*2.0;
-          }
-          if(switchTime>0){
-            var el=t-switchTime,dur=0.45;
-            blinkF=el<dur?(el<dur/2?1-(el/(dur/2)):(el-dur/2)/(dur/2)):1;
-          }
-
-          // Single clean breath — whole cluster expands and contracts gently
-          var breath=1+Math.sin(t*0.70)*0.040;
-          var pulse=0.5+0.5*Math.sin(t*1.9);
-
+          var cx=W/2,cy=H/2,scale=Math.min(W,H)*0.33;
+          if(t>nextSwitch){ pickSpecials(); nextSwitch=t+1.6+Math.random()*2.0; }
+          // Two-harmonic breath — feels alive, not mechanical
+          var breath=1+Math.sin(t*0.55)*0.06+Math.sin(t*1.4)*0.022;
+          // Slow drift rotation
+          var rot=t*0.055;
+          var cr=Math.cos(rot), sr=Math.sin(rot);
           for(var i=0;i<N;i++){
             var p=pts[i];
-            var x=cx+p.x*scale*breath;
-            var y=cy+p.y*scale*breath;
-            if(i===specialIdx){
-              // Soft radial gradient glow — no harsh ring
-              var glowR=(p.sz*1.0+pulse*2.8)*dpr*blinkF;
-              var grd=ctx.createRadialGradient(x,y,0,x,y,glowR*3.2);
-              grd.addColorStop(0,'rgba(215,130,8,'+(0.92*blinkF)+')');
-              grd.addColorStop(0.38,'rgba(200,115,0,'+(0.38*pulse*blinkF)+')');
-              grd.addColorStop(1,'rgba(195,100,0,0)');
+            // Each dot wanders around its spiral position
+            var wx=Math.sin(t*p.spd+p.ph)*0.032;
+            var wy=Math.cos(t*p.spd*0.79+p.ph+1.1)*0.032;
+            var bx=(p.x+wx)*scale*breath;
+            var by=(p.y+wy)*scale*breath;
+            // Rotate the whole field
+            var x=cx+bx*cr-by*sr;
+            var y=cy+bx*sr+by*cr;
+            if(specials.has(i)){
+              var lp=0.5+0.5*Math.sin(t*2.6+i*0.9);
+              var glowR=(p.sz*1.1+lp*3.2)*dpr;
+              var grd=ctx.createRadialGradient(x,y,0,x,y,glowR*3.8);
+              grd.addColorStop(0,'rgba(220,135,10,'+(0.7+lp*0.3)+')');
+              grd.addColorStop(0.35,'rgba(200,100,0,'+(0.25*lp)+')');
+              grd.addColorStop(1,'rgba(190,70,0,0)');
               ctx.beginPath();
-              ctx.arc(x,y,glowR*3.2,0,Math.PI*2);
+              ctx.arc(x,y,glowR*3.8,0,Math.PI*2);
               ctx.fillStyle=grd;
               ctx.fill();
-              // Core
               ctx.beginPath();
               ctx.arc(x,y,glowR,0,Math.PI*2);
-              ctx.fillStyle='rgba(218,138,10,'+(0.90*blinkF)+')';
+              ctx.fillStyle='rgba(228,148,12,'+(0.82+lp*0.18)+')';
               ctx.fill();
             } else {
+              var flicker=0.28+0.22*Math.sin(t*p.spd*0.6+p.ph);
               ctx.beginPath();
               ctx.arc(x,y,p.sz*dpr,0,Math.PI*2);
-              ctx.fillStyle='rgba(18,20,44,0.48)';
+              ctx.fillStyle='rgba(18,20,50,'+flicker+')';
               ctx.fill();
             }
           }
