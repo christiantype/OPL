@@ -35,6 +35,8 @@
     body.project .text-mid { color: #000 !important; }
     body.project #open-sessions p { color: #000 !important; }
     body.project #open-sessions h2 { color: #000 !important; }
+    body.project #open-sessions .open-facilitators p,
+    body.project #open-sessions .open-facilitators h3 { color: #fff !important; }
     /* Footer — override white text from project.js inProject detection */
     body.project footer div[style] { color: var(--color-ink) !important; }
     /* Application orb panel */
@@ -118,8 +120,13 @@
       '.open-apply-inner { max-width: 560px; width: 90%; }',
       '.open-apply-prompt { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: #000; margin-bottom: var(--space-8); }',
       '.open-apply-q { font-size: var(--h2); font-weight: var(--weight-regular); color: #000 !important; line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); margin: 0 0 var(--space-6); }',
-      '.open-apply-inner textarea { width: 100%; height: 180px; border: none; border-bottom: 1px solid rgba(0,0,0,0.18); padding: var(--space-3) 0; font-size: 1em; font-family: inherit; resize: none; color: #000; background: transparent; box-sizing: border-box; outline: none; line-height: var(--leading-normal); }',
+      '.open-apply-inner input[type=text], .open-apply-inner input[type=email] { width: 100%; border: none; border-bottom: 1px solid rgba(0,0,0,0.18); padding: var(--space-3) 0; font-size: 1em; font-family: inherit; color: #000; background: transparent; box-sizing: border-box; outline: none; margin-bottom: var(--space-4); }',
+      '.open-apply-inner input::placeholder { color: rgba(0,0,0,0.25); }',
+      '.open-apply-inner textarea { width: 100%; height: 140px; border: none; border-bottom: 1px solid rgba(0,0,0,0.18); padding: var(--space-3) 0; font-size: 1em; font-family: inherit; resize: none; color: #000; background: transparent; box-sizing: border-box; outline: none; line-height: var(--leading-normal); }',
       '.open-apply-inner textarea::placeholder { color: rgba(0,0,0,0.25); }',
+      '.open-apply-success { display: none; text-align: center; padding: var(--space-8) 0; }',
+      '.open-apply-success.is-visible { display: block; }',
+      '.open-apply-form.is-hidden { display: none; }',
       '.open-apply-actions { display: flex; align-items: center; gap: var(--space-6); margin-top: var(--space-8); }',
       '.open-apply-submit { background: transparent; color: #393939; border: 1px solid #393939; padding: 0.6em 1.2em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
       '.open-apply-submit:hover { background: var(--color-accent); border-color: var(--color-accent); }',
@@ -127,10 +134,10 @@
       '.open-apply-cta { height: 100vh; min-height: 560px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #f2f1ee; gap: var(--space-4); }',
       '.open-apply-cta .open-session__eyebrow { margin-bottom: 0; }',
       '.open-apply-cta .open-session__title { font-size: calc(var(--h1) * 2.5); margin-bottom: 0; }',
-      '.open-facilitators { padding: var(--space-16) var(--grid-padding); background: #fff; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }',
-      '.open-facilitator__name { font-size: var(--h2); font-weight: var(--weight-regular); letter-spacing: var(--tracking-tight); color: #000; margin-bottom: var(--space-2); }',
-      '.open-facilitator__title { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(0,0,0,0.45); margin-bottom: var(--space-6); }',
-      '.open-facilitator__bio { color: #000; line-height: var(--leading-normal); }',
+      '.open-facilitators { padding: var(--space-16) var(--grid-padding); background: #000; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }',
+      '.open-facilitator__name { font-size: var(--h2); font-weight: var(--weight-regular); letter-spacing: var(--tracking-tight); color: #fff; margin-bottom: var(--space-2); }',
+      '.open-facilitator__title { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: var(--space-6); }',
+      '.open-facilitator__bio { color: #fff; line-height: var(--leading-normal); }',
       '.open-facilitator__bio p + p { margin-top: var(--space-4); }',
       '@media (max-width: 768px) { .open-facilitators { grid-template-columns: 1fr; padding: var(--space-16) var(--space-6); } }',
       '@media (max-width: 768px) {',
@@ -206,7 +213,7 @@
     html += '<h3 class="open-facilitator__name">Christian Solorzano</h3>';
     html += '<span class="open-facilitator__title">Co-Facilitator</span>';
     html += '<div class="open-facilitator__bio">';
-    html += '<p>Christian Solorzano is a designer, educator, and community builder based in Chicago. He is the founder of OP/AL, an independent design studio built on the belief that attention is the practice, and of the Chicago Graphic Design Club — a community spanning thousands of designers across the city.</p>';
+    html += '<p>Designer, educator, and community builder based in Chicago. Founder of OP/AL, an independent design studio built on the belief that attention is the practice, and of the Chicago Graphic Design Club — a community spanning thousands of designers across the city.</p>';
     html += '<p>He teaches communication design at DePaul University, is the chief editor of Faculty magazine, and hosts Underscore, a podcast with over 100 conversations about design in Chicago.</p>';
     html += '<p>Outside the studio, Christian is a trained meditation instructor, a Zen practitioner, and holds a black belt in Brazilian Jiu-Jitsu. His work sits at the intersection of identity, culture, and communication.</p>';
     html += '</div>';
@@ -242,20 +249,53 @@
     }
 
     // Application overlay
+    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzfsm0I3jq501OdswHr8gw9fhKJXWHPoHByQaCpXiBrDUN2EkxGjqRz0O7vHHkgwmTDUA/exec';
     var overlay = document.createElement('div');
     overlay.id = 'open-apply-overlay';
     overlay.innerHTML = '<div class="open-apply-inner">' +
-      '<span class="open-apply-prompt">One Question</span>' +
-      '<p class="open-apply-q">Given unconstrained resources, what would you bring into life for the people around you.</p>' +
-      '<textarea placeholder="Write as long as you need to." id="open-apply-textarea"></textarea>' +
-      '<div class="open-apply-actions">' +
-        '<button class="open-apply-submit" onclick="var t=document.getElementById(\'open-apply-textarea\').value;window.location.href=\'mailto:hi@opal.design?subject=OP%2FEN%20Application&body=\'+encodeURIComponent(t);">Submit</button>' +
-        '<button class="open-apply-close" onclick="document.getElementById(\'open-apply-overlay\').classList.remove(\'is-open\')">Close</button>' +
-        '<span style="margin-left:auto;font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">$240</span>' +
+      '<div class="open-apply-form">' +
+        '<span class="open-apply-prompt">One Question</span>' +
+        '<p class="open-apply-q">Given unconstrained resources, what would you bring into life for the people around you.</p>' +
+        '<input type="text"  id="open-apply-name"     placeholder="Your name">' +
+        '<input type="email" id="open-apply-email"    placeholder="Your email">' +
+        '<textarea id="open-apply-textarea" placeholder="Write as long as you need to."></textarea>' +
+        '<div class="open-apply-actions">' +
+          '<button class="open-apply-submit" id="open-apply-submit-btn">Submit</button>' +
+          '<button class="open-apply-close" onclick="document.getElementById(\'open-apply-overlay\').classList.remove(\'is-open\')">Close</button>' +
+          '<span style="margin-left:auto;font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">$240</span>' +
+        '</div>' +
+        '<p style="margin-top:var(--space-4);font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">This course is $240 — application does not guarantee enrollment. Somebody will contact you to discuss next steps.</p>' +
       '</div>' +
-      '<p style="margin-top:var(--space-4);font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">This course is $240 — application does not guarantee enrollment. Somebody will contact you to discuss next steps.</p>' +
+      '<div class="open-apply-success">' +
+        '<p class="open-apply-q">Thank you.</p>' +
+        '<p style="margin-top:var(--space-4);color:#000;line-height:var(--leading-normal)">We\'ll be in touch to discuss next steps.</p>' +
+        '<button class="open-apply-close" style="margin-top:var(--space-6);display:inline-block" onclick="document.getElementById(\'open-apply-overlay\').classList.remove(\'is-open\')">Close</button>' +
+      '</div>' +
     '</div>';
     document.body.appendChild(overlay);
+
+    document.getElementById('open-apply-submit-btn').addEventListener('click', function() {
+      var name     = document.getElementById('open-apply-name').value.trim();
+      var email    = document.getElementById('open-apply-email').value.trim();
+      var response = document.getElementById('open-apply-textarea').value.trim();
+      if (!name || !email || !response) { alert('Please fill in all fields.'); return; }
+      var btn = this;
+      btn.textContent = 'Sending…';
+      btn.disabled = true;
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ name: name, email: email, response: response })
+      })
+      .then(function() {
+        overlay.querySelector('.open-apply-form').classList.add('is-hidden');
+        overlay.querySelector('.open-apply-success').classList.add('is-visible');
+      })
+      .catch(function() {
+        btn.textContent = 'Submit';
+        btn.disabled = false;
+        alert('Something went wrong. Please try again.');
+      });
+    });
     // Close on backdrop click
     overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.classList.remove('is-open'); });
     // Close on Escape
