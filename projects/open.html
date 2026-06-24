@@ -17,13 +17,6 @@
   <meta name="twitter:image"       content="https://more-than.design/images/opal-open-graph.webp">
   <link rel="stylesheet" href="../shared/styles.css">
   <style>
-    #pw-gate { position:fixed; inset:0; background:#fff; z-index:9999; display:flex; align-items:center; justify-content:center; }
-    #pw-gate.hidden { display:none; }
-    .pw-inner { text-align:center; }
-    .pw-inner p { font-size:0.6666em; letter-spacing:0.09375em; text-transform:uppercase; color:rgba(0,0,0,0.45); margin-bottom:1.5em; }
-    .pw-inner input { border:none; border-bottom:1px solid rgba(0,0,0,0.2); padding:0.4em 0; font-size:1em; font-family:inherit; color:#000; background:transparent; outline:none; text-align:center; letter-spacing:0.05em; width:180px; }
-    .pw-inner input::placeholder { color:rgba(0,0,0,0.25); }
-    .pw-error { color:rgba(0,0,0,0.35); font-size:0.6666em; letter-spacing:0.09375em; text-transform:uppercase; margin-top:1em; min-height:1.2em; }
   </style>
   <style>
     body.project { background: #fff !important; }
@@ -44,33 +37,6 @@
   </style>
 </head>
 <body>
-
-  <div id="pw-gate">
-    <div class="pw-inner">
-      <p>This page is password protected</p>
-      <input id="pw-input" type="password" placeholder="Password" autofocus>
-      <div class="pw-error" id="pw-error"></div>
-    </div>
-  </div>
-  <script>
-    (function(){
-      var KEY = 'open_pw_ok';
-      var gate = document.getElementById('pw-gate');
-      if(sessionStorage.getItem(KEY) === '1') { gate.classList.add('hidden'); return; }
-      var input = document.getElementById('pw-input');
-      var err   = document.getElementById('pw-error');
-      input.addEventListener('keydown', function(e){
-        if(e.key !== 'Enter') return;
-        if(input.value === 'userwithin'){
-          sessionStorage.setItem(KEY, '1');
-          gate.classList.add('hidden');
-        } else {
-          err.textContent = 'Incorrect';
-          input.value = '';
-        }
-      });
-    })();
-  </script>
 
   <script>
     const PROJECT = {
@@ -113,7 +79,7 @@
       '.open-application__item { display: flex; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid rgba(0,0,0,0.08); color: #000; line-height: var(--leading-normal); }',
       '.open-application__item:last-child { border-bottom: none; }',
       '.open-application__n { flex-shrink: 0; font-size: var(--label); letter-spacing: var(--tracking-wide); color: rgba(0,0,0,0.5); padding-top: 0.15em; min-width: 1.5em; }',
-      '.open-apply-btn { display: block; width: fit-content; margin-top: var(--space-6); background: transparent; color: #393939; border: 1px solid #393939; padding: 0.6em 1.2em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
+      '.open-apply-btn { display: inline-flex; align-items: center; line-height: 1; margin-top: var(--space-6); background: transparent; color: #393939; border: 1px solid #393939; padding: 0.65em 1.2em 0.55em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
       '.open-apply-btn:hover { background: var(--color-accent); border-color: var(--color-accent); color: #393939; }',
       '#open-apply-overlay { position: fixed; inset: 0; background: #fff; z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }',
       '#open-apply-overlay.is-open { opacity: 1; pointer-events: all; }',
@@ -128,7 +94,7 @@
       '.open-apply-success.is-visible { display: block; }',
       '.open-apply-form.is-hidden { display: none; }',
       '.open-apply-actions { display: flex; align-items: center; gap: var(--space-6); margin-top: var(--space-8); }',
-      '.open-apply-submit { background: transparent; color: #393939; border: 1px solid #393939; padding: 0.6em 1.2em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
+      '.open-apply-submit { display: inline-flex; align-items: center; line-height: 1; background: transparent; color: #393939; border: 1px solid #393939; padding: 0.65em 1.2em 0.55em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
       '.open-apply-submit:hover { background: var(--color-accent); border-color: var(--color-accent); }',
       '.open-apply-close { background: none; border: none; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: #000; cursor: pointer; font-family: inherit; padding: 0; }',
       '.open-apply-cta { height: 100vh; min-height: 560px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #f2f1ee; gap: var(--space-4); }',

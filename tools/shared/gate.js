@@ -38,7 +38,7 @@
       display: flex; flex-direction: column;
     }
     .zlmc-gate-eyebrow {
-      font-size: 11px;
+      font-size: 12px;
       letter-spacing: 0.09375em;
       text-transform: uppercase;
       color: #868686;
@@ -75,7 +75,7 @@
       border: none;
       cursor: pointer;
       font: inherit;
-      font-size: 11px;
+      font-size: 12px;
       letter-spacing: 0.09375em;
       text-transform: uppercase;
       color: #868686;
@@ -85,7 +85,7 @@
     .zlmc-gate-submit:hover { color: #000000; }
     .zlmc-gate-err {
       margin-top: 0.75em;
-      font-size: 11px;
+      font-size: 12px;
       letter-spacing: 0.09375em;
       text-transform: uppercase;
       color: #ff94c9;
