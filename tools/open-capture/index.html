@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OP/EN — IG Reel Capture</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; color: #fff; font-family: system-ui, sans-serif; padding: 32px; }
+    h1 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #666; margin-bottom: 8px; }
+    .note { font-size: 12px; color: #555; margin-bottom: 28px; line-height: 1.7; }
+    .note code { background: #222; padding: 2px 6px; border-radius: 3px; color: #aaa; }
+    #status { font-size: 12px; color: #888; margin-bottom: 10px; min-height: 18px; }
+    #rec-all {
+      margin-bottom: 28px;
+      background: transparent; border: 1px solid #666; color: #ccc;
+      padding: 10px 22px; font-size: 11px; letter-spacing: .12em;
+      text-transform: uppercase; cursor: pointer; font-family: inherit;
+    }
+    #rec-all:hover { border-color: #fff; color: #fff; }
+    #rec-all:disabled { opacity: .3; cursor: default; }
+    .grid { display: flex; gap: 20px; flex-wrap: wrap; }
+    .panel { display: flex; flex-direction: column; gap: 8px; }
+    .panel-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #555; }
+    /* Canvas renders at 1080×1920 internally, displays at 270×480 via CSS */
+    .panel canvas { display: block; width: 270px; height: 480px; border-radius: 4px; }
+    .rec-btn {
+      background: transparent; border: 1px solid #444; color: #bbb;
+      padding: 7px 12px; font-size: 11px; letter-spacing: .08em;
+      text-transform: uppercase; cursor: pointer; font-family: inherit;
+    }
+    .rec-btn:hover { border-color: #ccc; color: #fff; }
+    .rec-btn.recording { border-color: #e44; color: #e44; }
+    .rec-btn.done { border-color: #5c5; color: #5c5; }
+    .progress { height: 2px; background: #222; border-radius: 1px; overflow: hidden; }
+    .progress-bar { height: 100%; background: #e44; width: 0%; }
+  </style>
+</head>
+<body>
+
+  <h1>OP/EN — IG Reel Export · 1080 × 1920</h1>
+  <p class="note">15 sec · 30 fps · exports as MP4. Use Chrome on macOS for native MP4 output.</p>
+
+  <div id="status">Ready.</div>
+  <button id="rec-all">Record All 4 Clips</button>
+  <div class="grid" id="grid"></div>
+
+  <script>
+  (function () {
+
+    var CW = 1080, CH = 1920, DURATION = 15;
+
+    var SESSIONS = [
+      { label: 'Session 1 — Gather',              bg: '#f2f1ee', mk: mkGather    },
+      { label: 'Session 2 — Container & Lines',   bg: '#eceaf4', mk: mkContainer },
+      { label: "Session 3 — Don't Go Missing",    bg: '#f5f0e4', mk: mkMissing   },
+      { label: 'Session 4 — Consider & Engage',   bg: '#ede8f0', mk: mkEngage    },
+    ];
+
+    var canvases = [], drawFns = [], buttons = [], bars = [];
+    var t0 = performance.now();
+
+    // Build grid
+    var grid = document.getElementById('grid');
+    SESSIONS.forEach(function (s, i) {
+      var panel = document.createElement('div');
+      panel.className = 'panel';
+
+      var lbl = document.createElement('div');
+      lbl.className = 'panel-label';
+      lbl.textContent = s.label;
+
+      var cv = document.createElement('canvas');
+      cv.width  = CW;
+      cv.height = CH;
+      canvases.push(cv);
+
+      var ctx = cv.getContext('2d');
+      drawFns.push(s.mk(cv, ctx, s.bg));
+
+      var btn = document.createElement('button');
+      btn.className = 'rec-btn';
+      btn.textContent = 'Record 15s';
+      btn.onclick = (function(idx){ return function(){ recordOne(idx); }; })(i);
+      buttons.push(btn);
+
+      var prog = document.createElement('div');
+      prog.className = 'progress';
+      var bar = document.createElement('div');
+      bar.className = 'progress-bar';
+      prog.appendChild(bar);
+      bars.push(bar);
+
+      panel.append(lbl, cv, btn, prog);
+      grid.appendChild(panel);
+    });
+
+    // RAF loop
+    (function loop() {
+      var t = (performance.now() - t0) / 1000;
+      for (var i = 0; i < drawFns.length; i++) drawFns[i](t);
+      requestAnimationFrame(loop);
+    })();
+
+    function recordOne(idx) {
+      return new Promise(function (resolve) {
+        var cv  = canvases[idx];
+        var btn = buttons[idx];
+        var bar = bars[idx];
+
+        var mimeType =
+          MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') ? 'video/mp4;codecs=avc1' :
+          MediaRecorder.isTypeSupported('video/mp4')             ? 'video/mp4' :
+          MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' :
+                                                                    'video/webm';
+        var ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+
+        var stream   = cv.captureStream(30);
+        var recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: 12000000 });
+        var chunks   = [];
+
+        recorder.ondataavailable = function (e) { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = function () {
+          var blob = new Blob(chunks, { type: mimeType });
+          var url  = URL.createObjectURL(blob);
+          var a    = document.createElement('a');
+          a.href = url; a.download = 'open-session-' + (idx + 1) + '.' + ext;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          btn.textContent = 'Done ✓'; btn.className = 'rec-btn done';
+          bar.style.width = '100%';
+          setTimeout(function () {
+            btn.textContent = 'Record 15s'; btn.className = 'rec-btn'; bar.style.width = '0%';
+          }, 3000);
+          resolve();
+        };
+
+        btn.textContent = 'Recording…'; btn.className = 'rec-btn recording';
+        bar.style.width = '0%';
+        recorder.start(200);
+
+        var started = performance.now();
+        var tick = setInterval(function () {
+          bar.style.width = Math.min(100, ((performance.now() - started) / (DURATION * 1000)) * 100) + '%';
+        }, 150);
+
+        setTimeout(function () { clearInterval(tick); recorder.stop(); }, DURATION * 1000);
+      });
+    }
+
+    document.getElementById('rec-all').addEventListener('click', async function () {
+      this.disabled = true;
+      for (var i = 0; i < SESSIONS.length; i++) {
+        document.getElementById('status').textContent =
+          'Recording ' + (i + 1) + ' / 4 — ' + SESSIONS[i].label + '…';
+        await recordOne(i);
+        await new Promise(function (r) { setTimeout(r, 800); });
+      }
+      document.getElementById('status').textContent = 'All 4 clips downloaded.';
+      this.disabled = false;
+    });
+
+    // ── Animations ─────────────────────────────────────────────────────────
+    // All dot/line sizes multiplied by 2 to match original retina rendering.
+
+    function mkGather(cv, ctx, bg) {
+      var N = 38, pts = [];
+      for (var i = 0; i < N; i++) {
+        var a = (i / N) * Math.PI * 2;
+        var sr = 0.45 + Math.random() * 0.9, sa = Math.random() * Math.PI * 2;
+        pts.push({ a: a, sx: Math.cos(sa) * sr, sy: Math.sin(sa) * sr });
+      }
+      return function (t) {
+        var W = cv.width, H = cv.height;
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+        var cx = W / 2, cy = H / 2, r = Math.min(W, H) * 0.28;
+        var ph = (t % 9) / 9, g;
+        if      (ph < 0.42) g = ph / 0.42;
+        else if (ph < 0.65) g = 1;
+        else                g = 1 - (ph - 0.65) / 0.35;
+        g = g < 0.5 ? 4*g*g*g : 1 - Math.pow(-2*g+2, 3)/2;
+        for (var i = 0; i < N; i++) {
+          var p = pts[i];
+          var x = cx + (p.sx*(1-g) + Math.cos(p.a)*g) * r;
+          var y = cy + (p.sy*(1-g) + Math.sin(p.a)*g) * r;
+          var blu = Math.round(g * 18);
+          ctx.beginPath();
+          ctx.arc(x, y, (1.4 + g*1.3)*2, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba('+blu+','+blu+','+Math.round(20+g*60)+','+(0.18+g*0.62)+')';
+          ctx.fill();
+        }
+      };
+    }
+
+    function mkContainer(cv, ctx, bg) {
+      var N = 54;
+      var baseAngles = [0, Math.PI, Math.PI/2, -Math.PI/2, Math.PI/4, -Math.PI*3/4, -Math.PI/4, Math.PI*3/4];
+      var walls = baseAngles.map(function (dir, k) {
+        return { dir: dir, ph: k*0.83, spd: 0.55+k*0.07 };
+      });
+      return function (t) {
+        var W = cv.width, H = cv.height;
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+        var r = Math.min(W, H)*0.30, diag = Math.sqrt(W*W+H*H)*0.75;
+        var driftX = Math.sin(t*0.23)*r*0.13 + Math.sin(t*0.11)*r*0.06;
+        var driftY = Math.cos(t*0.19)*r*0.11 + Math.cos(t*0.13)*r*0.07;
+        var cx = W/2+driftX, cy = H/2+driftY;
+        var spin = t*0.16 + Math.sin(t*0.09)*0.35;
+        var cycle = (t%9)/9, pressure;
+        if      (cycle < 0.35) pressure = cycle/0.35;
+        else if (cycle < 0.68) pressure = 1.0;
+        else                   pressure = 1-(cycle-0.68)/0.32;
+        pressure = pressure<0.5 ? 2*pressure*pressure : 1-Math.pow(-2*pressure+2,2)/2;
+        var wDist = [], wAp = [];
+        for (var j = 0; j < walls.length; j++) {
+          wAp[j]  = Math.min(Math.max((t-j*0.38)/0.50, 0), 1);
+          var wob = Math.sin(t*walls[j].spd+walls[j].ph)*0.09;
+          wDist[j]= r*(1.45-(pressure+wob)*0.87*wAp[j]);
+        }
+        ctx.save(); ctx.translate(cx,cy); ctx.rotate(spin); ctx.translate(-cx,-cy);
+        for (var i = 0; i < N; i++) {
+          var a = (i/N)*Math.PI*2, dotR = r;
+          for (var j = 0; j < walls.length; j++) {
+            if (wAp[j] <= 0) continue;
+            var cosA = Math.cos(a-walls[j].dir);
+            if (cosA > 0.005) { var reach = wDist[j]/cosA; if (reach < dotR) dotR = reach; }
+          }
+          dotR = Math.max(dotR, r*0.07);
+          var hPulse = Math.sin(spin*1.4+i/N*Math.PI)*0.12;
+          var dr = Math.round(14+pressure*58+hPulse*30);
+          var dg = Math.round(18-pressure*10);
+          var db = Math.round(82-pressure*70);
+          ctx.beginPath();
+          ctx.arc(cx+Math.cos(a)*dotR, cy+Math.sin(a)*dotR, 1.8*2, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba('+dr+','+dg+','+db+',0.85)'; ctx.fill();
+        }
+        ctx.lineWidth = 2;
+        for (var j = 0; j < walls.length; j++) {
+          if (wAp[j] <= 0) continue;
+          var d = wDist[j];
+          var wx = cx+Math.cos(walls[j].dir)*d, wy = cy+Math.sin(walls[j].dir)*d;
+          var px = Math.cos(walls[j].dir+Math.PI/2), py = Math.sin(walls[j].dir+Math.PI/2);
+          var lx0 = wx-px*diag, ly0 = wy-py*diag, lx1 = wx+px*diag, ly1 = wy+py*diag;
+          var op = wAp[j]*(0.20+pressure*0.30);
+          var lg = ctx.createLinearGradient(lx0,ly0,lx1,ly1);
+          lg.addColorStop(0,    'rgba(60,80,190,0)');
+          lg.addColorStop(0.16, 'rgba(60,80,190,'+op+')');
+          lg.addColorStop(0.84, 'rgba(60,80,190,'+op+')');
+          lg.addColorStop(1,    'rgba(60,80,190,0)');
+          ctx.beginPath(); ctx.moveTo(lx0,ly0); ctx.lineTo(lx1,ly1);
+          ctx.strokeStyle = lg; ctx.stroke();
+        }
+        ctx.restore();
+      };
+    }
+
+    function mkMissing(cv, ctx, bg) {
+      var N = 96, pts = [];
+      for (var i = 0; i < N; i++) {
+        var angle = i*2.39996, rad = Math.sqrt(i/N)*0.42;
+        pts.push({ x: Math.cos(angle)*rad, y: Math.sin(angle)*rad,
+          sz: 0.5+Math.sqrt(i/N)*2.0, ph: Math.random()*Math.PI*2, spd: 0.30+Math.random()*0.55 });
+      }
+      var specials = new Set(), nextSwitch = 1.8;
+      function pickSpecials() {
+        specials.clear();
+        var count = 2+Math.floor(Math.random()*3);
+        while (specials.size < count) specials.add(Math.floor(Math.random()*N));
+      }
+      pickSpecials();
+      return function (t) {
+        var W = cv.width, H = cv.height;
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+        var cx = W/2, cy = H/2, scale = Math.min(W,H)*0.33;
+        if (t > nextSwitch) { pickSpecials(); nextSwitch = t+1.6+Math.random()*2.0; }
+        var breath = 1+Math.sin(t*0.55)*0.06+Math.sin(t*1.4)*0.022;
+        var rot = t*0.055, cr = Math.cos(rot), sr = Math.sin(rot);
+        for (var i = 0; i < N; i++) {
+          var p = pts[i];
+          var wx = Math.sin(t*p.spd+p.ph)*0.032;
+          var wy = Math.cos(t*p.spd*0.79+p.ph+1.1)*0.032;
+          var bx = (p.x+wx)*scale*breath, by = (p.y+wy)*scale*breath;
+          var x = cx+bx*cr-by*sr, y = cy+bx*sr+by*cr;
+          if (specials.has(i)) {
+            var lp = 0.5+0.5*Math.sin(t*2.6+i*0.9);
+            var glowR = (p.sz*1.1+lp*3.2)*2;
+            var grd = ctx.createRadialGradient(x,y,0,x,y,glowR*3.8);
+            grd.addColorStop(0,    'rgba(220,135,10,'+(0.7+lp*0.3)+')');
+            grd.addColorStop(0.35, 'rgba(200,100,0,'+(0.25*lp)+')');
+            grd.addColorStop(1,    'rgba(190,70,0,0)');
+            ctx.beginPath(); ctx.arc(x,y,glowR*3.8,0,Math.PI*2); ctx.fillStyle=grd; ctx.fill();
+            ctx.beginPath(); ctx.arc(x,y,glowR,0,Math.PI*2);
+            ctx.fillStyle='rgba(228,148,12,'+(0.82+lp*0.18)+')'; ctx.fill();
+          } else {
+            var flicker = 0.28+0.22*Math.sin(t*p.spd*0.6+p.ph);
+            ctx.beginPath(); ctx.arc(x,y,p.sz*2,0,Math.PI*2);
+            ctx.fillStyle='rgba(18,20,50,'+flicker+')'; ctx.fill();
+          }
+        }
+      };
+    }
+
+    function mkEngage(cv, ctx, bg) {
+      var NR = 56, rays = [];
+      for (var i = 0; i < NR; i++) {
+        rays.push({ ang: (i/NR)*Math.PI*2+(Math.random()-0.5)*0.08,
+          spd: 0.14+Math.random()*0.32, ph: Math.random()*Math.PI*2,
+          ph2: Math.random()*Math.PI*2, base: 0.30+Math.random()*0.58, w: 0.5+Math.random()*1.4 });
+      }
+      return function (t) {
+        var W = cv.width, H = cv.height;
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+        var cx = W/2, cy = H/2, maxR = Math.min(W,H)*0.46;
+        ctx.save();
+        for (var i = 0; i < NR; i++) {
+          var ray = rays[i];
+          var p1 = 0.5+0.5*Math.sin(t*ray.spd*Math.PI*2+ray.ph);
+          var p2 = 0.5+0.5*Math.sin(t*ray.spd*6.1+ray.ph2);
+          var pulse = Math.max(0, Math.min(1, p1*0.75+p2*0.25));
+          var rayLen = maxR*ray.base*(0.35+pulse*0.65);
+          var hueT = ((ray.ang/(Math.PI*2))+(t*0.022))%1;
+          var rr, gg, bb, s;
+          if      (hueT < 0.33) { s=hueT/0.33; rr=Math.round(5+s*210); gg=Math.round(90+s*50); bb=220; }
+          else if (hueT < 0.66) { s=(hueT-0.33)/0.33; rr=215; gg=Math.round(140-s*120); bb=Math.round(220-s*210); }
+          else                  { s=(hueT-0.66)/0.34; rr=Math.round(215-s*210); gg=Math.round(20+s*70); bb=Math.round(10+s*210); }
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx+Math.cos(ray.ang)*rayLen, cy+Math.sin(ray.ang)*rayLen);
+          ctx.strokeStyle = 'rgba('+rr+','+gg+','+bb+','+(0.08+pulse*0.80)+')';
+          ctx.lineWidth = ray.w*(0.4+pulse*0.9)*2;
+          ctx.stroke();
+        }
+        var g = ctx.createRadialGradient(cx,cy,0,cx,cy,maxR*0.14);
+        g.addColorStop(0,    'rgba(255,255,255,0.98)');
+        g.addColorStop(0.35, 'rgba(255,245,210,0.60)');
+        g.addColorStop(1,    'rgba(255,220,150,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx,cy,maxR*0.14,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      };
+    }
+
+  })();
+  </script>
+</body>
+</html>
