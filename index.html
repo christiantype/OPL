@@ -47,6 +47,21 @@
       border-radius: 50%; background: #e02020;
       animation: enrolling-blink 1.2s ease-in-out infinite;
     }
+    .project-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .project-row-enrolling {
+      display: inline-flex; align-items: center; gap: 0.5em;
+      font-size: 0.6666em; font-weight: 400;
+      letter-spacing: 0.09375em; text-transform: uppercase;
+      color: #e02020;
+    }
+    .enrolling-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #e02020;
+      animation: enrolling-blink 1.2s ease-in-out infinite; flex-shrink: 0;
+    }
     #hero-canvas {
       position: relative;
       width: 100%;
@@ -207,12 +222,15 @@
 
     const rowHTML = (p, i) => {
       const titleInner = p.url ? `<a href="${p.url}">${p.title}</a>` : p.title;
-      const title = p.badge
+      const titleWrapped = p.badge
         ? `<span class="badge-wrap"><span class="badge-dot"></span>${titleInner}</span>`
         : titleInner;
+      const titleRow = p.badge
+        ? `<span class="project-title-row">${titleWrapped}<span class="project-row-enrolling"><span class="enrolling-dot"></span>${p.badge}</span></span>`
+        : titleWrapped;
       return `
       <div class="grid project-row${p.url ? ' has-link' : ''}" ${p.url ? `data-url="${p.url}"` : ''} style="${p.url ? 'cursor:pointer;' : ''}animation-delay:${i * 0.07}s">
-        <div class="col-12"><span class="project-category label">${p.category}</span>${title}</div>
+        <div class="col-12"><span class="project-category label">${p.category}</span>${titleRow}</div>
       </div>`;
     };
 
