@@ -34,6 +34,24 @@
     body.project footer div[style] { color: var(--color-ink) !important; }
     /* Application orb panel */
     .open-orb-panel { position: relative; overflow: hidden; }
+    /* Now Enrolling indicator */
+    .open-enrolling {
+      display: inline-flex; align-items: center; gap: 0.5em;
+      margin-bottom: var(--space-4);
+    }
+    .open-enrolling__dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #e02020;
+      animation: enrolling-blink 1.2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    .open-enrolling__label {
+      font-size: var(--label); letter-spacing: var(--tracking-wide);
+      text-transform: uppercase; color: #e02020;
+    }
+    @keyframes enrolling-blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
   </style>
 </head>
 <body>
@@ -79,8 +97,7 @@
       '.open-application__item { display: flex; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid rgba(0,0,0,0.08); color: #000; line-height: var(--leading-normal); }',
       '.open-application__item:last-child { border-bottom: none; }',
       '.open-application__n { flex-shrink: 0; font-size: var(--label); letter-spacing: var(--tracking-wide); color: rgba(0,0,0,0.5); padding-top: 0.15em; min-width: 1.5em; }',
-      '.open-price-tag { display: inline-block; border: 1px solid rgba(0,0,0,0.25); border-radius: 100px; padding: 0.25em 0.8em 0.18em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(0,0,0,0.55); margin-top: var(--space-6); }',
-      '.open-apply-btn { display: block; width: fit-content; line-height: 1; margin-top: var(--space-3); background: transparent; color: #393939; border: 1px solid #393939; padding: 0.5em 1em 0.3em 1em; font-size: 1em; letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
+'.open-apply-btn { display: block; width: fit-content; line-height: 1; margin-top: var(--space-6); background: transparent; color: #393939; border: 1px solid #393939; padding: 0.5em 1em 0.3em 1em; font-size: 1em; letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
       '.open-apply-btn:hover { background: var(--color-accent); border-color: var(--color-accent); color: #393939; }',
       '#open-apply-overlay { position: fixed; inset: 0; background: #fff; z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }',
       '#open-apply-overlay.is-open { opacity: 1; pointer-events: all; }',
@@ -273,15 +290,15 @@
     var ctaBtn = document.querySelector('.open-apply-cta-btn');
     if(ctaBtn) ctaBtn.onclick = function(){ overlay.classList.add('is-open'); };
 
-    // Format + Apply button injected into hero
+    // Now Enrolling indicator + Apply button injected into hero
     (function(){
       var heroContainer = document.querySelector('#hero .container');
       if(!heroContainer) return;
 
-      var priceTag = document.createElement('span');
-      priceTag.className = 'open-price-tag';
-      priceTag.textContent = '$240';
-      heroContainer.appendChild(priceTag);
+      var enrolling = document.createElement('div');
+      enrolling.className = 'open-enrolling';
+      enrolling.innerHTML = '<span class="open-enrolling__dot"></span><span class="open-enrolling__label">Now Enrolling</span>';
+      heroContainer.insertBefore(enrolling, heroContainer.firstChild);
 
       var heroBtn = document.createElement('button');
       heroBtn.className = 'open-apply-btn';
