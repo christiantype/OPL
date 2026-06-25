@@ -37,6 +37,16 @@
 
   <link rel="stylesheet" href="shared/styles.css">
   <style>
+    @keyframes enrolling-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .badge-wrap { position: relative; }
+    .badge-dot {
+      position: absolute;
+      left: -1.4em;
+      top: 50%; transform: translateY(-50%);
+      width: 7px; height: 7px;
+      border-radius: 50%; background: #e02020;
+      animation: enrolling-blink 1.2s ease-in-out infinite;
+    }
     #hero-canvas {
       position: relative;
       width: 100%;
@@ -195,10 +205,16 @@
     // Accent palette for the section headings (each a distinct colour per load).
     const PALETTE = ['#ff4f9e', '#e0a000', '#2f9bd6', '#ef5a45', '#7aae1f', '#8a5cf6'];
 
-    const rowHTML = (p, i) => `
+    const rowHTML = (p, i) => {
+      const titleInner = p.url ? `<a href="${p.url}">${p.title}</a>` : p.title;
+      const title = p.badge
+        ? `<span class="badge-wrap"><span class="badge-dot"></span>${titleInner}</span>`
+        : titleInner;
+      return `
       <div class="grid project-row${p.url ? ' has-link' : ''}" ${p.url ? `data-url="${p.url}"` : ''} style="${p.url ? 'cursor:pointer;' : ''}animation-delay:${i * 0.07}s">
-        <div class="col-12"><span class="project-category label">${p.category}</span>${p.url ? `<a href="${p.url}">${p.title}</a>` : p.title}${p.badge ? `<span class="project-badge">${p.badge}</span>` : ''}</div>
+        <div class="col-12"><span class="project-category label">${p.category}</span>${title}</div>
       </div>`;
+    };
 
     fetch('projects.json')
       .then(r => r.json())
