@@ -8,7 +8,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #ffffff;
+  --bg: #f4f4f3;
   --text: #0e0c0a;
   --text-dim: #7a6a5a;
   --gold: #9a7020;
@@ -78,7 +78,7 @@ header {
   padding: 24px;
   border-right: 1px solid var(--border);
   gap: 16px;
-  background: #fff;
+  background: var(--bg);
   overflow: hidden;
 }
 
@@ -258,7 +258,7 @@ header {
   padding: 48px 20px;
   gap: 14px;
   overflow: hidden;
-  background: #fff;
+  background: var(--bg);
 }
 
 /* BOOKLET — fills the right panel */
@@ -335,7 +335,6 @@ header {
   .artwork-controls { width: 100%; justify-content: center; }
   .hero-scene { width: 320px; height: 260px; }
   .player-bar { position: fixed; bottom: 0; left: 0; right: 0; }
-  .player-info { flex: 0 1 110px; }
 }
 
 /* Page nav + tracklist row */
@@ -412,6 +411,15 @@ header {
 }
 .mini-btn:hover { color: var(--text); border-color: rgba(0,0,0,0.25); }
 .mini-btn.active { color: var(--gold); border-color: var(--gold); }
+
+/* Mobile player layout — placed after base player rules so it wins on source order:
+   track info on its own line, controls + progress below, numbers beneath */
+@media (max-width: 768px) {
+  .player-unit { flex-wrap: wrap; justify-content: center; row-gap: 9px; }
+  .player-info { flex: 0 0 100%; order: -1; text-align: center; }
+  .player-controls { flex: 0 0 auto; }
+  .player-progress { flex: 1 1 auto; min-width: 150px; }
+}
 </style>
 </head>
 <body>
@@ -515,42 +523,8 @@ header {
   </div>
 </div>
 
-<!-- PLAYER BAR -->
-<div class="player-bar">
-  <div class="player-unit">
-    <div class="player-controls">
-      <button class="ply-btn sm" onclick="prevTrack()">
-        <svg viewBox="0 0 12 12"><polygon points="12,0 4,6 12,12"/><rect x="0" y="0" width="3" height="12"/></svg>
-      </button>
-      <button class="ply-btn" onclick="togglePlay()">
-        <svg id="playIcon" viewBox="0 0 12 14"><polygon points="0,0 12,7 0,14"/></svg>
-        <svg id="pauseIcon" viewBox="0 0 12 14" style="display:none"><rect x="0" y="0" width="4" height="14"/><rect x="8" y="0" width="4" height="14"/></svg>
-      </button>
-      <button class="ply-btn sm" onclick="nextTrack()">
-        <svg viewBox="0 0 12 12"><polygon points="0,0 8,6 0,12"/><rect x="9" y="0" width="3" height="12"/></svg>
-      </button>
-    </div>
-    <div class="player-info">
-      <div class="player-track" id="playerTrackName">— select a track —</div>
-      <div class="player-artist">Sean Lake Opeka · Fermoyle</div>
-    </div>
-    <div class="player-progress">
-      <span class="time-label" id="timeCurrent">0:00</span>
-      <div class="progress-rail" onclick="seekTo(event)"><div class="progress-fill" id="progressFill"></div></div>
-      <span class="time-label" id="timeDuration">0:00</span>
-    </div>
-  </div>
-  <div class="mini-tracks">
-    <button class="mini-btn" onclick="playTrack(0)" id="mini0">1</button>
-    <button class="mini-btn" onclick="playTrack(1)" id="mini1">2</button>
-    <button class="mini-btn" onclick="playTrack(2)" id="mini2">3</button>
-    <button class="mini-btn" onclick="playTrack(3)" id="mini3">4</button>
-    <button class="mini-btn" onclick="playTrack(4)" id="mini4">5</button>
-    <button class="mini-btn" onclick="playTrack(5)" id="mini5">6</button>
-    <button class="mini-btn" onclick="playTrack(6)" id="mini6">7</button>
-    <button class="mini-btn" onclick="playTrack(7)" id="mini7">8</button>
-  </div>
-</div>
+<!-- Player bar lives in the parent page (playerbar.html) so it stays pinned
+     to the viewport across the whole case study. -->
 
 <script>
 var tracks = [

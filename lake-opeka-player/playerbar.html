@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lake Opeka — Player</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --text: #0e0c0a;
+  --text-dim: #7a6a5a;
+  --gold: #9a7020;
+  --border: rgba(0,0,0,0.1);
+}
+html, body { background: transparent; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+
+.player-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  min-height: 100px;
+  background: rgba(255,255,255,0.97); border-top: 1px solid var(--border);
+  padding: 13px 24px 15px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px;
+  backdrop-filter: blur(12px);
+}
+.player-unit { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 600px; min-width: 0; }
+.player-controls { display: flex; align-items: center; gap: 5px; }
+
+.ply-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+  width: 30px; height: 30px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.ply-btn:hover { color: var(--text); border-color: rgba(0,0,0,0.28); }
+.ply-btn.sm { width: 24px; height: 24px; }
+.ply-btn svg { width: 11px; height: 11px; fill: currentColor; }
+.ply-btn.sm svg { width: 9px; height: 9px; }
+
+.player-info { min-width: 0; flex: 0 0 180px; }
+.player-track { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
+.player-artist { font-size: 9px; color: var(--text-dim); letter-spacing: .1em; text-transform: uppercase; }
+
+.player-progress { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.progress-rail { flex: 1; height: 2px; background: rgba(0,0,0,0.08); border-radius: 1px; cursor: pointer; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--gold); border-radius: 1px; width: 0%; transition: width .3s linear; }
+.time-label { font-size: 9px; color: var(--text-dim); white-space: nowrap; letter-spacing: .04em; }
+
+.mini-tracks { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+.mini-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+  font-size: 10px; padding: 3px 8px; border-radius: 2px;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.mini-btn:hover { color: var(--text); border-color: rgba(0,0,0,0.25); }
+.mini-btn.active { color: var(--gold); border-color: var(--gold); }
+
+@media (max-width: 768px) {
+  .player-unit { flex-wrap: wrap; justify-content: center; row-gap: 9px; }
+  .player-info { flex: 0 0 100%; order: -1; text-align: center; }
+  .player-controls { flex: 0 0 auto; }
+  .player-progress { flex: 1 1 auto; min-width: 150px; }
+}
+</style>
+</head>
+<body>
+
+<div class="player-bar">
+  <div class="player-unit">
+    <div class="player-controls">
+      <button class="ply-btn sm" onclick="prevTrack()">
+        <svg viewBox="0 0 12 12"><polygon points="12,0 4,6 12,12"/><rect x="0" y="0" width="3" height="12"/></svg>
+      </button>
+      <button class="ply-btn" onclick="togglePlay()">
+        <svg id="playIcon" viewBox="0 0 12 14"><polygon points="0,0 12,7 0,14"/></svg>
+        <svg id="pauseIcon" viewBox="0 0 12 14" style="display:none"><rect x="0" y="0" width="4" height="14"/><rect x="8" y="0" width="4" height="14"/></svg>
+      </button>
+      <button class="ply-btn sm" onclick="nextTrack()">
+        <svg viewBox="0 0 12 12"><polygon points="0,0 8,6 0,12"/><rect x="9" y="0" width="3" height="12"/></svg>
+      </button>
+    </div>
+    <div class="player-info">
+      <div class="player-track" id="playerTrackName">— select a track —</div>
+      <div class="player-artist">Sean Fermoyle · Lake Opeka</div>
+    </div>
+    <div class="player-progress">
+      <span class="time-label" id="timeCurrent">0:00</span>
+      <div class="progress-rail" onclick="seekTo(event)"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="time-label" id="timeDuration">0:00</span>
+    </div>
+  </div>
+  <div class="mini-tracks">
+    <button class="mini-btn" onclick="playTrack(0)" id="mini0">1</button>
+    <button class="mini-btn" onclick="playTrack(1)" id="mini1">2</button>
+    <button class="mini-btn" onclick="playTrack(2)" id="mini2">3</button>
+    <button class="mini-btn" onclick="playTrack(3)" id="mini3">4</button>
+    <button class="mini-btn" onclick="playTrack(4)" id="mini4">5</button>
+    <button class="mini-btn" onclick="playTrack(5)" id="mini5">6</button>
+    <button class="mini-btn" onclick="playTrack(6)" id="mini6">7</button>
+    <button class="mini-btn" onclick="playTrack(7)" id="mini7">8</button>
+  </div>
+</div>
+
+<script>
+var tracks = [
+  { n:'Opitus Season',            file:'tracks/01-opitus-season.mp3' },
+  { n:'Ships in the Night',       file:'tracks/02-ships-in-the-night.mp3' },
+  { n:'Jazz Relapse',             file:'tracks/03-jazz-relapse.mp3' },
+  { n:'Walk of the Bird',         file:'tracks/04-walk-of-the-bird.mp3' },
+  { n:'Good Evening',             file:'tracks/05-good-evening.mp3' },
+  { n:'Cherry Blossom Interlude', file:'tracks/06-cherry-blossom-interlude.mp3' },
+  { n:'Off in the Distance',      file:'tracks/07-off-in-the-distance.mp3' },
+  { n:'A Little Nervous',         file:'tracks/08-a-little-nervous.mp3' }
+];
+
+var audio = new Audio(), currentTrack = -1, isPlaying = false;
+
+function fmt(s) {
+  if (!s || isNaN(s)) return '0:00';
+  return Math.floor(s/60) + ':' + (Math.floor(s%60) < 10 ? '0' : '') + Math.floor(s%60);
+}
+
+audio.addEventListener('timeupdate', function() {
+  if (!audio.duration) return;
+  document.getElementById('progressFill').style.width = ((audio.currentTime / audio.duration) * 100) + '%';
+  document.getElementById('timeCurrent').textContent = fmt(audio.currentTime);
+});
+audio.addEventListener('loadedmetadata', function() {
+  document.getElementById('timeDuration').textContent = fmt(audio.duration);
+});
+audio.addEventListener('ended', nextTrack);
+audio.addEventListener('play',  function() { isPlaying = true;  updatePlayUI(); });
+audio.addEventListener('pause', function() { isPlaying = false; updatePlayUI(); });
+
+function playTrack(idx) {
+  if (idx < 0 || idx >= tracks.length) return;
+  currentTrack = idx;
+  audio.src = tracks[idx].file;
+  audio.play().catch(function(){});
+  document.getElementById('playerTrackName').textContent = tracks[idx].n;
+  updateTracklistHighlight();
+}
+function togglePlay() { if (currentTrack < 0) { playTrack(0); return; } audio.paused ? audio.play() : audio.pause(); }
+function prevTrack()  { playTrack(currentTrack <= 0 ? 0 : currentTrack - 1); }
+function nextTrack()  { playTrack(currentTrack < tracks.length - 1 ? currentTrack + 1 : 0); }
+function seekTo(e)    { if (audio.duration) audio.currentTime = (e.offsetX / e.currentTarget.offsetWidth) * audio.duration; }
+
+function updatePlayUI() {
+  document.getElementById('playIcon').style.display  = isPlaying ? 'none'  : 'block';
+  document.getElementById('pauseIcon').style.display = isPlaying ? 'block' : 'none';
+  updateTracklistHighlight();
+}
+function updateTracklistHighlight() {
+  document.querySelectorAll('.mini-btn').forEach(function(b, i) {
+    b.classList.toggle('active', i === currentTrack);
+  });
+}
+</script>
+</body>
+</html>

@@ -32,11 +32,29 @@
       height: 100dvh;
       border: none;
       display: block;
+      background: #f4f4f3;
+    }
+    /* player bar lives in the parent page, fixed to the viewport, so it
+       follows the user across the whole case study */
+    #lo-playerbar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 1000;
+      width: 100%;
+      height: 106px;
+      border: none;
+      display: block;
+    }
+    body.project { padding-bottom: 106px; }
+    @media (max-width: 768px) {
+      #lo-playerbar { height: 150px; }
+      body.project { padding-bottom: 150px; }
     }
 
     /* ── Cinematic image gallery ── */
     #lo-gallery {
-      padding: 120px 0 40px;
+      padding: 120px 0 80px;
+      background: #f4f4f3;
     }
     .lo-gallery-section {
       margin-bottom: 140px;
@@ -46,10 +64,13 @@
       font-size: 11px;
       letter-spacing: .2em;
       text-transform: uppercase;
-      color: rgba(0,0,0,0.4);
+      color: #000;
       text-align: center;
       margin-bottom: 56px;
     }
+    .lo-gallery-section-title .punc { color: rgba(0,0,0,0.4); }
+
+    body.project #hero h2 .wip { color: #e02020 !important; }
     .lo-gallery-row {
       display: flex;
       gap: 48px;
@@ -68,8 +89,9 @@
       font-size: 10px;
       letter-spacing: .16em;
       text-transform: uppercase;
-      color: rgba(0,0,0,0.4);
+      color: #000;
       text-align: center;
+      margin-top: 20px;
     }
 
     /* Cover / back artwork — rounded, grounded contact shadow */
@@ -387,7 +409,7 @@
         <h1 class="col-12">Lake Opeka</h1>
       </div>
       <div class="grid">
-        <h2 class="col-9">An album design for Chicago musician Sean Fermoyle — spanning cover art, vinyl labels, and a full booklet for his record, Lake Opeka.</h2>
+        <h2 class="col-9">An album design for Chicago musician Sean Fermoyle — spanning cover art, vinyl labels, and a full booklet for his record, Lake Opeka. LP sleeve TBD — depending on cover option chosen. <span class="wip">Cass and Christian to deliver print-ready files once Sean approves direction.</span></h2>
       </div>
     </div>
   </section>
@@ -424,7 +446,7 @@
 
     <!-- Cover Art — each with its corresponding spinning record beneath -->
     <div class="lo-gallery-section">
-      <p class="lo-gallery-section-title">Cover Art &amp; Vinyl</p>
+      <p class="lo-gallery-section-title">Cover Art <span class="punc">&amp;</span> Vinyl</p>
       <div class="lo-gallery-row" style="gap: 56px;">
         <div class="lo-gallery-item" style="width: clamp(220px, 30%, 360px)">
           <img class="lo-art" src="../lake-opeka-player/assets/covers/cover-1.png" alt="Cover 1">
@@ -489,21 +511,21 @@
             <img src="../lake-opeka-player/assets/booklet/booklet-pg-01a.png" alt="Inside Cover A" style="width: 50%;">
             <img src="../lake-opeka-player/assets/booklet/booklet-pg-02.png" alt="Page 2" style="width: 50%;">
           </div>
-          <span class="lo-gallery-caption">Spread 1 — Inside Cover A &amp; Page 2</span>
+          <span class="lo-gallery-caption">Spread 1 — Inside Cover Option A &amp; Page 2</span>
         </div>
 
         <div class="lo-gallery-row" style="gap: 48px; width: 100%;">
           <div class="lo-gallery-item" style="width: clamp(200px, 26%, 320px)">
             <div class="lo-gallery-single"><img src="../lake-opeka-player/assets/booklet/booklet-pg-01a.png" alt="Inside Cover A"></div>
-            <span class="lo-gallery-caption">Inside Cover A</span>
+            <span class="lo-gallery-caption">Inside Cover Option A</span>
           </div>
           <div class="lo-gallery-item" style="width: clamp(200px, 26%, 320px)">
             <div class="lo-gallery-single"><img src="../lake-opeka-player/assets/booklet/booklet-pg-01b.png" alt="Inside Cover B"></div>
-            <span class="lo-gallery-caption">Inside Cover B</span>
+            <span class="lo-gallery-caption">Inside Cover Option B</span>
           </div>
           <div class="lo-gallery-item" style="width: clamp(200px, 26%, 320px)">
             <div class="lo-gallery-single"><img src="../lake-opeka-player/assets/booklet/booklet-pg-01c.png" alt="Inside Cover C"></div>
-            <span class="lo-gallery-caption">Inside Cover C</span>
+            <span class="lo-gallery-caption">Inside Cover Option C</span>
           </div>
         </div>
 
@@ -548,6 +570,9 @@
     </div>
 
   </section>
+
+  <!-- Fixed audio player — pinned to the viewport across the whole page -->
+  <iframe id="lo-playerbar" src="../lake-opeka-player/playerbar.html" title="Lake Opeka — Player" scrolling="no"></iframe>
 
 <script src="../shared/footer.js"></script>
   <script src="../shared/grid.js"></script>
