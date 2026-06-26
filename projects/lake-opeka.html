@@ -16,38 +16,241 @@
   <meta name="twitter:description" content="Album design for Chicago musician Sean Fermoyle.">
   <meta name="twitter:image"       content="https://more-than.design/images/LO-01.png">
   <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    body.project { background: #fff !important; }
+    body.project #hero h1,
+    body.project #hero h2,
+    body.project #hero p { color: #000 !important; }
+    body.project #credits p { color: #000 !important; }
+    body.project .label { color: rgba(0,0,0,0.55) !important; }
+    body.project .text-mid { color: #000 !important; }
+    body.project footer div[style] { color: var(--color-ink) !important; }
+
+    #lo-player {
+      width: 100%;
+      height: 85vh;
+      min-height: 560px;
+      border: none;
+      display: block;
+    }
+
+    #images {
+      padding: var(--space-2) 0 0;
+    }
+
+    .lo-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: var(--space-2);
+      padding: 0 var(--space-2);
+    }
+
+    .lo-grid + .lo-grid {
+      margin-top: var(--space-2);
+    }
+
+    .lo-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+    }
+
+    .lo-col-6  { grid-column: span 6; }
+    .lo-col-4  { grid-column: span 4; }
+    .lo-col-3  { grid-column: span 3; }
+    .lo-col-12 { grid-column: span 12; }
+
+    #next-project {
+      padding: var(--space-16) 0;
+    }
+
+    /* ── LP Mockup ── */
+    #lo-mockup {
+      background: #dddbd8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 0 100px;
+    }
+
+    .lo-scene {
+      position: relative;
+      width: 560px;
+      height: 420px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Floor shadow */
+    .lo-floor-shadow {
+      position: absolute;
+      bottom: -30px;
+      left: 40px;
+      right: -80px;
+      height: 40px;
+      background: radial-gradient(ellipse at 40% 0%, rgba(0,0,0,0.28) 0%, transparent 70%);
+      filter: blur(12px);
+      pointer-events: none;
+    }
+
+    /* Vinyl disc */
+    .lo-vinyl {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 380px;
+      height: 380px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: -8px 4px 32px rgba(0,0,0,0.38), -2px 0 8px rgba(0,0,0,0.2);
+      overflow: hidden;
+      background:
+        conic-gradient(from 0deg,
+          #0b0b0b 0deg, #0e0d0b 18deg, #0a0a0a 36deg, #0d0c0a 54deg,
+          #0b0b0b 72deg, #0e0c0a 90deg, #0a0a0a 108deg, #0d0b09 126deg,
+          #0b0b0b 144deg, #0e0d0b 162deg, #0a0a0a 180deg, #0c0b09 198deg,
+          #0b0b0b 216deg, #0e0c0a 234deg, #0a0a0a 252deg, #0d0c0a 270deg,
+          #0b0b0b 288deg, #0e0d0b 306deg, #0a0a0a 324deg, #0d0b09 342deg,
+          #0b0b0b 360deg);
+    }
+
+    /* Groove rings */
+    .lo-vinyl::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: repeating-radial-gradient(
+        circle at 50% 50%,
+        transparent 0px,
+        transparent 3px,
+        rgba(255,255,255,0.018) 3px,
+        rgba(255,255,255,0.018) 4px
+      );
+    }
+
+    /* Rim */
+    .lo-vinyl::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    .lo-vinyl-label {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 37%;
+      height: 37%;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+
+    .lo-vinyl-label img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .lo-vinyl-hole {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+      z-index: 2;
+    }
+
+    /* Album sleeve */
+    .lo-sleeve {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%) perspective(1400px) rotateY(-7deg) rotateX(0.5deg);
+      transform-origin: left center;
+      width: 360px;
+      height: 360px;
+      z-index: 2;
+      box-shadow:
+        6px 6px 40px rgba(0,0,0,0.32),
+        2px 2px 10px rgba(0,0,0,0.18),
+        inset -3px 0 8px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+
+    .lo-sleeve img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Spine edge sheen */
+    .lo-sleeve-spine {
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 6px;
+      background: linear-gradient(90deg, rgba(0,0,0,0.18) 0%, rgba(255,255,255,0.06) 100%);
+    }
+
+    @media (max-width: 768px) {
+      .lo-col-6, .lo-col-4, .lo-col-3 { grid-column: span 12; }
+      #lo-player { height: 70vh; }
+      .lo-scene { transform: scale(0.65); transform-origin: center center; }
+    }
+  </style>
 </head>
-<body>
-  <script>
-    const PROJECT = {
-      title:       "Lake Opeka",
-      description: "An album design for Chicago musician Sean Fermoyle — spanning cover art, vinyl labels, and a full booklet for his debut record Fermoyle.",
-      body:        "",
-      client:      "Sean Fermoyle",
-      medium:      "Album Design / Print / Identity",
-      year:        "2025",
-      credits: [
-        { name: "Cass Pokora",         title: "Designer" },
-        { name: "Christian Solorzano", title: "Designer" }
-      ],
-      role:   "Designer",
-      images: [
-        { src: "../images/LO-01.png", cols: 6, alt: "Fermoyle — front cover" },
-        { src: "../images/LO-02.png", cols: 3, alt: "Cover variant" },
-        { src: "../images/LO-03.png", cols: 3, alt: "Cover variant" },
-        { src: "../images/LO-04.png", cols: 3, alt: "Back cover A" },
-        { src: "../images/LO-05.png", cols: 3, alt: "Back cover B" },
-        { src: "../images/LO-06.png", cols: 6, alt: "Booklet cover" },
-        { src: "../images/LO-07.png", cols: 3, alt: "Booklet p.1" },
-        { src: "../images/LO-08.png", cols: 3, alt: "Booklet p.2" },
-        { src: "../images/LO-09.png", cols: 3, alt: "Booklet p.3" },
-        { src: "../images/LO-10.png", cols: 3, alt: "Booklet p.4" },
-        { src: "../images/LO-11.png", cols: 3, alt: "Booklet p.5" },
-        { src: "../images/LO-12.png", cols: 3, alt: "Booklet back" }
-      ],
-      next: { title: "Enough", url: "enough.html" }
-    };
-  </script>
-  <script src="../shared/project.js"></script>
+<body class="project">
+  <script src="../shared/nav.js"></script>
+
+  <section id="hero">
+    <div class="container">
+      <div class="grid">
+        <h1 class="col-12">Lake Opeka</h1>
+      </div>
+      <div class="grid">
+        <h2 class="col-9">An album design for Chicago musician Sean Fermoyle — spanning cover art, vinyl labels, and a full booklet for his record, Lake Opeka.</h2>
+      </div>
+    </div>
+  </section>
+
+  <section id="credits">
+    <div class="container">
+      <div class="grid">
+        <div class="col-3">
+          <span class="label">Client</span>
+          <p>Sean Fermoyle</p>
+        </div>
+        <div class="col-3">
+          <span class="label">Medium</span>
+          <p>Album Design</p>
+        </div>
+        <div class="col-3">
+          <span class="label">Year</span>
+          <p>2026</p>
+        </div>
+        <div class="col-3">
+          <span class="label">Acknowledgements</span>
+          <p>Cass Pokora<br><span class="text-mid">Designer</span></p>
+          <p>Christian Solorzano<br><span class="text-mid">Designer</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="images">
+    <iframe id="lo-player" src="../lake-opeka-player/index.html" title="Fermoyle — Lake Opeka" scrolling="no"></iframe>
+
+  </section>
+
+<script src="../shared/footer.js"></script>
+  <script src="../shared/grid.js"></script>
+  <script src="../shared/cursor.js"></script>
+  <script src="../shared/animate.js"></script>
 </body>
 </html>
