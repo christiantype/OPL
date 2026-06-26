@@ -93,7 +93,8 @@ header {
 /* ── VINYL ── */
 .vinyl-wrap {
   position: absolute;
-  right: 0; top: 30px;
+  right: 20px;
+  top: 50%; transform: translateY(-50%);
   width: 240px; height: 240px;
   cursor: pointer;
   z-index: 1;
@@ -129,8 +130,8 @@ header {
       #0b0b0b 216deg, #0e0c0a 234deg, #0a0a0a 252deg, #0d0c0a 270deg,
       #0b0b0b 288deg, #0e0d0b 306deg, #0a0a0a 324deg, #0d0b09 342deg, #0b0b0b 360deg);
   box-shadow:
-    0 6px 32px rgba(0,0,0,0.65),
-    0 2px 8px rgba(0,0,0,0.45),
+    -8px 4px 32px rgba(0,0,0,0.38),
+    -2px 0 8px rgba(0,0,0,0.2),
     inset 0 0 18px rgba(0,0,0,0.6),
     0 0 0 1px rgba(0,0,0,0.95);
 }
@@ -183,7 +184,7 @@ header {
 
 /* ── SLEEVE ── */
 .sleeve-wrap {
-  position: absolute; left: 0; top: 0; z-index: 2;
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 2;
   width: 248px; height: 263px;
 }
 
@@ -208,9 +209,9 @@ header {
   backface-visibility: hidden;
   border-radius: 2px; overflow: hidden;
   box-shadow:
-    14px 22px 52px rgba(0,0,0,0.38),
-    5px 7px 16px rgba(0,0,0,0.2),
-    1px 1px 4px rgba(0,0,0,0.12);
+    6px 6px 40px rgba(0,0,0,0.32),
+    2px 2px 10px rgba(0,0,0,0.18),
+    inset -3px 0 8px rgba(0,0,0,0.15);
 }
 .sleeve-face img { width: 100%; height: 100%; object-fit: fill; display: block; }
 
@@ -254,7 +255,7 @@ header {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 56px;
+  padding: 48px 20px;
   gap: 14px;
   overflow: hidden;
   background: #fff;
@@ -312,27 +313,28 @@ header {
 @keyframes pf { from { opacity:0; transform:scale(0.99); } to { opacity:1; transform:scale(1); } }
 
 @media (max-width: 768px) {
-  body { overflow: hidden; }
+  html, body { height: auto; overflow-y: auto; }
   .content {
     position: relative;
     top: auto; bottom: auto;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
     height: auto;
+    padding-bottom: 60px;
   }
   .left-panel {
-    flex: 0 0 420px;
+    flex: 0 0 auto;
     border-right: none;
     border-bottom: 1px solid var(--border);
-    padding: 24px 16px;
+    padding: 24px 16px 16px;
   }
   .right-panel {
-    flex: 0 0 480px;
-    padding: 32px 16px;
+    flex: 0 0 auto;
+    padding: 24px 16px;
   }
   .artwork-controls { width: 100%; }
-  .hero-scene { width: 320px; height: 280px; }
-  .player-bar { position: relative; }
+  .hero-scene { width: 320px; height: 260px; }
+  .player-bar { position: fixed; bottom: 0; left: 0; right: 0; }
 }
 
 /* Page nav + tracklist row */
@@ -466,19 +468,19 @@ header {
     <div class="artwork-controls">
       <div class="artwork-ctrl-group">
         <span class="ctrl-label">Cover</span>
-        <button class="sel-btn active" onclick="setCover(1,this)">1</button>
-        <button class="sel-btn" onclick="setCover(2,this)">2</button>
-        <button class="sel-btn" onclick="setCover(3,this)">3</button>
+        <button class="sel-btn cover-btn active" onclick="setCover(1,this)">1</button>
+        <button class="sel-btn cover-btn" onclick="setCover(2,this)">2</button>
+        <button class="sel-btn cover-btn" onclick="setCover(3,this)">3</button>
         <span class="ctrl-label" style="margin-left:10px">Back</span>
-        <button class="sel-btn active" onclick="setBack('a',this)">A</button>
-        <button class="sel-btn" onclick="setBack('b',this)">B</button>
+        <button class="sel-btn back-btn active" onclick="setBack('a',this)">A</button>
+        <button class="sel-btn back-btn" onclick="setBack('b',this)">B</button>
         <button class="sel-btn" style="margin-left:6px" onclick="flipSleeve()">Flip</button>
       </div>
       <div class="artwork-ctrl-group">
         <span class="ctrl-label">Label</span>
-        <button class="sel-btn active" onclick="setLabel(1,this)">1</button>
-        <button class="sel-btn" onclick="setLabel(2,this)">2</button>
-        <button class="sel-btn" onclick="setLabel(3,this)">3</button>
+        <button class="sel-btn label-btn active" onclick="setLabel(1,this)">1</button>
+        <button class="sel-btn label-btn" onclick="setLabel(2,this)">2</button>
+        <button class="sel-btn label-btn" onclick="setLabel(3,this)">3</button>
       </div>
     </div>
   </div>
@@ -592,14 +594,22 @@ function computePageSize() {
   var rp = document.querySelector('.right-panel');
   var footer = document.querySelector('.booklet-footer');
   var wrap = document.querySelector('.book-wrap');
-  if (!rp) return;
-  var pad = 56;
-  var availH = rp.clientHeight - footer.offsetHeight - pad * 2 - 14;
-  var availW = (rp.clientWidth - pad * 2 - 10) / 2; /* per-page max width */
-  var byH = Math.min(availH, 420);
-  var byW = availW > 0 ? Math.round(availW * (2996 / 2820)) : byH;
-  PAGE_H = Math.max(180, Math.min(byH, byW));
-  PAGE_W = Math.round(PAGE_H * (2820 / 2996));
+  if (!rp || !footer) return;
+  var isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    var hPad = 16;
+    var availW = (window.innerWidth - hPad * 2 - 10) / 2;
+    PAGE_H = Math.max(160, Math.round(availW * (2996 / 2820)));
+    PAGE_W = Math.round(PAGE_H * (2820 / 2996));
+  } else {
+    var vPad = 48, hPad = 20;
+    var availH = rp.clientHeight - footer.offsetHeight - vPad * 2 - 14;
+    var availW = (rp.clientWidth - hPad * 2 - 10) / 2;
+    var byH = Math.min(availH, 420);
+    var byW = availW > 0 ? Math.round(availW * (2996 / 2820)) : byH;
+    PAGE_H = Math.max(180, Math.min(byH, byW));
+    PAGE_W = Math.round(PAGE_H * (2820 / 2996));
+  }
   var totalW = PAGE_W * 2 + 10;
   document.getElementById('bookBody').style.height = PAGE_H + 'px';
   if (wrap) { wrap.style.width = totalW + 'px'; }
@@ -607,27 +617,28 @@ function computePageSize() {
   renderSpread();
 }
 
-/* ── Header: cover / back / label ── */
+/* ── Cover / back / label controls ── */
 function setCover(n, btn) {
-  document.querySelectorAll('.ctrl-group:nth-child(1) .sel-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.cover-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   var img = document.getElementById('frontImg');
   img.classList.remove('page-anim'); void img.offsetWidth; img.classList.add('page-anim');
   img.src = 'assets/covers/cover-' + n + '.png';
   document.getElementById('labelImg').src = 'assets/labels/label-' + n + '.png';
-  document.querySelectorAll('.ctrl-group:nth-child(3) .sel-btn').forEach(function(b){ b.classList.remove('active'); });
-  document.querySelectorAll('.ctrl-group:nth-child(3) .sel-btn')[n - 1].classList.add('active');
+  document.querySelectorAll('.label-btn').forEach(function(b){ b.classList.remove('active'); });
+  var lb = document.querySelectorAll('.label-btn')[n - 1];
+  if (lb) lb.classList.add('active');
 }
 
 function setBack(n, btn) {
-  document.querySelectorAll('.ctrl-group:nth-child(2) .sel-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.back-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   document.getElementById('backImg').src = 'assets/covers/back-' + n + '.png';
   document.getElementById('sleeveCard').classList.add('flipped');
 }
 
 function setLabel(n, btn) {
-  document.querySelectorAll('.ctrl-group:nth-child(3) .sel-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.label-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   document.getElementById('labelImg').src = 'assets/labels/label-' + n + '.png';
 }
