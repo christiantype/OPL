@@ -72,16 +72,15 @@
       text-align: center;
     }
 
-    /* Cover / back artwork — rounded with realistic shadow */
+    /* Cover / back artwork — rounded, grounded contact shadow */
     .lo-art {
       display: block;
       width: 100%;
       height: auto;
       border-radius: 6px;
       box-shadow:
-        0 30px 60px rgba(0,0,0,0.22),
-        0 12px 24px rgba(0,0,0,0.14),
-        0 2px 6px rgba(0,0,0,0.10);
+        0 2px 4px rgba(0,0,0,0.18),
+        0 34px 44px -14px rgba(0,0,0,0.5);
     }
 
     /* ── Spinning vinyl record (labels in real record) ── */
@@ -93,10 +92,22 @@
     }
     /* record sized relative to its cover, with breathing room above */
     .lo-record--cover {
-      width: 68%;
+      width: 95%;
       height: auto;
       aspect-ratio: 1 / 1;
-      margin-top: 32px;
+      margin-top: 36px;
+    }
+    /* grounded contact shadow — record resting on a surface */
+    .lo-record--cover::after {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      left: 50%; bottom: -3%;
+      transform: translateX(-50%);
+      width: 78%; height: 7%;
+      background: radial-gradient(ellipse at center,
+        rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.28) 45%, transparent 72%);
+      filter: blur(9px);
     }
     .lo-record-disc {
       position: absolute; inset: 0;
@@ -111,8 +122,8 @@
           #0b0b0b 216deg, #111 234deg, #0a0a0a 252deg, #131313 270deg,
           #0b0b0b 288deg, #111 306deg, #0a0a0a 324deg, #121212 342deg, #0b0b0b 360deg);
       box-shadow:
-        0 40px 70px rgba(0,0,0,0.45),
-        0 16px 30px rgba(0,0,0,0.30),
+        0 26px 32px -10px rgba(0,0,0,0.6),
+        0 10px 16px -6px rgba(0,0,0,0.45),
         inset 0 0 40px rgba(0,0,0,0.7),
         0 0 0 1px rgba(0,0,0,0.95);
     }
@@ -162,9 +173,8 @@
       border-radius: 4px;
       overflow: hidden;
       box-shadow:
-        0 36px 70px rgba(0,0,0,0.24),
-        0 14px 28px rgba(0,0,0,0.15),
-        0 2px 6px rgba(0,0,0,0.10);
+        0 2px 4px rgba(0,0,0,0.18),
+        0 40px 50px -16px rgba(0,0,0,0.5);
       position: relative;
     }
     .lo-gallery-spread::after {
@@ -183,9 +193,8 @@
     .lo-gallery-single {
       border-radius: 4px;
       box-shadow:
-        0 36px 70px rgba(0,0,0,0.24),
-        0 14px 28px rgba(0,0,0,0.15),
-        0 2px 6px rgba(0,0,0,0.10);
+        0 2px 4px rgba(0,0,0,0.18),
+        0 40px 50px -16px rgba(0,0,0,0.5);
       overflow: hidden;
     }
     .lo-gallery-single img { display: block; width: 100%; height: auto; }
@@ -195,12 +204,8 @@
       #lo-gallery { padding: 80px 0 20px; }
       .lo-gallery-section { margin-bottom: 90px; }
       .lo-gallery-row { flex-direction: column; align-items: center; gap: 56px; }
-      /* full-width stacked items on mobile (override inline clamp widths) */
-      #lo-gallery .lo-gallery-item { width: 88% !important; max-width: 460px; }
-      /* spreads: stack the two pages, each full width */
-      .lo-gallery-spread { flex-direction: column; }
-      .lo-gallery-spread img { width: 100% !important; }
-      .lo-gallery-spread::after { display: none; }
+      /* covers / singles fill more width; spreads stay side-by-side (keep clamp width) */
+      #lo-gallery .lo-gallery-section:not(:last-child) .lo-gallery-item { width: 88% !important; max-width: 460px; }
       .lo-col-6, .lo-col-4, .lo-col-3 { grid-column: span 12; }
     }
 
