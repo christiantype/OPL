@@ -74,7 +74,7 @@
     #hero-thermal {
       position: absolute; inset: 0; z-index: 0;
       width: 100%; height: 100%; display: block;
-      filter: blur(11px) saturate(1.15);          /* melt the low-res field into soft thermal blobs */
+      filter: blur(11px) saturate(1.45);          /* melt the low-res field into soft thermal blobs */
     }
     #hero-wordmark .hw-line { text-shadow: 0 2px 30px rgba(0,0,0,0.6); }
     /* Fine grain over the gradient — dithers the 8-bit banding so it stays smooth on older monitors. */
@@ -254,8 +254,8 @@
       const warm = Math.min(1, _g(6.5, 2.4) + _g(19, 2.4));    // dawn ~6:30 & dusk ~19:00 glow
       let baseHue = TONE > 0.7 ? 250 : 205;                    // deep indigo night ↔ sky-blue day…
       baseHue = baseHue + (28 - baseHue) * warm;               // …pulled toward warm gold at the golden hours
-      const auraBase = hsl(baseHue, 0.12, 0.95);
-      const auraStops = [ [0.00, auraBase], [0.12, hsl(268,0.50,0.74)], [0.26, hsl(214,0.68,0.62)], [0.40, hsl(158,0.58,0.52)], [0.55, hsl(96,0.62,0.52)], [0.68, hsl(52,0.85,0.56)], [0.80, hsl(28,0.90,0.56)], [0.90, hsl(2,0.80,0.57)], [1.00, hsl(322,0.68,0.60)] ];
+      const auraBase = hsl(baseHue, 0.14, 0.95);   // clean bright base so colours pop
+      const auraStops = [ [0.00, auraBase], [0.10, hsl(272,0.88,0.64)], [0.24, hsl(212,0.98,0.54)], [0.38, hsl(152,0.90,0.45)], [0.52, hsl(90,0.95,0.47)], [0.66, hsl(52,1,0.52)], [0.78, hsl(30,1,0.53)], [0.88, hsl(4,0.98,0.55)], [1.00, hsl(326,0.95,0.56)] ];
       const thermalBase = hsl(baseHue, 0.45, 0.06);
       const thermalStops = [ [0.00, thermalBase], [0.33, hsl((baseHue + 200) % 360, 0.55, 0.26)], [0.60, [40,175,95]], [0.80, [240,200,55]], [1.00, [255,74,42]] ];
       function rampOf(S, h) { h = h < 0 ? 0 : h > 1 ? 1 : h; for (let i = 1; i < S.length; i++) if (h <= S[i][0]) { const a = S[i-1], b = S[i], t = (h - a[0]) / (b[0] - a[0]); return [a[1][0]+(b[1][0]-a[1][0])*t, a[1][1]+(b[1][1]-a[1][1])*t, a[1][2]+(b[1][2]-a[1][2])*t]; } return S[S.length-1][1]; }
@@ -263,8 +263,10 @@
       const base = ramp(0);
       // adapt wordmark + scroll-cue ink for light (day) vs dark (night)
       (function () {
-        const ir = Math.round(35 + 220 * TONE), ig = Math.round(38 + 217 * TONE), ib = Math.round(46 + 209 * TONE), ink = `rgb(${ir},${ig},${ib})`;
-        const wm = document.getElementById('hero-wordmark'); if (wm) { wm.style.color = ink; wm.style.textShadow = TONE < 0.5 ? '0 1px 18px rgba(255,255,255,0.7)' : '0 2px 30px rgba(0,0,0,0.6)'; }
+        // high contrast at every tone: near-black ink on a light bg, white ink on a dark bg
+        const L = 0.299 * base[0] + 0.587 * base[1] + 0.114 * base[2];
+        const lightBg = L > 140, ink = lightBg ? 'rgb(18,18,20)' : 'rgb(255,255,255)';
+        const wm = document.getElementById('hero-wordmark'); if (wm) { wm.style.color = ink; wm.style.textShadow = lightBg ? '0 1px 16px rgba(255,255,255,0.65)' : '0 2px 30px rgba(0,0,0,0.6)'; }
         document.querySelectorAll('.hs-line').forEach(el => el.style.background = ink);
         document.querySelectorAll('.hs-tri').forEach(el => el.style.borderTopColor = ink);
         const hero = document.getElementById('hero'); if (hero) hero.style.background = `rgb(${base[0]|0},${base[1]|0},${base[2]|0})`;
