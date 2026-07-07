@@ -315,10 +315,16 @@
 
       function setNote(shared) { if (!note) return; note.textContent = (shared ? 'human presence this week' : 'your presence this week') + '. resets monday.'; }
 
+      // dev bypass: add ?nolog to the URL (or localStorage opal-heat-off=1) to view/paint
+      // WITHOUT writing to the shared store — for heavy testing that shouldn't count.
+      const DEV_NOLOG = /[?&]nolog\b/.test(location.search) || (function(){ try { return localStorage.getItem('opal-heat-off') === '1'; } catch (e) { return false; } })();
+      if (DEV_NOLOG) console.log('%c[heat] dev mode — not writing to the shared store', 'color:#e6b422');
+
       if (HEAT_ENDPOINT) {
         const pull = () => fetch(HEAT_ENDPOINT + '?day=' + PERIOD).then(r => r.json()).then(j => { if (j && j.v) dec(j.v, floor); }).catch(() => {});
         pull();
         setInterval(() => {
+          if (DEV_NOLOG) { contrib = new Float32Array(N); pull(); return; }   // never POST in dev mode
           let has = false; for (let i = 0; i < N; i++) if (contrib[i] > 0.001) { has = true; break; }
           if (has) { const payload = enc(contrib); contrib = new Float32Array(N);
             fetch(HEAT_ENDPOINT, { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ day: PERIOD, v: payload }) })
