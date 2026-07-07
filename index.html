@@ -105,6 +105,14 @@
       line-height: 1.15; letter-spacing: 0.12em;
     }
     #hero-wordmark .hw-line { display: block; }
+    /* Scroll cue: thin line + small triangle, flushed left to the same gutter */
+    #hero-scrollcue { position: absolute; left: 0; right: 0; bottom: clamp(20px, 4vh, 40px); z-index: 2; pointer-events: none; }
+    .hero-scroll { display: inline-flex; flex-direction: column; align-items: center; gap: 0; pointer-events: auto; text-decoration: none; opacity: 0.6; transition: opacity 0.25s ease; animation: heroScrollBob 1.9s ease-in-out infinite; }
+    .hero-scroll:hover { opacity: 1; }
+    .hero-scroll .hs-line { width: 1px; height: clamp(28px, 6vh, 48px); background: #fff; }
+    .hero-scroll .hs-tri { width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 5px solid #fff; }
+    @keyframes heroScrollBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+    @media (prefers-reduced-motion: reduce) { .hero-scroll { animation: none; } }
   </style>
 </head>
 <body>
@@ -120,6 +128,14 @@
         <span class="hw-line">Applied</span>
         <span class="hw-line">Learning</span>
       </p>
+    </div>
+    <div id="hero-scrollcue">
+      <div class="container">
+        <a href="#projects" class="hero-scroll" aria-label="Scroll to projects">
+          <span class="hs-line"></span>
+          <span class="hs-tri"></span>
+        </a>
+      </div>
     </div>
   </section>
 
