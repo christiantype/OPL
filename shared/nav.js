@@ -59,4 +59,8 @@
     document.body.classList.add('page-leaving');
     setTimeout(() => { window.location.href = href; }, 260);
   });
+
+  // Back/forward can restore this page from the bfcache with 'page-leaving' still
+  // applied (body stuck at opacity 0 → blank white screen). Clear it on every show.
+  window.addEventListener('pageshow', () => { document.body.classList.remove('page-leaving'); });
 })();
