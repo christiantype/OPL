@@ -242,21 +242,14 @@
       const COLOR_MODE = params.get('colors') === 'spectrum' ? 'spectrum' : 'sanzo';   // muted house palette by default
       const DEV_WHO = params.get('as') || '';   // dev: separate contribution budget so you can test many colours
       const you = COLOR_MODE === 'spectrum' ? hsl(Math.random() * 360, rnd(0.4, 0.55), rnd(0.6, 0.7)) : SANZO[(Math.random() * SANZO.length) | 0].slice();
-      // ── Palette driven by Chicago time of day ──────────────────────────────────
-      //  tone 0 = light "aura" (bright midday)  ⇄  tone 1 = dark thermal heatmap (night),
-      //  soft-warm at the golden hours. Preview any moment with ?tone=0..1.
-      function chicagoHour() { try { const s = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false, hour: '2-digit', minute: '2-digit' }); const m = s.match(/(\d{1,2}):(\d{2})/); if (m) return (parseInt(m[1], 10) % 24) + parseInt(m[2], 10) / 60; } catch (e) {} const d = new Date(); return d.getHours() + d.getMinutes() / 60; }
-      const HOUR = chicagoHour();
+      // ── Dark thermal heat-map palette ───────────────────────────────────────────
+      //  Dark thermal heatmap. Deep base hue is random each refresh (subtle colour shift).
+      //  Aura/tone machinery kept only for ?tone=0..1 previews (asset renders); site is dark.
       const _to = params.get('tone');
-      const dayness = Math.cos((HOUR - 13) / 24 * 2 * Math.PI) * 0.5 + 0.5;   // ≈1 near 1pm, ≈0 near 1am
-      const TONE = _to !== null && _to !== '' ? Math.max(0, Math.min(1, parseFloat(_to))) : Math.min(0.97, Math.max(0.06, 1 - dayness));   // low floor → peak midday reads near-white
-      const _g = (c, w) => Math.exp(-((HOUR - c) * (HOUR - c)) / (2 * w * w));
-      const warm = Math.min(1, _g(6.5, 2.4) + _g(19, 2.4));    // dawn ~6:30 & dusk ~19:00 glow
-      const HJ = (Math.random() * 2 - 1) * 26;                 // subtle per-refresh hue shift (rotates the whole palette)
-      let baseHue = TONE > 0.7 ? 250 : 205;                    // deep indigo night ↔ sky-blue day…
-      baseHue = baseHue + (28 - baseHue) * warm + HJ;          // …warm gold at the golden hours, + refresh jitter
-      const auraBase = hsl(baseHue, 0.05, 0.985);   // near-pure white base
-      const auraStops = [ [0.00, auraBase], [0.10, hsl(272+HJ,0.88,0.64)], [0.24, hsl(212+HJ,0.98,0.54)], [0.38, hsl(152+HJ,0.90,0.45)], [0.52, hsl(90+HJ,0.95,0.47)], [0.66, hsl(52+HJ,1,0.52)], [0.78, hsl(30+HJ,1,0.53)], [0.88, hsl(4+HJ,0.98,0.55)], [1.00, hsl(326+HJ,0.95,0.56)] ];
+      const TONE = _to !== null && _to !== '' ? Math.max(0, Math.min(1, parseFloat(_to))) : 1;   // 1 = dark thermal (default)
+      const baseHue = Math.random() * 360;                     // random deep-base tint each refresh
+      const auraBase = hsl(baseHue, 0.05, 0.985);
+      const auraStops = [ [0.00, auraBase], [0.10, hsl(272,0.88,0.64)], [0.24, hsl(212,0.98,0.54)], [0.38, hsl(152,0.90,0.45)], [0.52, hsl(90,0.95,0.47)], [0.66, hsl(52,1,0.52)], [0.78, hsl(30,1,0.53)], [0.88, hsl(4,0.98,0.55)], [1.00, hsl(326,0.95,0.56)] ];
       const thermalBase = hsl(baseHue, 0.45, 0.06);
       const thermalStops = [ [0.00, thermalBase], [0.33, hsl((baseHue + 200) % 360, 0.55, 0.26)], [0.60, [40,175,95]], [0.80, [240,200,55]], [1.00, [255,74,42]] ];
       function rampOf(S, h) { h = h < 0 ? 0 : h > 1 ? 1 : h; for (let i = 1; i < S.length; i++) if (h <= S[i][0]) { const a = S[i-1], b = S[i], t = (h - a[0]) / (b[0] - a[0]); return [a[1][0]+(b[1][0]-a[1][0])*t, a[1][1]+(b[1][1]-a[1][1])*t, a[1][2]+(b[1][2]-a[1][2])*t]; } return S[S.length-1][1]; }
