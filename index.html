@@ -238,11 +238,30 @@
         for (let i = 1; i < stops.length; i++) if (h <= stops[i][0]) { const a = stops[i-1], b = stops[i], t = (h - a[0]) / (b[0] - a[0]); return [a[1][0]+(b[1][0]-a[1][0])*t, a[1][1]+(b[1][1]-a[1][1])*t, a[1][2]+(b[1][2]-a[1][2])*t]; }
         return stops[stops.length-1][1]; }
 
+      // grid → display is cover-fit (keeps cells square on any aspect, so blobs never squish on portrait phones)
+      let cover = { scale: 1, ox: 0, oy: 0, k: 1 };
+      function toGrid(clientX, clientY) { const r = hero.getBoundingClientRect(); return { x: (clientX - r.left - cover.ox) / cover.scale, y: (clientY - r.top - cover.oy) / cover.scale }; }
+
       const m = { x: -1, y: -1 };
-      hero.addEventListener('pointermove', (e) => { const r = hero.getBoundingClientRect(); m.x = (e.clientX-r.left)/r.width*GW; m.y = (e.clientY-r.top)/r.height*GH; });
+      const bloom = [];
+      function bloomGrid(gx, gy, amt) { if (gx >= 0 && gx < GW && gy >= 0 && gy < GH) bloom.push({ x: gx, y: gy, amt }); }
+      function bloomAt(clientX, clientY, amt) { const g = toGrid(clientX, clientY); bloomGrid(g.x, g.y, amt); }
+
+      hero.addEventListener('pointermove', (e) => { const g = toGrid(e.clientX, e.clientY); m.x = g.x; m.y = g.y; });
       hero.addEventListener('pointerleave', () => { m.x = m.y = -1; });
+      hero.addEventListener('pointerup', () => { m.x = m.y = -1; });
+      hero.addEventListener('pointercancel', () => { m.x = m.y = -1; });
+
+      // touch: a tap leaves a warm bloom, a drag paints a trail — page can still scroll (passive)
+      hero.addEventListener('touchstart', (e) => { for (let i = 0; i < e.touches.length; i++) bloomAt(e.touches[i].clientX, e.touches[i].clientY, 3.2); }, { passive: true });
+      hero.addEventListener('touchmove', (e) => { for (let i = 0; i < e.touches.length; i++) { const t = e.touches[i], g = toGrid(t.clientX, t.clientY); m.x = g.x; m.y = g.y; bloomGrid(g.x, g.y, 0.6); } }, { passive: true });
+      hero.addEventListener('touchend', () => { m.x = m.y = -1; }, { passive: true });
+
       let scrollWarm = 0;
       window.addEventListener('wheel', (e) => { scrollWarm = Math.min(1.2, scrollWarm + Math.abs(e.deltaY) * 0.0016); }, { passive: true });
+      // scrolling the page also warms the pad — a drifting ribbon (works for touch scroll, no cursor needed)
+      let lastScrollY = window.scrollY || 0;
+      window.addEventListener('scroll', () => { const y = window.scrollY || 0, dy = Math.abs(y - lastScrollY); lastScrollY = y; if (dy > 0) { scrollWarm = Math.min(1.2, scrollWarm + dy * 0.003); if (m.x < 0) bloomGrid(GW * (0.5 + 0.28 * Math.sin(y * 0.006)), GH * (((y * 0.004) % 1) + 1) % 1, Math.min(1.4, dy * 0.02)); } }, { passive: true });
 
       // presence: warms the live glow AND deposits a small lasting contribution
       function splat(cx, cy, rad, amt) {
@@ -267,6 +286,8 @@
 
       function frame(now) {
         const dt = Math.min(3, (now - last) / 16.67); last = now;
+        for (let i = 0; i < bloom.length; i++) splat(bloom[i].x, bloom[i].y, 7.5, bloom[i].amt);
+        bloom.length = 0;
         if (m.x >= 0) splat(m.x, m.y, 6.5, 0.34 * dt);
         if (scrollWarm > 0.01 && m.x >= 0) splat(m.x, m.y, 9, scrollWarm * 0.14 * dt);
         scrollWarm *= 0.93;
@@ -279,11 +300,14 @@
         const bt = now * BREATH_SPEED;
         for (let i = 0; i < N; i++) { const breath = 1 + BREATH_AMP * Math.sin(bt + phase[i]); let v = floor[i] * breath + live[i]; if (v > 1.4) v = 1.4; const c = ramp(v); const j = i*4; data[j]=c[0]; data[j+1]=c[1]; data[j+2]=c[2]; data[j+3]=255; }
         fctx.putImageData(img, 0, 0);
-        ctx.imageSmoothingEnabled = true; ctx.drawImage(field, 0, 0, canvas.width, canvas.height);
+        drawField();
         raf = requestAnimationFrame(frame);
       }
-      function renderOnce() { for (let i = 0; i < N; i++) { let v = floor[i] + live[i]; if (v > 1.4) v = 1.4; const c = ramp(v); const j = i*4; data[j]=c[0]; data[j+1]=c[1]; data[j+2]=c[2]; data[j+3]=255; } fctx.putImageData(img,0,0); ctx.imageSmoothingEnabled=true; ctx.drawImage(field,0,0,canvas.width,canvas.height); }
-      function resize() { const r = hero.getBoundingClientRect(); const DPR = Math.min(2, window.devicePixelRatio||1); canvas.width = Math.max(2, Math.round(r.width*DPR*0.5)); canvas.height = Math.max(2, Math.round(r.height*DPR*0.5)); canvas.style.width = r.width+'px'; canvas.style.height = r.height+'px'; if (REDUCE) renderOnce(); }
+      function drawField() { ctx.imageSmoothingEnabled = true; ctx.drawImage(field, 0, 0, GW, GH, cover.ox*cover.k, cover.oy*cover.k, GW*cover.scale*cover.k, GH*cover.scale*cover.k); }
+      function renderOnce() { for (let i = 0; i < N; i++) { let v = floor[i] + live[i]; if (v > 1.4) v = 1.4; const c = ramp(v); const j = i*4; data[j]=c[0]; data[j+1]=c[1]; data[j+2]=c[2]; data[j+3]=255; } fctx.putImageData(img,0,0); drawField(); }
+      function resize() { const r = hero.getBoundingClientRect(); const DPR = Math.min(2, window.devicePixelRatio||1); canvas.width = Math.max(2, Math.round(r.width*DPR*0.5)); canvas.height = Math.max(2, Math.round(r.height*DPR*0.5)); canvas.style.width = r.width+'px'; canvas.style.height = r.height+'px';
+        const scale = Math.max(r.width/GW, r.height/GH); cover.scale = scale; cover.ox = (r.width - GW*scale)/2; cover.oy = (r.height - GH*scale)/2; cover.k = canvas.width / r.width;
+        if (REDUCE) renderOnce(); }
 
       // encode/decode a grid as a base64 byte string (heat -> STORE units)
       function enc(arr) { let s = ''; for (let i = 0; i < N; i++) { let q = (arr[i]*STORE)|0; if (q>255) q=255; if (q<0) q=0; s += String.fromCharCode(q); } return btoa(s); }
@@ -317,7 +341,6 @@
   </script>
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <script src="shared/footer.js"></script>
-  <script src="shared/grid.js"></script>
   <script src="shared/cursor.js"></script>
   <script src="shared/animate.js"></script>
 </body>
