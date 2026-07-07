@@ -63,4 +63,12 @@
   // Back/forward can restore this page from the bfcache with 'page-leaving' still
   // applied (body stuck at opacity 0 → blank white screen). Clear it on every show.
   window.addEventListener('pageshow', () => { document.body.classList.remove('page-leaving'); });
+
+  // Idle word screensaver — site-wide (nav.js loads on every page, directly or via project.js).
+  if (!window.__idleWordsLoaded) {
+    window.__idleWordsLoaded = true;
+    const s = document.createElement('script');
+    s.src = base + 'shared/idle-words.js';
+    document.body.appendChild(s);
+  }
 })();
