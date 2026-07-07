@@ -39,38 +39,13 @@
 
   document.body.appendChild(overlay);
 
-  /* Toggle button */
-  const btn = document.createElement('button');
-  btn.innerHTML = `/`;
-  Object.assign(btn.style, {
-    position:       'fixed',
-    bottom:         '24px',
-    right:          '24px',
-    zIndex:         '10000',
-    width:          '28px',
-    height:         '28px',
-    background:     'var(--color-light)',
-    border:         '1px solid var(--color-mid)',
-    color:          'var(--color-mid)',
-    fontSize:       '14px',
-    fontFamily:     'inherit',
-    letterSpacing:  '1px',
-    cursor:         'pointer',
-    borderRadius:   '0',
-    padding:        '0',
-  });
-  document.body.appendChild(btn);
-
+  /* No on-screen button — press G to toggle the grid overlay. */
   let visible = false;
 
   function toggle() {
     visible = !visible;
-    overlay.style.display      = visible ? 'block' : 'none';
-    btn.style.borderColor      = visible ? 'var(--color-accent)' : 'var(--color-mid)';
-    btn.style.color            = visible ? 'var(--color-accent)' : 'var(--color-mid)';
+    overlay.style.display = visible ? 'block' : 'none';
   }
-
-  btn.addEventListener('click', toggle);
 
   document.addEventListener('keydown', e => {
     if ((e.key === 'g' || e.key === 'G') &&
