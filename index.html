@@ -221,7 +221,7 @@
       const fctx = field.getContext('2d');
       const img = fctx.createImageData(GW, GH), data = img.data;
 
-      function weekKey() { const d = new Date(); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return d.toISOString().slice(0, 10); }
+      function weekKey() { const d = new Date(); const off = (d.getUTCDay() + 6) % 7; d.setUTCDate(d.getUTCDate() - off); return d.toISOString().slice(0, 10); }  // all-UTC → one shared key worldwide, no boundary fragmentation
       const PERIOD = weekKey();
 
       const rnd = (a, b) => a + Math.random() * (b - a);
@@ -311,7 +311,7 @@
 
       // encode/decode a grid as a base64 byte string (heat -> STORE units)
       function enc(arr) { let s = ''; for (let i = 0; i < N; i++) { let q = (arr[i]*STORE)|0; if (q>255) q=255; if (q<0) q=0; s += String.fromCharCode(q); } return btoa(s); }
-      function dec(b64, target) { try { const b = atob(b64); for (let i = 0; i < N && i < b.length; i++) target[i] = b.charCodeAt(i)/STORE; } catch (e) {} }
+      function dec(b64, target) { try { const b = atob(b64); for (let i = 0; i < N; i++) target[i] = i < b.length ? b.charCodeAt(i)/STORE : 0; } catch (e) {} }  // zero uncovered cells so a cleared store propagates to open tabs
 
       function setNote(shared) { if (!note) return; note.textContent = (shared ? 'human presence this week' : 'your presence this week') + '. resets monday.'; }
 
