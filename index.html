@@ -232,8 +232,7 @@
           const hue = (t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1/6) return p+(q-p)*6*t; if (t < 1/2) return q; if (t < 2/3) return p+(q-p)*(2/3-t)*6; return p; };
           r = hue(h + 1/3); g = hue(h); b = hue(h - 1/3);
         } return [r*255, g*255, b*255]; }
-      const baseHue = Math.random() * 360;
-      const base = hsl(baseHue, rnd(0.35, 0.55), rnd(0.045, 0.075));   // deep near-black backdrop
+      // (hero palette is set below — driven by Chicago time of day)
 
       // This session's colour — a fresh distinct hue each page load. Every mark YOU
       // leave this visit is this colour; refresh gives you a new one. With many
@@ -243,11 +242,33 @@
       const COLOR_MODE = params.get('colors') === 'spectrum' ? 'spectrum' : 'sanzo';   // muted house palette by default
       const DEV_WHO = params.get('as') || '';   // dev: separate contribution budget so you can test many colours
       const you = COLOR_MODE === 'spectrum' ? hsl(Math.random() * 360, rnd(0.4, 0.55), rnd(0.6, 0.7)) : SANZO[(Math.random() * SANZO.length) | 0].slice();
-      // thermal heat-map ramp: cool base → cyan → green → amber → red-hot core (intensity-driven)
-      const stops = [ [0.00, base], [0.33, hsl((baseHue + 200) % 360, 0.55, 0.26)], [0.60, [40,175,95]], [0.80, [240,200,55]], [1.00, [255,74,42]] ];
-      function ramp(h) { h = h < 0 ? 0 : h > 1 ? 1 : h;
-        for (let i = 1; i < stops.length; i++) if (h <= stops[i][0]) { const a = stops[i-1], b = stops[i], t = (h - a[0]) / (b[0] - a[0]); return [a[1][0]+(b[1][0]-a[1][0])*t, a[1][1]+(b[1][1]-a[1][1])*t, a[1][2]+(b[1][2]-a[1][2])*t]; }
-        return stops[stops.length-1][1]; }
+      // ── Palette driven by Chicago time of day ──────────────────────────────────
+      //  tone 0 = light "aura" (bright midday)  ⇄  tone 1 = dark thermal heatmap (night),
+      //  soft-warm at the golden hours. Preview any moment with ?tone=0..1.
+      function chicagoHour() { try { const s = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false, hour: '2-digit', minute: '2-digit' }); const m = s.match(/(\d{1,2}):(\d{2})/); if (m) return (parseInt(m[1], 10) % 24) + parseInt(m[2], 10) / 60; } catch (e) {} const d = new Date(); return d.getHours() + d.getMinutes() / 60; }
+      const HOUR = chicagoHour();
+      const _to = params.get('tone');
+      const dayness = Math.cos((HOUR - 13) / 24 * 2 * Math.PI) * 0.5 + 0.5;   // ≈1 near 1pm, ≈0 near 1am
+      const TONE = _to !== null && _to !== '' ? Math.max(0, Math.min(1, parseFloat(_to))) : Math.min(0.97, Math.max(0.08, 1 - dayness));
+      const _g = (c, w) => Math.exp(-((HOUR - c) * (HOUR - c)) / (2 * w * w));
+      const warm = Math.min(1, _g(6.5, 2.4) + _g(19, 2.4));    // dawn ~6:30 & dusk ~19:00 glow
+      let baseHue = TONE > 0.7 ? 250 : 205;                    // deep indigo night ↔ sky-blue day…
+      baseHue = baseHue + (28 - baseHue) * warm;               // …pulled toward warm gold at the golden hours
+      const auraBase = hsl(baseHue, 0.12, 0.95);
+      const auraStops = [ [0.00, auraBase], [0.12, hsl(268,0.50,0.74)], [0.26, hsl(214,0.68,0.62)], [0.40, hsl(158,0.58,0.52)], [0.55, hsl(96,0.62,0.52)], [0.68, hsl(52,0.85,0.56)], [0.80, hsl(28,0.90,0.56)], [0.90, hsl(2,0.80,0.57)], [1.00, hsl(322,0.68,0.60)] ];
+      const thermalBase = hsl(baseHue, 0.45, 0.06);
+      const thermalStops = [ [0.00, thermalBase], [0.33, hsl((baseHue + 200) % 360, 0.55, 0.26)], [0.60, [40,175,95]], [0.80, [240,200,55]], [1.00, [255,74,42]] ];
+      function rampOf(S, h) { h = h < 0 ? 0 : h > 1 ? 1 : h; for (let i = 1; i < S.length; i++) if (h <= S[i][0]) { const a = S[i-1], b = S[i], t = (h - a[0]) / (b[0] - a[0]); return [a[1][0]+(b[1][0]-a[1][0])*t, a[1][1]+(b[1][1]-a[1][1])*t, a[1][2]+(b[1][2]-a[1][2])*t]; } return S[S.length-1][1]; }
+      function ramp(h) { const a = rampOf(auraStops, h), t = rampOf(thermalStops, h); return [a[0]+(t[0]-a[0])*TONE, a[1]+(t[1]-a[1])*TONE, a[2]+(t[2]-a[2])*TONE]; }
+      const base = ramp(0);
+      // adapt wordmark + scroll-cue ink for light (day) vs dark (night)
+      (function () {
+        const ir = Math.round(35 + 220 * TONE), ig = Math.round(38 + 217 * TONE), ib = Math.round(46 + 209 * TONE), ink = `rgb(${ir},${ig},${ib})`;
+        const wm = document.getElementById('hero-wordmark'); if (wm) { wm.style.color = ink; wm.style.textShadow = TONE < 0.5 ? '0 1px 18px rgba(255,255,255,0.7)' : '0 2px 30px rgba(0,0,0,0.6)'; }
+        document.querySelectorAll('.hs-line').forEach(el => el.style.background = ink);
+        document.querySelectorAll('.hs-tri').forEach(el => el.style.borderTopColor = ink);
+        const hero = document.getElementById('hero'); if (hero) hero.style.background = `rgb(${base[0]|0},${base[1]|0},${base[2]|0})`;
+      })();
 
       // grid → display is cover-fit (keeps cells square on any aspect, so blobs never squish on portrait phones)
       let cover = { scale: 1, ox: 0, oy: 0, k: 1 };
