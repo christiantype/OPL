@@ -30,6 +30,14 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     const url = new URL(req.url);
 
+    // ── Old-school visit counter ── GET /count[?inc=1] → { count }
+    if (url.pathname === '/count') {
+      const inc = url.searchParams.get('inc') === '1';
+      let n = parseInt((await env.HEAT.get('visits')) || '0', 10) || 0;
+      if (inc) { n += 1; await env.HEAT.put('visits', String(n)); }
+      return json({ count: n });
+    }
+
     if (req.method === 'GET') {
       const day = (url.searchParams.get('day') || todayKey()).slice(0, 10);
       const v = await env.HEAT.get('heat:' + day);
