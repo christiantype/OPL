@@ -24,6 +24,18 @@
     'fluid', 'experimental', 'warm', 'quiet', 'bold', 'open', 'felt', 'original'
   ];
 
+  // [background, foreground] — harmonious/complementary pairs (Sanzo Wada palette)
+  const PALETTES = [
+    ['#1e3a34', '#e8846b'], ['#14315b', '#e6b422'], ['#0e5c5b', '#d96e3f'],
+    ['#5c1a1b', '#a9c7d9'], ['#e6b422', '#14315b'], ['#4a2c4d', '#9cb48f'],
+    ['#c05b25', '#16514e'], ['#1f3a2e', '#f0b49e'], ['#46618e', '#d9a441'],
+    ['#6e1e2a', '#a8d8c0'], ['#2b2c6b', '#f2a81d'], ['#5e6033', '#c9a7d4'],
+    ['#a8442a', '#9fc9cc'], ['#2e2e2e', '#ebe45b'], ['#3e2140', '#b7c74a'],
+    ['#14395e', '#e8917b'], ['#8c3a2b', '#f0e5d0'], ['#234b3f', '#e8a268'],
+    ['#24409a', '#e3b23c'], ['#5b1f33', '#afc9b0'], ['#0f4c5c', '#f4a261'],
+    ['#d9773f', '#2a3d45'], ['#e5ddc8', '#7a3b2e'], ['#3d405b', '#e07a5f']
+  ];
+
   const style = document.createElement('style');
   style.textContent = `
     #idle-saver {
@@ -31,20 +43,20 @@
       background: #fff; display: flex; align-items: center; justify-content: center;
       pointer-events: none; cursor: none;
       opacity: 0; visibility: hidden;
-      transition: opacity .6s ease, visibility 0s linear .6s;
+      transition: opacity .6s ease, visibility 0s linear .6s, background-color ${FADE_MS}ms ease;
     }
-    #idle-saver.on { opacity: 1; visibility: visible; transition: opacity .6s ease, visibility 0s; }
+    #idle-saver.on { opacity: 1; visibility: visible; transition: opacity .6s ease, visibility 0s, background-color ${FADE_MS}ms ease; }
     #idle-saver .isw-inner {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       text-align: center; gap: clamp(22px, 5vh, 48px); padding: 0 6vw;
     }
-    #idle-saver .isw-logo { color: #000; line-height: 0; }
+    #idle-saver .isw-logo { color: #000; line-height: 0; transition: color ${FADE_MS}ms ease; }
     #idle-saver .isw-logo svg { display: block; width: clamp(130px, 20vw, 260px); height: auto; }
     #idle-saver .isw {
       font-family: "Sidepiece-HoneyPie", sans-serif; color: #111;
       font-size: clamp(0.95rem, 2.6vw, 1.5rem); letter-spacing: .16em; line-height: 1;
       text-transform: uppercase; text-align: center;
-      opacity: 0; transition: opacity ${FADE_MS}ms ease;
+      opacity: 0; transition: opacity ${FADE_MS}ms ease, color ${FADE_MS}ms ease;
     }
     @media (prefers-reduced-motion: reduce) {
       #idle-saver, #idle-saver .isw { transition: none; }
@@ -57,23 +69,36 @@
   el.setAttribute('aria-hidden', 'true');
   el.innerHTML = `<div class="isw-inner"><div class="isw-logo">${LOGO}</div><div class="isw"></div></div>`;
   const word = el.querySelector('.isw');
+  const logoEl = el.querySelector('.isw-logo');
   const mount = () => document.body.appendChild(el);
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
 
-  // shuffle once so each visit loops in a different order
-  const order = WORDS.slice();
-  for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = order[i]; order[i] = order[j]; order[j] = t; }
+  // shuffle once so each visit loops words + palettes in a different order
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  const order = shuffle(WORDS.slice());
+  const pals = shuffle(PALETTES.slice());
 
-  let idx = 0, flashTimer = 0, idleTimer = 0, on = false;
+  let idx = 0, pidx = 0, flashTimer = 0, idleTimer = 0, on = false;
 
   function nextWord() {
     word.style.opacity = '0';
-    setTimeout(() => { word.textContent = order[idx]; idx = (idx + 1) % order.length; word.style.opacity = '1'; }, REDUCE ? 0 : FADE_MS);
+    setTimeout(() => {
+      const pal = pals[pidx % pals.length];
+      el.style.background = pal[0];
+      word.style.color = pal[1];
+      logoEl.style.color = pal[1];
+      word.textContent = order[idx];
+      word.style.opacity = '1';
+      idx = (idx + 1) % order.length;
+      pidx = (pidx + 1) % pals.length;
+    }, REDUCE ? 0 : FADE_MS);
   }
   function start() {
     if (on) return; on = true;
+    idx = 0; pidx = 0;
+    el.style.background = pals[0][0];   // first colour set before the fade-in
     el.classList.add('on');
-    idx = 0; nextWord();
+    nextWord();
     flashTimer = setInterval(nextWord, FLASH_MS);
   }
   function stop() {
