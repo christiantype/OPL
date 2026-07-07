@@ -62,78 +62,33 @@
       width: 7px; height: 7px; border-radius: 50%; background: #e02020;
       animation: enrolling-blink 1.2s ease-in-out infinite; flex-shrink: 0;
     }
-    #hero-canvas {
+    /* ── Homepage hero: a thermal "heat pad" — a solid base colour (random each
+       load) that warms where you move and scroll, sensing presence. Wordmark centred. */
+    #hero {
       position: relative;
-      width: 100%;
-      height: 100vh;
+      height: 100vh; height: 100svh;
       overflow: hidden;
-      background: #000;
+      display: flex; align-items: center; justify-content: center;
+      background: #05060a;
     }
-    #hero-canvas iframe {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
-      display: block;
+    #hero-thermal {
+      position: absolute; inset: 0; z-index: 0;
+      width: 100%; height: 100%; display: block;
+      filter: blur(11px) saturate(1.15);          /* melt the low-res field into soft thermal blobs */
     }
-    /* Fallback still — covers the iframe until the scene reports it rendered;
-       stays put if the scene never loads (e.g. no WebGL). */
-    #hero-fallback {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      /* contain (not cover): the live scene frames the whole composition with margin
-         via fitCameraToScene, so the still must fit-inside too — otherwise wide viewports
-         crop the still and the composition jumps scale at the crossfade. Black backdrop
-         makes the letterbox invisible against the scene. */
-      object-fit: contain;
-      object-position: center;
-      background: #000;
-      z-index: 1;
-      pointer-events: none;
-      opacity: 1;
-      transition: opacity 0.7s ease;
+    #hero-wordmark .hw-side, #hero-wordmark .hw-slash { text-shadow: 0 2px 30px rgba(0,0,0,0.6); }
+    /* Fine grain over the gradient — dithers the 8-bit banding so it stays smooth on older monitors. */
+    #hero-noise {
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      opacity: 0.42; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
     }
-    #hero-fallback.hide { opacity: 0; }
-    /* On touch devices an iframe traps scroll (pointer-events:none on iframes is
-       unreliable on iOS). Put a transparent same-document catcher over it so the
-       page scrolls; hide it on desktop so the mouse can drag-rotate the scene. */
-    #hero-touch { display: none; }
-    @media (pointer: coarse) {
-      #hero-canvas iframe { pointer-events: none; }
-      #hero-canvas { touch-action: pan-y; }
-      #hero-touch {
-        display: block;
-        position: absolute;
-        inset: 0;
-        z-index: 1;
-        touch-action: pan-y;   /* catch touches as a normal element → page scrolls */
-      }
+    #hero-heatnote {
+      position: absolute; z-index: 2; bottom: 22px; left: 50%; transform: translateX(-50%);
+      font-family: "Sidepiece-HoneyPie", sans-serif; font-size: 10px; letter-spacing: 0.24em;
+      text-transform: uppercase; color: rgba(255,255,255,0.42); pointer-events: none; white-space: nowrap;
     }
-    /* The OP/AL slash — a tapered diagonal anchored directly behind the subtitle "/"
-       (JS sets left/top to that glyph's centre, so it tracks on every screen). */
-    #hero-slash {
-      position: absolute;
-      left: 50%; top: 50%;
-      width: 13px;
-      height: 150%;
-      background: #fff;
-      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);   /* tapered: points at ends, wide mid */
-      transform: translate(-50%, -50%) rotate(32deg) scaleY(0);   /* collapsed until the burst */
-      transform-origin: center;
-      opacity: 0;
-      z-index: 1;
-      pointer-events: none;
-      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
-      transition: transform 8s cubic-bezier(0.16, 0.84, 0.3, 1), opacity 1.4s ease;
-    }
-    #hero-slash.go {   /* grows from the center outward when the burst begins */
-      transform: translate(-50%, -50%) rotate(32deg) scaleY(1);
-      opacity: 1;
-    }
-    @media (prefers-reduced-motion: reduce) { #hero-slash { transition: none; } }
     /* Nav blends with whatever's behind it (difference): white over the dark hero,
        inverting to dark over the light content as you scroll. The blend needs a PAINTED
        backdrop — the content below the hero must carry its own white background, or the
@@ -143,69 +98,45 @@
     nav svg { fill: #fff; }
     .nav-asterisk { color: #fff; }
     #projects { background: #fff; position: relative; z-index: 0; }
-    /* Hero tagline: "original practice / applied learning". The "/" stays anchored
-       dead-centre (the big tapered slash sits behind it); after the scene's burst the
-       two practices glide out to opposite edges of the content grid (JS sets the
-       transforms so they land exactly on the container's columns). */
-    #hero-tagline {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
+    /* Dead-centre wordmark: Original Practice / Applied Learning */
+    #hero-wordmark {
+      position: relative; z-index: 2;
       margin: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      text-align: center;
-    }
-    .tagline-sub {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;   /* equal sides keep the "/" dead-centre */
-      align-items: center;
-      column-gap: 0.55em;
-      color: #fff;
-      font-size: clamp(0.72rem, 1vw, 0.95rem);
-      line-height: 1.4;
-      letter-spacing: 1.5px;
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      align-items: center; column-gap: clamp(0.35em, 1.4vw, 1.1em);
+      color: #fff; text-align: center;
+      font-family: "Sidepiece-HoneyPie", sans-serif;
+      font-size: clamp(0.56rem, 2.85vw, 1.4rem);   /* scales down so the line NEVER wraps */
       white-space: nowrap;
+      padding: 0 clamp(10px, 3vw, 24px);
+      max-width: 100%;
     }
-    .tagline-slash {
-      justify-self: center;                    /* anchored "/" — big slash sits behind it */
-      font-family: "Sidepiece", sans-serif;
-      font-weight: 700;                        /* strongest cut, so the "/" is the boldest mark */
+    #hero-wordmark .hw-side {
+      font-size: 1em;
+      letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap;
     }
-    .tagline-side {
-      padding: 0.4em 0.95em;
-      border-radius: 999px;
-      /* Frosted plate so each label reads over the busy scene while it still shows through. */
-      background: rgba(0, 0, 0, 0.4);
-      -webkit-backdrop-filter: blur(7px);
-      backdrop-filter: blur(7px);
-      transition: transform 4s cubic-bezier(0.45, 0, 0.2, 1);   /* slow, elegant glide */
-      will-change: transform;
-    }
-    .tagline-side--left  { justify-self: end; }    /* hug the "/" until the burst */
-    .tagline-side--right { justify-self: start; }
-    @media (prefers-reduced-motion: reduce) {
-      .tagline-side { transition: none; }
+    #hero-wordmark .hw-side--l { justify-self: end; }
+    #hero-wordmark .hw-side--r { justify-self: start; }
+    #hero-wordmark .hw-slash {
+      justify-self: center; font-weight: 700;
+      font-size: 3.4em; line-height: 0.6;
+      transform: translateY(0.055em);              /* nudge down to sit on the x-height */
+      filter: drop-shadow(0 0 22px rgba(255, 255, 255, 0.16));
     }
   </style>
 </head>
 <body>
   <script src="shared/nav.js"></script>
 
-  <section id="hero-canvas">
-    <iframe src="/scene/" title="OP/AL" loading="eager" scrolling="no"></iframe>
-    <img id="hero-fallback" src="images/hero-fallback.webp?v=2" alt="" aria-hidden="true">
-    <div id="hero-touch" aria-hidden="true"></div>
-    <div id="hero-slash" aria-hidden="true"></div>
-    <p id="hero-tagline">
-      <span class="tagline-sub">
-        <span class="tagline-side tagline-side--left">original practice</span>
-        <span id="slash-slot" class="tagline-slash">/</span>
-        <span class="tagline-side tagline-side--right">applied learning</span>
-      </span>
+  <section id="hero">
+    <canvas id="hero-thermal" aria-hidden="true"></canvas>
+    <div id="hero-noise" aria-hidden="true"></div>
+    <p id="hero-wordmark">
+      <span class="hw-side hw-side--l">Original Practice</span>
+      <span class="hw-slash">/</span>
+      <span class="hw-side hw-side--r">Applied Learning</span>
     </p>
+    <span id="hero-heatnote" aria-hidden="true"></span>
   </section>
 
   <section id="projects">
@@ -260,85 +191,128 @@
         });
       });
 
-    /* After the scene's burst, glide "original practice" / "applied learning" out to
-       opposite edges of the content grid (aligned with the project columns below),
-       leaving the "/" anchored dead-centre. */
-    (function heroSpread() {
-      const tag   = document.getElementById('hero-tagline');
-      const hero  = document.getElementById('hero-canvas');
-      const left  = tag && tag.querySelector('.tagline-side--left');
-      const right = tag && tag.querySelector('.tagline-side--right');
-      const gridC = document.querySelector('#projects .container');
-      if (!tag || !hero || !left || !right) return;
-      let spread = false, rAF;
-      function gridEdges() {
-        if (gridC) {
-          const r = gridC.getBoundingClientRect(), cs = getComputedStyle(gridC);
-          return { l: r.left + parseFloat(cs.paddingLeft), r: r.right - parseFloat(cs.paddingRight) };
+    /* ── Homepage hero: thermal "heat pad" (weekly) ─────────────────────
+       A solid base colour (new each load) that warms where the cursor moves
+       and where the page is scrolled. Warmth accumulates over the WEEK and
+       resets Monday, so the surface carries the impressions of everyone who
+       passed through. Shared across visitors via a small endpoint if set
+       (HEAT_ENDPOINT) — otherwise it remembers this browser's week locally. */
+    (function heroThermal() {
+      const hero = document.getElementById('hero');
+      const canvas = document.getElementById('hero-thermal');
+      const note = document.getElementById('hero-heatnote');
+      if (!hero || !canvas) return;
+      const ctx = canvas.getContext('2d');
+      const REDUCE = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // ▸ Shared heat store (Cloudflare Worker). Empty '' = per-browser only.
+      const HEAT_ENDPOINT = 'https://opal-heat.solochris14.workers.dev';
+      const STORE = 90;                     // heat -> byte quantisation for storage/sync
+
+      const GW = 148, GH = 84, N = GW * GH;
+      let floor = new Float32Array(N);      // accumulated week heat (persistent, no local decay)
+      let live = new Float32Array(N), tmp = new Float32Array(N);   // session heat (decays)
+      let contrib = new Float32Array(N);    // presence deposited since last sync
+      const CONTRIB = 0.008;                // how much of a hover becomes a lasting mark
+      const phase = new Float32Array(N);    // per-cell breath phase (accumulated impressions gently pulse)
+      for (let y = 0, k = 0; y < GH; y++) for (let x = 0; x < GW; x++, k++) phase[k] = Math.sin(x * 0.09) * 3.0 + Math.cos(y * 0.11) * 3.0;
+      const BREATH_SPEED = 0.0011, BREATH_AMP = 0.13;
+      const field = document.createElement('canvas'); field.width = GW; field.height = GH;
+      const fctx = field.getContext('2d');
+      const img = fctx.createImageData(GW, GH), data = img.data;
+
+      function weekKey() { const d = new Date(); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return d.toISOString().slice(0, 10); }
+      const PERIOD = weekKey();
+
+      const rnd = (a, b) => a + Math.random() * (b - a);
+      function hsl(h, s, l) { h /= 360; let r, g, b;
+        if (s === 0) { r = g = b = l; } else {
+          const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+          const hue = (t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1/6) return p+(q-p)*6*t; if (t < 1/2) return q; if (t < 2/3) return p+(q-p)*(2/3-t)*6; return p; };
+          r = hue(h + 1/3); g = hue(h); b = hue(h - 1/3);
+        } return [r*255, g*255, b*255]; }
+      const baseHue = Math.random() * 360;
+      const base = hsl(baseHue, rnd(0.35, 0.62), rnd(0.06, 0.12));
+      const stops = [ [0.00, base], [0.33, hsl((baseHue + 200) % 360, 0.55, 0.26)], [0.60, [40,175,95]], [0.80, [240,200,55]], [1.00, [255,74,42]] ];
+      function ramp(h) { h = h < 0 ? 0 : h > 1 ? 1 : h;
+        for (let i = 1; i < stops.length; i++) if (h <= stops[i][0]) { const a = stops[i-1], b = stops[i], t = (h - a[0]) / (b[0] - a[0]); return [a[1][0]+(b[1][0]-a[1][0])*t, a[1][1]+(b[1][1]-a[1][1])*t, a[1][2]+(b[1][2]-a[1][2])*t]; }
+        return stops[stops.length-1][1]; }
+
+      const m = { x: -1, y: -1 };
+      hero.addEventListener('pointermove', (e) => { const r = hero.getBoundingClientRect(); m.x = (e.clientX-r.left)/r.width*GW; m.y = (e.clientY-r.top)/r.height*GH; });
+      hero.addEventListener('pointerleave', () => { m.x = m.y = -1; });
+      let scrollWarm = 0;
+      window.addEventListener('wheel', (e) => { scrollWarm = Math.min(1.2, scrollWarm + Math.abs(e.deltaY) * 0.0016); }, { passive: true });
+
+      // presence: warms the live glow AND deposits a small lasting contribution
+      function splat(cx, cy, rad, amt) {
+        // wobbly, lobed radius (varies by angle + a per-spot seed) → organic, not a perfect circle
+        const seed = cx * 0.7 + cy * 1.3, ex = rad * 1.35;
+        const x0 = Math.max(0,(cx-ex)|0), x1 = Math.min(GW-1,(cx+ex)|0), y0 = Math.max(0,(cy-ex)|0), y1 = Math.min(GH-1,(cy+ex)|0);
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+          const dx = x-cx, dy = y-cy, d = Math.sqrt(dx*dx+dy*dy), ang = Math.atan2(dy, dx);
+          const reff = rad * (0.7 + 0.3*Math.sin(ang*3 + seed) + 0.14*Math.sin(ang*5 - seed*1.7) + 0.08*Math.sin(ang*8 + seed*0.5));
+          if (d >= reff || reff <= 0) continue;
+          const f = 1 - d/reff, h = amt*f*f, i = y*GW+x; live[i] += h; contrib[i] += h*CONTRIB;
         }
-        const hr = hero.getBoundingClientRect();
-        return { l: hr.left + 24, r: hr.right - 24 };
       }
-      // Horizontal only, on the same baseline. Always measure from the NATURAL (un-transformed)
-      // position so the labels land exactly on the grid edges and never accumulate past them
-      // (a mid-glide resize used to compound the offset and fling them off-screen).
-      function position(animate) {
-        left.style.transition = right.style.transition = 'none';
-        left.style.transform  = right.style.transform  = 'none';
-        void left.offsetWidth;                                   // commit the reset before measuring
-        const e = gridEdges();
-        const dxL = e.l - left.getBoundingClientRect().left;
-        const dxR = e.r - right.getBoundingClientRect().right;
-        if (animate) { left.style.transition = right.style.transition = ''; void left.offsetWidth; }
-        left.style.transform  = `translateX(${dxL}px)`;
-        right.style.transform = `translateX(${dxR}px)`;
+      // ambient breathing warms the live glow only (decorative, not "presence")
+      function glow(cx, cy, rad, amt) {
+        const x0 = Math.max(0,(cx-rad)|0), x1 = Math.min(GW-1,(cx+rad)|0), y0 = Math.max(0,(cy-rad)|0), y1 = Math.min(GH-1,(cy+rad)|0), r2 = rad*rad;
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const dx = x-cx, dy = y-cy, d2 = dx*dx+dy*dy; if (d2 > r2) continue; live[y*GW+x] += amt*(1-d2/r2); }
       }
-      function trigger() { if (spread) return; spread = true; position(true); }
-      setTimeout(trigger, 1400);   // split shortly after load; the slow glide carries it out
-      window.addEventListener('resize', () => {
-        if (!spread) return;
-        cancelAnimationFrame(rAF);
-        rAF = requestAnimationFrame(() => position(false));   // snap to the new grid edges
-      });
-    })();
 
+      const amb = [ {x:rnd(0,GW), y:rnd(0,GH), p:rnd(0,6.28), s:rnd(0.006,0.011)}, {x:rnd(0,GW), y:rnd(0,GH), p:rnd(0,6.28), s:rnd(0.005,0.009)} ];
+      let last = performance.now(), raf = 0;
 
-    /* The tapered slash stays dead-centre via CSS (left/top 50%); we just grow it in.
-       It used to be JS-anchored onto the subtitle "/", but a later layout shift (fonts,
-       the scene, the label spread) could leave it stale and slightly off-centre. The grid
-       already keeps the slot centred, so CSS centring is both simpler and exact. */
-    (function heroSlash() {
-      const slash = document.getElementById('hero-slash');
-      if (!slash) return;
-      setTimeout(() => slash.classList.add('go'), 400);
-    })();
+      function frame(now) {
+        const dt = Math.min(3, (now - last) / 16.67); last = now;
+        if (m.x >= 0) splat(m.x, m.y, 6.5, 0.34 * dt);
+        if (scrollWarm > 0.01 && m.x >= 0) splat(m.x, m.y, 9, scrollWarm * 0.14 * dt);
+        scrollWarm *= 0.93;
+        for (let i = 0; i < amb.length; i++) { const a = amb[i]; a.p += a.s * dt; glow(a.x + Math.sin(a.p)*22, a.y + Math.cos(a.p*0.8)*12, 16, 0.0022 * dt); }
+        const DEC = Math.pow(0.99, dt);
+        for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { const i = y*GW+x;
+          const l = x>0?live[i-1]:live[i], r = x<GW-1?live[i+1]:live[i], u = y>0?live[i-GW]:live[i], d = y<GH-1?live[i+GW]:live[i];
+          tmp[i] = (live[i]*0.4 + (l+r+u+d)*0.15) * DEC; }
+        const t3 = live; live = tmp; tmp = t3;
+        const bt = now * BREATH_SPEED;
+        for (let i = 0; i < N; i++) { const breath = 1 + BREATH_AMP * Math.sin(bt + phase[i]); let v = floor[i] * breath + live[i]; if (v > 1.4) v = 1.4; const c = ramp(v); const j = i*4; data[j]=c[0]; data[j+1]=c[1]; data[j+2]=c[2]; data[j+3]=255; }
+        fctx.putImageData(img, 0, 0);
+        ctx.imageSmoothingEnabled = true; ctx.drawImage(field, 0, 0, canvas.width, canvas.height);
+        raf = requestAnimationFrame(frame);
+      }
+      function renderOnce() { for (let i = 0; i < N; i++) { let v = floor[i] + live[i]; if (v > 1.4) v = 1.4; const c = ramp(v); const j = i*4; data[j]=c[0]; data[j+1]=c[1]; data[j+2]=c[2]; data[j+3]=255; } fctx.putImageData(img,0,0); ctx.imageSmoothingEnabled=true; ctx.drawImage(field,0,0,canvas.width,canvas.height); }
+      function resize() { const r = hero.getBoundingClientRect(); const DPR = Math.min(2, window.devicePixelRatio||1); canvas.width = Math.max(2, Math.round(r.width*DPR*0.5)); canvas.height = Math.max(2, Math.round(r.height*DPR*0.5)); canvas.style.width = r.width+'px'; canvas.style.height = r.height+'px'; if (REDUCE) renderOnce(); }
 
-    /* Drop the fallback still once the scene reports it has rendered. */
-    (function heroFallback() {
-      const fb = document.getElementById('hero-fallback');
-      if (!fb) return;
-      window.addEventListener('message', (e) => {
-        if (e && e.data === 'opal:ready') fb.classList.add('hide');
-      });
-    })();
+      // encode/decode a grid as a base64 byte string (heat -> STORE units)
+      function enc(arr) { let s = ''; for (let i = 0; i < N; i++) { let q = (arr[i]*STORE)|0; if (q>255) q=255; if (q<0) q=0; s += String.fromCharCode(q); } return btoa(s); }
+      function dec(b64, target) { try { const b = atob(b64); for (let i = 0; i < N && i < b.length; i++) target[i] = b.charCodeAt(i)/STORE; } catch (e) {} }
 
-    /* The hero scene lives in an iframe, so the page's custom "+" cursor can't
-       track over it (and the scene shows a grab hand). The iframe hides its own
-       cursor and forwards pointer moves; replay them here as a synthetic
-       mousemove so cursor.js paints the "+" over the hero. */
-    (function heroCursorForward() {
-      const iframe = document.querySelector('#hero-canvas iframe');
-      if (!iframe) return;
-      window.addEventListener('message', (e) => {
-        const d = e && e.data;
-        if (!d || d.type !== 'opal:cursor') return;
-        const r = iframe.getBoundingClientRect();
-        document.dispatchEvent(new MouseEvent('mousemove', {
-          clientX: r.left + d.x,
-          clientY: r.top + d.y,
-          bubbles: true
-        }));
-      });
+      function setNote(shared) { if (!note) return; note.textContent = (shared ? 'human presence this week' : 'your presence this week') + '. resets monday.'; }
+
+      if (HEAT_ENDPOINT) {
+        const pull = () => fetch(HEAT_ENDPOINT + '?day=' + PERIOD).then(r => r.json()).then(j => { if (j && j.v) dec(j.v, floor); }).catch(() => {});
+        pull();
+        setInterval(() => {
+          let has = false; for (let i = 0; i < N; i++) if (contrib[i] > 0.001) { has = true; break; }
+          if (has) { const payload = enc(contrib); contrib = new Float32Array(N);
+            fetch(HEAT_ENDPOINT, { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ day: PERIOD, v: payload }) })
+              .then(r => r.json()).then(j => { if (j && j.v) dec(j.v, floor); }).catch(() => {});
+          } else pull();
+        }, 12000);
+        setNote(true);
+      } else {
+        const KEY = 'opal-heat';
+        try { const sv = JSON.parse(localStorage.getItem(KEY) || 'null'); if (sv && sv.p === PERIOD && sv.v) dec(sv.v, floor); } catch (e) {}
+        const save = () => { for (let i = 0; i < N; i++) { floor[i] += contrib[i]; if (floor[i] > 2.8) floor[i] = 2.8; } contrib = new Float32Array(N); try { localStorage.setItem(KEY, JSON.stringify({ p: PERIOD, v: enc(floor) })); } catch (e) {} };
+        setInterval(save, 5000); window.addEventListener('beforeunload', save);
+        setNote(false);
+      }
+
+      resize(); window.addEventListener('resize', resize);
+      if (REDUCE) renderOnce(); else raf = requestAnimationFrame(frame);
+      document.addEventListener('visibilitychange', () => { if (document.hidden) { if (raf) { cancelAnimationFrame(raf); raf = 0; } } else if (!REDUCE && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); } });
     })();
   </script>
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>

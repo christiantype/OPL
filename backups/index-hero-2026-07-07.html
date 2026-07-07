@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OP/AL — Original Practice / Applied Learning</title>
+  <meta name="description" content="OP/AL is a Chicago design practice founded by Christian Solorzano. Work spans editorial, identity, and cultural production.">
+  <link rel="canonical" href="https://more-than.design/">
+
+  <!-- Open Graph -->
+  <meta property="og:type"        content="website">
+  <meta property="og:site_name"   content="OP/AL">
+  <meta property="og:title"       content="OP/AL — Original Practice / Applied Learning">
+  <meta property="og:description" content="OP/AL is a Chicago design practice founded by Christian Solorzano. Work spans editorial, identity, and cultural production.">
+  <meta property="og:image"       content="https://more-than.design/images/opal-open-graph.webp">
+  <meta property="og:url"         content="https://more-than.design/">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card"        content="summary_large_image">
+  <meta name="twitter:title"       content="OP/AL — Original Practice / Applied Learning">
+  <meta name="twitter:description" content="OP/AL is a Chicago design practice founded by Christian Solorzano. Work spans editorial, identity, and cultural production.">
+  <meta name="twitter:image"       content="https://more-than.design/images/opal-open-graph.webp">
+
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Christian Solorzano",
+    "url": "https://more-than.design",
+    "jobTitle": "Designer",
+    "worksFor": { "@type": "Organization", "name": "OP/AL" },
+    "address": { "@type": "PostalAddress", "addressLocality": "Chicago" },
+    "sameAs": ["https://github.com/christiantype"]
+  }
+  </script>
+
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    @keyframes enrolling-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .badge-wrap { position: relative; }
+    .badge-dot {
+      position: absolute;
+      left: -0.85em;
+      top: 10%;
+      width: 7px; height: 7px;
+      border-radius: 50%; background: #e02020;
+      animation: enrolling-blink 1.2s ease-in-out infinite;
+    }
+    .project-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .project-row-enrolling {
+      display: inline-flex; align-items: center; gap: 0.5em;
+      font-size: 0.6666em; font-weight: 400;
+      letter-spacing: 0.09375em; text-transform: uppercase;
+      color: #e02020;
+    }
+    .enrolling-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #e02020;
+      animation: enrolling-blink 1.2s ease-in-out infinite; flex-shrink: 0;
+    }
+    #hero-canvas {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+    }
+    #hero-canvas iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+    /* Fallback still — covers the iframe until the scene reports it rendered;
+       stays put if the scene never loads (e.g. no WebGL). */
+    #hero-fallback {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      /* contain (not cover): the live scene frames the whole composition with margin
+         via fitCameraToScene, so the still must fit-inside too — otherwise wide viewports
+         crop the still and the composition jumps scale at the crossfade. Black backdrop
+         makes the letterbox invisible against the scene. */
+      object-fit: contain;
+      object-position: center;
+      background: #000;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.7s ease;
+    }
+    #hero-fallback.hide { opacity: 0; }
+    /* On touch devices an iframe traps scroll (pointer-events:none on iframes is
+       unreliable on iOS). Put a transparent same-document catcher over it so the
+       page scrolls; hide it on desktop so the mouse can drag-rotate the scene. */
+    #hero-touch { display: none; }
+    @media (pointer: coarse) {
+      #hero-canvas iframe { pointer-events: none; }
+      #hero-canvas { touch-action: pan-y; }
+      #hero-touch {
+        display: block;
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        touch-action: pan-y;   /* catch touches as a normal element → page scrolls */
+      }
+    }
+    /* The OP/AL slash — a tapered diagonal anchored directly behind the subtitle "/"
+       (JS sets left/top to that glyph's centre, so it tracks on every screen). */
+    #hero-slash {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 13px;
+      height: 150%;
+      background: #fff;
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);   /* tapered: points at ends, wide mid */
+      transform: translate(-50%, -50%) rotate(32deg) scaleY(0);   /* collapsed until the burst */
+      transform-origin: center;
+      opacity: 0;
+      z-index: 1;
+      pointer-events: none;
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+      transition: transform 8s cubic-bezier(0.16, 0.84, 0.3, 1), opacity 1.4s ease;
+    }
+    #hero-slash.go {   /* grows from the center outward when the burst begins */
+      transform: translate(-50%, -50%) rotate(32deg) scaleY(1);
+      opacity: 1;
+    }
+    @media (prefers-reduced-motion: reduce) { #hero-slash { transition: none; } }
+    /* Nav blends with whatever's behind it (difference): white over the dark hero,
+       inverting to dark over the light content as you scroll. The blend needs a PAINTED
+       backdrop — the content below the hero must carry its own white background, or the
+       root-canvas white shows through and the blend has nothing to invert against (the
+       nav then vanishes over it). */
+    nav { mix-blend-mode: difference; }
+    nav svg { fill: #fff; }
+    .nav-asterisk { color: #fff; }
+    #projects { background: #fff; position: relative; z-index: 0; }
+    /* Hero tagline: "original practice / applied learning". The "/" stays anchored
+       dead-centre (the big tapered slash sits behind it); after the scene's burst the
+       two practices glide out to opposite edges of the content grid (JS sets the
+       transforms so they land exactly on the container's columns). */
+    #hero-tagline {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      text-align: center;
+    }
+    .tagline-sub {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;   /* equal sides keep the "/" dead-centre */
+      align-items: center;
+      column-gap: 0.55em;
+      color: #fff;
+      font-size: clamp(0.72rem, 1vw, 0.95rem);
+      line-height: 1.4;
+      letter-spacing: 1.5px;
+      white-space: nowrap;
+    }
+    .tagline-slash {
+      justify-self: center;                    /* anchored "/" — big slash sits behind it */
+      font-family: "Sidepiece", sans-serif;
+      font-weight: 700;                        /* strongest cut, so the "/" is the boldest mark */
+    }
+    .tagline-side {
+      padding: 0.4em 0.95em;
+      border-radius: 999px;
+      /* Frosted plate so each label reads over the busy scene while it still shows through. */
+      background: rgba(0, 0, 0, 0.4);
+      -webkit-backdrop-filter: blur(7px);
+      backdrop-filter: blur(7px);
+      transition: transform 4s cubic-bezier(0.45, 0, 0.2, 1);   /* slow, elegant glide */
+      will-change: transform;
+    }
+    .tagline-side--left  { justify-self: end; }    /* hug the "/" until the burst */
+    .tagline-side--right { justify-self: start; }
+    @media (prefers-reduced-motion: reduce) {
+      .tagline-side { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <script src="shared/nav.js"></script>
+
+  <section id="hero-canvas">
+    <iframe src="/scene/" title="OP/AL" loading="eager" scrolling="no"></iframe>
+    <img id="hero-fallback" src="images/hero-fallback.webp?v=2" alt="" aria-hidden="true">
+    <div id="hero-touch" aria-hidden="true"></div>
+    <div id="hero-slash" aria-hidden="true"></div>
+    <p id="hero-tagline">
+      <span class="tagline-sub">
+        <span class="tagline-side tagline-side--left">original practice</span>
+        <span id="slash-slot" class="tagline-slash">/</span>
+        <span class="tagline-side tagline-side--right">applied learning</span>
+      </span>
+    </p>
+  </section>
+
+  <section id="projects">
+    <div class="container">
+      <div id="project-rows"></div>
+    </div>
+  </section>
+
+  <script>
+    const tbody = document.getElementById('project-rows');
+
+    // Accent palette for the section headings (each a distinct colour per load).
+    const PALETTE = ['#ff4f9e', '#e0a000', '#2f9bd6', '#ef5a45', '#7aae1f', '#8a5cf6'];
+
+    const rowHTML = (p, i) => {
+      const titleInner = p.url ? `<a href="${p.url}">${p.title}</a>` : p.title;
+      const titleRow = p.badge
+        ? `<span class="project-title-row">${titleInner}<span class="project-row-enrolling"><span class="enrolling-dot"></span>${p.badge}</span></span>`
+        : titleInner;
+      return `
+      <div class="grid project-row${p.url ? ' has-link' : ''}" ${p.url ? `data-url="${p.url}"` : ''} style="${p.url ? 'cursor:pointer;' : ''}animation-delay:${i * 0.07}s">
+        <div class="col-12"><span class="project-category label">${p.category}</span>${titleRow}</div>
+      </div>`;
+    };
+
+    fetch('projects.json')
+      .then(r => r.json())
+      .then(data => {
+        // Split into OP/AL's two sides, preserving first-seen group order.
+        const groups = [];
+        data.projects.filter(p => !p.hidden).forEach(p => {
+          const name = p.group || 'Original Practice';
+          let g = groups.find(x => x.name === name);
+          if (!g) { g = { name, items: [] }; groups.push(g); }
+          g.items.push(p);
+        });
+        // Each section heading gets a distinct random colour, reshuffled per load.
+        const heads = [...PALETTE];
+        for (let n = heads.length - 1; n > 0; n--) {
+          const m = Math.floor(Math.random() * (n + 1));
+          [heads[n], heads[m]] = [heads[m], heads[n]];
+        }
+        let i = 0;
+        tbody.innerHTML = groups.map((g, gi) => `
+          <div class="grid project-section">
+            <h2 class="col-12 project-section__title" style="color:${heads[gi % heads.length]}">${g.name}</h2>
+          </div>
+          ${g.items.map(p => rowHTML(p, i++)).join('')}
+        `).join('');
+        document.querySelectorAll('.project-row[data-url]').forEach(row => {
+          row.addEventListener('click', () => window.location = row.dataset.url);
+        });
+      });
+
+    /* After the scene's burst, glide "original practice" / "applied learning" out to
+       opposite edges of the content grid (aligned with the project columns below),
+       leaving the "/" anchored dead-centre. */
+    (function heroSpread() {
+      const tag   = document.getElementById('hero-tagline');
+      const hero  = document.getElementById('hero-canvas');
+      const left  = tag && tag.querySelector('.tagline-side--left');
+      const right = tag && tag.querySelector('.tagline-side--right');
+      const gridC = document.querySelector('#projects .container');
+      if (!tag || !hero || !left || !right) return;
+      let spread = false, rAF;
+      function gridEdges() {
+        if (gridC) {
+          const r = gridC.getBoundingClientRect(), cs = getComputedStyle(gridC);
+          return { l: r.left + parseFloat(cs.paddingLeft), r: r.right - parseFloat(cs.paddingRight) };
+        }
+        const hr = hero.getBoundingClientRect();
+        return { l: hr.left + 24, r: hr.right - 24 };
+      }
+      // Horizontal only, on the same baseline. Always measure from the NATURAL (un-transformed)
+      // position so the labels land exactly on the grid edges and never accumulate past them
+      // (a mid-glide resize used to compound the offset and fling them off-screen).
+      function position(animate) {
+        left.style.transition = right.style.transition = 'none';
+        left.style.transform  = right.style.transform  = 'none';
+        void left.offsetWidth;                                   // commit the reset before measuring
+        const e = gridEdges();
+        const dxL = e.l - left.getBoundingClientRect().left;
+        const dxR = e.r - right.getBoundingClientRect().right;
+        if (animate) { left.style.transition = right.style.transition = ''; void left.offsetWidth; }
+        left.style.transform  = `translateX(${dxL}px)`;
+        right.style.transform = `translateX(${dxR}px)`;
+      }
+      function trigger() { if (spread) return; spread = true; position(true); }
+      setTimeout(trigger, 1400);   // split shortly after load; the slow glide carries it out
+      window.addEventListener('resize', () => {
+        if (!spread) return;
+        cancelAnimationFrame(rAF);
+        rAF = requestAnimationFrame(() => position(false));   // snap to the new grid edges
+      });
+    })();
+
+
+    /* The tapered slash stays dead-centre via CSS (left/top 50%); we just grow it in.
+       It used to be JS-anchored onto the subtitle "/", but a later layout shift (fonts,
+       the scene, the label spread) could leave it stale and slightly off-centre. The grid
+       already keeps the slot centred, so CSS centring is both simpler and exact. */
+    (function heroSlash() {
+      const slash = document.getElementById('hero-slash');
+      if (!slash) return;
+      setTimeout(() => slash.classList.add('go'), 400);
+    })();
+
+    /* Drop the fallback still once the scene reports it has rendered. */
+    (function heroFallback() {
+      const fb = document.getElementById('hero-fallback');
+      if (!fb) return;
+      window.addEventListener('message', (e) => {
+        if (e && e.data === 'opal:ready') fb.classList.add('hide');
+      });
+    })();
+
+    /* The hero scene lives in an iframe, so the page's custom "+" cursor can't
+       track over it (and the scene shows a grab hand). The iframe hides its own
+       cursor and forwards pointer moves; replay them here as a synthetic
+       mousemove so cursor.js paints the "+" over the hero. */
+    (function heroCursorForward() {
+      const iframe = document.querySelector('#hero-canvas iframe');
+      if (!iframe) return;
+      window.addEventListener('message', (e) => {
+        const d = e && e.data;
+        if (!d || d.type !== 'opal:cursor') return;
+        const r = iframe.getBoundingClientRect();
+        document.dispatchEvent(new MouseEvent('mousemove', {
+          clientX: r.left + d.x,
+          clientY: r.top + d.y,
+          bubbles: true
+        }));
+      });
+    })();
+  </script>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="shared/footer.js"></script>
+  <script src="shared/grid.js"></script>
+  <script src="shared/cursor.js"></script>
+  <script src="shared/animate.js"></script>
+</body>
+</html>
