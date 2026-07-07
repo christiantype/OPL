@@ -15,13 +15,10 @@
 
   const WORDS = [
     'opalescence', 'studious', 'provocative', 'human', 'poetic', 'rational',
-    'emotive', 'curious', 'luminous', 'deliberate', 'tactile', 'resonant',
-    'rigorous', 'playful', 'generous', 'precise', 'restless', 'tender',
-    'radiant', 'honest', 'elemental', 'alive', 'present', 'intuitive',
-    'crafted', 'essential', 'searching', 'iterative', 'expressive', 'grounded',
-    'vivid', 'sincere', 'patient', 'incandescent', 'considered', 'kinetic',
-    'soulful', 'lucid', 'boundless', 'earnest', 'meticulous', 'wondrous',
-    'fluid', 'experimental', 'warm', 'quiet', 'bold', 'open', 'felt', 'original'
+    'emotive', 'elastic', 'luminous', 'tactile', 'curious', 'playful',
+    'rigorous', 'resonant', 'alive', 'tender', 'radiant', 'elemental',
+    'kinetic', 'incandescent', 'fluid', 'boundless', 'experimental', 'intuitive',
+    'soulful', 'deliberate', 'vivid', 'original', 'searching', 'essential'
   ];
 
   // [background, foreground] — harmonious/complementary pairs (Sanzo Wada palette)
