@@ -105,6 +105,10 @@
       line-height: 1.15; letter-spacing: 0.12em;
     }
     #hero-wordmark .hw-line { display: block; }
+    /* bare Chicago-time clock — just hour + minute hands — above the wordmark */
+    #hero-clock { position: relative; z-index: 2; display: block; width: clamp(26px, 3.2vw, 40px); height: auto; overflow: visible; color: #fff; margin-bottom: clamp(14px, 2.4vh, 26px); }
+    #hero-clock line { stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; transform-origin: 50px 50px; }
+    #hero-clock #hc-sec { opacity: 0.7; }
     /* Scroll cue: thin line + small triangle, flushed left to the same gutter */
     #hero-scrollcue { position: absolute; left: 0; right: 0; bottom: clamp(20px, 4vh, 40px); z-index: 2; pointer-events: none; }
     .hero-scroll { display: inline-flex; flex-direction: column; align-items: center; gap: 0; pointer-events: auto; text-decoration: none; opacity: 0.6; transition: opacity 0.25s ease; animation: heroScrollBob 1.9s ease-in-out infinite; }
@@ -122,6 +126,11 @@
     <canvas id="hero-thermal" aria-hidden="true"></canvas>
     <div id="hero-noise" aria-hidden="true"></div>
     <div class="container">
+      <svg id="hero-clock" viewBox="0 0 100 100" aria-hidden="true">
+        <line id="hc-hour" x1="50" y1="50" x2="50" y2="33"></line>
+        <line id="hc-min" x1="50" y1="50" x2="50" y2="20"></line>
+        <line id="hc-sec" x1="50" y1="50" x2="50" y2="14"></line>
+      </svg>
       <p id="hero-wordmark">
         <span class="hw-line">Original</span>
         <span class="hw-line">Practice</span>
@@ -267,7 +276,23 @@
         const wm = document.getElementById('hero-wordmark'); if (wm) { wm.style.color = ink; wm.style.textShadow = TONE < 0.5 ? '0 1px 18px rgba(255,255,255,0.7)' : '0 2px 30px rgba(0,0,0,0.6)'; }
         document.querySelectorAll('.hs-line').forEach(el => el.style.background = ink);
         document.querySelectorAll('.hs-tri').forEach(el => el.style.borderTopColor = ink);
+        const clk = document.getElementById('hero-clock'); if (clk) clk.style.color = ink;
         const hero = document.getElementById('hero'); if (hero) hero.style.background = `rgb(${base[0]|0},${base[1]|0},${base[2]|0})`;
+      })();
+
+      // Chicago-time clock hands (hour + minute)
+      (function heroClock() {
+        const hourEl = document.getElementById('hc-hour'), minEl = document.getElementById('hc-min'), secEl = document.getElementById('hc-sec');
+        if (!hourEl || !minEl) return;
+        function tick() {
+          const s = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const m = s.match(/(\d{1,2}):(\d{2}):(\d{2})/); if (!m) return;
+          const hh = parseInt(m[1], 10) % 12, mm = parseInt(m[2], 10), ss = parseInt(m[3], 10);
+          hourEl.style.transform = 'rotate(' + (hh * 30 + mm * 0.5) + 'deg)';
+          minEl.style.transform = 'rotate(' + (mm * 6 + ss * 0.1) + 'deg)';
+          if (secEl) secEl.style.transform = 'rotate(' + (ss * 6) + 'deg)';
+        }
+        tick(); setInterval(tick, 1000);
       })();
 
       // grid → display is cover-fit (keeps cells square on any aspect, so blobs never squish on portrait phones)
