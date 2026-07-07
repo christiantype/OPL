@@ -249,7 +249,7 @@
       const HOUR = chicagoHour();
       const _to = params.get('tone');
       const dayness = Math.cos((HOUR - 13) / 24 * 2 * Math.PI) * 0.5 + 0.5;   // ≈1 near 1pm, ≈0 near 1am
-      const TONE = _to !== null && _to !== '' ? Math.max(0, Math.min(1, parseFloat(_to))) : Math.min(0.97, Math.max(0.08, 1 - dayness));
+      const TONE = _to !== null && _to !== '' ? Math.max(0, Math.min(1, parseFloat(_to))) : Math.min(0.97, Math.max(0.28, 1 - dayness));   // 0.28 floor → peak midday keeps heatmap depth
       const _g = (c, w) => Math.exp(-((HOUR - c) * (HOUR - c)) / (2 * w * w));
       const warm = Math.min(1, _g(6.5, 2.4) + _g(19, 2.4));    // dawn ~6:30 & dusk ~19:00 glow
       let baseHue = TONE > 0.7 ? 250 : 205;                    // deep indigo night ↔ sky-blue day…
