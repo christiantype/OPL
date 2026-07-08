@@ -64,8 +64,9 @@
     #idle-saver .isw-logo svg { display: block; width: clamp(130px, 20vw, 260px); height: auto; }
     #idle-saver .isw {
       font-family: "Sidepiece-HoneyPie", sans-serif; color: #111;
-      font-size: clamp(1.3rem, 3.6vw, 2.4rem); letter-spacing: .005em; line-height: 1.3;
-      text-align: center; max-width: 18ch; text-wrap: balance;
+      font-size: clamp(1.05rem, 3vw, 2.1rem); letter-spacing: .005em; line-height: 1.3;
+      text-align: center; width: min(90vw, 22em); height: 2.6em;   /* fixed 2-line box → logo never jumps */
+      display: flex; align-items: center; justify-content: center; text-wrap: balance;
       opacity: 0; transition: opacity ${FADE_MS}ms ease, color ${FADE_MS}ms ease;
     }
     @media (prefers-reduced-motion: reduce) {
