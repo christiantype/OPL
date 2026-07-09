@@ -822,14 +822,19 @@
     <!-- Clip settings popover (Magic + Record) -->
     <div class="magic-pop" id="magic-pop" hidden>
       <div class="magic-pop__row"><span>Length</span><label class="magic-num"><input id="magic-dur" type="number" min="2" max="60" step="1" value="8"><i>s</i></label></div>
-      <div class="magic-pop__row"><span>Aspect</span>
+      <div class="magic-pop__row"><span>Ratio</span>
         <select id="magic-aspect">
           <option value="1:1">Square 1:1</option>
-          <option value="4:5">Portrait 4:5</option>
-          <option value="9:16">Story 9:16</option>
-          <option value="16:9">Wide 16:9</option>
-          <option value="3:2">Landscape 3:2</option>
-          <option value="2:3">Portrait 2:3</option>
+          <option value="5:4">5:4</option>
+          <option value="4:3">4:3</option>
+          <option value="3:2">3:2</option>
+          <option value="16:9">16:9</option>
+        </select>
+      </div>
+      <div class="magic-pop__row"><span>Orientation</span>
+        <select id="magic-orient">
+          <option value="landscape">Landscape</option>
+          <option value="portrait">Portrait</option>
         </select>
       </div>
       <div class="magic-pop__row"><span>Quality</span>
@@ -841,9 +846,10 @@
       </div>
       <div class="magic-pop__row"><span>Speed</span>
         <select id="magic-speed">
-          <option value="0.5">Slow</option>
-          <option value="1" selected>Normal</option>
-          <option value="1.9">Fast</option>
+          <option value="0.3">Very slow</option>
+          <option value="0.5" selected>Slow</option>
+          <option value="0.9">Normal</option>
+          <option value="1.6">Fast</option>
         </select>
       </div>
     </div>
@@ -4519,7 +4525,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
   // Magic: smoothly wander the visible controls between random targets while recording.
   const magicBtn = $('btn-magic'), magicDur = $('magic-dur');
   const magicCfgBtn = $('btn-magic-cfg'), magicPop = $('magic-pop');
-  const aspectSel = $('magic-aspect'), resSel = $('magic-res'), speedSel = $('magic-speed');
+  const aspectSel = $('magic-aspect'), orientSel = $('magic-orient'), resSel = $('magic-res'), speedSel = $('magic-speed');
   let magicRAF = null, magicSliders = null, magicEndAt = 0, magicActive = false, magicSpeed = 1;
   let savedCanvasW = 0, savedCanvasH = 0;
 
@@ -4541,7 +4547,8 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
 
   // Chosen aspect × quality → even-numbered pixel dimensions (H.264 needs even).
   function outputDims() {
-    const [aw, ah] = ((aspectSel && aspectSel.value) || '1:1').split(':').map(Number);
+    let [aw, ah] = ((aspectSel && aspectSel.value) || '1:1').split(':').map(Number);   // ratio is landscape form (aw >= ah)
+    if (orientSel && orientSel.value === 'portrait') { const t = aw; aw = ah; ah = t; } // flip to portrait
     const longEdge = parseInt(resSel && resSel.value) || 1440;
     let w, h;
     if (aw >= ah) { w = longEdge; h = Math.round(longEdge * ah / aw); }
@@ -4743,7 +4750,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
       if (!s.dur || now >= s.t0 + s.dur) {          // reached the waypoint → pick a new one
         s.from = s.to;
         s.to = s.min + Math.random() * (s.max - s.min);
-        s.t0 = now; s.dur = (900 + Math.random() * 2400) / magicSpeed;   // each control on its own pace (scaled by Speed)
+        s.t0 = now; s.dur = (2200 + Math.random() * 3400) / magicSpeed;   // each control on its own pace (scaled by Speed)
       }
       const p = Math.min(1, (now - s.t0) / s.dur);
       const e = p * p * (3 - 2 * p);                // smoothstep — no hard starts/stops
