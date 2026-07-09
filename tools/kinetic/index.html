@@ -127,6 +127,13 @@
   #canvasArea{position:absolute;top:0;left:408px;right:16px;bottom:64px;
     display:flex;align-items:center;justify-content:center;padding:28px;transition:left .2s ease}
   body.panel-closed #canvasArea{left:80px}
+  /* Dimensional (glass 3D) engine — iframe fills the canvas area; 2D chrome hides */
+  #dimFrame{position:absolute;inset:0;width:100%;height:100%;border:none;background:#fff;display:none}
+  body.dim-mode #canvasWrap{display:none}
+  body.dim-mode #dimFrame{display:block}
+  body.dim-mode #tbar{display:none}
+  body.dim-mode #canvasArea{bottom:16px}
+  body.dim-mode #pScroll{display:none}   /* 2D params don't apply; keep just the engine picker */
   #canvasWrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
   #view{box-shadow:0 12px 40px -10px rgba(0,0,0,.15)}
 
@@ -204,6 +211,7 @@
       <option value="duotone">Duotone riso</option>
       <option value="ascii">Glyph mosaic</option>
       <option value="typeintype">Type-in-type</option>
+      <option value="dimensional">Dimensional · glass 3D</option>
     </select>
   </div>
 
@@ -287,6 +295,8 @@
   </div>
   <div id="canvasArea">
     <div id="canvasWrap"><canvas id="view"></canvas></div>
+    <!-- Dimensional (glass 3D) engine — the migrated More-Than-Design app -->
+    <iframe id="dimFrame" title="Dimensional — glass 3D"></iframe>
   </div>
   <div id="status">loading…</div>
   <!-- Bottom timeline bar — export · play · transport -->
@@ -558,6 +568,7 @@ function ensureCanvas(){
 let rasterMode=false;
 function render(){
   if(!font)return;
+  if(S.renderStyle==='dimensional')return;   // 3D engine is the dimensional.html iframe
   rasterMode=false;
   const {W,H}=ensureCanvas();
   const transparent=$('#bgTransparent').checked,bgc=$('#bgColor').value;
@@ -1022,8 +1033,11 @@ const ENGINE_DEFAULTS={
   ascii:{dotSize:18,fillColor:'#e8e5da',bgColor:'#0d0d12'},
   typeintype:{dotSize:15,fillColor:'#141414',bgColor:'#efe9dd'},
 };
-function applyEngine(style){setControl('renderStyle',style);const d=ENGINE_DEFAULTS[style]||{};
-  for(const k in d)setControl(k,d[k]);updateEngineUI();render();}
+function applyEngine(style){setControl('renderStyle',style);
+  const dim=style==='dimensional';document.body.classList.toggle('dim-mode',dim);
+  if(dim){const f=$('#dimFrame');if(!f.getAttribute('src'))f.setAttribute('src','dimensional.html');}
+  const d=ENGINE_DEFAULTS[style]||{};
+  for(const k in d)setControl(k,d[k]);updateEngineUI();if(!dim)render();}
 $('#renderStyle').addEventListener('change',e=>applyEngine(e.target.value));
 /* Reset — restore every control to its default, then re-apply the current engine */
 $('#resetBtn').addEventListener('click',()=>{
@@ -1112,7 +1126,7 @@ function updateChips(){
   });
 }
 /* contextual engine settings — only show sliders the active engine uses */
-const ENGINE_CTRLS={solid:[],
+const ENGINE_CTRLS={solid:[],dimensional:[],
   heatmap:['bloom','gain','breath','fieldDrift','grain','heatShift','pDensity','pSpread'],
   chromatic:['chromatic'],particles:['pDensity','pSpread'],halftone:['dotSize'],
   outline:['ringCount','ringGap'],network:['pDensity','pSpread','linkDist'],
@@ -1125,6 +1139,7 @@ const ENGINE_CTRLS={solid:[],
   ascii:['dotSize'],typeintype:['dotSize']};
 const RENDER_IDS=CONTROLS.render.map(c=>c[0]);
 const ENGINE_NOTE={solid:'Solid — no engine parameters. Shape it with Warp & Motion.',
+  dimensional:'Dimensional — full glass-3D studio. All its controls live in the panel that opens on the right.',
   chromatic:'RGB channels split & sliced into bands — a digital signal glitch. Best on dark backgrounds.',
   scales:'Overlapping scale tiles fill the page; your word emerges brighter (vivid) against a muted field.',
   neon:'Glowing tube outline of the letters — stroke width + glow.',
