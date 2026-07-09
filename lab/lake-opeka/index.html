@@ -403,11 +403,20 @@
     color: var(--text-dim); letter-spacing: 0.06em;
   }
 
+  /* Canvas-size chip — top-right, reshapes the live canvas */
+  .canvas-size {
+    position: absolute; top: 116px; right: 16px; z-index: 7;
+    display: flex; gap: 6px; padding: 8px;
+    background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border: 1px solid var(--hairline); border-radius: 12px; box-shadow: 0 12px 40px -16px rgba(0,0,0,0.22);
+  }
+  .canvas-size select { width: 138px; padding: 7px 24px 7px 9px; }
+
   /* ── Right rail: controls ───────────────────────────────────── */
-  /* Floating controls island (right) over the full-bleed canvas */
+  /* Floating controls island (right) over the full-bleed canvas — sits below the size chip */
   .controls {
-    position: absolute; top: 116px; right: 16px; width: 300px; z-index: 6;
-    max-height: calc(100vh - 192px); overflow-y: auto; padding: 16px;
+    position: absolute; top: 168px; right: 16px; width: 300px; z-index: 6;
+    max-height: calc(100vh - 244px); overflow-y: auto; padding: 16px;
     background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
     border: 1px solid var(--hairline); border-radius: 12px; box-shadow: 0 12px 40px -16px rgba(0,0,0,0.22);
   }
@@ -822,21 +831,6 @@
     <!-- Clip settings popover (Magic + Record) -->
     <div class="magic-pop" id="magic-pop" hidden>
       <div class="magic-pop__row"><span>Length</span><label class="magic-num"><input id="magic-dur" type="number" min="2" max="60" step="1" value="8"><i>s</i></label></div>
-      <div class="magic-pop__row"><span>Ratio</span>
-        <select id="magic-aspect">
-          <option value="1:1">Square 1:1</option>
-          <option value="5:4">5:4</option>
-          <option value="4:3">4:3</option>
-          <option value="3:2">3:2</option>
-          <option value="16:9">16:9</option>
-        </select>
-      </div>
-      <div class="magic-pop__row"><span>Orientation</span>
-        <select id="magic-orient">
-          <option value="landscape">Landscape</option>
-          <option value="portrait">Portrait</option>
-        </select>
-      </div>
       <div class="magic-pop__row"><span>Quality</span>
         <select id="magic-res">
           <option value="1080">1080p</option>
@@ -874,6 +868,21 @@
       </div>
     </div>
   </section>
+
+  <!-- Canvas size — top-right; reshapes the live canvas (Magic/Record inherit it) -->
+  <div class="canvas-size" id="canvas-size">
+    <select id="cv-ratio" title="Canvas ratio">
+      <option value="1:1">Square 1:1</option>
+      <option value="5:4">5:4</option>
+      <option value="4:3">4:3</option>
+      <option value="3:2">3:2</option>
+      <option value="16:9">16:9</option>
+    </select>
+    <select id="cv-orient" title="Orientation">
+      <option value="landscape">Landscape</option>
+      <option value="portrait">Portrait</option>
+    </select>
+  </div>
 
   <!-- RIGHT: CONTROLS -->
   <aside class="controls">
@@ -4525,7 +4534,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
   // Magic: smoothly wander the visible controls between random targets while recording.
   const magicBtn = $('btn-magic'), magicDur = $('magic-dur');
   const magicCfgBtn = $('btn-magic-cfg'), magicPop = $('magic-pop');
-  const aspectSel = $('magic-aspect'), orientSel = $('magic-orient'), resSel = $('magic-res'), speedSel = $('magic-speed');
+  const aspectSel = $('cv-ratio'), orientSel = $('cv-orient'), resSel = $('magic-res'), speedSel = $('magic-speed');
   let magicRAF = null, magicSliders = null, magicEndAt = 0, magicActive = false, magicSpeed = 1;
   let savedCanvasW = 0, savedCanvasH = 0;
 
@@ -4545,17 +4554,27 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     });
   }
 
-  // Chosen aspect × quality → even-numbered pixel dimensions (H.264 needs even).
-  function outputDims() {
-    let [aw, ah] = ((aspectSel && aspectSel.value) || '1:1').split(':').map(Number);   // ratio is landscape form (aw >= ah)
+  // Chosen ratio + orientation → even-numbered pixel dims (H.264 needs even) at a long edge.
+  const LIVE_LONG = 1080;   // working resolution for the live canvas
+  function ratioDims(longEdge) {
+    let [aw, ah] = ((aspectSel && aspectSel.value) || '1:1').split(':').map(Number);   // ratio in landscape form (aw >= ah)
     if (orientSel && orientSel.value === 'portrait') { const t = aw; aw = ah; ah = t; } // flip to portrait
-    const longEdge = parseInt(resSel && resSel.value) || 1440;
     let w, h;
     if (aw >= ah) { w = longEdge; h = Math.round(longEdge * ah / aw); }
     else          { h = longEdge; w = Math.round(longEdge * aw / ah); }
     w -= w % 2; h -= h % 2;
     return { w: Math.max(2, w), h: Math.max(2, h) };
   }
+  function outputDims() { return ratioDims(parseInt(resSel && resSel.value) || 1440); }   // clip resolution (Quality)
+
+  // Reshape the LIVE canvas to the chosen ratio + orientation; the composition reflows.
+  function applyCanvasAspect() {
+    const { w, h } = ratioDims(LIVE_LONG);
+    canvas.width = w; canvas.height = h;
+    try { render(); } catch (e) {}
+  }
+  if (aspectSel) aspectSel.addEventListener('change', applyCanvasAspect);
+  if (orientSel) orientSel.addEventListener('change', applyCanvasAspect);
   // Boost the canvas backing store to the chosen aspect + resolution for the clip,
   // so captureStream() records high-res. Every mode sizes itself from canvas.width/height.
   function applyOutputSize() {
@@ -4830,6 +4849,8 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     e.preventDefault();
     toggle();
   });
+
+  applyCanvasAspect();   // reshape the live canvas to the default ratio on load
 })();
 
 // ── Hover tooltips on key controls ───────────────────────────
