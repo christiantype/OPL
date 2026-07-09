@@ -233,7 +233,25 @@
         <div><div class="row"><label>fill</label></div><input type="color" id="fillColor" value="#f2f0e9"></div>
         <div><div class="row"><label>background</label></div><input type="color" id="bgColor" value="#0a0a12"></div>
       </div>
-      <div id="g-style" style="margin-top:8px"></div>
+      <div id="g-style" style="margin-top:8px">
+        <div id="style-colorway" class="mini hidden">
+          <div class="row"><label>colorway</label></div>
+          <select id="heatPalette">
+            <option value="turbo">Turbo · astro</option>
+            <option value="inferno">Inferno</option>
+            <option value="ice">Ice</option>
+            <option value="viridis">Viridis</option>
+            <option value="ember">Ember</option>
+            <option value="acid">Acid</option>
+            <option value="ultra">Ultraviolet</option>
+            <option value="mono">Mono</option>
+          </select>
+        </div>
+        <div id="style-accents" class="two hidden">
+          <div><div class="row"><label>accent 1</label></div><input type="color" id="accentColor" value="#ff5ad0"></div>
+          <div><div class="row"><label>accent 2</label></div><input type="color" id="accent2" value="#5ecbff"></div>
+        </div>
+      </div>
       <label class="toggle"><input type="checkbox" id="fillOn" checked> fill</label>
       <label class="toggle"><input type="checkbox" id="strokeOn"> stroke outline</label>
       <label class="toggle"><input type="checkbox" id="bgTransparent"> transparent bg</label>
@@ -469,6 +487,20 @@ const TURBO=[[0,[3,2,14]],[.10,[22,10,60]],[.22,[48,26,140]],[.34,[28,80,168]],[
   [.56,[28,182,92]],[.67,[150,204,44]],[.78,[244,196,32]],[.87,[244,124,26]],[.94,[228,52,28]],[1,[255,168,120]]];
 function turbo(t){t=clamp(t,0,1);for(let i=1;i<TURBO.length;i++){if(t<=TURBO[i][0]){const a=TURBO[i-1],b=TURBO[i],k=(t-a[0])/(b[0]-a[0]);
   return [Math.round(lerp(a[1][0],b[1][0],k)),Math.round(lerp(a[1][1],b[1][1],k)),Math.round(lerp(a[1][2],b[1][2],k))];}}return [255,168,120];}
+/* Thermal colorways — each a stop list [pos,[r,g,b]]; ramp() interpolates. */
+const PALETTES={
+  turbo:TURBO,
+  inferno:[[0,[4,2,20]],[.18,[46,10,72]],[.38,[122,20,84]],[.58,[196,48,52]],[.76,[238,120,26]],[.9,[250,190,60]],[1,[252,252,196]]],
+  ice:[[0,[2,4,18]],[.32,[16,42,108]],[.56,[20,118,196]],[.78,[92,208,238]],[1,[240,252,255]]],
+  viridis:[[0,[38,6,80]],[.24,[54,60,140]],[.48,[30,130,142]],[.68,[70,182,92]],[.88,[180,210,40]],[1,[250,232,40]]],
+  ember:HEAT.map(s=>[s[0],s[1]]),
+  acid:[[0,[8,10,4]],[.28,[22,82,28]],[.54,[120,200,20]],[.8,[220,240,60]],[1,[250,255,222]]],
+  ultra:[[0,[6,4,22]],[.3,[64,18,140]],[.55,[196,26,150]],[.78,[250,96,120]],[1,[255,224,236]]],
+  mono:[[0,[8,8,10]],[1,[250,250,252]]],
+};
+function ramp(arr,t){t=clamp(t,0,1);for(let i=1;i<arr.length;i++){if(t<=arr[i][0]){const a=arr[i-1],b=arr[i],k=(t-a[0])/(b[0]-a[0]);
+  return [Math.round(lerp(a[1][0],b[1][0],k)),Math.round(lerp(a[1][1],b[1][1],k)),Math.round(lerp(a[1][2],b[1][2],k))];}}
+  const L=arr[arr.length-1][1];return [L[0],L[1],L[2]];}
 
 function layout(W,H){
   const lines=$('#text').value.split('\n');
@@ -587,6 +619,7 @@ function render(){
   if(S.reveal<1)glyphs=glyphs.slice(0,Math.ceil(glyphs.length*S.reveal)); // typewriter reveal
   const C={cx,cyMid,R:Math.hypot(W,H)/2};
   const fill=$('#fillColor').value,fillOn=$('#fillOn').checked,strokeOn=$('#strokeOn').checked;
+  const acc=[$('#accentColor').value,$('#accent2').value];
   const style=S.renderStyle,svg=[];
 
   if(style==='heatmap'){drawThermalField(glyphs,C,W,H);rasterMode=true;
@@ -621,7 +654,7 @@ function render(){
 
   for(const gl of glyphs){
     const T=makeT(gl,C);
-    if(style==='particles'){drawParticles(gl,T,fill,svg);continue;}
+    if(style==='particles'){drawParticles(gl,T,fill,svg,acc);continue;}
     if(style==='network'){drawNetwork(gl,T,fill,svg);continue;}
     if(style==='outline'){drawOutline(gl,T,C,fill,svg);continue;}
     const d=buildD(gl,T,0);
@@ -664,14 +697,16 @@ function drawChromatic(d,svg){const o=S.chromatic,p=new Path2D(d),dark=bgIsDark(
   ctx.restore();
   for(const [col,dir] of combos)svg.push(`<path d="${d}" transform="translate(${dir*o} 0)" fill="${col}" style="mix-blend-mode:${blend}"/>`);}
 
-function drawParticles(gl,T,fill,svg){
+function drawParticles(gl,T,fill,svg,acc){
+  const cols=[fill,acc[0],acc[1]];   // dispersion spreads across all three chosen colors
   const pts=sampleGlyph(gl,T),spread=S.pSpread,base=Math.max(0.7,S.size/140*1.6);
   for(let k=0;k<pts.length;k++){let [x,y]=pts[k];
     if(spread){const a=grand(gl.index*977+k,2.2)*TAU,mag=grand(gl.index*977+k,5.5),drift=vnoise(x*0.01+k*0.3,y*0.01,phase);
       x+=Math.cos(a)*mag*spread*drift;y+=Math.sin(a)*mag*spread*drift-spread*drift*0.2;}
     const rad=base*(0.6+grand(gl.index*13+k,4.4)*0.9);
-    const t=spread?clamp(0.25+grand(gl.index*977+k,5.5)*(spread/300),0,1):0;
-    const col=spread?(grand(k,8.1)>0.5?heat(t):fill):fill;
+    // dispersion tints particles across all three chosen colors (fill leads, accents fill in)
+    const r=grand(gl.index*977+k,8.1);
+    const col=spread?(r<0.5?fill:r<0.75?acc[0]:acc[1]):fill;
     ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,rad,0,TAU);ctx.fill();
     if(svg.length<8000)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${col}"/>`);}
 }
@@ -812,7 +847,8 @@ function drawThermalField(glyphs,C,W,H){
   const B=document.createElement('canvas');B.width=fw;B.height=fh;const b=B.getContext('2d');
   b.filter=`blur(${Math.max(1.2,S.bloom*scale*0.7)}px)`;b.drawImage(A,0,0);b.filter='none';
   const img=b.getImageData(0,0,fw,fh),px=img.data,bias=S.heatShift/100;
-  for(let i=0;i<px.length;i+=4){const col=turbo(clamp(px[i]/255*S.gain+bias,0,1));
+  const pe=$('#heatPalette'),PAL=PALETTES[pe?pe.value:'turbo']||TURBO;
+  for(let i=0;i<px.length;i+=4){const col=ramp(PAL,clamp(px[i]/255*S.gain+bias,0,1));
     px[i]=col[0];px[i+1]=col[1];px[i+2]=col[2];px[i+3]=255;}
   b.putImageData(img,0,0);
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
@@ -1013,13 +1049,13 @@ $('#fontFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)ret
 function setControl(k,v){S[k]=v;const c=$('#c-'+k);
   if(c){c.value=v;S[k]=parseFloat(c.value);const el=$('#v-'+k);if(el)el.value=fmtVal(k,S[k]);return;}
   if(k==='renderStyle'){$('#renderStyle').value=v;return;}
-  if(k==='bgColor'||k==='fillColor'){$('#'+k).value=v;return;}}
+  if(k==='bgColor'||k==='fillColor'||k==='accentColor'||k==='accent2'||k==='heatPalette'){const el=$('#'+k);if(el)el.value=v;return;}}
 /* each engine auto-configures to a good starting look when selected (replaces presets) */
 const ENGINE_DEFAULTS={
   solid:{fillColor:'#f2f0e9',bgColor:'#0a0a12'},
-  heatmap:{bloom:20,gain:1.15,breath:0.5,fieldDrift:18,grain:14,heatShift:0,pDensity:66,pSpread:38,bgColor:'#04040a'},
+  heatmap:{bloom:20,gain:1.15,breath:0.5,fieldDrift:18,grain:14,heatShift:0,pDensity:66,pSpread:38,bgColor:'#04040a',heatPalette:'turbo'},
   chromatic:{chromatic:16,bgColor:'#0a0a12',fillColor:'#f2f0e9'},
-  particles:{pDensity:72,pSpread:70,fillColor:'#f2f0e9',bgColor:'#05060f'},
+  particles:{pDensity:72,pSpread:70,fillColor:'#f2f0e9',bgColor:'#05060f',accentColor:'#ff5ad0',accent2:'#5ecbff'},
   halftone:{dotSize:12,fillColor:'#111111',bgColor:'#f2efe6'},
   outline:{ringCount:9,ringGap:7,strokeW:1.4,fillColor:'#f2f0e9',bgColor:'#0a0a12'},
   network:{pDensity:64,linkDist:48,pSpread:26,fillColor:'#5ecbff',bgColor:'#05060f'},
@@ -1103,7 +1139,7 @@ function applyPrint(){const w=parseFloat($('#printW').value)||1,h=parseFloat($('
   $('#docW').value=Math.round(w*d);$('#docH').value=Math.round(h*d);$('#format').value='custom';render();updateChips();}
 $('#applyPrint').addEventListener('click',applyPrint);
 ['printW','printH','printDpi'].forEach(id=>$('#'+id).addEventListener('change',applyPrint));
-['fillColor','bgColor','fillOn','strokeOn','bgTransparent'].forEach(id=>$('#'+id).addEventListener('input',render));
+['fillColor','bgColor','fillOn','strokeOn','bgTransparent','accentColor','accent2','heatPalette'].forEach(id=>$('#'+id).addEventListener('input',render));
 window.addEventListener('resize',()=>{if(font)render();});
 /* tabs + collapsible sub-groups */
 /* Left rail is the sole nav: click an icon to open that section's flyout;
@@ -1167,6 +1203,8 @@ const ENGINE_NOTE={solid:'Solid — no engine parameters. Shape it with Warp & M
   typeintype:'Each letter filled with your text, set small.'};
 function updateEngineUI(){const on=new Set(ENGINE_CTRLS[S.renderStyle]||[]);
   for(const id of RENDER_IDS){const el=document.getElementById('ctrl-'+id);if(el)el.classList.toggle('hidden',!on.has(id));}
+  $('#style-colorway').classList.toggle('hidden',S.renderStyle!=='heatmap');
+  $('#style-accents').classList.toggle('hidden',S.renderStyle!=='particles');
   $('#renderNote').textContent=ENGINE_NOTE[S.renderStyle]||'';updateChips();}
 
 /* ---- direct manipulation: drag orbit / shift-move / alt-roll / scroll-dolly ---- */
