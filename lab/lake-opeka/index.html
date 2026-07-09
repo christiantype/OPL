@@ -119,10 +119,17 @@
     display: inline-block; width: 8px; height: 8px; border-radius: 50%;
     background: #e0202a; vertical-align: middle; margin-right: 2px;
   }
-  #btn-record.is-recording { background: #e0202a; color: #fff; border-color: #e0202a; }
-  #btn-record.is-recording .rec-dot { background: #fff; animation: rec-blink 1s steps(2,start) infinite; }
-  #btn-record.is-counting { background: var(--text); color: #fff; border-color: var(--text); }
-  #btn-record.is-counting .rec-dot { background: #fff; }
+  #btn-record.is-recording, #btn-magic.is-recording { background: #e0202a; color: #fff; border-color: #e0202a; }
+  #btn-record.is-recording .rec-dot, #btn-magic.is-recording .rec-dot { background: #fff; animation: rec-blink 1s steps(2,start) infinite; }
+  #btn-record.is-counting, #btn-magic.is-counting { background: var(--text); color: #fff; border-color: var(--text); }
+  #btn-record.is-counting .rec-dot, #btn-magic.is-counting .rec-dot { background: #fff; }
+  /* Magic button + its clip-length field */
+  #btn-magic { gap: 4px; }
+  .magic-dur-wrap { display: inline-flex; align-items: center; gap: 1px; background: var(--panel); border: 1px solid var(--hairline); border-radius: 10px; padding: 0 8px 0 5px; }
+  .magic-dur-wrap input { width: 26px; border: none; background: transparent; color: var(--text); font-family: var(--mono); font-size: 12px; text-align: right; padding: 9px 0; -moz-appearance: textfield; }
+  .magic-dur-wrap input:focus { outline: none; }
+  .magic-dur-wrap input::-webkit-outer-spin-button, .magic-dur-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .magic-dur-wrap span { font-size: 11px; color: var(--text-dim); letter-spacing: .04em; }
   /* Pre-roll countdown — big number centered on the canvas (not recorded). */
   .rec-countdown {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -792,6 +799,8 @@
     <div class="stage-info" id="stage-info">— / —</div>
     <div class="stage-actions">
       <button id="btn-sessions" title="Saved sessions">⧉ Sessions</button>
+      <button id="btn-magic" title="Auto-animate the controls and record a clip">✨ Magic</button>
+      <label class="magic-dur-wrap" title="Clip length in seconds"><input id="magic-dur" type="number" min="2" max="60" step="1" value="8"><span>s</span></label>
       <button id="btn-record" title="Record the canvas to video (R)"><span class="rec-dot"></span> Record</button>
       <button id="btn-reroll">↻ Re-roll</button>
       <button id="btn-export-svg">Export SVG</button>
@@ -4466,6 +4475,10 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
   let counting = false, cancelCountdown = false;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  // Magic: smoothly wander the visible controls between random targets while recording.
+  const magicBtn = $('btn-magic'), magicDur = $('magic-dur');
+  let magicRAF = null, magicSliders = null, magicEndAt = 0, magicActive = false;
+
   // Prefer MP4 (H.264) so clips drop straight into Keynote / iMovie / etc.;
   // fall back to WebM on browsers that can't encode MP4.
   function pickMime() {
@@ -4541,12 +4554,13 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     } catch (e) {}
   }
 
-  function beginRecording() {
+  // Start the MediaRecorder + REC indicator (no button chrome — the caller owns that).
+  function beginRecordingCore() {
     const stream = canvas.captureStream(30);   // 30 fps
     const mimeType = pickMime();
     try {
       recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-    } catch (e) { alert('Could not start recording: ' + e.message); resetButton(); return; }
+    } catch (e) { alert('Could not start recording: ' + e.message); return false; }
     chunks = [];
     recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     recorder.onstop = () => {
@@ -4562,12 +4576,17 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     };
     recorder.start();
     startedAt = Date.now();
-    btn.classList.remove('is-counting');
-    btn.classList.add('is-recording');
-    btn.innerHTML = '<span class="rec-dot"></span> Stop';
     indicator.hidden = false;
     timeEl.textContent = '0:00';
     timer = setInterval(() => { timeEl.textContent = fmt(Date.now() - startedAt); }, 250);
+    return true;
+  }
+
+  function beginRecording() {
+    if (!beginRecordingCore()) { resetButton(); return; }
+    btn.classList.remove('is-counting');
+    btn.classList.add('is-recording');
+    btn.innerHTML = '<span class="rec-dot"></span> Stop';
   }
 
   function resetButton() {
@@ -4598,7 +4617,8 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
   }
 
   function stop() {
-    if (counting) { cancelCountdown = true; return; }  // bail out mid-countdown
+    if (magicActive) { stopMagic(); return; }           // magic owns its own teardown
+    if (counting) { cancelCountdown = true; return; }    // bail out mid-countdown
     if (!recorder) return;
     clearInterval(timer); timer = null;
     resetButton();
@@ -4609,6 +4629,101 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
   function toggle() { (recorder || counting) ? stop() : start(); }
 
   btn.addEventListener('click', toggle);
+
+  // ── Magic: auto-animate the visible controls, smoothly + randomly, on video ──
+  // Each visible slider drifts between random targets with a smoothstep ease, on
+  // its own clock, so the whole poster comes alive. We batch every slider per
+  // frame (suspend render) and repaint once. When the clip ends we restore the
+  // controls to exactly where they were — the magic is a performance, not an edit.
+  // Skip output/size controls — animating them is pointless and resizing the
+  // canvas mid-clip can break the capture stream. Only creative params dance.
+  const MAGIC_SKIP = /export|dpi|aspect|ratio|resol|quality|-w$|-h$|width|height/i;
+  function collectMagicSliders() {
+    return [...document.querySelectorAll('.controls input[type=range]')]
+      .filter(r => r.offsetParent !== null && !r.disabled && !MAGIC_SKIP.test(r.id))   // only visible creative controls
+      .map(r => {
+        const min = parseFloat(r.min), max = parseFloat(r.max);
+        const cur = parseFloat(r.value);
+        return { el: r, min, max, step: parseFloat(r.step) || 0.001, orig: cur, from: cur, to: cur, t0: 0, dur: 0 };
+      })
+      .filter(s => isFinite(s.min) && isFinite(s.max) && s.max > s.min);
+  }
+  function magicFrame(now) {
+    if (!magicActive) return;
+    if (now >= magicEndAt) { stopMagic(); return; }
+    window._loSuspendRender = true;
+    for (const s of magicSliders) {
+      if (!s.dur || now >= s.t0 + s.dur) {          // reached the waypoint → pick a new one
+        s.from = s.to;
+        s.to = s.min + Math.random() * (s.max - s.min);
+        s.t0 = now; s.dur = 900 + Math.random() * 2400;   // each control on its own pace
+      }
+      const p = Math.min(1, (now - s.t0) / s.dur);
+      const e = p * p * (3 - 2 * p);                // smoothstep — no hard starts/stops
+      let v = s.from + (s.to - s.from) * e;
+      v = Math.round(v / s.step) * s.step;
+      if (s.el.value !== String(v)) { s.el.value = v; s.el.dispatchEvent(new Event('input', { bubbles: true })); }
+    }
+    window._loSuspendRender = false;
+    try { render(); } catch (e) {}
+    magicRAF = requestAnimationFrame(magicFrame);
+  }
+  function restoreControls() {
+    if (!magicSliders) return;
+    window._loSuspendRender = true;
+    for (const s of magicSliders) { s.el.value = s.orig; s.el.dispatchEvent(new Event('input', { bubbles: true })); }
+    window._loSuspendRender = false;
+    try { render(); } catch (e) {}
+  }
+  function resetMagicBtn() {
+    if (!magicBtn) return;
+    magicBtn.classList.remove('is-recording', 'is-counting');
+    magicBtn.innerHTML = '✨ Magic';
+  }
+  function stopMagic() {
+    if (magicRAF) cancelAnimationFrame(magicRAF);
+    magicRAF = null; magicActive = false;
+    clearInterval(timer); timer = null;
+    indicator.hidden = true;
+    if (recorder) recorder.stop();     // fires onstop → downloads the clip
+    restoreControls();
+    magicSliders = null;
+    resetMagicBtn();
+  }
+  async function startMagic() {
+    if (recorder || counting || magicActive) return;
+    if (!state.images.some(s => s.enabled)) { alert('Add some photos first.'); return; }
+    magicSliders = collectMagicSliders();
+    if (!magicSliders.length) { alert('No animatable controls in this mode — try Slice or another mode.'); magicSliders = null; return; }
+    const secs = Math.max(2, Math.min(60, parseFloat(magicDur && magicDur.value) || 8));
+    // Same 3-2-1 chirp countdown as Record, so the count stays out of the clip.
+    counting = true; cancelCountdown = false;
+    magicBtn.classList.add('is-counting'); magicBtn.innerHTML = 'Cancel';
+    countEl.hidden = false;
+    for (let n = 3; n >= 1; n--) {
+      if (cancelCountdown) break;
+      countEl.textContent = n;
+      countEl.classList.remove('rec-countdown--pop'); void countEl.offsetWidth;
+      countEl.classList.add('rec-countdown--pop');
+      chirp(3 - n);
+      await sleep(1000);
+    }
+    countEl.hidden = true; counting = false;
+    if (cancelCountdown) { resetMagicBtn(); magicSliders = null; return; }
+    if (!beginRecordingCore()) { resetMagicBtn(); magicSliders = null; return; }
+    magicBtn.classList.remove('is-counting'); magicBtn.classList.add('is-recording');
+    magicBtn.innerHTML = '<span class="rec-dot"></span> Stop';
+    magicActive = true;
+    magicEndAt = performance.now() + secs * 1000;
+    magicRAF = requestAnimationFrame(magicFrame);
+  }
+  function toggleMagic() {
+    if (magicActive) { stopMagic(); return; }
+    if (counting && magicBtn.classList.contains('is-counting')) { cancelCountdown = true; return; }
+    if (recorder || counting) return;   // a plain recording is already running
+    startMagic();
+  }
+  if (magicBtn) magicBtn.addEventListener('click', toggleMagic);
 
   // R toggles recording — but never while typing in a field or with a modifier.
   window.addEventListener('keydown', e => {
