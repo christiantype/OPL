@@ -27,9 +27,18 @@
       aspect-ratio: 1 / 1; padding: var(--space-6);
       border-radius: 12px; text-decoration: none; color: var(--color-ink);
       overflow: hidden; isolation: isolate;
-      animation: row-in 0.5s ease both;
+      background-size: 220% 220%;
+      animation: row-in 0.5s ease both, tileMorph 20s ease-in-out infinite;
       transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.35s ease;
     }
+    /* subtle morphing gradients — drift out of phase per tile */
+    @keyframes tileMorph {
+      0%, 100% { background-position: 0% 50%; }
+      50%      { background-position: 100% 50%; }
+    }
+    .tool-grid .tool-tile:nth-child(2) { animation-duration: 0.5s, 25s; }
+    .tool-grid .tool-tile:nth-child(3) { animation-duration: 0.5s, 30s; }
+    @media (prefers-reduced-motion: reduce) { .tool-tile { animation: row-in 0.5s ease both; } }
     .tool-tile:hover { transform: translateY(-6px); box-shadow: 0 24px 50px -22px rgba(0, 0, 0, 0.4); }
     .tool-tile:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 3px; }
     .tool-tile__ver {
@@ -49,12 +58,12 @@
     }
 
     /* One unique gradient per tile — OP/AL brand palette */
-    .g-1 { background: linear-gradient(135deg, #ff94c9 0%, #ffd36e 100%); }
-    .g-2 { background: linear-gradient(135deg, #79c7f1 0%, #bbff34 100%); }
-    .g-3 { background: linear-gradient(135deg, #ffed00 0%, #ff94c9 100%); }
-    .g-4 { background: linear-gradient(135deg, #fcc1b8 0%, #79c7f1 100%); }
-    .g-5 { background: linear-gradient(135deg, #bbff34 0%, #79c7f1 100%); }
-    .g-6 { background: linear-gradient(135deg, #c9b8ff 0%, #ff94c9 100%); }
+    .g-1 { background-image: linear-gradient(135deg, #ff94c9 0%, #ffd36e 100%); }
+    .g-2 { background-image: linear-gradient(135deg, #79c7f1 0%, #bbff34 100%); }
+    .g-3 { background-image: linear-gradient(135deg, #ffed00 0%, #ff94c9 100%); }
+    .g-4 { background-image: linear-gradient(135deg, #fcc1b8 0%, #79c7f1 100%); }
+    .g-5 { background-image: linear-gradient(135deg, #bbff34 0%, #79c7f1 100%); }
+    .g-6 { background-image: linear-gradient(135deg, #c9b8ff 0%, #ff94c9 100%); }
 
     @media (max-width: 40em) { .tool-tile { aspect-ratio: 4 / 3; } }
   </style>
