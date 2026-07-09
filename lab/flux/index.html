@@ -260,6 +260,7 @@
       <label class="toggle"><input type="checkbox" id="fillOn" checked> fill</label>
       <label class="toggle"><input type="checkbox" id="strokeOn"> stroke outline</label>
       <label class="toggle"><input type="checkbox" id="bgTransparent"> transparent bg</label>
+      <label class="toggle"><input type="checkbox" id="clipGlyph"> effect inside letters</label>
     </div></div>
   </div>
 
@@ -612,6 +613,7 @@ function ensureCanvas(){
 }
 
 let rasterMode=false;
+let curClipDs=null;   // glyph outline d-strings when "effect inside letters" is on (for SVG export)
 function render(){
   if(!font)return;
   if(S.renderStyle==='dimensional')return;   // 3D engine is the dimensional.html iframe
@@ -626,7 +628,10 @@ function render(){
   const fill=$('#fillColor').value,fillOn=$('#fillOn').checked,strokeOn=$('#strokeOn').checked;
   const acc=[$('#accentColor').value,$('#accent2').value];
   const style=S.renderStyle,svg=[];
-
+  // "Effect inside letters" — clip the whole-canvas effect to the glyph shapes; the
+  // solid background color shows everywhere outside the letterforms.
+  const clipToLetters=!!($('#clipGlyph')&&$('#clipGlyph').checked);
+  function drawEngine(){
   if(style==='heatmap'){drawThermalField(glyphs,C,W,H);rasterMode=true;
     $('#status').innerHTML=`${glyphs.length} glyphs · thermal field · ${W}×${H}<span class="ok"> · living · PNG/video</span>`;return;}
   if(style==='halftone'){drawHalftone(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
@@ -686,6 +691,13 @@ function render(){
         if(!fillOn)svg.push(`<path d="${d}" fill="none" stroke="${col}" stroke-width="${S.strokeW}"/>`);}}
   }
   finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);
+  }
+  curClipDs = clipToLetters ? glyphs.map(gl=>buildD(gl,makeT(gl,C),0)) : null;
+  if(clipToLetters){
+    const cp=new Path2D();
+    for(const d of curClipDs){cp.addPath(new Path2D(d));}
+    ctx.save(); ctx.clip(cp); drawEngine(); ctx.restore();
+  } else drawEngine();
 }
 
 function bgIsDark(){if($('#bgTransparent').checked)return true;const h=$('#bgColor').value;
@@ -1028,10 +1040,16 @@ function drawTypeInType(glyphs,C,W,H,fill){
 }
 function finishSVG(parts,W,H,transparent,bgc,style,n){
   const bg=transparent?'':`<rect width="${W}" height="${H}" fill="${bgc}"/>`;
+  let defs='',body=parts.join('\n');
+  if(curClipDs&&curClipDs.length){   // clip the effect to the letterforms (solid bg outside)
+    defs=`<defs><clipPath id="glyphclip">${curClipDs.map(d=>`<path d="${d}"/>`).join('')}</clipPath></defs>`;
+    body=`<g clip-path="url(#glyphclip)">\n${body}\n</g>`;
+  }
   lastSVG=`<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+${defs}
 ${bg}
-${parts.join('\n')}
+${body}
 </svg>`;window.lastSVG=lastSVG;
   const note=(style==='halftone'||style==='particles')?' · SVG=dots':style==='network'?' · SVG=dots+lines':style==='chromatic'?' · SVG blend layers':'';
   $('#status').innerHTML=`${n} glyphs · ${style} · ${W}×${H}<span class="ok">${note}</span>`;
@@ -1151,7 +1169,7 @@ function applyPrint(){const w=parseFloat($('#printW').value)||1,h=parseFloat($('
   $('#docW').value=Math.round(w*d);$('#docH').value=Math.round(h*d);$('#format').value='custom';render();updateChips();}
 $('#applyPrint').addEventListener('click',applyPrint);
 ['printW','printH','printDpi'].forEach(id=>$('#'+id).addEventListener('change',applyPrint));
-['fillColor','bgColor','fillOn','strokeOn','bgTransparent','accentColor','accent2','heatPalette'].forEach(id=>$('#'+id).addEventListener('input',render));
+['fillColor','bgColor','fillOn','strokeOn','bgTransparent','accentColor','accent2','heatPalette','clipGlyph'].forEach(id=>$('#'+id).addEventListener('input',render));
 window.addEventListener('resize',()=>{if(font)render();});
 /* tabs + collapsible sub-groups */
 /* Left rail is the sole nav: click an icon to open that section's flyout;
