@@ -299,6 +299,7 @@
     <button id="playBtn">Animate</button>
     <div style="flex:1"></div>
     <div class="tbar-grp">
+      <button id="resetBtn">Reset</button>
       <button id="randBtn">Randomize</button>
       <button id="recBtn" class="rec">Record</button>
     </div>
@@ -1024,6 +1025,11 @@ const ENGINE_DEFAULTS={
 function applyEngine(style){setControl('renderStyle',style);const d=ENGINE_DEFAULTS[style]||{};
   for(const k in d)setControl(k,d[k]);updateEngineUI();render();}
 $('#renderStyle').addEventListener('change',e=>applyEngine(e.target.value));
+/* Reset — restore every control to its default, then re-apply the current engine */
+$('#resetBtn').addEventListener('click',()=>{
+  for(const grp in CONTROLS)for(const c of CONTROLS[grp])setControl(c[0],c[5]);
+  applyEngine(S.renderStyle);
+});
 
 $('#randBtn').addEventListener('click',()=>{const rnd=(a,b)=>a+Math.random()*(b-a);
   setControl('flow',rnd(0,80));setControl('flowScale',rnd(6,20));setControl('melt',rnd(0,120));
