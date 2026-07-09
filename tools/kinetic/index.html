@@ -1,0 +1,1045 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kinetic — experimental type instrument</title>
+<link rel="stylesheet" href="/tools/shared/opal.css" />
+<style>
+  /* ── Brand fonts (copied from the OP/AL site so the tool is self-contained) ── */
+  @font-face{font-family:'Sidepiece-HoneyPie';src:url('/shared/fonts/Sidepiece-HoneyPie.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Untitled Sans';src:url('/shared/fonts/UntitledSans-Regular.otf') format('opentype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Untitled Sans';src:url('/shared/fonts/UntitledSans-Bold.otf') format('opentype');font-weight:700;font-style:normal;font-display:swap}
+
+  /* Light editorial chrome — matches the OP/AL "Lake Opeka" tool. Color lives
+     only inside the canvas; the rails and topbar stay monochrome. */
+  :root{
+    --bg:#ffffff; --panel:#f4f4f4; --panel2:#f4f4f4; --line:#e2e2e2; --hairline:#e2e2e2;
+    --ink:#111111; --text:#111111; --mid:#4d4d54; --dim:#7c7c84;
+    --accent:#111111; --on-accent:#ffffff; --cobalt:#1c39bb; --pink:#ff94c9;
+    --sans:'Untitled Sans',system-ui,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --display:'Sidepiece-HoneyPie','Untitled Sans',sans-serif;
+    --mono:'JetBrains Mono','SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;display:grid;grid-template-rows:56px 44px 1fr;height:100vh;overflow:hidden;position:relative}
+  button,input,select,textarea{font-family:inherit;color:inherit}
+
+  /* Shared shell bars (rows 1 & 2). The canvas fills the whole area below;
+     the controls float over it as an island — Figma-style. */
+  .opal-topbar{grid-row:1}
+  .opal-subhead{grid-row:2}
+
+  /* Controls island — floats over the full-bleed canvas, docked top-right. */
+  #panel{position:absolute;top:116px;right:16px;bottom:16px;width:320px;z-index:6;
+    background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border:1px solid var(--hairline);border-radius:12px;box-shadow:0 12px 40px -16px rgba(0,0,0,.22);
+    display:flex;flex-direction:column;overflow:hidden}
+  #pTop{padding:18px 18px 0}
+  #pScroll{flex:1;overflow-y:auto;padding:2px 18px 18px}
+  #pScroll::-webkit-scrollbar{width:9px}#pScroll::-webkit-scrollbar-thumb{background:#d9d9d9}
+  #pScroll::-webkit-scrollbar-thumb:hover{background:#c4c4c4}
+
+  /* Brand lockup — OP/AL wordmark + product label, echoing the Lake Opeka topbar */
+  .brand{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+  .brand svg{display:block;height:15px;width:auto;color:var(--ink)}
+  h1{font-family:var(--sans);font-size:11px;letter-spacing:.14em;margin:0;text-transform:uppercase;font-weight:400;color:var(--dim)}
+  .sub{color:var(--dim);font-size:10px;letter-spacing:.16em;margin-bottom:16px;text-transform:uppercase}
+
+  textarea{width:100%;background:var(--panel);border:1px solid var(--hairline);color:var(--ink);
+    padding:8px 9px;font-family:var(--sans);font-size:13px;resize:vertical;min-height:38px;line-height:1.3}
+  textarea:focus,select:focus,input:focus{outline:none;border-color:var(--accent)}
+  .mini{margin-top:7px}.mini select,.mini .filebtn{margin-top:6px}
+
+  #tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin:12px 0 2px}
+  #tabs button{background:var(--panel);border:1px solid var(--hairline);color:var(--mid);font-family:var(--sans);
+    font-size:10px;letter-spacing:.12em;padding:7px 4px;cursor:pointer;text-transform:uppercase;transition:all .15s ease}
+  #tabs button:hover:not(.active){color:var(--ink);border-color:var(--dim)}
+  #tabs button.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .pane{display:none}.pane.active{display:block}
+
+  .grp{border-top:1px solid var(--hairline);padding-top:13px;margin-top:13px}
+  .grp:first-child{border-top:none;margin-top:6px}
+  .grp h3{font-family:var(--sans);font-size:10px;letter-spacing:.18em;color:var(--mid);text-transform:uppercase;margin:0 0 10px;
+    display:flex;justify-content:space-between;cursor:pointer;user-select:none;font-weight:400}
+  .grp h3 .tw{color:var(--dim)}
+  .grp.closed h3{margin-bottom:0}
+  .grp.closed .gbody{display:none}
+  .renderNote{color:var(--dim);font-size:11px;line-height:1.55;padding:2px 0}
+
+  .ctrl{margin-bottom:7px}
+  .ctrl .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:1px}
+  .ctrl label{color:var(--ink);font-size:12px;letter-spacing:0;text-transform:capitalize}
+  .ctrl .val{color:var(--ink);font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;background:transparent;cursor:pointer;padding:0;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{background:var(--hairline);height:1px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;
+    background:var(--accent);border:none;margin-top:-7px;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb:hover{background:var(--cobalt)}
+  input[type=range]::-moz-range-track{background:var(--hairline);height:1px}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:none;cursor:pointer}
+
+  select,input[type=number]{width:100%;background:var(--panel);border:1px solid var(--hairline);color:var(--ink);
+    padding:7px 9px;font-family:var(--sans);font-size:12px;cursor:pointer}
+  select:hover{border-color:var(--dim)}
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .chip{background:var(--panel);border:1px solid var(--hairline);color:var(--mid);padding:8px 4px;
+    text-align:center;cursor:pointer;letter-spacing:.02em;user-select:none;transition:.12s;font-size:11px}
+  .chip:hover{border-color:var(--accent);color:var(--ink)}
+  .filebtn{display:block;background:var(--panel);border:1px dashed var(--hairline);padding:8px;
+    text-align:center;color:var(--mid);cursor:pointer;font-size:12px;transition:border-color .15s ease,color .15s ease}
+  .filebtn:hover{border-color:var(--accent);color:var(--ink)}
+  input[type=color]{width:100%;height:32px;background:var(--panel);border:1px solid var(--hairline);padding:2px;cursor:pointer}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .two label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid)}
+  .toggle{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--mid);margin-top:8px;font-size:12px}
+  .toggle input{accent-color:var(--accent);width:16px;height:16px}
+  .hidden{display:none}
+
+  #stage{grid-row:3;position:relative;overflow:hidden;background:#f5f5f5}
+  /* Canvas + its transport live in the region left of the controls island,
+     stacked so the buttons sit UNDER the canvas (no overlap) and centred to it. */
+  #canvasArea{position:absolute;top:0;left:0;bottom:0;right:352px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px}
+  #canvasWrap{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  #canvasArea .opal-stage-transport{position:static;transform:none;flex:none}
+  #view{box-shadow:0 12px 40px -10px rgba(0,0,0,.15)}
+  #view{cursor:grab}#view:active{cursor:grabbing}
+  #status{position:absolute;top:16px;left:18px;color:var(--dim);font-family:var(--mono);font-size:10px;letter-spacing:.05em}
+  .warn{color:var(--cobalt)}.ok{color:var(--cobalt)}
+</style>
+
+<div id="panel">
+  <div id="pTop">
+  <textarea id="text" spellcheck="false">FLUX</textarea>
+  <div id="g-type" style="margin-top:12px"></div>
+
+  <div class="mini">
+    <select id="fontPick">
+      <option value="arimo">Arimo (Arial / Helvetica)</option>
+      <option value="inter">Inter (clean sans)</option>
+      <option value="archivoblack">Archivo Black (heavy grotesk)</option>
+      <option value="spacegrotesk">Space Grotesk</option>
+      <option value="bodoni">Bodoni Moda (serif)</option>
+      <option value="dmserif">DM Serif Display</option>
+    </select>
+    <label class="filebtn">Upload font<input id="fontFile" type="file" accept=".ttf,.otf" hidden></label>
+    <select id="renderStyle" title="render engine">
+      <option value="solid">Solid</option>
+      <option value="heatmap">Thermal field (organism)</option>
+      <option value="chromatic">Chromatic / RGB glitch</option>
+      <option value="particles">Particle dispersion</option>
+      <option value="halftone">Halftone dot-matrix</option>
+      <option value="outline">Contour rings</option>
+      <option value="network">Network / constellation</option>
+      <option value="glow">Luminous halftone</option>
+      <option value="cells">Voronoi cells</option>
+      <option value="scales">Color scales</option>
+      <option value="slice">Databend slice</option>
+      <option value="neon">Neon glow</option>
+      <option value="topo">Topographic lines</option>
+      <option value="streams">Flow streamlines</option>
+      <option value="linescreen">Line screen (engraving)</option>
+      <option value="stipple">Stipple</option>
+      <option value="moire">Moiré interference</option>
+      <option value="lowpoly">Low-poly facets</option>
+      <option value="iso">Isometric relief</option>
+      <option value="weave">Weave</option>
+      <option value="metaballs">Metaballs</option>
+      <option value="pixelsort">Pixel sort</option>
+      <option value="duotone">Duotone riso</option>
+      <option value="ascii">Glyph mosaic</option>
+      <option value="typeintype">Type-in-type</option>
+    </select>
+  </div>
+
+  <div id="tabs">
+    <button data-tab="look" class="active">Look</button>
+    <button data-tab="shape">Shape</button>
+    <button data-tab="motion">Motion</button>
+  </div>
+  </div><!--pTop-->
+
+  <div id="pScroll">
+  <div class="pane active" data-pane="look">
+    <div class="grp"><h3>Engine settings <span class="tw">▾</span></h3><div class="gbody">
+      <div id="g-render"></div><div id="renderNote" class="renderNote"></div></div></div>
+    <div class="grp"><h3>Color <span class="tw">▾</span></h3><div class="gbody">
+      <div class="two">
+        <div><div class="row"><label>fill</label></div><input type="color" id="fillColor" value="#f2f0e9"></div>
+        <div><div class="row"><label>background</label></div><input type="color" id="bgColor" value="#0a0a12"></div>
+      </div>
+      <div id="g-style" style="margin-top:8px"></div>
+      <label class="toggle"><input type="checkbox" id="fillOn" checked> fill</label>
+      <label class="toggle"><input type="checkbox" id="strokeOn"> stroke outline</label>
+      <label class="toggle"><input type="checkbox" id="bgTransparent"> transparent bg</label>
+    </div></div>
+  </div>
+
+  <div class="pane" data-pane="shape">
+    <div class="grp"><h3>Warp <span class="tw">▾</span></h3><div class="gbody"><div id="g-warp"></div></div></div>
+    <div class="grp closed"><h3>Glyph <span class="tw">▾</span></h3><div class="gbody"><div id="g-glyph"></div></div></div>
+    <div class="grp closed"><h3>Position &amp; width <span class="tw">▾</span></h3><div class="gbody"><div id="g-layout"></div></div></div>
+  </div>
+
+  <div class="pane" data-pane="motion">
+    <div class="grp"><h3>Behaviors <span class="tw">▾</span></h3><div class="gbody"><div id="g-animate"></div></div></div>
+    <div class="grp closed"><h3>Echo / trails <span class="tw">▾</span></h3><div class="gbody"><div id="g-repeat"></div></div></div>
+    <div class="grp closed"><h3>3D — drag canvas to move <span class="tw">▾</span></h3><div class="gbody"><div id="g-three"></div></div></div>
+  </div>
+
+  <div class="grp closed"><h3>Output <span class="tw">▾</span></h3><div class="gbody">
+    <select id="format" title="canvas format">
+      <option value="1400x1980">Portrait · 1400×1980</option>
+      <option value="1080x1920">Reel 9:16 · 1080×1920</option>
+      <option value="1080x1080">Square · 1080×1080</option>
+      <option value="1080x1350">Post 4:5 · 1080×1350</option>
+      <option value="1200x700">Landscape · 1200×700</option>
+      <option value="1920x1080">Wide 16:9 · 1920×1080</option>
+      <option value="2480x3508">Print A4 · 300dpi</option>
+      <option value="custom">Custom…</option>
+    </select>
+    <div class="two" style="margin-top:8px">
+      <input type="number" id="docW" value="1400" title="width">
+      <input type="number" id="docH" value="1980" title="height">
+    </div>
+  </div></div>
+
+  </div><!--pScroll-->
+</div>
+
+<div id="stage">
+  <div id="canvasArea">
+    <div id="canvasWrap"><canvas id="view"></canvas></div>
+    <!-- Playback transport — centred beneath the canvas -->
+    <div class="opal-stage-transport">
+      <button id="playBtn">Animate</button>
+      <button id="randBtn">Randomize</button>
+      <button id="recBtn" class="rec">Record</button>
+    </div>
+  </div>
+  <div id="status">loading…</div>
+  <!-- Export — always bottom-left -->
+  <div class="opal-stage-actions">
+    <button id="pngBtn">PNG</button>
+    <button id="svgBtn" class="primary">SVG</button>
+  </div>
+</div>
+
+<script src="/tools/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Kinetic', desc: 'Experimental type instrument', version: 'v1' });</script>
+<script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<script>
+/* ===========================================================================
+   Kinetic — experimental type instrument
+   Non-linear geometry (flow field, melt, distort, warp, 3D) is applied to real
+   glyph outline points -> one d-string per glyph feeds canvas + SVG so
+   geometry effects stay print-true vectors. Render engines layer color/pattern.
+=========================================================================== */
+const $=s=>document.querySelector(s);
+const canvas=$('#view'), ctx=canvas.getContext('2d');
+const TAU=Math.PI*2, DEG=Math.PI/180;
+let font=null, phase=0, playing=false, lastSVG='';
+
+const CONTROLS={
+  render:[
+    ['chromatic','chromatic offset',0,60,0.5,10],
+    ['heatShift','heat bias',-100,100,1,0],
+    ['pDensity','point density',5,100,1,60],
+    ['pSpread','dispersion',0,320,1,0],
+    ['dotSize','halftone cell',4,44,1,11],
+    ['ringCount','ring count',1,24,1,7],
+    ['ringGap','ring gap %',1,44,1,7],
+    ['linkDist','link distance',5,180,1,46],
+    ['bloom','glow / bloom',2,90,1,28],
+    ['gain','intensity',0.4,3,0.05,1.5],
+    ['breath','breathing',0,1,0.02,0.55],
+    ['fieldDrift','organic drift',0,140,1,34],
+    ['grain','film grain',0,60,1,14],
+    ['cellSize','cell size',10,150,1,64],
+    ['sliceW','slice width',2,60,1,12],
+    ['sliceShift','slice shift',0,440,1,150],
+  ],
+  warp:[
+    ['flow','flow field',0,220,1,0],
+    ['flowScale','flow scale',0.5,60,0.5,11],
+    ['melt','melt / drip',0,420,1,0],
+    ['distort','distort',0,160,0.5,0],
+    ['distortScale','distort scale',0.5,60,0.5,12],
+    ['waveAmp','wave amp',0,300,1,0],
+    ['waveFreq','wave freq',0.1,8,0.1,1.2],
+    ['pinch','pinch ← / bloat →',-100,100,1,0],
+    ['twist','twist °',-360,360,1,0],
+    ['glitchSlice','glitch slice',0,140,1,0],
+  ],
+  repeat:[
+    ['echo','echo count',0,28,1,0],
+    ['echoX','echo shift x',-140,140,1,0],
+    ['echoY','echo shift y',-140,140,1,0],
+    ['echoRot','echo spin °',-30,30,0.5,0],
+    ['echoScale','echo scale',0.8,1.2,0.005,1],
+    ['echoFade','echo fade',0,1,0.02,0.7],
+  ],
+  glyph:[
+    ['explode','explode',0,800,1,0],
+    ['jitter','jitter',0,260,1,0],
+    ['rotate','rotate ±°',0,180,1,0],
+    ['slant','slant °',-45,45,0.5,0],
+    ['scaleVary','size vary',0,100,1,0],
+  ],
+  three:[
+    ['rotX','rotate X °',-180,180,1,0],
+    ['rotY','rotate Y °',-180,180,1,0],
+    ['rotZ','roll Z °',-180,180,1,0],
+    ['posZ','depth / dolly',-800,1600,1,0],
+    ['perspective','perspective',200,2500,10,900],
+    ['extrude','extrude depth',0,60,1,0],
+  ],
+  animate:[
+    ['spin','spin Y °/t',-200,200,1,0],
+    ['tumble','tumble X °/t',-200,200,1,0],
+    ['roll','roll Z °/t',-200,200,1,0],
+    ['wiggle','wiggle',0,160,1,0],
+    ['float','float / bob',0,260,1,0],
+    ['sway','sway °',0,45,0.5,0],
+    ['pulse','pulse %',0,80,1,0],
+    ['stagger','stagger',0,2,0.02,0],
+    ['trail','motion trail',0,0.95,0.01,0],
+    ['orbit','orbit radius',0,700,1,0],
+    ['reveal','reveal (typewriter)',0,1,0.01,1],
+  ],
+  type:[
+    ['size','size',20,600,1,300],
+    ['lineHeight','leading',0.4,2,0.01,0.95],
+    ['tracking','kerning',-160,280,1,0],
+  ],
+  layout:[
+    ['width','width %',20,240,1,100],
+    ['offsetX','offset x',-700,700,1,0],
+    ['offsetY','offset y',-900,900,1,0],
+  ],
+  style:[['strokeW','stroke w',0.2,24,0.1,1.4]],
+};
+const S={};
+function buildControls(){
+  for(const grp in CONTROLS){const host=$('#g-'+grp);
+    for(const [id,label,min,max,step,def] of CONTROLS[grp]){S[id]=def;
+      const wrap=document.createElement('div');wrap.className='ctrl';wrap.id='ctrl-'+id;
+      wrap.innerHTML=`<div class="row"><label>${label}</label><span class="val" id="v-${id}"></span></div>
+        <input type="range" id="c-${id}" min="${min}" max="${max}" step="${step}" value="${def}">`;
+      host.appendChild(wrap);const inp=wrap.querySelector('input');
+      inp.addEventListener('input',()=>{S[id]=parseFloat(inp.value);$('#v-'+id).textContent=inp.value;render();});
+      $('#v-'+id).textContent=def;}}
+}
+S.renderStyle='solid';
+
+/* deterministic noise */
+function hash(x,y){let n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);}
+const smooth=t=>t*t*(3-2*t),lerp=(a,b,t)=>a+(b-a)*t,clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const hexA=(h,a)=>`rgba(${parseInt(h.substr(1,2),16)},${parseInt(h.substr(3,2),16)},${parseInt(h.substr(5,2),16)},${a})`;
+const hexRGB=h=>[parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];
+const darken=(h,f)=>{const c=hexRGB(h);return `rgb(${Math.round(c[0]*f)},${Math.round(c[1]*f)},${Math.round(c[2]*f)})`;};
+/* rasterize the letterforms into a (optionally blurred) coverage field, sampled by maskAt */
+function buildField(glyphs,C,W,H,fw,blur){
+  const scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  oc.fillStyle='#000';oc.fillRect(0,0,fw,fh);
+  if(blur&&blur>0.3)oc.filter=`blur(${blur}px)`;
+  oc.fillStyle='#fff';oc.save();oc.scale(scale,scale);
+  for(const gl of glyphs){const T=makeT(gl,C);oc.fill(new Path2D(buildD(gl,T,0)));}
+  oc.restore();oc.filter='none';
+  return {data:oc.getImageData(0,0,fw,fh).data,fw,fh,scale};
+}
+const maskAt=(m,X,Y)=>{const x=(X*m.scale)|0,y=(Y*m.scale)|0;if(x<0||y<0||x>=m.fw||y>=m.fh)return 0;return m.data[(y*m.fw+x)*4];};
+function vnoise(x,y,t){x+=t*0.6;const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi;
+  const u=smooth(xf),v=smooth(yf);
+  return lerp(lerp(hash(xi,yi),hash(xi+1,yi),u),lerp(hash(xi,yi+1),hash(xi+1,yi+1),u),v);}
+function grand(i,salt){let n=Math.sin((i+1)*(salt*97.3+12.9))*43758.5453;return n-Math.floor(n);}
+
+const HEAT=[[0,[8,8,32]],[.22,[74,12,120]],[.45,[196,28,54]],[.66,[240,120,20]],[.85,[250,214,44]],[1,[255,255,242]]];
+function heat(t){t=clamp(t,0,1);for(let i=1;i<HEAT.length;i++){if(t<=HEAT[i][0]){const a=HEAT[i-1],b=HEAT[i],k=(t-a[0])/(b[0]-a[0]);
+  return `rgb(${a[1].map((c,j)=>Math.round(lerp(c,b[1][j],k))).join(',')})`;}}return 'rgb(255,255,242)';}
+/* turbo-ish astro colormap (black→indigo→teal→green→yellow→orange→red→hot) for the thermal field */
+const TURBO=[[0,[3,2,14]],[.10,[22,10,60]],[.22,[48,26,140]],[.34,[28,80,168]],[.46,[18,150,150]],
+  [.56,[28,182,92]],[.67,[150,204,44]],[.78,[244,196,32]],[.87,[244,124,26]],[.94,[228,52,28]],[1,[255,168,120]]];
+function turbo(t){t=clamp(t,0,1);for(let i=1;i<TURBO.length;i++){if(t<=TURBO[i][0]){const a=TURBO[i-1],b=TURBO[i],k=(t-a[0])/(b[0]-a[0]);
+  return [Math.round(lerp(a[1][0],b[1][0],k)),Math.round(lerp(a[1][1],b[1][1],k)),Math.round(lerp(a[1][2],b[1][2],k))];}}return [255,168,120];}
+
+function layout(W,H){
+  const lines=$('#text').value.split('\n');
+  const upm=font.unitsPerEm,scale=S.size/upm,wScale=S.width/100;
+  const lineData=lines.map(line=>{let w=0;const items=[];
+    for(const ch of line){const g=font.charToGlyph(ch);const adv=g.advanceWidth*scale*wScale;items.push({g,ch,adv});w+=adv+S.tracking;}
+    if(items.length)w-=S.tracking;return {items,w};});
+  const lh=S.size*S.lineHeight,blockH=lh*(lines.length-1);
+  const cx=W/2+S.offsetX,cyMid=H/2+S.offsetY;const glyphs=[];let gi=0;
+  lineData.forEach((ld,li)=>{let x=cx-ld.w/2;const baseY=cyMid-blockH/2+li*lh+S.size*0.34;
+    for(const it of ld.items){if(it.ch.trim())glyphs.push({...it,x,baseY,index:gi});x+=it.adv+S.tracking;gi++;}});
+  if(S.orbit>0){const n=glyphs.length;glyphs.forEach((g,i)=>{const ang=-Math.PI/2+(i/n)*TAU+phase*0.3;
+    g.x=cx+Math.cos(ang)*S.orbit-g.adv/2;g.baseY=cyMid+Math.sin(ang)*S.orbit+S.size*0.34;});}
+  return {glyphs,cx,cyMid};
+}
+
+/* per-glyph point transform: geometry warps + 3D + procedural (Cavalry-style) behaviors */
+function makeT(gl,C){
+  const sp=phase-gl.index*S.stagger;                     // stagger: motion cascades letter-to-letter
+  let rot=(grand(gl.index,3.1)*2-1)*S.rotate*DEG + S.sway*DEG*Math.sin(sp*1.5);
+  let sv=(1+(grand(gl.index,7.7)*2-1)*S.scaleVary/100)*(1+(S.pulse/100)*Math.sin(sp*3));
+  const jx=(grand(gl.index,1.3)*2-1)*S.jitter+(vnoise(gl.index*2.1,sp*0.5,0)*2-1)*S.wiggle;
+  const jy=(grand(gl.index,9.2)*2-1)*S.jitter+(vnoise(gl.index*2.1+9,sp*0.5,0)*2-1)*S.wiggle;
+  const fl=S.float*Math.sin(sp*2);                        // float / bob
+  const shear=Math.tan(S.slant*DEG);
+  const gcx=gl.x+gl.adv/2,gcy=gl.baseY-S.size*0.3;
+  let ex=0,ey=0;
+  if(S.explode){let dx=gcx-C.cx,dy=gcy-C.cyMid;const d=Math.hypot(dx,dy)||1;ex=dx/d*S.explode;ey=dy/d*S.explode;}
+  const cR=Math.cos(rot),sR=Math.sin(rot);
+  const rX=(S.rotX+S.tumble*phase)*DEG,rY=(S.rotY+S.spin*phase)*DEG,rZ=(S.rotZ+S.roll*phase)*DEG;
+  const cX=Math.cos(rX),sX=Math.sin(rX),cY=Math.cos(rY),sY=Math.sin(rY),cZ=Math.cos(rZ),sZ=Math.sin(rZ);
+  const persp=S.perspective;
+  return function(px,py,z0){z0=z0||0;
+    let dx=px-gcx,dy=py-gcy;dx+=dy*shear;dx*=sv;dy*=sv;
+    let X=gcx+dx*cR-dy*sR+ex+jx,Y=gcy+dx*sR+dy*cR+ey+jy+fl;
+    let rx=X-C.cx,ry=Y-C.cyMid;const dist=Math.hypot(rx,ry),t=Math.max(0,1-dist/C.R);
+    if(S.pinch){const s=1+(S.pinch/100)*t;rx*=s;ry*=s;}
+    if(S.twist){const a=S.twist*DEG*t,c=Math.cos(a),si=Math.sin(a);const nx=rx*c-ry*si;ry=rx*si+ry*c;rx=nx;}
+    X=C.cx+rx;Y=C.cyMid+ry;
+    if(S.flow){const fs=S.flowScale/1000,ang=vnoise(X*fs,Y*fs,phase)*TAU*2;X+=Math.cos(ang)*S.flow;Y+=Math.sin(ang)*S.flow;}
+    if(S.melt){const col=vnoise(X*0.018,7.3,phase);Y+=col*col*S.melt;}
+    if(S.waveAmp)Y+=S.waveAmp*Math.sin(X*S.waveFreq*0.01+phase);
+    if(S.distort){const ns=S.distortScale/1000;
+      X+=(vnoise(X*ns,Y*ns,phase)*2-1)*S.distort;Y+=(vnoise(X*ns+37.2,Y*ns+11.7,phase)*2-1)*S.distort;}
+    if(S.glitchSlice){const band=Math.floor(Y/16);X+=(vnoise(band*0.5,phase*2,0)*2-1)*S.glitchSlice;}
+    // 3D: roll(Z) -> yaw(Y) -> pitch(X) -> perspective project, with depth/dolly
+    let px3=X-C.cx,py3=Y-C.cyMid,pz3=S.posZ+z0;
+    if(rZ){const nx=px3*cZ-py3*sZ;py3=px3*sZ+py3*cZ;px3=nx;}
+    const x1=px3*cY+pz3*sY,z1=-px3*sY+pz3*cY;
+    const y1=py3*cX-z1*sX,z2=py3*sX+z1*cX;
+    const f=persp/Math.max(60,persp+z2);
+    return [C.cx+x1*f,C.cyMid+y1*f];};
+}
+const nonlinear=()=>S.flow||S.melt||S.distort||S.waveAmp||S.pinch||S.twist||S.glitchSlice||
+  S.rotX||S.rotY||S.rotZ||S.posZ||S.spin||S.tumble||S.roll||S.extrude>0;
+
+/* bezier eval */
+function qpt(p0,p1,p2,t){const u=1-t;return[u*u*p0[0]+2*u*t*p1[0]+t*t*p2[0],u*u*p0[1]+2*u*t*p1[1]+t*t*p2[1]];}
+function cpt(p0,p1,p2,p3,t){const u=1-t;return[
+  u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],
+  u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]];}
+
+/* build d-string from a raw-point map function (flattens curves when warped) */
+function buildDp(gl,pt){
+  const path=gl.g.getPath(gl.x,gl.baseY,S.size),r=n=>Math.round(n*100)/100,flat=nonlinear(),N=8;
+  let d='',cur=[0,0];const P=(x,y)=>{const[a,b]=pt(x,y);return r(a)+' '+r(b);};
+  for(const c of path.commands){
+    if(c.type==='M'){cur=[c.x,c.y];d+='M'+P(c.x,c.y);}
+    else if(c.type==='L'){d+='L'+P(c.x,c.y);cur=[c.x,c.y];}
+    else if(c.type==='Q'){if(flat){for(let i=1;i<=N;i++){const p=qpt(cur,[c.x1,c.y1],[c.x,c.y],i/N);d+='L'+P(p[0],p[1]);}}
+      else d+='Q'+P(c.x1,c.y1)+' '+P(c.x,c.y);cur=[c.x,c.y];}
+    else if(c.type==='C'){if(flat){for(let i=1;i<=N;i++){const p=cpt(cur,[c.x1,c.y1],[c.x2,c.y2],[c.x,c.y],i/N);d+='L'+P(p[0],p[1]);}}
+      else d+='C'+P(c.x1,c.y1)+' '+P(c.x2,c.y2)+' '+P(c.x,c.y);cur=[c.x,c.y];}
+    else if(c.type==='Z')d+='Z';}
+  return d;
+}
+const wsx=(gl,x)=>gl.x+(x-gl.x)*(S.width/100);
+function buildD(gl,T,z){return buildDp(gl,(x,y)=>T(wsx(gl,x),y,z));}
+
+function sampleGlyph(gl,T){
+  const path=gl.g.getPath(gl.x,gl.baseY,S.size);
+  const spacing=lerp(20,3,S.pDensity/100),pts=[];let cur=[0,0];
+  const emit=(rx,ry)=>{const[a,b]=T(wsx(gl,rx),ry,0);pts.push([a,b]);};
+  const seg=(a,b)=>{const len=Math.hypot(b[0]-a[0],b[1]-a[1]);const n=Math.max(1,Math.round(len/spacing));
+    for(let i=1;i<=n;i++)emit(lerp(a[0],b[0],i/n),lerp(a[1],b[1],i/n));};
+  for(const c of path.commands){
+    if(c.type==='M'){cur=[c.x,c.y];emit(c.x,c.y);}
+    else if(c.type==='L'){seg(cur,[c.x,c.y]);cur=[c.x,c.y];}
+    else if(c.type==='Q'){let p=cur;for(let i=1;i<=10;i++){const q=qpt(cur,[c.x1,c.y1],[c.x,c.y],i/10);seg(p,q);p=q;}cur=[c.x,c.y];}
+    else if(c.type==='C'){let p=cur;for(let i=1;i<=12;i++){const q=cpt(cur,[c.x1,c.y1],[c.x2,c.y2],[c.x,c.y],i/12);seg(p,q);p=q;}cur=[c.x,c.y];}}
+  return pts;
+}
+
+let curW=0,curH=0,curDpr=0,dispScale=1;
+function ensureCanvas(){
+  const W=Math.max(50,parseInt($('#docW').value)||1400),H=Math.max(50,parseInt($('#docH').value)||1980);
+  const dpr=(W>1500||H>1500)?1:2;
+  if(W!==curW||H!==curH||dpr!==curDpr){canvas.width=W*dpr;canvas.height=H*dpr;curW=W;curH=H;curDpr=dpr;}
+  canvas._w=W;canvas._h=H;
+  const wrap=$('#canvasWrap').getBoundingClientRect();
+  const s=Math.min((wrap.width-44)/W,(wrap.height-44)/H,1);dispScale=s;
+  canvas.style.width=(W*s)+'px';canvas.style.height=(H*s)+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);return {W,H};
+}
+
+let rasterMode=false;
+function render(){
+  if(!font)return;
+  rasterMode=false;
+  const {W,H}=ensureCanvas();
+  const transparent=$('#bgTransparent').checked,bgc=$('#bgColor').value;
+  if(!transparent&&S.trail>0&&playing){ctx.fillStyle=hexA(bgc,1-S.trail);ctx.fillRect(0,0,W,H);} // motion trail: fade prev frame
+  else{ctx.clearRect(0,0,W,H);if(!transparent){ctx.fillStyle=bgc;ctx.fillRect(0,0,W,H);}}
+  let {glyphs,cx,cyMid}=layout(W,H);
+  if(S.reveal<1)glyphs=glyphs.slice(0,Math.ceil(glyphs.length*S.reveal)); // typewriter reveal
+  const C={cx,cyMid,R:Math.hypot(W,H)/2};
+  const fill=$('#fillColor').value,fillOn=$('#fillOn').checked,strokeOn=$('#strokeOn').checked;
+  const style=S.renderStyle,svg=[];
+
+  if(style==='heatmap'){drawThermalField(glyphs,C,W,H);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · thermal field · ${W}×${H}<span class="ok"> · living · PNG/video</span>`;return;}
+  if(style==='halftone'){drawHalftone(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='glow'){drawGlowHalftone(glyphs,C,W,H,fill);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · luminous halftone · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='cells'){drawCells(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · voronoi cells · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='scales'){drawScales(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='slice'){drawSlice(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='neon'){drawNeon(glyphs,C,W,H,fill);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · neon glow · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='topo'){drawTopo(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · topographic · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='streams'){drawStreams(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='pixelsort'){drawPixelSort(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='linescreen'){drawLineScreen(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='lowpoly'){drawLowPoly(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='iso'){drawIso(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='weave'){drawWeave(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='stipple'){drawStipple(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='ascii'){drawAscii(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='duotone'){drawDuotone(glyphs,C,W,H,fill);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · duotone riso · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='metaballs'){drawMetaballs(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · metaballs · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='moire'){drawMoire(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · moiré · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='typeintype'){drawTypeInType(glyphs,C,W,H,fill);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · type-in-type · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+
+  for(const gl of glyphs){
+    const T=makeT(gl,C);
+    if(style==='particles'){drawParticles(gl,T,fill,svg);continue;}
+    if(style==='network'){drawNetwork(gl,T,fill,svg);continue;}
+    if(style==='outline'){drawOutline(gl,T,C,fill,svg);continue;}
+    const d=buildD(gl,T,0);
+    // echo / trails (behind, any style)
+    if(S.echo>0){const n=Math.min(28,Math.round(S.echo));
+      for(let e=n;e>=1;e--){const op=Math.max(0,1-(e/n)*S.echoFade);const sc=Math.pow(S.echoScale,e);
+        const tf=`translate(${cx} ${cyMid}) rotate(${S.echoRot*e}) scale(${sc}) translate(${-cx} ${-cyMid}) translate(${S.echoX*e} ${S.echoY*e})`;
+        ctx.save();ctx.globalAlpha=op;ctx.translate(cx,cyMid);ctx.rotate(S.echoRot*DEG*e);ctx.scale(sc,sc);
+        ctx.translate(-cx,-cyMid);ctx.translate(S.echoX*e,S.echoY*e);ctx.fillStyle=fill;ctx.fill(new Path2D(d));ctx.restore();
+        svg.push(`<path d="${d}" fill="${fill}" opacity="${op.toFixed(3)}" transform="${tf}"/>`);}}
+    // extrusion (solid/heatmap/chromatic)
+    if(S.extrude>0){const steps=Math.min(30,Math.round(S.extrude)),stepZ=3.2;
+      for(let i=steps;i>=1;i--){const dd=buildD(gl,T,i*stepZ);const sh=Math.round(90-70*(i/steps));
+        ctx.fillStyle=`rgb(${sh},${sh},${sh+6})`;ctx.fill(new Path2D(dd));svg.push(`<path d="${dd}" fill="rgb(${sh},${sh},${sh+6})"/>`);}}
+    // front face
+    const p2=new Path2D(d);
+    if(style==='chromatic'){drawChromatic(d,svg);}
+    else{let col=fill;
+      if(style==='heatmap'){const [hx,hy]=T(gl.x+gl.adv/2,gl.baseY-S.size*0.3,0);
+        const disp=Math.hypot(hx-(gl.x+gl.adv/2),hy-(gl.baseY-S.size*0.3))/(S.size*0.9+1);
+        const pos=1-Math.hypot(hx-cx,hy-cyMid)/C.R;col=heat(clamp(disp*0.95+pos*0.5+S.heatShift/100,0,1));}
+      if(fillOn){ctx.fillStyle=col;ctx.fill(p2);svg.push(`<path d="${d}" fill="${col}"/>`);}
+      if(strokeOn){ctx.strokeStyle=col;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.stroke(p2);
+        if(!fillOn)svg.push(`<path d="${d}" fill="none" stroke="${col}" stroke-width="${S.strokeW}"/>`);}}
+  }
+  finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);
+}
+
+function bgIsDark(){if($('#bgTransparent').checked)return true;const h=$('#bgColor').value;
+  return (0.299*parseInt(h.substr(1,2),16)+0.587*parseInt(h.substr(3,2),16)+0.114*parseInt(h.substr(5,2),16))<128;}
+function drawChromatic(d,svg){const o=S.chromatic,p=new Path2D(d),dark=bgIsDark();
+  // RGB channel split, each channel further torn into horizontal bands -> signal glitch
+  const combos=dark?[['#ff2b2b',-1],['#2bff2b',0],['#2b2bff',1]]:[['#00b7c4',-1],['#e5006d',1],['#ffd400',0]];
+  const blend=dark?'screen':'multiply',bands=9,bh=(canvas._h||1980)/bands;
+  ctx.save();ctx.globalCompositeOperation=blend;
+  for(const [col,dir] of combos){ctx.fillStyle=col;
+    for(let b=0;b<bands;b++){const shift=(vnoise(b*1.7+dir*11,phase*2,0)*2-1)*o*1.4;
+      ctx.save();ctx.beginPath();ctx.rect(0,b*bh,canvas._w||1400,bh);ctx.clip();
+      ctx.translate(dir*o+shift,0);ctx.fill(p);ctx.restore();}}
+  ctx.restore();
+  for(const [col,dir] of combos)svg.push(`<path d="${d}" transform="translate(${dir*o} 0)" fill="${col}" style="mix-blend-mode:${blend}"/>`);}
+
+function drawParticles(gl,T,fill,svg){
+  const pts=sampleGlyph(gl,T),spread=S.pSpread,base=Math.max(0.7,S.size/140*1.6);
+  for(let k=0;k<pts.length;k++){let [x,y]=pts[k];
+    if(spread){const a=grand(gl.index*977+k,2.2)*TAU,mag=grand(gl.index*977+k,5.5),drift=vnoise(x*0.01+k*0.3,y*0.01,phase);
+      x+=Math.cos(a)*mag*spread*drift;y+=Math.sin(a)*mag*spread*drift-spread*drift*0.2;}
+    const rad=base*(0.6+grand(gl.index*13+k,4.4)*0.9);
+    const t=spread?clamp(0.25+grand(gl.index*977+k,5.5)*(spread/300),0,1):0;
+    const col=spread?(grand(k,8.1)>0.5?heat(t):fill):fill;
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,rad,0,TAU);ctx.fill();
+    if(svg.length<8000)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${col}"/>`);}
+}
+
+function drawNetwork(gl,T,fill,svg){
+  const pts=sampleGlyph(gl,T),spread=S.pSpread;
+  const P=pts.map((p,k)=>{let x=p[0],y=p[1];
+    if(spread){const a=grand(gl.index*7+k,2.2)*TAU,m=grand(gl.index*7+k,5.5)*vnoise(x*0.01,y*0.01,phase);
+      x+=Math.cos(a)*m*spread;y+=Math.sin(a)*m*spread;}return [x,y];});
+  const link=S.linkDist,l2=link*link;ctx.strokeStyle=fill;ctx.lineWidth=1;ctx.globalAlpha=0.5;ctx.beginPath();
+  let lines=0;
+  for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const dx=P[i][0]-P[j][0],dy=P[i][1]-P[j][1];
+    if(dx*dx+dy*dy<l2){ctx.moveTo(P[i][0],P[i][1]);ctx.lineTo(P[j][0],P[j][1]);
+      if(lines++<6000)svg.push(`<line x1="${P[i][0].toFixed(1)}" y1="${P[i][1].toFixed(1)}" x2="${P[j][0].toFixed(1)}" y2="${P[j][1].toFixed(1)}" stroke="${fill}" stroke-width="1" opacity="0.5"/>`);}}
+  ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle=fill;
+  for(const p of P){ctx.beginPath();ctx.arc(p[0],p[1],1.8,0,TAU);ctx.fill();
+    if(svg.length<8000)svg.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.8" fill="${fill}"/>`);}
+}
+
+function drawOutline(gl,T,C,fill,svg){
+  const rings=Math.max(1,Math.round(S.ringCount)),gap=S.ringGap;
+  const gcx=gl.x+gl.adv/2,gcy=gl.baseY-S.size*0.3;
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';
+  for(let i=0;i<rings;i++){const sc=1+i*gap/100;
+    const d=buildDp(gl,(x,y)=>{const rx=gcx+(x-gcx)*sc,ry=gcy+(y-gcy)*sc;return T(wsx(gl,rx),ry,0);});
+    ctx.stroke(new Path2D(d));svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}
+}
+
+/* coverage-based halftone: dot size grows with local ink density (Ben-Day / newsprint) */
+function drawHalftone(glyphs,C,W,H,fill,svg){
+  const step=Math.max(4,Math.round(S.dotSize));
+  const m=buildField(glyphs,C,W,H,340,step*0.28*(340/W)*8);
+  ctx.fillStyle=fill;
+  for(let y=step/2;y<H;y+=step)for(let x=step/2;x<W;x+=step){
+    const v=maskAt(m,x,y)/255;if(v<0.06)continue;
+    const rad=step*0.56*Math.sqrt(v);
+    ctx.beginPath();ctx.arc(x,y,rad,0,TAU);ctx.fill();
+    if(svg.length<9000)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${fill}"/>`);}
+}
+/* luminous halftone — glowing dots + chromatic fringe on black (reference #1) */
+function drawGlowHalftone(glyphs,C,W,H,fill){
+  const step=Math.max(4,Math.round(S.dotSize));
+  const m=buildField(glyphs,C,W,H,340,Math.max(1,S.bloom*0.5));
+  // background already painted by render(); glow adds light on top (best on a dark bg)
+  ctx.save();ctx.globalCompositeOperation='lighter';const o=S.chromatic;
+  for(let y=step/2;y<H;y+=step)for(let x=step/2;x<W;x+=step){
+    const v=maskAt(m,x,y)/255;if(v<0.04)continue;
+    const rad=step*0.6*Math.sqrt(v)*S.gain;
+    const g=ctx.createRadialGradient(x,y,0,x,y,rad*2.2);
+    g.addColorStop(0,`rgba(255,255,255,${Math.min(1,v*1.3)})`);
+    g.addColorStop(0.4,hexA(fill,0.5*v));g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,rad*2.2,0,TAU);ctx.fill();
+    if(o){ctx.fillStyle=`rgba(255,40,40,${0.28*v})`;ctx.beginPath();ctx.arc(x-o,y,rad,0,TAU);ctx.fill();
+      ctx.fillStyle=`rgba(40,90,255,${0.28*v})`;ctx.beginPath();ctx.arc(x+o,y,rad,0,TAU);ctx.fill();}}
+  ctx.restore();if(S.grain)addGrain(W,H,S.grain);
+}
+/* voronoi cells — letterforms seed a living cellular membrane (reference #3) */
+function drawCells(glyphs,C,W,H,fill,bg){
+  const fw=Math.min(320,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const gapF=Math.max(5,S.cellSize*scale),jit=gapF*0.4,sites=[];let si=0;
+  for(let y=gapF*0.5;y<fh;y+=gapF)for(let x=gapF*0.5;x<fw;x+=gapF){
+    let sx=x+(grand(si,1.1)*2-1)*jit,sy=y+(grand(si,2.2)*2-1)*jit;si++;
+    const a=vnoise(sx*0.05,sy*0.05,phase)*TAU;sx+=Math.cos(a)*S.fieldDrift*scale*0.4;sy+=Math.sin(a)*S.fieldDrift*scale*0.4;
+    sites.push(sx,sy);}
+  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
+    for(let k=0;k<pts.length;k+=6)sites.push(pts[k][0]*scale,pts[k][1]*scale);}
+  const ns=sites.length/2,buf=new Int32Array(fw*fh);
+  const m=buildField(glyphs,C,W,H,fw,0),inSite=new Uint8Array(ns);
+  for(let i=0;i<ns;i++){const sx=clamp(sites[i*2]|0,0,fw-1),sy=clamp(sites[i*2+1]|0,0,fh-1);inSite[i]=m.data[(sy*fw+sx)*4]>60?1:0;}
+  for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){let best=1e18,bi=0;
+    for(let i=0;i<ns;i++){const dx=x-sites[i*2],dy=y-sites[i*2+1],d=dx*dx+dy*dy;if(d<best){best=d;bi=i;}}
+    buf[y*fw+x]=bi;}
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data,W3=hexRGB(fill),B3=hexRGB(bg);
+  const I3=[Math.round(lerp(B3[0],W3[0],0.34)),Math.round(lerp(B3[1],W3[1],0.34)),Math.round(lerp(B3[2],W3[2],0.34))];
+  for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){const i=y*fw+x,p=i*4;
+    const edge=(x+1<fw&&buf[i]!==buf[i+1])||(y+1<fh&&buf[i]!==buf[i+fw]);
+    const c=edge?W3:(inSite[buf[i]]?I3:B3);D[p]=c[0];D[p+1]=c[1];D[p+2]=c[2];D[p+3]=255;}
+  oc.putImageData(img,0,0);
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H); // fine walls: no glow pass
+}
+/* color scales — overlapping sequin tiles; letters emerge as the vivid region (reference #5) */
+/* color scales — overlapping tiles on a spectrum gradient; the word glows brighter */
+function drawScales(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,360,0);
+  const size=Math.max(12,S.cellSize),rh=size*0.7,rad=size*0.62,flow=S.pSpread;
+  for(let row=0,y=0;y<H+rh;row++,y+=rh){const off=(row%2)*size/2;
+    for(let x=-size;x<W+size;x+=size){let cx=x+off,cy=y;
+      if(flow){const a=vnoise(cx*0.004,cy*0.004,phase)*TAU;cx+=Math.cos(a)*flow;cy+=Math.sin(a)*flow;}
+      const inside=maskAt(m,cx,cy)>60;
+      const hue=(((cx/W)*300+(cy/H)*50+row*4)%360+360)%360;
+      const col=`hsl(${hue|0},${inside?78:30}%,${inside?58:24}%)`;
+      ctx.fillStyle=col;ctx.beginPath();ctx.arc(cx,cy,rad,0,TAU);ctx.fill();
+      if(svg.length<8000)svg.push(`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${rad.toFixed(1)}" fill="${col}"/>`);}}
+}
+/* databend slice — shred the type into shifted/stretched vertical columns (reference #4) */
+function drawSlice(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,440,0);
+  const cw=Math.max(2,S.sliceW),rh=cw;
+  for(let c=0,x=0;x<W;c++,x+=cw){
+    const shift=(vnoise(c*0.35,phase*1.5,0)*2-1)*S.sliceShift;
+    const sc=0.55+vnoise(c*0.35+50,phase*1.5,0)*1.1;
+    for(let y=0;y<H;y+=rh){const sy=(y-H/2-shift)/sc+H/2;
+      if(maskAt(m,x+cw/2,sy)>60){ctx.fillStyle=fill;ctx.fillRect(x,y,cw+0.6,rh+0.6);
+        if(svg.length<9000)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(cw+0.6).toFixed(1)}" height="${(rh+0.6).toFixed(1)}" fill="${fill}"/>`);}}}
+}
+
+/* ---- thermal field: letterforms seed a blurred, breathing, glowing organism ----
+   Intensity is biased LOW (so black/indigo dominates and only dense stroke areas
+   go hot) and points scatter so the word disperses into a soft constellation. */
+function drawThermalField(glyphs,C,W,H){
+  const fw=Math.min(640,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const A=document.createElement('canvas');A.width=fw;A.height=fh;const a=A.getContext('2d');
+  a.fillStyle='#000';a.fillRect(0,0,fw,fh);a.globalCompositeOperation='lighter';
+  const br=S.breath,t=phase,spread=S.pSpread;
+  // legible base: the word itself as a soft warm mass so it reads through the field
+  a.save();a.scale(scale,scale);a.fillStyle='rgba(52,52,52,1)';
+  for(const gl of glyphs){const T=makeT(gl,C);a.fill(new Path2D(buildD(gl,T,0)));}
+  a.restore();
+  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
+    for(let k=0;k<pts.length;k+=2){
+      let x=pts[k][0],y=pts[k][1];
+      // scatter: word -> constellation (biased so most stay near the stroke)
+      if(spread){const sa=grand(gl.index*13+k,4.7)*TAU,sm=Math.pow(grand(gl.index*13+k,2.9),1.6)*spread;
+        x+=Math.cos(sa)*sm;y+=Math.sin(sa)*sm;}
+      // living drift
+      const ang=vnoise(x*0.005,y*0.005,t)*TAU*2;
+      x=(x+Math.cos(ang)*S.fieldDrift)*scale;y=(y+Math.sin(ang)*S.fieldDrift)*scale;
+      const seed=grand(gl.index*61+k,3.3),pulse=0.5+0.5*Math.sin(t*1.4+seed*TAU);
+      const hotCore=grand(gl.index*31+k,6.6)>0.87;                   // rare bright emitters
+      let inten=hotCore?(0.72+0.28*grand(k,4.2)):Math.pow(grand(k,1.1),2.0); // mostly dim
+      inten*=(1-br+br*pulse);
+      const rad=(7+Math.pow(grand(k,2.2),2)*72)*scale*(0.8+0.4*pulse*br)*(hotCore?1.25:1);
+      const c=Math.round(24+185*inten);
+      const g=a.createRadialGradient(x,y,0,x,y,rad);
+      g.addColorStop(0,`rgba(${c},${c},${c},1)`);g.addColorStop(1,'rgba(0,0,0,0)');
+      a.fillStyle=g;a.beginPath();a.arc(x,y,rad,0,TAU);a.fill();}}
+  const B=document.createElement('canvas');B.width=fw;B.height=fh;const b=B.getContext('2d');
+  b.filter=`blur(${Math.max(1.2,S.bloom*scale*0.7)}px)`;b.drawImage(A,0,0);b.filter='none';
+  const img=b.getImageData(0,0,fw,fh),px=img.data,bias=S.heatShift/100;
+  for(let i=0;i<px.length;i+=4){const col=turbo(clamp(px[i]/255*S.gain+bias,0,1));
+    px[i]=col[0];px[i+1]=col[1];px[i+2]=col[2];px[i+3]=255;}
+  b.putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);ctx.drawImage(B,0,0,W,H);
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.32;ctx.filter=`blur(${S.bloom*0.8}px)`;
+  ctx.drawImage(B,0,0,W,H);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;
+  const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.16,W/2,H/2,Math.max(W,H)*0.72);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,0.62)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+  if(S.grain)addGrain(W,H,S.grain);
+}
+function addGrain(W,H,amt){
+  const gw=300,gh=Math.max(1,Math.round(gw*H/W));
+  const g=document.createElement('canvas');g.width=gw;g.height=gh;const gx=g.getContext('2d');
+  const id=gx.createImageData(gw,gh),d=id.data;
+  for(let i=0;i<d.length;i+=4){const v=Math.random()*255;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;}
+  gx.putImageData(id,0,0);
+  ctx.save();ctx.globalCompositeOperation='overlay';ctx.globalAlpha=amt/100*0.45;ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(g,0,0,W,H);ctx.restore();ctx.globalAlpha=1;
+}
+/* neon glow — glowing tube outline of the letterforms */
+function drawNeon(glyphs,C,W,H,fill){
+  const bw=Math.max(1,S.strokeW),bl=Math.max(1,S.bloom),g=S.gain,o=S.chromatic;
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.lineJoin='round';ctx.lineCap='round';
+  for(const gl of glyphs){const T=makeT(gl,C),p=new Path2D(buildD(gl,T,0));
+    ctx.filter=`blur(${bl}px)`;ctx.strokeStyle=hexA(fill,0.5*g);ctx.lineWidth=bw*5;ctx.stroke(p);
+    ctx.filter=`blur(${bl*0.5}px)`;ctx.strokeStyle=hexA(fill,0.7*g);ctx.lineWidth=bw*2.4;ctx.stroke(p);
+    ctx.filter='none';
+    if(o){ctx.strokeStyle='rgba(255,60,60,0.5)';ctx.lineWidth=bw*1.1;ctx.save();ctx.translate(-o,0);ctx.stroke(p);ctx.restore();
+      ctx.strokeStyle='rgba(60,120,255,0.5)';ctx.save();ctx.translate(o,0);ctx.stroke(p);ctx.restore();}
+    ctx.strokeStyle=fill;ctx.lineWidth=bw*1.3;ctx.stroke(p);
+    ctx.strokeStyle='rgba(255,255,255,0.92)';ctx.lineWidth=bw*0.55;ctx.stroke(p);}
+  ctx.restore();ctx.filter='none';
+}
+/* topographic lines — contour rings rippling out from the letterforms */
+function drawTopo(glyphs,C,W,H,fill,bg){
+  const fw=Math.min(360,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,fw,Math.max(3,S.bloom));
+  const levels=Math.max(3,Math.round(S.ringCount)),lv=v=>Math.floor(v/255*levels);
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data,W3=hexRGB(fill),B3=hexRGB(bg);
+  for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){const i=y*fw+x,p=i*4,l=lv(m.data[i*4]);
+    const edge=(x+1<fw&&lv(m.data[(i+1)*4])!==l)||(y+1<fh&&lv(m.data[(i+fw)*4])!==l);
+    const c=edge?W3:B3;D[p]=c[0];D[p+1]=c[1];D[p+2]=c[2];D[p+3]=255;}
+  oc.putImageData(img,0,0);
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H);
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.4;ctx.filter='blur(2px)';ctx.drawImage(o,0,0,W,H);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;
+}
+/* flow streamlines — lines combed through a flow field, densest over the word */
+function drawStreams(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,300,4),step=lerp(24,7,S.pDensity/100);
+  ctx.lineCap='round';
+  for(let y=step*0.5;y<H;y+=step)for(let x=step*0.5;x<W;x+=step){
+    const cov=maskAt(m,x,y)/255;
+    if(cov<0.12)continue;                                    // only over the word -> legible
+    let px=x+(grand(x,1.1)*2-1)*step*0.5,py=y+(grand(y,2.2)*2-1)*step*0.5;
+    const pts=[[px,py]];
+    for(let s=0;s<6;s++){const a=vnoise(px*0.004,py*0.004,phase)*TAU*2;px+=Math.cos(a)*step*0.6;py+=Math.sin(a)*step*0.6;pts.push([px,py]);}
+    const alpha=(0.4+0.6*cov).toFixed(2);ctx.strokeStyle=hexA(fill,+alpha);ctx.lineWidth=S.strokeW;
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();
+    if(svg.length<7000)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-opacity="${alpha}"/>`);}
+}
+/* ---------- fine-art engine set (restrained, monochrome-leaning) ---------- */
+/* pixel sort — tone bleeds downward from each ink column */
+function drawPixelSort(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,440,0),cw=Math.max(2,S.sliceW);
+  const rect=(x,y,w,h,a)=>{ctx.fillStyle=hexA(fill,a);ctx.fillRect(x,y,w,h);
+    if(a>0.06&&svg.length<9000)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}" fill-opacity="${a.toFixed(2)}"/>`);};
+  for(let x=0;x<W;x+=cw){let inRun=false,top=0;
+    for(let y=0;y<=H;y+=cw){const ink=y<H&&maskAt(m,x+cw/2,y)>60;
+      if(ink&&!inRun){inRun=true;top=y;}
+      else if(!ink&&inRun){inRun=false;const len=y-top,smear=(0.4+vnoise(x*0.05,top*0.02,phase))*S.sliceShift;
+        for(let yy=top;yy<Math.min(H,top+len+smear);yy+=cw){const a=yy<top+len?1:Math.max(0,1-(yy-top-len)/(smear||1));rect(x,yy,cw+0.6,cw+0.6,a);}}}}
+}
+/* line screen — engraved horizontal lines, weight follows ink density */
+function drawLineScreen(glyphs,C,W,H,fill,svg){
+  const gap=Math.max(3,S.dotSize),m=buildField(glyphs,C,W,H,420,gap*0.25);
+  for(let y=gap/2;y<H;y+=gap)for(let x=0;x<W;x+=gap*0.8){
+    const v=Math.min(1,maskAt(m,x+gap*0.4,y)/255*S.gain),th=v*gap*0.92;if(th<0.4)continue;
+    ctx.fillStyle=fill;ctx.fillRect(x,y-th/2,gap*0.8+0.6,th);
+    if(svg.length<9000)svg.push(`<rect x="${x.toFixed(1)}" y="${(y-th/2).toFixed(1)}" width="${(gap*0.8+0.6).toFixed(1)}" height="${th.toFixed(1)}" fill="${fill}"/>`);}
+}
+/* duotone risograph — two inks with slight misregistration + grain (light bg) */
+function drawDuotone(glyphs,C,W,H,fill){
+  const o=S.chromatic,c=hexRGB(fill),inkB=`rgb(${c[2]},${c[0]},${c[1]})`;
+  ctx.save();ctx.globalCompositeOperation='multiply';
+  for(const gl of glyphs){const T=makeT(gl,C),p=new Path2D(buildD(gl,T,0));
+    ctx.fillStyle=fill;ctx.save();ctx.translate(-o,0);ctx.fill(p);ctx.restore();
+    ctx.fillStyle=inkB;ctx.save();ctx.translate(o,o*0.5);ctx.fill(p);ctx.restore();}
+  ctx.restore();if(S.grain)addGrain(W,H,S.grain);
+}
+/* low-poly facets */
+function drawLowPoly(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,360,S.cellSize*0.15),s=Math.max(16,S.cellSize);
+  const B3=hexRGB(bg),F3=hexRGB(fill),pt=(r,c)=>[c*s-(r%2)*s/2+(grand(r*97+c,1.1)*2-1)*s*0.3,r*s+(grand(r*97+c,2.2)*2-1)*s*0.3];
+  for(let r=-1;r<H/s+1;r++)for(let c=-1;c<W/s+2;c++){const a=pt(r,c),b=pt(r,c+1),d=pt(r+1,c),e=pt(r+1,c+1);
+    for(const tri of [[a,b,d],[b,e,d]]){const cx=(tri[0][0]+tri[1][0]+tri[2][0])/3,cy=(tri[0][1]+tri[1][1]+tri[2][1])/3;
+      const v=maskAt(m,cx,cy)/255,sh=0.82+0.32*grand(r*31+c,3.3);
+      const col=`rgb(${lerp(B3[0],F3[0],v)*sh|0},${lerp(B3[1],F3[1],v)*sh|0},${lerp(B3[2],F3[2],v)*sh|0})`;
+      ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(tri[0][0],tri[0][1]);ctx.lineTo(tri[1][0],tri[1][1]);ctx.lineTo(tri[2][0],tri[2][1]);ctx.closePath();ctx.fill();
+      if(svg.length<9000)svg.push(`<polygon points="${tri.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${col}"/>`);}}
+}
+/* isometric relief — blocks built from the letterforms */
+function drawIso(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,300,0),s=Math.max(14,S.cellSize),w=s*0.5,hh=w*0.5,ch=s*Math.max(0.2,S.gain);
+  const top=fill,left=darken(fill,0.55),right=darken(fill,0.78),cells=[];
+  for(let gy=-2;gy<H/hh+4;gy++)for(let gx=-2;gx<W/w+4;gx++){const sx=W*0.5+(gx-gy)*w,sy=H*0.28+(gx+gy)*hh;
+    if(sx<-s||sx>W+s||sy<-s||sy>H+s)continue;if(maskAt(m,sx,sy)>60)cells.push([gx+gy,sx,sy]);}
+  cells.sort((a,b)=>a[0]-b[0]);
+  const poly=(pts,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.closePath();ctx.fill();
+    if(svg.length<9000)svg.push(`<polygon points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${col}"/>`);};
+  for(const [,sx,sy] of cells){const A=[sx,sy-ch],B=[sx+w,sy+hh-ch],D=[sx,sy+2*hh-ch],E=[sx-w,sy+hh-ch],B2=[sx+w,sy+hh],D2=[sx,sy+2*hh],E2=[sx-w,sy+hh];
+    poly([E,D,D2,E2],left);poly([B,D,D2,B2],right);poly([A,B,D,E],top);}
+}
+/* weave — over-under strips */
+function drawWeave(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,320,0),s=Math.max(8,S.cellSize),g=Math.max(0,S.strokeW);ctx.fillStyle=fill;
+  const rect=(x,y,w,h)=>{ctx.fillRect(x,y,w,h);if(svg.length<9000)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"/>`);};
+  for(let gy=0;gy*s<H;gy++)for(let gx=0;gx*s<W;gx++){const x=gx*s,y=gy*s;if(maskAt(m,x+s/2,y+s/2)<60)continue;
+    if((gx+gy)%2===0)rect(x,y+s*0.22,s,s*0.56-g);else rect(x+s*0.22,y,s*0.56-g,s);}
+}
+/* metaballs — merging gooey blobs (thresholded field) */
+function drawMetaballs(glyphs,C,W,H,fill,bg){
+  const fw=Math.min(320,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const A=document.createElement('canvas');A.width=fw;A.height=fh;const a=A.getContext('2d');
+  a.fillStyle='#000';a.fillRect(0,0,fw,fh);a.globalCompositeOperation='lighter';
+  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
+    for(let k=0;k<pts.length;k+=2){const x=pts[k][0]*scale,y=pts[k][1]*scale,rad=(16+S.bloom)*scale;
+      const g=a.createRadialGradient(x,y,0,x,y,rad);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(1,'rgba(0,0,0,0)');
+      a.fillStyle=g;a.beginPath();a.arc(x,y,rad,0,TAU);a.fill();}}
+  const data=a.getImageData(0,0,fw,fh).data,thr=255*clamp(1.5-S.gain,0.15,1.2);
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data,F=hexRGB(fill),Bk=hexRGB(bg);
+  for(let i=0;i<data.length;i+=4){const t=clamp((data[i]-thr)/12+0.5,0,1);
+    D[i]=lerp(Bk[0],F[0],t);D[i+1]=lerp(Bk[1],F[1],t);D[i+2]=lerp(Bk[2],F[2],t);D[i+3]=255;}
+  oc.putImageData(img,0,0);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H);
+}
+/* stipple — pointillist, density by ink */
+function drawStipple(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,360,S.dotSize*0.2),s=Math.max(3,S.dotSize);ctx.fillStyle=fill;
+  for(let y=0;y<H;y+=s)for(let x=0;x<W;x+=s){const v=maskAt(m,x,y)/255;if(v<0.03||grand(x*7+y,3.1)>v*1.2)continue;
+    const px=x+(grand(x+y,1.1)*2-1)*s*0.5,py=y+(grand(x-y,2.2)*2-1)*s*0.5,r=Math.max(0.5,S.strokeW*(0.4+v));
+    ctx.beginPath();ctx.arc(px,py,r,0,TAU);ctx.fill();
+    if(svg.length<9000)svg.push(`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}"/>`);}
+}
+/* moiré interference — two line fields at a slight angle; word emerges */
+function drawMoire(glyphs,C,W,H,fill,bg){
+  const sp=Math.max(3,S.dotSize),diff=S.chromatic*0.012;
+  const lines=ang=>{ctx.save();ctx.translate(W/2,H/2);ctx.rotate(ang);ctx.strokeStyle=fill;ctx.lineWidth=sp*0.42;
+    const R=Math.hypot(W,H);ctx.beginPath();for(let d=-R;d<R;d+=sp){ctx.moveTo(d,-R);ctx.lineTo(d,R);}ctx.stroke();ctx.restore();};
+  lines(0);
+  ctx.save();const clip=new Path2D();for(const gl of glyphs){const T=makeT(gl,C);clip.addPath(new Path2D(buildD(gl,T,0)));}
+  ctx.clip(clip);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);lines(diff);ctx.restore();
+}
+/* glyph mosaic — characters mapped to ink density */
+const ASCII_RAMP=' .:-=+*#%@';
+function drawAscii(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,320,S.dotSize*0.15),s=Math.max(8,S.dotSize);
+  ctx.font=`${s}px "SF Mono",ui-monospace,monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=fill;
+  for(let y=s/2;y<H;y+=s)for(let x=s/2;x<W;x+=s){const v=maskAt(m,x,y)/255;if(v<0.04)continue;
+    const ch=ASCII_RAMP[Math.min(ASCII_RAMP.length-1,Math.floor(v*ASCII_RAMP.length))];if(ch===' ')continue;
+    ctx.fillText(ch,x,y);
+    if(svg.length<9000)svg.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="monospace" font-size="${s}" fill="${fill}" text-anchor="middle" dominant-baseline="middle">${ch}</text>`);}
+}
+/* type-in-type — each letter filled with your text, set small */
+function drawTypeInType(glyphs,C,W,H,fill){
+  const s=Math.max(7,S.dotSize),raw=(($('#text').value.replace(/\s+/g,' ').trim())||'TYPE').toUpperCase()+' ';
+  ctx.save();const clip=new Path2D();for(const gl of glyphs){const T=makeT(gl,C);clip.addPath(new Path2D(buildD(gl,T,0)));}
+  ctx.clip(clip);ctx.fillStyle=fill;ctx.textBaseline='top';ctx.font=`bold ${s}px Arimo,Arial,sans-serif`;
+  let ci=0;const cw=ctx.measureText('M').width||s*0.6;
+  for(let y=0;y<H;y+=s*1.08){let line='';while(line.length*cw<W+cw){line+=raw[ci%raw.length];ci++;}ctx.fillText(line,0,y);}
+  ctx.restore();
+}
+function finishSVG(parts,W,H,transparent,bgc,style,n){
+  const bg=transparent?'':`<rect width="${W}" height="${H}" fill="${bgc}"/>`;
+  lastSVG=`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+${bg}
+${parts.join('\n')}
+</svg>`;window.lastSVG=lastSVG;
+  const note=(style==='halftone'||style==='particles')?' · SVG=dots':style==='network'?' · SVG=dots+lines':style==='chromatic'?' · SVG blend layers':'';
+  $('#status').innerHTML=`${n} glyphs · ${style} · ${W}×${H}<span class="ok">${note}</span>`;
+}
+
+/* fonts */
+const FONTS={arimo:'ofl/arimo/Arimo%5Bwght%5D.ttf',inter:'ofl/inter/Inter%5Bopsz,wght%5D.ttf',
+  archivoblack:'ofl/archivoblack/ArchivoBlack-Regular.ttf',spacegrotesk:'ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf',
+  bodoni:'ofl/bodonimoda/BodoniModa%5Bopsz,wght%5D.ttf',dmserif:'ofl/dmserifdisplay/DMSerifDisplay-Regular.ttf'};
+async function loadFont(key){$('#status').textContent='loading font…';
+  try{const buf=await (await fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/'+FONTS[key])).arrayBuffer();
+    font=opentype.parse(buf);render();}
+  catch(e){$('#status').innerHTML='<span class="warn">font load failed — upload a .ttf/.otf</span>';console.error(e);}}
+$('#fontPick').addEventListener('change',e=>loadFont(e.target.value));
+$('#fontFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{font=opentype.parse(rd.result);render();$('#status').textContent='custom font loaded';}
+  catch(err){$('#status').innerHTML='<span class="warn">could not parse font</span>';}};rd.readAsArrayBuffer(f);});
+
+/* presets */
+function setControl(k,v){S[k]=v;const c=$('#c-'+k);
+  if(c){c.value=v;$('#v-'+k).textContent=v;return;}
+  if(k==='renderStyle'){$('#renderStyle').value=v;return;}
+  if(k==='bgColor'||k==='fillColor'){$('#'+k).value=v;return;}}
+/* each engine auto-configures to a good starting look when selected (replaces presets) */
+const ENGINE_DEFAULTS={
+  solid:{fillColor:'#f2f0e9',bgColor:'#0a0a12'},
+  heatmap:{bloom:20,gain:1.15,breath:0.5,fieldDrift:18,grain:14,heatShift:0,pDensity:66,pSpread:38,bgColor:'#04040a'},
+  chromatic:{chromatic:16,bgColor:'#0a0a12',fillColor:'#f2f0e9'},
+  particles:{pDensity:72,pSpread:70,fillColor:'#f2f0e9',bgColor:'#05060f'},
+  halftone:{dotSize:12,fillColor:'#111111',bgColor:'#f2efe6'},
+  outline:{ringCount:9,ringGap:7,strokeW:1.4,fillColor:'#f2f0e9',bgColor:'#0a0a12'},
+  network:{pDensity:64,linkDist:48,pSpread:26,fillColor:'#5ecbff',bgColor:'#05060f'},
+  glow:{dotSize:13,bloom:24,gain:1.3,grain:12,chromatic:7,fillColor:'#ff5ad0',bgColor:'#05060f'},
+  cells:{cellSize:78,fieldDrift:14,bgColor:'#0a1570',fillColor:'#ff45c2'},
+  scales:{cellSize:34,pSpread:34,bgColor:'#141414'},
+  slice:{sliceW:12,sliceShift:150,bgColor:'#f2efe6',fillColor:'#0a0a0a'},
+  neon:{strokeW:5,bloom:22,gain:1.2,chromatic:0,fillColor:'#00e6ff',bgColor:'#05050c'},
+  topo:{bloom:26,ringCount:11,fillColor:'#39e6a0',bgColor:'#0a0e1a'},
+  streams:{pDensity:60,strokeW:1.2,fillColor:'#f2f0e9',bgColor:'#0a0a12'},
+  pixelsort:{sliceW:5,sliceShift:200,fillColor:'#eceae1',bgColor:'#0c0c10'},
+  linescreen:{dotSize:8,gain:1.2,fillColor:'#141414',bgColor:'#efe9dd'},
+  duotone:{chromatic:7,grain:16,fillColor:'#233b6e',bgColor:'#efe7d8'},
+  lowpoly:{cellSize:74,fillColor:'#e8e5da',bgColor:'#14151b'},
+  iso:{cellSize:40,gain:1,fillColor:'#dfe6ea',bgColor:'#12141c'},
+  weave:{cellSize:36,strokeW:2,fillColor:'#1a1a1a',bgColor:'#efe9dd'},
+  metaballs:{pDensity:55,gain:1.05,bloom:20,fillColor:'#eceae1',bgColor:'#0b0b10'},
+  stipple:{dotSize:7,strokeW:1,fillColor:'#141414',bgColor:'#efe9dd'},
+  moire:{dotSize:6,chromatic:8,fillColor:'#141414',bgColor:'#efe9dd'},
+  ascii:{dotSize:18,fillColor:'#e8e5da',bgColor:'#0d0d12'},
+  typeintype:{dotSize:15,fillColor:'#141414',bgColor:'#efe9dd'},
+};
+function applyEngine(style){setControl('renderStyle',style);const d=ENGINE_DEFAULTS[style]||{};
+  for(const k in d)setControl(k,d[k]);updateEngineUI();render();}
+$('#renderStyle').addEventListener('change',e=>applyEngine(e.target.value));
+
+$('#randBtn').addEventListener('click',()=>{const rnd=(a,b)=>a+Math.random()*(b-a);
+  setControl('flow',rnd(0,80));setControl('flowScale',rnd(6,20));setControl('melt',rnd(0,120));
+  setControl('distort',rnd(0,50));setControl('waveAmp',rnd(0,50));setControl('pinch',rnd(-50,50));
+  setControl('twist',rnd(-120,120));setControl('glitchSlice',rnd(0,30));setControl('explode',rnd(0,140));
+  setControl('jitter',rnd(0,40));setControl('rotate',rnd(0,45));setControl('slant',rnd(-15,15));
+  setControl('echo',Math.round(rnd(0,12)));setControl('echoRot',rnd(-8,8));setControl('rotX',rnd(-20,20));setControl('rotY',rnd(-20,20));render();});
+
+function loop(){if(!playing)return;
+  if(!drag&&(Math.abs(velRX)>0.02||Math.abs(velRY)>0.02)){ // spring/inertia after a flick
+    setC('rotY',S.rotY+velRY);setC('rotX',S.rotX+velRX);velRX*=0.93;velRY*=0.93;}
+  phase+=0.02;render();requestAnimationFrame(loop);}
+$('#playBtn').addEventListener('click',e=>{playing=!playing;
+  e.target.textContent=playing?'Freeze':'Animate';e.target.classList.toggle('primary',playing);if(playing)loop();});
+
+function downloadBlob(name,blob){const u=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);}
+$('#svgBtn').addEventListener('click',()=>{render();
+  if(rasterMode){ // thermal field is raster — embed hi-res PNG so the .svg still opens
+    const png=canvas.toDataURL('image/png'),W=curW,H=curH;
+    const svg=`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<image width="${W}" height="${H}" xlink:href="${png}"/>
+</svg>`;
+    downloadBlob('kinetic-art.svg',new Blob([svg],{type:'image/svg+xml'}));return;}
+  downloadBlob('kinetic-type.svg',new Blob([lastSVG],{type:'image/svg+xml'}));});
+$('#pngBtn').addEventListener('click',()=>{render();canvas.toBlob(b=>downloadBlob('kinetic-type.png',b));});
+
+let recorder=null,recording=false,recTimer=null,recStart=0;
+$('#recBtn').addEventListener('click',()=>{
+  if(recording){recorder.stop();return;}
+  const stream=canvas.captureStream(30);
+  const types=['video/mp4;codecs=avc1.42E01E','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'video/webm';const chunks=[];
+  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12e6});
+  recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  recorder.onstop=()=>{recording=false;clearInterval(recTimer);$('#recBtn').textContent='Record';$('#recBtn').classList.add('rec');
+    downloadBlob('kinetic-reel.'+(mime.includes('mp4')?'mp4':'webm'),new Blob(chunks,{type:mime}));};
+  recorder.start();recording=true;recStart=performance.now();$('#recBtn').classList.remove('rec');$('#recBtn').classList.add('primary');
+  if(!playing){playing=true;$('#playBtn').textContent='Freeze';$('#playBtn').classList.add('primary');loop();}
+  recTimer=setInterval(()=>{$('#recBtn').textContent='Stop '+((performance.now()-recStart)/1000).toFixed(1)+'s';},100);});
+
+$('#format').addEventListener('change',e=>{if(e.target.value==='custom')return;
+  const [w,h]=e.target.value.split('x');$('#docW').value=w;$('#docH').value=h;render();});
+['text','docW','docH'].forEach(id=>$('#'+id).addEventListener('input',render));
+['fillColor','bgColor','fillOn','strokeOn','bgTransparent'].forEach(id=>$('#'+id).addEventListener('input',render));
+window.addEventListener('resize',()=>{if(font)render();});
+/* tabs + collapsible sub-groups */
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x===b));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.dataset.pane===b.dataset.tab));}));
+document.querySelectorAll('.grp h3').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('closed')));
+/* contextual engine settings — only show sliders the active engine uses */
+const ENGINE_CTRLS={solid:[],
+  heatmap:['bloom','gain','breath','fieldDrift','grain','heatShift','pDensity','pSpread'],
+  chromatic:['chromatic'],particles:['pDensity','pSpread'],halftone:['dotSize'],
+  outline:['ringCount','ringGap'],network:['pDensity','pSpread','linkDist'],
+  glow:['dotSize','bloom','gain','grain','chromatic'],cells:['cellSize','fieldDrift'],
+  scales:['cellSize','pSpread'],slice:['sliceW','sliceShift'],
+  neon:['strokeW','bloom','gain','chromatic'],topo:['bloom','ringCount'],streams:['pDensity','strokeW'],
+  pixelsort:['sliceW','sliceShift'],linescreen:['dotSize','gain'],duotone:['chromatic','grain'],
+  lowpoly:['cellSize'],iso:['cellSize','gain'],weave:['cellSize','strokeW'],
+  metaballs:['pDensity','gain','bloom'],stipple:['dotSize','strokeW'],moire:['dotSize','chromatic'],
+  ascii:['dotSize'],typeintype:['dotSize']};
+const RENDER_IDS=CONTROLS.render.map(c=>c[0]);
+const ENGINE_NOTE={solid:'Solid — no engine parameters. Shape it with Warp & Motion.',
+  chromatic:'RGB channels split & sliced into bands — a digital signal glitch. Best on dark backgrounds.',
+  scales:'Overlapping scale tiles fill the page; your word emerges brighter (vivid) against a muted field.',
+  neon:'Glowing tube outline of the letters — stroke width + glow.',
+  topo:'Contour rings ripple outward from the letterforms, like a topographic map. More glow = wider spacing; ring count = number of lines.',
+  streams:'Flow-field lines combed across the page, densest and brightest over the word.',
+  pixelsort:'Tone bleeds downward from each ink column — a restrained pixel-sort.',
+  linescreen:'Engraved horizontal line-screen; line weight follows ink density.',
+  duotone:'Two-ink risograph with slight misregistration and grain. Use a light background.',
+  lowpoly:'Letterforms faceted into low-poly triangles.',
+  iso:'Isometric block relief built from the letterforms.',
+  weave:'The type woven from over-under strips.',
+  metaballs:'Merging gooey blobs — a hard-edged cousin of the thermal field.',
+  stipple:'Pointillist stipple; dot density follows the form.',
+  moire:'Two line fields at a slight angle — the word emerges through interference.',
+  ascii:'Character mosaic mapped to ink density.',
+  typeintype:'Each letter filled with your text, set small.'};
+function updateEngineUI(){const on=new Set(ENGINE_CTRLS[S.renderStyle]||[]);
+  for(const id of RENDER_IDS){const el=document.getElementById('ctrl-'+id);if(el)el.classList.toggle('hidden',!on.has(id));}
+  $('#renderNote').textContent=ENGINE_NOTE[S.renderStyle]||'';}
+
+/* ---- direct manipulation: drag orbit / shift-move / alt-roll / scroll-dolly ---- */
+const RANGES={};for(const g in CONTROLS)for(const c of CONTROLS[g])RANGES[c[0]]=[c[2],c[3]];
+function setC(id,v){const r=RANGES[id];if(r)v=clamp(v,r[0],r[1]);setControl(id,v);}
+let drag=null,lastX=0,lastY=0,velRX=0,velRY=0;
+canvas.addEventListener('pointerdown',e=>{drag=e.shiftKey?'move':e.altKey?'roll':'orbit';
+  velRX=velRY=0;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId);e.preventDefault();});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;
+  const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
+  if(drag==='orbit'){setC('rotY',S.rotY+dx*0.4);setC('rotX',S.rotX-dy*0.4);velRY=dx*0.4;velRX=-dy*0.4;}
+  else if(drag==='move'){setC('offsetX',S.offsetX+dx/dispScale);setC('offsetY',S.offsetY+dy/dispScale);}
+  else if(drag==='roll'){setC('rotZ',S.rotZ+dx*0.5);}
+  render();});
+canvas.addEventListener('pointerup',()=>{drag=null;}); // stay frozen if frozen — dragging renders live frames, no auto-resume
+canvas.addEventListener('pointercancel',()=>{drag=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();setC('posZ',S.posZ-e.deltaY*1.6);render();},{passive:false});
+
+function startPlay(){if(playing)return;playing=true;$('#playBtn').textContent='Freeze';$('#playBtn').classList.add('primary');loop();}
+buildControls();
+loadFont('arimo').then(()=>{applyEngine('heatmap');setControl('size',360);render();startPlay();});
+</script>
