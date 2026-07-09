@@ -19,6 +19,18 @@
     z-index: 10; color: var(--opal-ink);
     box-shadow: 0 12px 40px -16px rgba(0,0,0,0.22);
   }
+  /* Left island — the text editor (words + typography), matching every tool */
+  #panelL {
+    position: fixed; top: 16px; left: 16px; bottom: 16px; width: 288px;
+    background: rgba(255,255,255,0.9); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border: 1px solid var(--opal-line); border-radius: 12px; padding: 16px 16px;
+    font-size: 12px; line-height: 1.4; overflow-y: auto;
+    z-index: 10; color: var(--opal-ink);
+    box-shadow: 0 12px 40px -16px rgba(0,0,0,0.22);
+  }
+  #panelL h3 { margin: 14px 0 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .18em; color: var(--opal-mid); border-bottom: 1px solid var(--opal-line); padding-bottom: 6px; user-select: none; font-weight:400; }
+  #panelL h3:first-child { margin-top: 0; }
+  .hidden { display: none !important; }
   #panel h3 { margin: 14px 0 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .18em; color: var(--opal-mid); border-bottom: 1px solid var(--opal-line); padding-bottom: 6px; cursor: pointer; user-select: none; display:flex; align-items:center; justify-content:space-between; gap:6px; font-weight:400; }
   #panel h3:first-child { margin-top: 0; }
   #panel h3:hover { color: var(--opal-ink); }
@@ -26,10 +38,17 @@
   #panel h3.collapsed .chev { transform: rotate(-90deg); }
   .row { display: grid; grid-template-columns: 92px 1fr 40px; gap: 8px; align-items: center; margin: 7px 0; }
   .row label { color: var(--opal-ink); font-size: 12px; }
-  .row input[type=range] { width: 100%; }
   .row .val { text-align: right; color: var(--opal-ink); font-family: var(--opal-font-mono); font-size: 11px; font-variant-numeric: tabular-nums; }
-  .row input[type=color] { width: 100%; height: 24px; border: 1px solid var(--opal-line); background: none; padding: 0; }
-  .row select, .row input[type=number] { background: var(--opal-panel); color: var(--opal-ink); border:1px solid var(--opal-line); padding:5px 6px; font-family: inherit; }
+  /* Small color swatch, left-aligned in its cell — matches the other tools */
+  .row input[type=color] { width: 46px; height: 22px; border: 1px solid var(--opal-line); border-radius: 6px; background: none; padding: 1px; justify-self: start; cursor: pointer; }
+  .row select, .row input[type=number] { background: var(--opal-panel); color: var(--opal-ink); border:1px solid var(--opal-line); border-radius: 8px; padding:6px 8px; font-family: inherit; }
+  /* Pill sliders — identical to Flux / Lake Opeka */
+  .row input[type=range], input[type=range].pill { -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; cursor:pointer; padding:0; margin:0; }
+  input[type=range]::-webkit-slider-runnable-track { background:#eaeaea; height:20px; border-radius:10px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:15px; height:24px; border-radius:7px; background:#fff; border:1px solid var(--opal-line); box-shadow:0 1px 4px rgba(0,0,0,.2); margin-top:-2px; }
+  input[type=range]::-webkit-slider-thumb:hover { border-color: var(--opal-muted); }
+  input[type=range]::-moz-range-track { background:#eaeaea; height:20px; border-radius:10px; }
+  input[type=range]::-moz-range-thumb { width:15px; height:24px; border-radius:7px; background:#fff; border:1px solid var(--opal-line); box-shadow:0 1px 4px rgba(0,0,0,.2); }
   #ringList { margin-top: 6px; }
   .ring-item { display:block; margin: 4px 0; padding: 6px 8px; background: var(--opal-panel); border: 1px solid var(--opal-line); }
   .ring-row { display:flex; gap:6px; align-items:center; }
@@ -43,14 +62,16 @@
   .word-group { margin: 6px 0; padding: 8px; background: var(--opal-panel); border:1px solid var(--opal-line); border-left:2px solid var(--opal-ink); }
   .word-row { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
   .word-row .word-text { flex:1; padding:5px 7px; background:#fff; border:1px solid var(--opal-line); text-transform:uppercase; letter-spacing:.04em; font-size:12px; color: var(--opal-ink); }
-  .word-row .word-color { width:28px; height:24px; border:1px solid var(--opal-line); padding:0; cursor:pointer; }
+  .word-row .word-color { width:30px; height:22px; border:1px solid var(--opal-line); border-radius:6px; padding:1px; cursor:pointer; }
   .word-row .word-regen, .word-row .word-del { background:transparent; border:0; color: var(--opal-muted); cursor:pointer; padding:0 5px; font-size:13px; }
   .word-row .word-regen:hover { color: var(--opal-ink); }
   .word-row .word-del:hover { color:#c0392b; }
   .word-group .row { margin: 3px 0; grid-template-columns: 70px 1fr 30px; }
   .word-tag { display:inline-block; padding:1px 5px; font-size:9px; letter-spacing:.04em; color:#fff; vertical-align:middle; margin-left:4px; }
   .link-tag { font-size: 9px; color: var(--opal-muted); letter-spacing: .05em; }
-  .btn { background: var(--opal-panel); color: var(--opal-ink); border:1px solid var(--opal-line); padding: 8px 10px; cursor:pointer; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; transition: border-color .15s; }
+  .btn { background: var(--opal-panel); color: var(--opal-ink); border:1px solid var(--opal-line); border-radius: 8px; padding: 8px 10px; cursor:pointer; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; transition: border-color .15s; }
+  .word-row .word-text { border-radius: 6px; }
+  .word-group { border-radius: 8px; }
   .btn:hover { border-color: var(--opal-ink); }
   .btn-row { display:flex; gap:6px; margin-top: 6px; }
   #title { display: none; }
@@ -82,6 +103,25 @@
 <div id="posterLabel"></div>
 <div id="title"><span style="color:#2aa83a;font-weight:600">◎ OPAL</span> &nbsp;Ring Poster Studio</div>
 <div id="busy">Rendering high-res PDF…</div>
+
+<!-- LEFT island — the text editor (words + typography) -->
+<div id="panelL">
+  <h3>Text</h3>
+  <div id="wordGroupsList"></div>
+  <div class="btn-row">
+    <button class="btn" id="addWordGroup">+ Add Word</button>
+    <button class="btn" id="regenAllWords">Regenerate All</button>
+  </div>
+  <div style="font-size:10px;color:#888;margin: 4px 0 6px 0;line-height:1.45">Each word is a line of glass letters with its own color and layout.</div>
+
+  <h3>Typeface</h3>
+  <div class="row"><label>Font File</label>
+    <input type="file" id="fontFile" accept=".ttf,.otf,.woff" style="font-size:10px"/>
+    <span></span>
+  </div>
+  <div id="fontStatus" style="font-size:10px;color:#888;margin: 2px 0 6px 0;">No font loaded — defaults to system font (extruded path).</div>
+</div>
+
 <div id="panel">
 
   <h3>Lighting & Environment</h3>
@@ -155,30 +195,41 @@
   <div class="row"><label>Funnel</label><input type="range" id="vortFunnel" min="0" max="1" step="0.01" value="0.6"/><span class="val" id="vortFunnelV">0.60</span></div>
   <div style="font-size:10px;color:#888;margin: 2px 0 6px 0;">Tornado mode: shapes orbit the center axis, get pulled inward (stronger near the floor) and lifted upward.</div>
 
-  <h3>Typography (Custom Font)</h3>
-  <div class="row"><label>Font File</label>
-    <input type="file" id="fontFile" accept=".ttf,.otf,.woff" style="font-size:10px"/>
-    <span></span>
-  </div>
-  <div id="fontStatus" style="font-size:10px;color:#888;margin: 2px 0 6px 0;">No font loaded — defaults to system font (extruded path).</div>
+  <!-- Global glass material — one look for every letter in the scene -->
+  <h3>Glass Material</h3>
+  <div class="row"><label>Metalness</label><input type="range" id="gm-metalness" min="0" max="1" step="0.01"/><span class="val" id="gm-metalnessV"></span></div>
+  <div class="row"><label>Roughness</label><input type="range" id="gm-roughness" min="0" max="1" step="0.01"/><span class="val" id="gm-roughnessV"></span></div>
+  <div class="row"><label>Clearcoat</label><input type="range" id="gm-clearcoat" min="0" max="1" step="0.01"/><span class="val" id="gm-clearcoatV"></span></div>
+  <div class="row"><label>CC Rough</label><input type="range" id="gm-clearcoatRoughness" min="0" max="1" step="0.01"/><span class="val" id="gm-clearcoatRoughnessV"></span></div>
+  <div class="row"><label>Anisotropy</label><input type="range" id="gm-anisotropy" min="0" max="1" step="0.01"/><span class="val" id="gm-anisotropyV"></span></div>
+  <div class="row"><label>Transmission</label><input type="range" id="gm-transmission" min="0" max="1" step="0.01"/><span class="val" id="gm-transmissionV"></span></div>
+  <div class="row"><label>Opacity</label><input type="range" id="gm-opacity" min="0" max="1" step="0.01"/><span class="val" id="gm-opacityV"></span></div>
+  <div class="row"><label>IOR</label><input type="range" id="gm-ior" min="1" max="2.5" step="0.01"/><span class="val" id="gm-iorV"></span></div>
+  <div class="row"><label>Thickness</label><input type="range" id="gm-thickness" min="0" max="3" step="0.01"/><span class="val" id="gm-thicknessV"></span></div>
+  <div class="row"><label>Atten. Color</label><input type="color" id="gm-attenuationColor"/><span></span></div>
+  <div class="row"><label>Atten. Dist</label><input type="range" id="gm-attenuationDistance" min="0.1" max="20" step="0.1"/><span class="val" id="gm-attenuationDistanceV"></span></div>
+  <div class="row"><label>Glow</label><input type="range" id="gm-emissiveIntensity" min="0" max="3" step="0.05"/><span class="val" id="gm-emissiveIntensityV"></span></div>
+  <div class="row"><label>Dispersion</label><input type="range" id="gm-dispersion" min="0" max="20" step="0.1"/><span class="val" id="gm-dispersionV"></span></div>
+  <div class="row"><label>Iridescence</label><input type="range" id="gm-iridescence" min="0" max="1" step="0.01"/><span class="val" id="gm-iridescenceV"></span></div>
+  <div class="row"><label>Irid. IOR</label><input type="range" id="gm-iridescenceIOR" min="1" max="2.5" step="0.01"/><span class="val" id="gm-iridescenceIORV"></span></div>
 
-  <h3>Word Groups</h3>
-  <div id="wordGroupsList"></div>
-  <div class="btn-row">
-    <button class="btn" id="addWordGroup">+ Add Word</button>
-    <button class="btn" id="regenAllWords">Regenerate All</button>
+  <h3>Render Style</h3>
+  <div class="row"><label>Mode</label>
+    <select id="gm-renderMode">
+      <option value="filled">Filled</option>
+      <option value="outlined">Outlined</option>
+      <option value="both">Both</option>
+    </select><span></span>
   </div>
-  <div style="font-size:10px;color:#666;margin: 2px 0 6px 0;">Each word is a group of glass letters with its own color and layout. Edit individual letters in the Objects list below; changing the word's color updates every letter in that group.</div>
+  <div class="row"><label>Outline Color</label><input type="color" id="gm-outlineColor"/><span></span></div>
+  <div class="row"><label>Outline Width</label><input type="range" id="gm-outlineWidth" min="0.5" max="20" step="0.1"/><span class="val" id="gm-outlineWidthV"></span></div>
+  <div class="row"><label>Edge Threshold</label><input type="range" id="gm-outlineThreshold" min="1" max="89" step="1"/><span class="val" id="gm-outlineThresholdV"></span></div>
 
-  <h3>Apply to All Shapes</h3>
-  <div class="btn-row">
-    <button class="btn" id="applyMatAll" title="Copy this ring's chrome/glass material to every ring">Material → All</button>
-    <button class="btn" id="applyShapeAll" title="Copy shape type + character to every ring">Shape → All</button>
-  </div>
-  <div class="btn-row">
-    <button class="btn" id="applyTransformAll" title="Copy tilt + spin + orbit to every ring">Transform → All</button>
-    <button class="btn" id="applySizeAll" title="Copy radius + tube to every ring">Size → All</button>
-  </div>
+  <h3>Trails</h3>
+  <div class="row"><label>Enable</label><input type="checkbox" id="gm-trailEnabled"/><span></span></div>
+  <div class="row"><label>Color</label><input type="color" id="gm-trailColor"/><span></span></div>
+  <div class="row"><label>Length</label><input type="range" id="gm-trailLife" min="0.05" max="2.0" step="0.05"/><span class="val" id="gm-trailLifeV"></span></div>
+  <div class="row"><label>Strength</label><input type="range" id="gm-trailOpacity" min="0.05" max="1.0" step="0.01"/><span class="val" id="gm-trailOpacityV"></span></div>
 
   <h3>Canvas / Poster</h3>
   <div class="row"><label>Preset</label>
@@ -236,6 +287,8 @@
   <input type="file" id="importFile" accept=".json" style="display:none"/>
 
 
+  <!-- Individual-object editing removed from the UI; kept in the DOM so scene logic stays intact -->
+  <div class="hidden" aria-hidden="true">
   <h3>Objects</h3>
   <div id="ringList"></div>
   <div class="btn-row">
@@ -253,6 +306,7 @@
   </div>
   <div class="row"><label>Group Spin</label><input type="range" id="grpSpin" min="-2" max="2" step="0.01" value="0.3"/><span class="val" id="grpSpinV">0.30</span></div>
   <div class="row"><label>Link Spacing</label><input type="range" id="linkSpace" min="0.5" max="2.5" step="0.01" value="1.4"/><span class="val" id="linkSpaceV">1.40</span></div>
+  </div>
 
   <div class="btn-row">
     <button class="btn" id="reset">Reset Scene</button>
@@ -1130,7 +1184,7 @@ $('fontFile').addEventListener('change', e => {
 // Apply to All
 function copyKeys(src, dst, keys) { keys.forEach(k => dst[k] = src[k]); }
 
-$('applyMatAll').addEventListener('click', () => {
+$('applyMatAll')?.addEventListener('click', () => {
   const src = rings[selectedIdx]; if (!src) return;
   const matKeys = ['color','metalness','roughness','clearcoat','clearcoatRoughness','anisotropy','transmission','opacity','ior','thickness','attenuationColor','attenuationDistance'];
   rings.forEach(r => {
@@ -1153,7 +1207,7 @@ $('applyMatAll').addEventListener('click', () => {
   });
 });
 
-$('applyShapeAll').addEventListener('click', () => {
+$('applyShapeAll')?.addEventListener('click', () => {
   const src = rings[selectedIdx]; if (!src) return;
   rings.forEach(r => {
     if (r === src) return;
@@ -1165,7 +1219,7 @@ $('applyShapeAll').addEventListener('click', () => {
   });
 });
 
-$('applyTransformAll').addEventListener('click', () => {
+$('applyTransformAll')?.addEventListener('click', () => {
   const src = rings[selectedIdx]; if (!src) return;
   rings.forEach(r => {
     if (r === src) return;
@@ -1173,7 +1227,7 @@ $('applyTransformAll').addEventListener('click', () => {
   });
 });
 
-$('applySizeAll').addEventListener('click', () => {
+$('applySizeAll')?.addEventListener('click', () => {
   const src = rings[selectedIdx]; if (!src) return;
   rings.forEach(r => {
     if (r === src) return;
@@ -1305,6 +1359,9 @@ function createWordGroup(opts = {}) {
     // UI
     _uiExpanded: false,
   }, opts);
+  // New words inherit the current global glass material (unless a preset passed its own)
+  const tmpl = wordGroups[0];
+  if (tmpl) GM_ALL_KEYS.forEach(k => { if (!(k in opts)) g[k] = tmpl[k]; });
   wordGroups.push(g);
   return g;
 }
@@ -1536,6 +1593,53 @@ function applyGroupRenderStyle(g, geomChanged = false) {
   });
 }
 
+// ---- Global glass material — one look applied to every word in the scene ----
+// Material / render / trail are no longer per-letter or per-word; these controls
+// broadcast to every word group so the whole poster shares one glass treatment.
+const GM_MAT_KEYS = ['metalness','roughness','clearcoat','clearcoatRoughness','anisotropy','transmission','opacity','ior','thickness','attenuationColor','attenuationDistance','emissiveIntensity','dispersion','iridescence','iridescenceIOR'];
+const GM_RENDER_KEYS = ['renderMode','outlineColor','outlineWidth','outlineThreshold'];
+const GM_TRAIL_KEYS = ['trailEnabled','trailColor','trailLife','trailOpacity'];
+const GM_ALL_KEYS = [...GM_MAT_KEYS, ...GM_RENDER_KEYS, ...GM_TRAIL_KEYS];
+function gmSet(key, v) {
+  wordGroups.forEach(g => { g[key] = v; });
+  const apply = GM_TRAIL_KEYS.includes(key) ? applyGroupTrail
+              : GM_RENDER_KEYS.includes(key) ? applyGroupRenderStyle
+              : applyGroupMaterial;
+  wordGroups.forEach(g => apply(g));
+}
+function gmBindRange(id, key, digits = 2) { const el = $(id); if (!el) return;
+  el.addEventListener('input', e => { const v = parseFloat(e.target.value); setVal(id, v, digits); gmSet(key, v); }); }
+function gmBindColor(id, key)  { const el = $(id); if (!el) return; el.addEventListener('input',  e => gmSet(key, e.target.value)); }
+function gmBindSelect(id, key) { const el = $(id); if (!el) return; el.addEventListener('change', e => gmSet(key, e.target.value)); }
+function gmBindCheck(id, key)  { const el = $(id); if (!el) return; el.addEventListener('change', e => gmSet(key, e.target.checked)); }
+gmBindRange('gm-metalness','metalness'); gmBindRange('gm-roughness','roughness');
+gmBindRange('gm-clearcoat','clearcoat'); gmBindRange('gm-clearcoatRoughness','clearcoatRoughness');
+gmBindRange('gm-anisotropy','anisotropy'); gmBindRange('gm-transmission','transmission');
+gmBindRange('gm-opacity','opacity'); gmBindRange('gm-ior','ior'); gmBindRange('gm-thickness','thickness');
+gmBindColor('gm-attenuationColor','attenuationColor'); gmBindRange('gm-attenuationDistance','attenuationDistance',1);
+gmBindRange('gm-emissiveIntensity','emissiveIntensity'); gmBindRange('gm-dispersion','dispersion',1);
+gmBindRange('gm-iridescence','iridescence'); gmBindRange('gm-iridescenceIOR','iridescenceIOR');
+gmBindSelect('gm-renderMode','renderMode'); gmBindColor('gm-outlineColor','outlineColor');
+gmBindRange('gm-outlineWidth','outlineWidth',1); gmBindRange('gm-outlineThreshold','outlineThreshold',0);
+gmBindCheck('gm-trailEnabled','trailEnabled'); gmBindColor('gm-trailColor','trailColor');
+gmBindRange('gm-trailLife','trailLife'); gmBindRange('gm-trailOpacity','trailOpacity');
+// Reflect the scene's current glass look back into the global controls
+function gmSyncFromScene() {
+  const g = wordGroups[0]; if (!g) return;
+  const R = (id, key, digits = 2) => { const el = $(id); if (el) { el.value = g[key]; setVal(id, g[key], digits); } };
+  R('gm-metalness','metalness'); R('gm-roughness','roughness'); R('gm-clearcoat','clearcoat');
+  R('gm-clearcoatRoughness','clearcoatRoughness'); R('gm-anisotropy','anisotropy'); R('gm-transmission','transmission');
+  R('gm-opacity','opacity'); R('gm-ior','ior'); R('gm-thickness','thickness');
+  R('gm-attenuationDistance','attenuationDistance',1); R('gm-emissiveIntensity','emissiveIntensity');
+  R('gm-dispersion','dispersion',1); R('gm-iridescence','iridescence'); R('gm-iridescenceIOR','iridescenceIOR');
+  R('gm-outlineWidth','outlineWidth',1); R('gm-outlineThreshold','outlineThreshold',0);
+  R('gm-trailLife','trailLife'); R('gm-trailOpacity','trailOpacity');
+  const C = (id, key) => { const el = $(id); if (el) el.value = g[key]; };
+  C('gm-attenuationColor','attenuationColor'); C('gm-outlineColor','outlineColor'); C('gm-trailColor','trailColor');
+  const sel = $('gm-renderMode'); if (sel) sel.value = g.renderMode;
+  const chk = $('gm-trailEnabled'); if (chk) chk.checked = !!g.trailEnabled;
+}
+
 function deleteWordGroup(g) {
   deleteRingsForWord(g.id);
   const idx = wordGroups.indexOf(g);
@@ -1591,6 +1695,8 @@ function refreshWordGroupsList() {
         <div class="row"><label>Tilt Y</label><input type="range" class="g-tiltY" min="-180" max="180" step="1" value="${g.tiltY}"/><span class="val g-tiltYV">${Math.round(g.tiltY)}</span></div>
         <div class="row"><label>Tilt Z</label><input type="range" class="g-tiltZ" min="-180" max="180" step="1" value="${g.tiltZ}"/><span class="val g-tiltZV">${Math.round(g.tiltZ)}</span></div>
         <div class="row"><label>Spin Speed</label><input type="range" class="g-spinSpeed" min="-3" max="3" step="0.01" value="${g.spinSpeed}"/><span class="val g-spinSpeedV">${g.spinSpeed.toFixed(2)}</span></div>
+        <!-- Material / Render / Trail are controlled globally in the right panel; kept here (hidden) so per-word listeners stay wired -->
+        <div class="hidden">
         <div class="subhead">Material</div>
         <div class="row"><label>Metalness</label><input type="range" class="g-metalness" min="0" max="1" step="0.01" value="${g.metalness}"/><span class="val g-metalnessV">${g.metalness.toFixed(2)}</span></div>
         <div class="row"><label>Roughness</label><input type="range" class="g-roughness" min="0" max="1" step="0.01" value="${g.roughness}"/><span class="val g-roughnessV">${g.roughness.toFixed(2)}</span></div>
@@ -1624,6 +1730,7 @@ function refreshWordGroupsList() {
         <div class="row"><label>Color</label><input type="color" class="g-trailColor" value="${g.trailColor}"/><span></span></div>
         <div class="row"><label>Length</label><input type="range" class="g-trailLife" min="0.05" max="2.0" step="0.05" value="${g.trailLife}"/><span class="val g-trailLifeV">${g.trailLife.toFixed(2)}</span></div>
         <div class="row"><label>Strength</label><input type="range" class="g-trailOpacity" min="0.05" max="1.0" step="0.01" value="${g.trailOpacity}"/><span class="val g-trailOpacityV">${g.trailOpacity.toFixed(2)}</span></div>
+        </div><!-- /.hidden material -->
       </div>
     `;
 
@@ -1740,6 +1847,7 @@ function refreshWordGroupsList() {
 
     list.appendChild(card);
   });
+  gmSyncFromScene();   // keep the global glass-material panel in step with the scene
 }
 
 $('addWordGroup').addEventListener('click', () => {
