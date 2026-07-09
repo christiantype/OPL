@@ -66,6 +66,12 @@
   .word-row .word-regen, .word-row .word-del { background:transparent; border:0; color: var(--opal-muted); cursor:pointer; padding:0 5px; font-size:13px; }
   .word-row .word-regen:hover { color: var(--opal-ink); }
   .word-row .word-del:hover { color:#c0392b; }
+  /* Multiline text editor — type one line per word, like the other tools */
+  .word-textarea { width:100%; box-sizing:border-box; background:var(--opal-panel); border:1px solid var(--opal-line); border-radius:8px; color:var(--opal-ink); font-family:var(--opal-font-sans); font-size:14px; line-height:1.55; padding:10px 11px; resize:vertical; min-height:70px; text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px; }
+  .word-textarea:focus { outline:none; border-color:var(--opal-ink); background:#fff; }
+  .word-row .word-label { flex:1; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--opal-ink); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .word-row .word-toggle { cursor:pointer; color:var(--opal-muted); font-size:10px; user-select:none; }
+  .word-row .word-toggle:hover { color:var(--opal-ink); }
   .word-group .row { margin: 3px 0; grid-template-columns: 70px 1fr 30px; }
   .word-tag { display:inline-block; padding:1px 5px; font-size:9px; letter-spacing:.04em; color:#fff; vertical-align:middle; margin-left:4px; }
   .link-tag { font-size: 9px; color: var(--opal-muted); letter-spacing: .05em; }
@@ -107,12 +113,13 @@
 <!-- LEFT island — the text editor (words + typography) -->
 <div id="panelL">
   <h3>Text</h3>
+  <textarea id="wordText" class="word-textarea" rows="3" spellcheck="false" placeholder="Type here — one line per word&#10;MORE&#10;THAN&#10;DESIGN"></textarea>
   <div id="wordGroupsList"></div>
   <div class="btn-row">
-    <button class="btn" id="addWordGroup">+ Add Word</button>
+    <button class="btn" id="addWordGroup">+ Add Line</button>
     <button class="btn" id="regenAllWords">Regenerate All</button>
   </div>
-  <div style="font-size:10px;color:#888;margin: 4px 0 6px 0;line-height:1.45">Each word is a line of glass letters with its own color and layout.</div>
+  <div style="font-size:10px;color:#888;margin: 4px 0 6px 0;line-height:1.45">Each line becomes a line of glass letters. Set a color / layout per line below.</div>
 
   <h3>Typeface</h3>
   <div class="row"><label>Font File</label>
@@ -1658,12 +1665,13 @@ function refreshWordGroupsList() {
     const expanded = !!g._uiExpanded;
     card.innerHTML = `
       <div class="word-row">
-        <span class="word-toggle" title="Show/hide details">${expanded ? '▾' : '▸'}</span>
-        <input type="text" class="word-text" value="${g.word}" maxlength="24"/>
+        <span class="word-toggle" title="Show/hide layout & shape">${expanded ? '▾' : '▸'}</span>
+        <span class="word-label" style="color:${g.color}">${g.word || '—'}</span>
         <input type="color" class="word-color" value="${g.color}"/>
-        <button class="word-regen" title="Regenerate this word's letters">↻</button>
-        <button class="word-del" title="Delete this word group">✕</button>
+        <button class="word-regen" title="Regenerate this line's letters">↻</button>
+        <button class="word-del" title="Delete this line">✕</button>
       </div>
+      <div class="word-details" style="display:${expanded ? '' : 'none'}">
       <div class="subhead">Layout</div>
       <div class="row"><label>Mode</label>
         <select class="g-layoutMode">
@@ -1686,7 +1694,6 @@ function refreshWordGroupsList() {
         <div class="row"><label>Tilt X</label><input type="range" class="g-orbitTiltX" min="-180" max="180" step="1" value="${g.orbitTiltX}"/><span class="val g-orbitTiltXV">${Math.round(g.orbitTiltX)}°</span></div>
         <div class="row"><label>Tilt Z</label><input type="range" class="g-orbitTiltZ" min="-180" max="180" step="1" value="${g.orbitTiltZ}"/><span class="val g-orbitTiltZV">${Math.round(g.orbitTiltZ)}°</span></div>
       </div>
-      <div class="word-details" style="display:${expanded ? '' : 'none'}">
         <div class="subhead">Shape</div>
         <div class="row"><label>Size</label><input type="range" class="g-size" min="0.3" max="2.5" step="0.05" value="${g.size}"/><span class="val g-sizeV">${g.size.toFixed(2)}</span></div>
         <div class="row"><label>Extrude</label><input type="range" class="g-extrude" min="0.02" max="1.5" step="0.01" value="${g.extrude}"/><span class="val g-extrudeV">${g.extrude.toFixed(2)}</span></div>
@@ -1734,11 +1741,7 @@ function refreshWordGroupsList() {
       </div>
     `;
 
-    const wordIn = card.querySelector('.word-text');
-    const commitWord = () => { g.word = wordIn.value; spawnLettersForGroup(g); };
-    wordIn.addEventListener('change', commitWord);
-    wordIn.addEventListener('keydown', e => { if (e.key === 'Enter') { commitWord(); wordIn.blur(); } });
-
+    // Word text is edited in the multiline textarea above; the card shows a read-only label.
     const colorIn = card.querySelector('.word-color');
     colorIn.addEventListener('input', () => {
       g.color = colorIn.value;
@@ -1848,7 +1851,50 @@ function refreshWordGroupsList() {
     list.appendChild(card);
   });
   gmSyncFromScene();   // keep the global glass-material panel in step with the scene
+  syncTextareaFromGroups();   // reflect current words back into the multiline editor
 }
+
+// ---- Multiline text editor — one line per word, like the other tools ----
+function syncTextareaFromGroups() {
+  const ta = $('wordText'); if (!ta) return;
+  if (document.activeElement === ta) return;   // don't clobber the caret while typing
+  ta.value = wordGroups.map(g => g.word).join('\n');
+}
+function commitTextFromTextarea() {
+  const ta = $('wordText'); if (!ta) return;
+  const lines = ta.value.split('\n').map(s => s.trim()).filter(s => s.length);
+  // Update existing lines / append new ones (new lines inherit the previous line's look, stacked below)
+  for (let i = 0; i < lines.length; i++) {
+    if (wordGroups[i]) {
+      if (wordGroups[i].word !== lines[i]) { wordGroups[i].word = lines[i]; spawnLettersForGroup(wordGroups[i]); }
+    } else {
+      const prev = wordGroups[i - 1];
+      const g = createWordGroup({
+        word: lines[i],
+        color:      prev ? prev.color      : '#888888',
+        layoutMode: prev ? prev.layoutMode : 'linear',
+        direction:  prev ? prev.direction  : 0,
+        spread:     prev ? prev.spread     : 4.0,
+        xOffset:    prev ? prev.xOffset    : 0,
+        yOffset:    prev ? (prev.yOffset - 1.8) : 0,
+        size:       prev ? prev.size       : 1.0,
+      });
+      spawnLettersForGroup(g);
+    }
+  }
+  // Remove any trailing groups the user deleted from the text
+  while (wordGroups.length > lines.length) {
+    const g = wordGroups[wordGroups.length - 1];
+    deleteRingsForWord(g.id);
+    wordGroups.pop();
+  }
+  refreshWordGroupsList();
+}
+let _wordTextTimer = null;
+$('wordText').addEventListener('input', () => {
+  clearTimeout(_wordTextTimer);
+  _wordTextTimer = setTimeout(commitTextFromTextarea, 300);   // debounce — respawning glyphs is heavy
+});
 
 $('addWordGroup').addEventListener('click', () => {
   const g = createWordGroup({ word: 'WORD', color: '#888888', yOffset: 0 });
