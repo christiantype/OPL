@@ -15,6 +15,12 @@
     #projects { color: #ffffff; }
     /* Align the header/content left edge with the tools (24px), not the site's 10em inset */
     .container { max-width: none; padding: 0 24px; }
+    /* Logo same (smaller) size as the tools' topbar */
+    .nav-wordmark { width: auto; height: 26px; }
+    /* Glitch: a few letters of the title scatter/rotate now and then */
+    .lab-title .gl { display: inline-block; transition: transform 0.18s cubic-bezier(0.5, -0.6, 0.4, 1.6); }
+    .lab-title .gl.on { transform: translate(var(--gx,0), var(--gy,0)) rotate(var(--gr,0)); }
+    @media (prefers-reduced-motion: reduce) { .lab-title .gl { transition: none; } }
 
     .lab-hero { padding-bottom: var(--space-10); }
     .lab-title { font-size: var(--h1); line-height: 1.1; margin: 0; color: #ffffff; }  /* standard h1 token */
@@ -74,7 +80,7 @@
   <nav>
     <div class="container">
       <div style="display:flex;align-items:center;justify-content:space-between;">
-        <a href="/tools/" class="nav-logo-link" aria-label="ZLMC Studio">
+        <a href="/lab/" class="nav-logo-link" aria-label="ZLMC Studio">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="154.5 212.9 1274.6 186.2" fill="currentColor" class="nav-wordmark"><path d="M1356.2,353.2h72.1v-13h-59.1v-100.6h-13v113.5ZM1077.3,313.7l13.5-61.1h10.6l13.3,61.1h-37.5ZM1055.3,353.2h13.3l5.8-26.5h43.3l5.8,26.5h13.3l-25.2-113.5h-30.6l-25.6,113.5ZM723.6,398.3h37.2l111.9-184.5h-37.2l-111.9,184.5ZM478.1,296.2v-43.6h28.1c5.9,0,8.3.9,13,4.7,5.2,4.3,5.9,6.1,5.9,10.6v13c0,4.5-.7,6.3-5.9,10.6-4.7,3.8-7,4.7-13,4.7h-28.1ZM465.1,353.2h13v-44h28.1c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-14.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-41.1v113.5ZM199.1,340.2h-11.9c-5.9,0-8.3-.9-13-4.7-5.2-4.3-5.9-6.1-5.9-10.6v-57c0-4.5.7-6.3,5.9-10.6,4.7-3.8,7-4.7,13-4.7h11.9c5.9,0,8.5.9,13.2,4.7,5,4.1,5.8,6.1,5.8,10.6v57c0,4.5-.7,6.5-5.8,10.6-4.7,3.8-7.2,4.7-13.2,4.7M187.2,353.2h11.9c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-58.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-11.9c-9.4,0-14.2,2-22.5,9-8.3,7-9.4,10.3-9.4,18.6v58.4c0,8.3,1.1,11.5,9.4,18.6,8.3,7,13.2,9,22.5,9"/></svg>
         </a>
         <a href="/" class="nav-menu-btn" aria-label="Back to OP/AL">
@@ -92,14 +98,14 @@
       </div>
 
       <div class="grid tool-grid">
-        <a class="tool-tile col-4 g-2" href="/tools/lake-opeka/" style="animation-delay:0s">
+        <a class="tool-tile col-4 g-2" href="/lab/lake-opeka/" style="animation-delay:0s">
           <span class="tool-tile__ver">v1</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Photo composition studio</span>
             <span class="tool-tile__title">Lake Opeka</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-3" href="/tools/kinetic/" style="animation-delay:0.07s">
+        <a class="tool-tile col-4 g-3" href="/lab/kinetic/" style="animation-delay:0.07s">
           <span class="tool-tile__ver">v1</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Experimental type instrument</span>
@@ -123,6 +129,35 @@
     // Clear the leaving-fade whenever this page is shown again — including
     // browser Back via bfcache — else the body stays at opacity:0 (blank screen).
     window.addEventListener('pageshow', () => document.body.classList.remove('page-leaving'));
+
+    /* Glitch the title — split into letters, then scatter/rotate 3 random ones now and then */
+    (function glitch() {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const t = document.querySelector('.lab-title');
+      if (!t) return;
+      const txt = t.textContent, letters = [];
+      t.textContent = '';
+      for (const ch of txt) {
+        const s = document.createElement('span');
+        s.className = 'gl';
+        s.textContent = ch === ' ' ? ' ' : ch;
+        t.appendChild(s);
+        if (ch !== ' ') letters.push(s);
+      }
+      const rnd = (a, b) => Math.round(a + Math.random() * (b - a));
+      function fire() {
+        const picks = [];
+        for (let i = 0; i < 3; i++) picks.push(letters[(Math.random() * letters.length) | 0]);
+        picks.forEach(s => {
+          s.style.setProperty('--gx', rnd(-8, 8) + 'px');
+          s.style.setProperty('--gy', rnd(-8, 8) + 'px');
+          s.style.setProperty('--gr', rnd(-16, 16) + 'deg');
+          s.classList.add('on');
+        });
+        setTimeout(() => picks.forEach(s => s.classList.remove('on')), 260);
+      }
+      setInterval(fire, 2600);
+    })();
   </script>
 </body>
 </html>

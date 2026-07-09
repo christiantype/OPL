@@ -54,5 +54,5 @@ const server = http.createServer(function (req, res) {
 
 server.listen(PORT, function () {
   console.log('Converter ready at http://localhost:' + PORT);
-  console.log('Open http://localhost:8080/tools/open-capture/ and click Record All');
+  console.log('Open http://localhost:8080/lab/open-capture/ and click Record All');
 });
