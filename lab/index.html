@@ -17,10 +17,6 @@
     .container { max-width: none; padding: 0 24px; }
     /* Logo same (smaller) size as the tools' topbar */
     .nav-wordmark { width: auto; height: 26px; }
-    /* Glitch: a few letters of the title scatter/rotate now and then */
-    .lab-title .gl { display: inline-block; transition: transform 0.18s cubic-bezier(0.5, -0.6, 0.4, 1.6); }
-    .lab-title .gl.on { transform: translate(var(--gx,0), var(--gy,0)) rotate(var(--gr,0)); }
-    @media (prefers-reduced-motion: reduce) { .lab-title .gl { transition: none; } }
 
     .lab-hero { padding-bottom: var(--space-10); }
     .lab-title { font-size: var(--h1); line-height: 1.1; margin: 0; color: #ffffff; }  /* standard h1 token */
@@ -135,28 +131,26 @@
       if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       const t = document.querySelector('.lab-title');
       if (!t) return;
-      const txt = t.textContent, letters = [];
-      t.textContent = '';
-      for (const ch of txt) {
-        const s = document.createElement('span');
-        s.className = 'gl';
-        s.textContent = ch === ' ' ? ' ' : ch;
-        t.appendChild(s);
-        if (ch !== ' ') letters.push(s);
+      const orig = t.textContent;
+      const CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&/<>*+=';
+      let raf, t0;
+      function scramble() {
+        t0 = performance.now();
+        const DUR = 520;
+        (function step(now) {
+          const p = Math.min(1, (now - t0) / DUR);
+          let out = '';
+          for (let i = 0; i < orig.length; i++) {
+            const c = orig[i];
+            if (c === ' ') { out += ' '; continue; }
+            const lockAt = 0.45 + (i / orig.length) * 0.5;
+            out += p >= lockAt ? c : CH[(Math.random() * CH.length) | 0];
+          }
+          t.textContent = out;
+          if (p < 1) raf = requestAnimationFrame(step); else t.textContent = orig;
+        })(t0);
       }
-      const rnd = (a, b) => Math.round(a + Math.random() * (b - a));
-      function fire() {
-        const picks = [];
-        for (let i = 0; i < 3; i++) picks.push(letters[(Math.random() * letters.length) | 0]);
-        picks.forEach(s => {
-          s.style.setProperty('--gx', rnd(-8, 8) + 'px');
-          s.style.setProperty('--gy', rnd(-8, 8) + 'px');
-          s.style.setProperty('--gr', rnd(-16, 16) + 'deg');
-          s.classList.add('on');
-        });
-        setTimeout(() => picks.forEach(s => s.classList.remove('on')), 260);
-      }
-      setInterval(fire, 2600);
+      setInterval(scramble, 2800);
     })();
   </script>
 </body>

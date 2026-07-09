@@ -19,9 +19,6 @@ const Opal = (() => {
         ${WORDMARK}
         ${product ? `<span class="opal-divider"></span><span class="opal-product" style="color:#8a8a8a;font-size:12px;letter-spacing:.14em;text-transform:uppercase;">${product}</span>` : ''}
       </a>
-      <a href="/lab/" class="opal-menu-btn" aria-label="Back to Tools" style="color:#1a1a1a;line-height:0;text-decoration:none;">
-        ${MENU_ICON}
-      </a>
     `;
     // Sub-header band: tool name · brief description · version. Same on every tool.
     let sub = null;
