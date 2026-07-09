@@ -123,13 +123,26 @@
   #btn-record.is-recording .rec-dot, #btn-magic.is-recording .rec-dot { background: #fff; animation: rec-blink 1s steps(2,start) infinite; }
   #btn-record.is-counting, #btn-magic.is-counting { background: var(--text); color: #fff; border-color: var(--text); }
   #btn-record.is-counting .rec-dot, #btn-magic.is-counting .rec-dot { background: #fff; }
-  /* Magic button + its clip-length field */
+  /* Magic button + settings gear */
   #btn-magic { gap: 4px; }
-  .magic-dur-wrap { display: inline-flex; align-items: center; gap: 1px; background: var(--panel); border: 1px solid var(--hairline); border-radius: 10px; padding: 0 8px 0 5px; }
-  .magic-dur-wrap input { width: 26px; border: none; background: transparent; color: var(--text); font-family: var(--mono); font-size: 12px; text-align: right; padding: 9px 0; -moz-appearance: textfield; }
-  .magic-dur-wrap input:focus { outline: none; }
-  .magic-dur-wrap input::-webkit-outer-spin-button, .magic-dur-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .magic-dur-wrap span { font-size: 11px; color: var(--text-dim); letter-spacing: .04em; }
+  #btn-magic-cfg { padding: 9px 10px; }
+  #btn-magic-cfg.is-open { border-color: var(--text); color: var(--text); }
+  /* Clip-settings popover (floats above the stage bar) */
+  .magic-pop {
+    position: absolute; left: 18px; bottom: 62px; z-index: 40;
+    width: 210px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    background: rgba(255,255,255,0.94); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border: 1px solid var(--hairline); border-radius: 12px; box-shadow: 0 12px 40px -16px rgba(0,0,0,0.28);
+  }
+  .magic-pop[hidden] { display: none; }
+  .magic-pop__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .magic-pop__row > span { font-size: 11px; letter-spacing: .04em; color: var(--text-mid); text-transform: uppercase; }
+  .magic-pop select { width: 118px; padding: 6px 24px 6px 8px; }
+  .magic-num { display: inline-flex; align-items: center; gap: 1px; width: 118px; background: var(--panel); border: 1px solid var(--hairline); border-radius: 10px; padding: 0 8px; box-sizing: border-box; }
+  .magic-num input { width: 100%; border: none; background: transparent; color: var(--text); font-family: var(--mono); font-size: 12px; text-align: right; padding: 7px 0; -moz-appearance: textfield; }
+  .magic-num input:focus { outline: none; }
+  .magic-num input::-webkit-outer-spin-button, .magic-num input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .magic-num i { font-style: normal; font-size: 11px; color: var(--text-dim); }
   /* Pre-roll countdown — big number centered on the canvas (not recorded). */
   .rec-countdown {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -800,11 +813,39 @@
     <div class="stage-actions">
       <button id="btn-sessions" title="Saved sessions">⧉ Sessions</button>
       <button id="btn-magic" title="Auto-animate the controls and record a clip">✨ Magic</button>
-      <label class="magic-dur-wrap" title="Clip length in seconds"><input id="magic-dur" type="number" min="2" max="60" step="1" value="8"><span>s</span></label>
+      <button id="btn-magic-cfg" class="magic-cfg" title="Clip settings — length, aspect, quality, speed" aria-expanded="false">⚙</button>
       <button id="btn-record" title="Record the canvas to video (R)"><span class="rec-dot"></span> Record</button>
       <button id="btn-reroll">↻ Re-roll</button>
       <button id="btn-export-svg">Export SVG</button>
       <button id="btn-export" class="btn-primary">Export PNG</button>
+    </div>
+    <!-- Clip settings popover (Magic + Record) -->
+    <div class="magic-pop" id="magic-pop" hidden>
+      <div class="magic-pop__row"><span>Length</span><label class="magic-num"><input id="magic-dur" type="number" min="2" max="60" step="1" value="8"><i>s</i></label></div>
+      <div class="magic-pop__row"><span>Aspect</span>
+        <select id="magic-aspect">
+          <option value="1:1">Square 1:1</option>
+          <option value="4:5">Portrait 4:5</option>
+          <option value="9:16">Story 9:16</option>
+          <option value="16:9">Wide 16:9</option>
+          <option value="3:2">Landscape 3:2</option>
+          <option value="2:3">Portrait 2:3</option>
+        </select>
+      </div>
+      <div class="magic-pop__row"><span>Quality</span>
+        <select id="magic-res">
+          <option value="1080">1080p</option>
+          <option value="1440" selected>1440p</option>
+          <option value="2160">4K · 2160p</option>
+        </select>
+      </div>
+      <div class="magic-pop__row"><span>Speed</span>
+        <select id="magic-speed">
+          <option value="0.5">Slow</option>
+          <option value="1" selected>Normal</option>
+          <option value="1.9">Fast</option>
+        </select>
+      </div>
     </div>
     <!-- Recording indicator + pre-roll countdown -->
     <div class="rec-indicator" id="rec-indicator" hidden><span class="rec-dot rec-dot--live"></span> REC <span id="rec-time">0:00</span></div>
@@ -4477,7 +4518,51 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
 
   // Magic: smoothly wander the visible controls between random targets while recording.
   const magicBtn = $('btn-magic'), magicDur = $('magic-dur');
-  let magicRAF = null, magicSliders = null, magicEndAt = 0, magicActive = false;
+  const magicCfgBtn = $('btn-magic-cfg'), magicPop = $('magic-pop');
+  const aspectSel = $('magic-aspect'), resSel = $('magic-res'), speedSel = $('magic-speed');
+  let magicRAF = null, magicSliders = null, magicEndAt = 0, magicActive = false, magicSpeed = 1;
+  let savedCanvasW = 0, savedCanvasH = 0;
+
+  // Clip settings popover
+  if (magicCfgBtn && magicPop) {
+    magicCfgBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = magicPop.hidden;
+      magicPop.hidden = !open;
+      magicCfgBtn.classList.toggle('is-open', open);
+      magicCfgBtn.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', e => {
+      if (magicPop.hidden) return;
+      if (magicPop.contains(e.target) || magicCfgBtn.contains(e.target)) return;
+      magicPop.hidden = true; magicCfgBtn.classList.remove('is-open'); magicCfgBtn.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  // Chosen aspect × quality → even-numbered pixel dimensions (H.264 needs even).
+  function outputDims() {
+    const [aw, ah] = ((aspectSel && aspectSel.value) || '1:1').split(':').map(Number);
+    const longEdge = parseInt(resSel && resSel.value) || 1440;
+    let w, h;
+    if (aw >= ah) { w = longEdge; h = Math.round(longEdge * ah / aw); }
+    else          { h = longEdge; w = Math.round(longEdge * aw / ah); }
+    w -= w % 2; h -= h % 2;
+    return { w: Math.max(2, w), h: Math.max(2, h) };
+  }
+  // Boost the canvas backing store to the chosen aspect + resolution for the clip,
+  // so captureStream() records high-res. Every mode sizes itself from canvas.width/height.
+  function applyOutputSize() {
+    savedCanvasW = canvas.width; savedCanvasH = canvas.height;
+    const { w, h } = outputDims();
+    canvas.width = w; canvas.height = h;
+    try { render(); } catch (e) {}
+  }
+  function restoreOutputSize() {
+    if (!savedCanvasW) return;
+    canvas.width = savedCanvasW; canvas.height = savedCanvasH;
+    savedCanvasW = savedCanvasH = 0;
+    try { render(); } catch (e) {}
+  }
 
   // Prefer MP4 (H.264) so clips drop straight into Keynote / iMovie / etc.;
   // fall back to WebM on browsers that can't encode MP4.
@@ -4556,7 +4641,8 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
 
   // Start the MediaRecorder + REC indicator (no button chrome — the caller owns that).
   function beginRecordingCore() {
-    const stream = canvas.captureStream(30);   // 30 fps
+    applyOutputSize();                          // high-res + chosen aspect BEFORE capture
+    const stream = canvas.captureStream(30);    // 30 fps at the boosted resolution
     const mimeType = pickMime();
     try {
       recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
@@ -4624,6 +4710,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     resetButton();
     indicator.hidden = true;
     recorder.stop();   // fires onstop → builds + downloads the file
+    restoreOutputSize();
   }
 
   function toggle() { (recorder || counting) ? stop() : start(); }
@@ -4656,7 +4743,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
       if (!s.dur || now >= s.t0 + s.dur) {          // reached the waypoint → pick a new one
         s.from = s.to;
         s.to = s.min + Math.random() * (s.max - s.min);
-        s.t0 = now; s.dur = 900 + Math.random() * 2400;   // each control on its own pace
+        s.t0 = now; s.dur = (900 + Math.random() * 2400) / magicSpeed;   // each control on its own pace (scaled by Speed)
       }
       const p = Math.min(1, (now - s.t0) / s.dur);
       const e = p * p * (3 - 2 * p);                // smoothstep — no hard starts/stops
@@ -4687,6 +4774,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     indicator.hidden = true;
     if (recorder) recorder.stop();     // fires onstop → downloads the clip
     restoreControls();
+    restoreOutputSize();
     magicSliders = null;
     resetMagicBtn();
   }
@@ -4696,6 +4784,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     magicSliders = collectMagicSliders();
     if (!magicSliders.length) { alert('No animatable controls in this mode — try Slice or another mode.'); magicSliders = null; return; }
     const secs = Math.max(2, Math.min(60, parseFloat(magicDur && magicDur.value) || 8));
+    magicSpeed = parseFloat(speedSel && speedSel.value) || 1;
     // Same 3-2-1 chirp countdown as Record, so the count stays out of the clip.
     counting = true; cancelCountdown = false;
     magicBtn.classList.add('is-counting'); magicBtn.innerHTML = 'Cancel';
