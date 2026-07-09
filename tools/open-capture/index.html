@@ -3,46 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <title>OP/EN — IG Reel Capture</title>
+  <link rel="stylesheet" href="/tools/shared/opal.css" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #111; color: #fff; font-family: system-ui, sans-serif; padding: 32px; }
-    h1 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #666; margin-bottom: 8px; }
-    .note { font-size: 12px; color: #555; margin-bottom: 28px; line-height: 1.7; }
-    .note code { background: #222; padding: 2px 6px; border-radius: 3px; color: #aaa; }
-    #status { font-size: 12px; color: #888; margin-bottom: 10px; min-height: 18px; }
+    body { background: var(--opal-bg); color: var(--opal-ink); font-family: var(--opal-font-sans); }
+    .oc-wrap { padding: 28px 32px 48px; }
+    .oc-note { font-size: 12px; color: var(--opal-muted); margin-bottom: 22px; line-height: 1.6; }
+    .oc-note code { background: var(--opal-panel); border: 1px solid var(--opal-line); padding: 1px 6px; color: var(--opal-ink); font-family: var(--opal-font-mono); font-size: 11px; }
+    #status { font-size: 12px; color: var(--opal-muted); margin-bottom: 12px; min-height: 18px; font-family: var(--opal-font-mono); }
     #rec-all {
-      margin-bottom: 28px;
-      background: transparent; border: 1px solid #666; color: #ccc;
-      padding: 10px 22px; font-size: 11px; letter-spacing: .12em;
-      text-transform: uppercase; cursor: pointer; font-family: inherit;
+      margin-bottom: 26px;
+      background: var(--opal-accent); border: 1px solid var(--opal-accent); color: #fff;
+      padding: 10px 20px; font-size: 11px; letter-spacing: .12em;
+      text-transform: uppercase; cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s;
     }
-    #rec-all:hover { border-color: #fff; color: #fff; }
-    #rec-all:disabled { opacity: .3; cursor: default; }
+    #rec-all:hover { background: var(--opal-accent-soft); border-color: var(--opal-accent-soft); }
+    #rec-all:disabled { opacity: .35; cursor: default; }
     .grid { display: flex; gap: 20px; flex-wrap: wrap; }
     .panel { display: flex; flex-direction: column; gap: 8px; }
-    .panel-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #555; }
+    .panel-label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--opal-mid); }
     /* Canvas renders at 1080×1920 internally, displays at 270×480 via CSS */
-    .panel canvas { display: block; width: 270px; height: 480px; border-radius: 4px; }
+    .panel canvas { display: block; width: 270px; height: 480px; background: #fff; border: 1px solid var(--opal-line); box-shadow: 0 12px 40px -18px rgba(0,0,0,.18); }
     .rec-btn {
-      background: transparent; border: 1px solid #444; color: #bbb;
-      padding: 7px 12px; font-size: 11px; letter-spacing: .08em;
-      text-transform: uppercase; cursor: pointer; font-family: inherit;
+      background: var(--opal-panel); border: 1px solid var(--opal-line); color: var(--opal-ink);
+      padding: 8px 12px; font-size: 11px; letter-spacing: .1em;
+      text-transform: uppercase; cursor: pointer; font-family: inherit; transition: border-color .15s;
     }
-    .rec-btn:hover { border-color: #ccc; color: #fff; }
-    .rec-btn.recording { border-color: #e44; color: #e44; }
-    .rec-btn.done { border-color: #5c5; color: #5c5; }
-    .progress { height: 2px; background: #222; border-radius: 1px; overflow: hidden; }
-    .progress-bar { height: 100%; background: #e44; width: 0%; }
+    .rec-btn:hover { border-color: var(--opal-ink); }
+    .rec-btn.recording { border-color: #e0202a; color: #e0202a; }
+    .rec-btn.done { border-color: #1c8a4a; color: #1c8a4a; }
+    .progress { height: 2px; background: var(--opal-line); overflow: hidden; }
+    .progress-bar { height: 100%; background: #e0202a; width: 0%; }
   </style>
 </head>
 <body>
+<script src="/tools/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'OP/EN Capture', desc: 'IG reel capture · 1080×1920', version: 'v1' });</script>
 
-  <h1>OP/EN — IG Reel Export · 1080 × 1920</h1>
-  <p class="note">15 sec · 30 fps · exports as MP4. Use Chrome on macOS for native MP4 output.</p>
-
+<div class="oc-wrap">
+  <p class="oc-note">15 sec · 30 fps · exports as MP4. Use Chrome on macOS for native MP4 output.</p>
   <div id="status">Ready.</div>
   <button id="rec-all">Record All 4 Clips</button>
   <div class="grid" id="grid"></div>
+</div>
 
   <script>
   (function () {
