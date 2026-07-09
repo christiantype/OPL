@@ -351,9 +351,16 @@
     display: block;
   }
   .empty {
+    /* Centered on the canvas area (between the islands), not the raw stage —
+       the hidden canvas still holds its flex box, so we position absolutely. */
+    position: absolute;
+    top: 50%;
+    left: calc(268px + (100% - 268px - 332px) / 2);
+    transform: translate(-50%, -50%);
     color: var(--text-dim);
     text-align: center;
     font-size: 13px; letter-spacing: 0.02em;
+    pointer-events: none;
   }
   .empty strong { color: var(--text); font-weight: 500; display: block; margin-bottom: 6px; }
   .stage-actions {
@@ -362,7 +369,7 @@
   }
   .stage-actions button {
     background: var(--panel); border: 1px solid var(--hairline);
-    color: var(--text); padding: 9px 14px;
+    color: var(--text); padding: 9px 14px; border-radius: 10px;
     font-family: var(--sans); font-size: 12px;
     letter-spacing: 0.14em; text-transform: uppercase;
     cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
@@ -778,8 +785,6 @@
     </div>
     <div class="stage-info" id="stage-info">— / —</div>
     <div class="stage-actions">
-      <button id="btn-undo" title="Undo (⌘Z)" disabled>↶</button>
-      <button id="btn-redo" title="Redo (⌘⇧Z)" disabled>↷</button>
       <button id="btn-sessions" title="Saved sessions">⧉ Sessions</button>
       <button id="btn-record" title="Record the canvas to video (R)"><span class="rec-dot"></span> Record</button>
       <button id="btn-reroll">↻ Re-roll</button>
@@ -1300,7 +1305,7 @@
       </div>
       <div class="bg-custom" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:10px">
         <label class="row__label" style="font-size:12px;color:var(--text-mid);letter-spacing:0.10em;text-transform:uppercase">Custom color</label>
-        <input type="color" id="r-bgColor" value="#0d0d10" style="width:60px;height:28px;background:var(--panel);border:1px solid var(--hairline);cursor:pointer;padding:1px;border-radius:0">
+        <input type="color" id="r-bgColor" value="#0d0d10" style="width:60px;height:28px;background:var(--panel);border:1px solid var(--hairline);cursor:pointer;padding:1px;border-radius:6px">
       </div>
     </div>
 
