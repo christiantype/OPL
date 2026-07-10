@@ -1,0 +1,486 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ships in the Night — audio-reactive music video maker</title>
+<script src="/lab/shared/gate.js" data-hash="992db5e2595725ef68eb5066e014da8c7f6baca0afa96f1021b56b66782133f2" data-scope="opal-tools"></script>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  @font-face{font-family:'Sidepiece-HoneyPie';src:url('/shared/fonts/Sidepiece-HoneyPie.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Untitled Sans';src:url('/shared/fonts/UntitledSans-Regular.otf') format('opentype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Untitled Sans';src:url('/shared/fonts/UntitledSans-Bold.otf') format('opentype');font-weight:700;font-style:normal;font-display:swap}
+  :root{
+    --bg:#ffffff; --panel:#f4f4f4; --line:#e2e2e2; --hairline:#e2e2e2;
+    --ink:#111111; --text:#111111; --mid:#4d4d54; --dim:#7c7c84;
+    --accent:#111111; --on-accent:#ffffff;
+    --sans:'Untitled Sans',system-ui,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --display:'Sidepiece-HoneyPie','Untitled Sans',sans-serif;
+    --mono:'JetBrains Mono','SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;display:grid;grid-template-rows:56px 44px 1fr;height:100vh;overflow:hidden;position:relative}
+  button,input,select,textarea{font-family:inherit;color:inherit}
+  .opal-topbar{grid-row:1}.opal-subhead{grid-row:2}
+
+  #stage{grid-row:3;position:relative;overflow:hidden;background:#efefef}
+  #canvasArea{position:absolute;top:16px;left:312px;right:300px;bottom:64px;display:flex;align-items:center;justify-content:center;padding:8px}
+  #view{max-width:100%;max-height:100%;background:#000;box-shadow:0 12px 40px -10px rgba(0,0,0,.28);display:block}
+
+  /* Floating islands */
+  .island{position:absolute;z-index:6;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border:1px solid var(--hairline);border-radius:12px;box-shadow:0 12px 40px -16px rgba(0,0,0,.22);padding:16px;overflow-y:auto}
+  #panelL{top:16px;left:16px;bottom:80px;width:280px}
+  #panelR{top:72px;right:16px;bottom:80px;width:268px}
+
+  .sec{border-top:1px solid var(--hairline);padding-top:14px;margin-top:14px}
+  .sec:first-child{border-top:none;margin-top:0;padding-top:0}
+  .sec h3{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mid);margin:0 0 10px;font-weight:400;
+    display:flex;align-items:center;justify-content:space-between;gap:8px}
+  label.fld{display:block;font-size:11px;color:var(--mid);margin:10px 0 4px}
+  textarea,select,input[type=number],input[type=text]{width:100%;background:var(--panel);border:1px solid var(--hairline);color:var(--ink);
+    padding:8px 10px;border-radius:8px;font-size:13px;font-family:inherit}
+  textarea{resize:vertical;min-height:52px;line-height:1.35;text-transform:uppercase;letter-spacing:.02em}
+  select{-webkit-appearance:none;appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c7c84' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 11px center;padding-right:28px}
+  input[type=color]{width:44px;height:26px;border:1px solid var(--hairline);border-radius:6px;background:none;padding:1px;cursor:pointer;vertical-align:middle}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .filebtn{display:block;text-align:center;background:var(--panel);border:1px dashed var(--hairline);border-radius:8px;padding:10px;
+    color:var(--mid);cursor:pointer;font-size:12px;transition:.15s}
+  .filebtn:hover{border-color:var(--accent);color:var(--ink)}
+  .filebtn input{display:none}
+  .btn{background:var(--panel);border:1px solid var(--hairline);border-radius:8px;color:var(--ink);padding:8px 12px;cursor:pointer;
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase;transition:.15s}
+  .btn:hover{border-color:var(--ink)}
+  .btn.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+
+  /* slider rows */
+  .ctrl{margin:9px 0}
+  .ctrl .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+  .ctrl label{font-size:12px;color:var(--ink);text-transform:capitalize}
+  .ctrl .val{font-family:var(--mono);font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;cursor:pointer;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{background:#eaeaea;height:20px;border-radius:10px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:24px;border-radius:7px;background:#fff;
+    border:1px solid var(--hairline);box-shadow:0 1px 4px rgba(0,0,0,.2);margin-top:-2px}
+  input[type=range]::-moz-range-track{background:#eaeaea;height:20px;border-radius:10px}
+  input[type=range]::-moz-range-thumb{width:15px;height:24px;border-radius:7px;background:#fff;border:1px solid var(--hairline)}
+
+  /* thumbnails */
+  #imgThumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}
+  .thumb{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid var(--hairline);background:#ddd}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb button{position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;border:none;background:rgba(0,0,0,.55);
+    color:#fff;font-size:11px;line-height:1;cursor:pointer;padding:0}
+
+  /* top-right canvas size */
+  .canvas-size{position:absolute;top:16px;right:16px;z-index:7;display:flex;gap:6px;padding:8px;
+    background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border:1px solid var(--hairline);border-radius:12px;box-shadow:0 12px 40px -16px rgba(0,0,0,.22)}
+  .canvas-size select{width:118px}
+
+  /* bottom transport bar */
+  #tbar{position:absolute;left:0;right:0;bottom:0;height:56px;z-index:6;display:flex;align-items:center;gap:12px;padding:0 18px;
+    border-top:1px solid var(--hairline);background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+  #tbar button{background:var(--panel);border:1px solid var(--hairline);border-radius:10px;color:var(--ink);padding:8px 14px;cursor:pointer;
+    font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+  #tbar button:hover{border-color:var(--ink)}
+  #tbar button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  #tbar button.rec{color:#e0202a}
+  #scrub{flex:1;height:4px;background:#e2e2e2;border-radius:2px;position:relative;cursor:pointer}
+  #scrub .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ink);border-radius:2px}
+  #tbar .time{font-family:var(--mono);font-size:11px;color:var(--dim);min-width:78px;text-align:center}
+  .beatdot{width:10px;height:10px;border-radius:50%;background:#d8d8d8;transition:transform .04s}
+  .beatdot.hit{background:#e0202a}
+  .hint{font-size:10px;color:var(--dim);line-height:1.4;margin-top:6px}
+</style>
+<body>
+<main id="stage">
+  <!-- LEFT: SCENE -->
+  <aside class="island" id="panelL">
+    <div class="sec">
+      <h3>Background</h3>
+      <div style="display:flex;align-items:center;gap:10px"><input type="color" id="bgColor" value="#0a0a14"><span class="hint" style="margin:0">Solid color behind everything</span></div>
+    </div>
+    <div class="sec">
+      <h3>Images</h3>
+      <label class="filebtn">Upload images<input type="file" id="imgFile" accept="image/*" multiple></label>
+      <div id="imgThumbs"></div>
+      <label class="fld">On beat</label>
+      <select id="imgSwitch">
+        <option value="off">Hold first image</option>
+        <option value="beat" selected>Cut to next on beat</option>
+        <option value="bars">Cut every 4 beats</option>
+      </select>
+      <label class="fld">Fit</label>
+      <select id="imgFit"><option value="cover" selected>Cover</option><option value="contain">Contain</option></select>
+      <div id="g-image"></div>
+    </div>
+    <div class="sec">
+      <h3>Type</h3>
+      <textarea id="text" rows="2" spellcheck="false">SHIPS IN THE NIGHT</textarea>
+      <label class="fld">Typeface</label>
+      <select id="font">
+        <option value="display">Display (Sidepiece)</option>
+        <option value="sans" selected>System Sans</option>
+        <option value="mono">Mono</option>
+        <option value="courier">Courier</option>
+        <option value="serif">Serif</option>
+      </select>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px"><input type="color" id="textColor" value="#ffffff"><span class="hint" style="margin:0">Text color</span></div>
+      <div id="g-type"></div>
+    </div>
+  </aside>
+
+  <!-- canvas -->
+  <div id="canvasArea"><canvas id="view" width="1280" height="720"></canvas></div>
+
+  <!-- top-right size -->
+  <div class="canvas-size">
+    <select id="cv-ratio"><option value="16:9" selected>16:9</option><option value="1:1">Square 1:1</option><option value="4:5">4:5</option><option value="3:2">3:2</option></select>
+    <select id="cv-orient"><option value="landscape" selected>Landscape</option><option value="portrait">Portrait</option></select>
+  </div>
+
+  <!-- RIGHT: SOUND + REACT -->
+  <aside class="island" id="panelR">
+    <div class="sec">
+      <h3>Sound <span class="beatdot" id="beatdot"></span></h3>
+      <label class="filebtn">Upload track<input type="file" id="audioFile" accept="audio/*"></label>
+      <div class="hint" id="audioName">No track loaded — visuals stay calm until a song is playing.</div>
+      <div id="g-audio"></div>
+    </div>
+    <div class="sec">
+      <h3>React</h3>
+      <div id="g-react"></div>
+    </div>
+    <div class="sec">
+      <h3>Glitch</h3>
+      <div id="g-glitch"></div>
+    </div>
+  </aside>
+
+  <!-- transport -->
+  <div id="tbar">
+    <button id="playBtn" class="primary">Play</button>
+    <span class="time" id="time">0:00 / 0:00</span>
+    <div id="scrub"><div class="fill" id="scrubFill"></div></div>
+    <button id="recBtn" class="rec">Record</button>
+  </div>
+</main>
+
+<script src="/lab/shared/opal.js"></script>
+<script>
+Opal.mountTopbar({ name: 'Ships in the Night', desc: 'Audio-reactive music video maker', version: 'v1' });
+
+const $ = s => document.querySelector(s);
+const canvas = $('#view'), ctx = canvas.getContext('2d');
+const clamp = (v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+
+const FONT_STACKS = {
+  display:"'Sidepiece-HoneyPie','Untitled Sans',sans-serif",
+  sans:"'Untitled Sans',system-ui,sans-serif",
+  mono:"'JetBrains Mono',ui-monospace,monospace",
+  courier:"'Courier New',Courier,monospace",
+  serif:'Georgia,"Times New Roman",serif',
+};
+
+/* ---- state + sliders ---- */
+const S = {
+  bg:'#0a0a14', textColor:'#ffffff',
+  imgSwitch:'beat', imgFit:'cover',
+  imgScale:1, imgX:0, imgY:0,
+  imgPulse:0.35, imgShake:0.18, imgZoom:0.12,
+  text:'SHIPS IN THE NIGHT', font:'sans',
+  fontSize:0.11, textX:0.5, textY:0.5, tracking:2,
+  typePulse:0.35, typeShake:0.3, typeScatter:0.25,
+  chroma:0.3, slice:0.4, pixelate:0, scan:0.18, grain:0.14,
+  sensitivity:1.0,
+};
+const SLIDERS = {
+  'g-image':[['imgScale','scale',0.5,3,0.01],['imgX','x offset',-0.5,0.5,0.01],['imgY','y offset',-0.5,0.5,0.01]],
+  'g-type':[['fontSize','size',0.03,0.4,0.005],['textX','x',0,1,0.01],['textY','y',0,1,0.01],['tracking','tracking',-10,40,1]],
+  'g-audio':[['sensitivity','sensitivity',0.2,3,0.05]],
+  'g-react':[['imgPulse','image pulse',0,1,0.01],['imgShake','image shake',0,1,0.01],['imgZoom','image drift',0,0.5,0.01],
+             ['typePulse','type pulse',0,1,0.01],['typeShake','type shake',0,1,0.01],['typeScatter','type scatter',0,1,0.01]],
+  'g-glitch':[['chroma','rgb split',0,1,0.01],['slice','slice',0,1,0.01],['pixelate','pixelate',0,1,0.01],['scan','scanlines',0,1,0.01],['grain','grain',0,1,0.01]],
+};
+function fmt(id,v){const dec=(id==='tracking')?0:2;return (+v).toFixed(dec);}
+function buildSliders(){
+  for(const host in SLIDERS){const el=$('#'+host);
+    for(const [id,label,min,max,step] of SLIDERS[host]){
+      const w=document.createElement('div');w.className='ctrl';
+      w.innerHTML=`<div class="row"><label>${label}</label><span class="val" id="v-${id}">${fmt(id,S[id])}</span></div>
+        <input type="range" id="c-${id}" min="${min}" max="${max}" step="${step}" value="${S[id]}">`;
+      el.appendChild(w);
+      const r=$('#c-'+id),vv=$('#v-'+id);
+      r.addEventListener('input',()=>{S[id]=parseFloat(r.value);vv.textContent=fmt(id,S[id]);});
+    }
+  }
+}
+buildSliders();
+
+/* selects + colors + text */
+$('#bgColor').addEventListener('input',e=>S.bg=e.target.value);
+$('#textColor').addEventListener('input',e=>S.textColor=e.target.value);
+$('#text').addEventListener('input',e=>S.text=e.target.value);
+$('#font').addEventListener('change',e=>S.font=e.target.value);
+$('#imgSwitch').addEventListener('change',e=>S.imgSwitch=e.target.value);
+$('#imgFit').addEventListener('change',e=>S.imgFit=e.target.value);
+
+/* ---- images ---- */
+let images=[]; // {img,url}
+$('#imgFile').addEventListener('change',e=>{
+  for(const f of e.target.files){
+    const url=URL.createObjectURL(f); const img=new Image();
+    img.onload=()=>renderThumbs(); img.src=url; images.push({img,url});
+  }
+  e.target.value='';
+});
+function renderThumbs(){
+  const host=$('#imgThumbs'); host.innerHTML='';
+  images.forEach((it,i)=>{
+    const d=document.createElement('div'); d.className='thumb';
+    d.innerHTML=`<img src="${it.url}"><button title="remove">×</button>`;
+    d.querySelector('button').addEventListener('click',()=>{URL.revokeObjectURL(it.url);images.splice(i,1);if(imgIdx>=images.length)imgIdx=0;renderThumbs();});
+    host.appendChild(d);
+  });
+}
+let imgIdx=0;
+function curImage(){return images.length?images[imgIdx%images.length].img:null;}
+
+/* ---- canvas size ---- */
+function applyAspect(){
+  let [a,b]=($('#cv-ratio').value||'16:9').split(':').map(Number);
+  if($('#cv-orient').value==='portrait'){const t=a;a=b;b=t;}
+  const L=1280; let w,h;
+  if(a>=b){w=L;h=Math.round(L*b/a);}else{h=L;w=Math.round(L*a/b);}
+  w-=w%2;h-=h%2; canvas.width=w;canvas.height=h;
+}
+$('#cv-ratio').addEventListener('change',applyAspect);
+$('#cv-orient').addEventListener('change',applyAspect);
+applyAspect();
+
+/* ---- audio + analysis ---- */
+const audioEl=new Audio(); audioEl.crossOrigin='anonymous';
+let audioCtx=null,analyser=null,srcNode=null,recDest=null,freq=null,audioLoaded=false;
+$('#audioFile').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f)return;
+  audioEl.src=URL.createObjectURL(f); audioEl.load(); audioLoaded=true;
+  $('#audioName').textContent='Track: '+f.name;
+});
+function ensureAudioGraph(){
+  if(audioCtx)return;
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  srcNode=audioCtx.createMediaElementSource(audioEl);
+  analyser=audioCtx.createAnalyser(); analyser.fftSize=2048; analyser.smoothingTimeConstant=0.8;
+  freq=new Uint8Array(analyser.frequencyBinCount);
+  recDest=audioCtx.createMediaStreamDestination();
+  srcNode.connect(analyser); analyser.connect(audioCtx.destination); srcNode.connect(recDest);
+}
+// smoothed bands + beat
+const A={bass:0,mid:0,high:0,level:0,beat:0};
+let bassHist=[],beatCool=0,barCount=0;
+function readAudio(){
+  if(!analyser||audioEl.paused){ // decay when not playing
+    A.bass*=0.9;A.mid*=0.9;A.high*=0.9;A.level*=0.9;A.beat*=0.85; return;
+  }
+  analyser.getByteFrequencyData(freq);
+  const band=(lo,hi)=>{let s=0;for(let i=lo;i<hi;i++)s+=freq[i];return s/((hi-lo)*255);};
+  const g=S.sensitivity;
+  const bass=clamp(band(1,10)*g,0,1), mid=clamp(band(10,50)*g,0,1), high=clamp(band(60,180)*g,0,1);
+  let lvl=0;for(let i=1;i<180;i++)lvl+=freq[i];lvl=clamp(lvl/(179*255)*g*1.4,0,1);
+  A.bass=lerp(A.bass,bass,0.5); A.mid=lerp(A.mid,mid,0.5); A.high=lerp(A.high,high,0.5); A.level=lerp(A.level,lvl,0.4);
+  // beat = bass transient over moving average
+  bassHist.push(bass); if(bassHist.length>43)bassHist.shift();
+  const avg=bassHist.reduce((a,b)=>a+b,0)/bassHist.length;
+  if(bass>avg*1.38 && bass>0.2 && beatCool<=0){ A.beat=1; beatCool=7; onBeat(); }
+  beatCool--; A.beat*=0.82;
+}
+function onBeat(){
+  const dot=$('#beatdot'); dot.classList.add('hit'); setTimeout(()=>dot.classList.remove('hit'),90);
+  barCount++;
+  if(images.length>1){
+    if(S.imgSwitch==='beat') imgIdx=(imgIdx+1)%images.length;
+    else if(S.imgSwitch==='bars' && barCount%4===0) imgIdx=(imgIdx+1)%images.length;
+  }
+  scatterSeed=(scatterSeed+1)|0;
+}
+let scatterSeed=1;
+
+/* ---- deterministic per-frame randoms ---- */
+function rnd(n){const x=Math.sin(n*127.1+scatterSeed*13.7)*43758.5453;return x-Math.floor(x);}
+
+/* ---- offscreen canvases ---- */
+const sceneC=document.createElement('canvas'),sceneX=sceneC.getContext('2d');
+const stageC=document.createElement('canvas'),stageX=stageC.getContext('2d');
+const tinyC=document.createElement('canvas'),tinyX=tinyC.getContext('2d');
+const chanC=[0,1,2].map(()=>{const c=document.createElement('canvas');return {c,x:c.getContext('2d')};});
+let grainC=null;
+function makeGrain(){
+  grainC=document.createElement('canvas');grainC.width=220;grainC.height=220;const gx=grainC.getContext('2d');
+  const id=gx.createImageData(220,220),d=id.data;
+  for(let i=0;i<d.length;i+=4){const v=Math.random()*255;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;}
+  gx.putImageData(id,0,0);
+}
+makeGrain();
+
+let zoomPhase=0;
+
+/* ---- draw the scene (bg + image + type) ---- */
+function drawScene(g,W,H){
+  g.fillStyle=S.bg; g.fillRect(0,0,W,H);
+  const img=curImage();
+  if(img){
+    const zoom=1+A.bass*S.imgPulse+Math.sin(zoomPhase)*S.imgZoom*0.5+S.imgZoom*0.5;
+    const s0=(S.imgFit==='contain')?Math.min(W/img.width,H/img.height):Math.max(W/img.width,H/img.height);
+    const s=s0*S.imgScale*zoom;
+    const jx=(Math.random()-0.5)*A.level*S.imgShake*W*0.05, jy=(Math.random()-0.5)*A.level*S.imgShake*H*0.05;
+    const dw=img.width*s,dh=img.height*s;
+    g.drawImage(img,(W-dw)/2+S.imgX*W+jx,(H-dh)/2+S.imgY*H+jy,dw,dh);
+  }
+  drawType(g,W,H);
+}
+function drawType(g,W,H){
+  if(!S.text.trim())return;
+  const base=S.fontSize*Math.min(W,H);
+  const size=base*(1+A.level*S.typePulse);
+  g.save();
+  g.font=`${size}px ${FONT_STACKS[S.font]}`;
+  g.textAlign='center'; g.textBaseline='middle';
+  g.fillStyle=S.textColor;
+  try{g.letterSpacing=`${S.tracking}px`;}catch(e){}
+  const lines=S.text.split('\n');
+  const lh=size*1.12, cy0=S.textY*H-(lines.length-1)*lh/2, cx=S.textX*W;
+  const shakeX=(Math.random()-0.5)*A.high*S.typeShake*base*0.6, shakeY=(Math.random()-0.5)*A.high*S.typeShake*base*0.6;
+  lines.forEach((line,li)=>{
+    const cy=cy0+li*lh;
+    if(S.typeScatter*A.beat>0.03){ // scatter letters on the beat
+      const chars=[...line]; let total=0; const widths=chars.map(c=>{const w=g.measureText(c).width+S.tracking;total+=w;return w;});
+      let x=cx-total/2;
+      chars.forEach((c,ci)=>{
+        const ox=(rnd(li*100+ci)-0.5)*A.beat*S.typeScatter*base*1.4;
+        const oy=(rnd(li*100+ci+7)-0.5)*A.beat*S.typeScatter*base*1.4;
+        g.fillText(c,x+widths[ci]/2+ox,cy+oy);
+        x+=widths[ci];
+      });
+    } else {
+      g.fillText(line,cx+shakeX,cy+shakeY);
+    }
+  });
+  g.restore();
+}
+
+/* ---- glitch compositing ---- */
+function sizeOff(cv,W,H){if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}}
+function channel(src,tint,W,H){
+  const {c,x}=chanC[tint==='#ff0000'?0:tint==='#00ff00'?1:2];
+  sizeOff(c,W,H); x.globalCompositeOperation='source-over'; x.clearRect(0,0,W,H); x.drawImage(src,0,0);
+  x.globalCompositeOperation='multiply'; x.fillStyle=tint; x.fillRect(0,0,W,H);
+  x.globalCompositeOperation='source-over'; return c;
+}
+function render(){
+  const W=canvas.width,H=canvas.height;
+  sizeOff(sceneC,W,H); sizeOff(stageC,W,H);
+  drawScene(sceneX,W,H);
+
+  // pixelate
+  let base=sceneC;
+  const px=1+S.pixelate*(0.35+A.level)*60;
+  if(px>1.5){
+    const sw=Math.max(2,Math.round(W/px)),sh=Math.max(2,Math.round(H/px));
+    sizeOff(tinyC,sw,sh); tinyX.clearRect(0,0,sw,sh); tinyX.imageSmoothingEnabled=true; tinyX.drawImage(sceneC,0,0,sw,sh);
+    stageX.imageSmoothingEnabled=false; stageX.clearRect(0,0,W,H); stageX.drawImage(tinyC,0,0,W,H); stageX.imageSmoothingEnabled=true;
+    base=stageC;
+  }
+
+  // slice glitch (into stageC if not already used, else a fresh pass)
+  const sliceAmt=S.slice*(0.25+A.beat*0.9+A.high*0.4);
+  if(sliceAmt>0.04){
+    // draw base then offset horizontal strips read from base
+    if(base===stageC){ // need a source distinct from target; use sceneC copy
+      // base already in stageC (pixelated). copy to sceneX as source
+      sceneX.clearRect(0,0,W,H); sceneX.drawImage(stageC,0,0); base=sceneC;
+    }
+    stageX.clearRect(0,0,W,H); stageX.drawImage(base,0,0);
+    const bands=5+Math.floor(sliceAmt*12);
+    for(let i=0;i<bands;i++){
+      const y0=Math.floor(rnd(i*3+1)*H), bh=Math.max(4,Math.floor(rnd(i*3+2)*H*0.12));
+      const dx=(rnd(i*3+3)-0.5)*W*sliceAmt*0.5;
+      stageX.drawImage(base,0,y0,W,bh,dx,y0,W,bh);
+    }
+    base=stageC;
+  }
+
+  // compose to main with optional RGB split
+  ctx.setTransform(1,0,0,1,0,0);
+  const dx=S.chroma*(4+A.high*22+A.beat*10);
+  if(dx>0.6){
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';
+    ctx.drawImage(channel(base,'#ff0000',W,H),-dx,0);
+    ctx.drawImage(channel(base,'#00ff00',W,H),0,0);
+    ctx.drawImage(channel(base,'#0000ff',W,H),dx,0);
+    ctx.globalCompositeOperation='source-over';
+  } else {
+    ctx.drawImage(base,0,0);
+  }
+
+  // scanlines
+  if(S.scan>0.02){
+    ctx.save(); ctx.globalAlpha=S.scan*0.5; ctx.fillStyle='#000';
+    const gap=Math.max(2,Math.round(H/360));
+    for(let y=0;y<H;y+=gap*2) ctx.fillRect(0,y,W,gap);
+    ctx.restore();
+  }
+  // grain
+  if(S.grain>0.02){
+    ctx.save(); ctx.globalCompositeOperation='overlay'; ctx.globalAlpha=S.grain*(0.35+A.level*0.4);
+    const ox=(Math.random()*100)|0, oy=(Math.random()*100)|0;
+    for(let y=-oy;y<H;y+=220)for(let x=-ox;x<W;x+=220) ctx.drawImage(grainC,x,y);
+    ctx.restore();
+  }
+}
+
+/* ---- loop ---- */
+let raf=null;
+function frame(){ zoomPhase+=0.006; readAudio(); render(); updateTransport(); raf=requestAnimationFrame(frame); }
+frame();
+
+/* ---- transport ---- */
+function tstr(s){s=Math.max(0,s|0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function updateTransport(){
+  const d=audioEl.duration||0,c=audioEl.currentTime||0;
+  $('#time').textContent=tstr(c)+' / '+tstr(d);
+  $('#scrubFill').style.width=(d?c/d*100:0)+'%';
+}
+$('#playBtn').addEventListener('click',async()=>{
+  if(!audioLoaded){alert('Upload a track first.');return;}
+  ensureAudioGraph(); if(audioCtx.state==='suspended')await audioCtx.resume();
+  if(audioEl.paused){await audioEl.play(); $('#playBtn').textContent='Pause'; $('#playBtn').classList.remove('primary');}
+  else{audioEl.pause(); $('#playBtn').textContent='Play'; $('#playBtn').classList.add('primary');}
+});
+audioEl.addEventListener('ended',()=>{$('#playBtn').textContent='Play';$('#playBtn').classList.add('primary');});
+$('#scrub').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect();if(audioEl.duration)audioEl.currentTime=(e.clientX-r.left)/r.width*audioEl.duration;});
+
+/* ---- record (canvas + audio) ---- */
+let recorder=null,recording=false,recChunks=[];
+$('#recBtn').addEventListener('click',async()=>{
+  if(recording){recorder.stop();return;}
+  if(!audioLoaded){alert('Upload a track first — the recording captures the canvas + your song.');return;}
+  ensureAudioGraph(); if(audioCtx.state==='suspended')await audioCtx.resume();
+  const vstream=canvas.captureStream(30);
+  const stream=new MediaStream([...vstream.getVideoTracks(),...recDest.stream.getAudioTracks()]);
+  const types=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'video/webm';
+  recChunks=[]; recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12e6,audioBitsPerSecond:160e3});
+  recorder.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};
+  recorder.onstop=()=>{recording=false;$('#recBtn').textContent='Record';$('#recBtn').classList.add('rec');$('#recBtn').classList.remove('primary');
+    const blob=new Blob(recChunks,{type:mime}),a=document.createElement('a');
+    a.download='ships-in-the-night.'+(mime.includes('mp4')?'mp4':'webm');a.href=URL.createObjectURL(blob);a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1500);};
+  // restart the track from the top so the whole song is captured
+  audioEl.currentTime=0; if(audioEl.paused){await audioEl.play();$('#playBtn').textContent='Pause';$('#playBtn').classList.remove('primary');}
+  recorder.start(); recording=true; $('#recBtn').textContent='Stop'; $('#recBtn').classList.remove('rec'); $('#recBtn').classList.add('primary');
+});
+</script>
+</body>
+</html>
