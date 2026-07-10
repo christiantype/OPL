@@ -953,7 +953,14 @@
           <button data-s="/">/</button>
           <button data-s="@">@</button>
         </div>
-        <input type="text" id="r-winChar" value="&amp;" maxlength="3" style="width:100%;padding:8px 10px;background:var(--panel);color:var(--text);border:1px solid var(--hairline);font-family:var(--sans);font-size:16px;text-align:center;margin-bottom:14px" placeholder="or type any char">
+        <input type="text" id="r-winChar" value="&amp;" maxlength="3" style="width:100%;padding:8px 10px;background:var(--panel);color:var(--text);border:1px solid var(--hairline);font-family:var(--sans);font-size:16px;text-align:center;margin-bottom:10px" placeholder="or type any char">
+        <div class="row"><span class="row__label">Typeface</span></div>
+        <select id="r-winFont">
+          <option value="sans" selected>System Sans</option>
+          <option value="mono">Mono</option>
+          <option value="courier">Courier</option>
+          <option value="serif">Serif</option>
+        </select>
         <div class="row"><span class="row__label">Count</span><input class="row__val" id="v-winCount" type="text" value="1"></div>
         <input type="range" id="r-winCount" min="1" max="10" step="1" value="1">
         <div class="row"><span class="row__label">Size</span><input class="row__val" id="v-winSize" type="text" value="0.80"></div>
@@ -1141,6 +1148,13 @@
         <div class="ctrl-label">Glyph</div>
         <div class="row"><span class="row__label">Character</span></div>
         <input type="text" id="r-glyphChar" value="✕" maxlength="3" style="width:100%;padding:8px 10px;background:var(--panel);color:var(--text);border:1px solid var(--hairline);font-family:var(--sans);font-size:16px;text-align:center;margin-bottom:10px">
+        <div class="row"><span class="row__label">Typeface</span></div>
+        <select id="r-glyphFont" style="margin-bottom:10px">
+          <option value="sans">System Sans</option>
+          <option value="mono" selected>Mono</option>
+          <option value="courier">Courier</option>
+          <option value="serif">Serif</option>
+        </select>
         <div class="seg" id="seg-glyphPreset" style="grid-template-columns:repeat(6,1fr);margin-bottom:10px">
           <button data-g="✕">✕</button>
           <button data-g="+">+</button>
@@ -1402,6 +1416,7 @@ const state = {
   mode: 'slice',       // 'slice' | 'dot' | 'glyph' | 'strata' | 'scatter'
   glyph: {
     char:       '✕',
+    font:       'mono',       // typeface for typed letters/numbers
     resolution: 4,
     size:       4,
     rotJitter:  0,
@@ -1422,6 +1437,7 @@ const state = {
   },
   window: {
     char:   '&',
+    font:   'sans',    // typeface for the typed character
     count:  1,
     size:   0.80,    // fraction of canvas dimension
     jitter: 0.20,    // 0..1
@@ -1619,6 +1635,15 @@ function toPersistableDataURL(img, cap = 2000) {
     return cv.toDataURL('image/jpeg', 0.85);
   } catch (e) { return null; }
 }
+
+// Typeface options for the Glyph / Window modes (system fonts).
+const FONT_STACKS = {
+  sans:    '"Untitled Sans", system-ui, sans-serif',
+  mono:    '"JetBrains Mono", ui-monospace, monospace',
+  courier: '"Courier New", Courier, monospace',
+  serif:   'Georgia, "Times New Roman", serif',
+};
+const fontStack = key => FONT_STACKS[key] || FONT_STACKS.sans;
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -2721,7 +2746,7 @@ function glyphRender(target, active) {
 
   x.save();
   x.font = `${fontPx}px ${
-    /[\w]/.test(g.char) ? 'JetBrains Mono, Courier New, monospace'
+    /[\w]/.test(g.char) ? fontStack(g.font)
                         : 'system-ui, sans-serif'
   }`;
   x.textAlign = 'center';
@@ -2830,7 +2855,7 @@ function windowRender(target, active) {
     oc.globalCompositeOperation = 'destination-in';
     oc.fillStyle = '#000';
     oc.font = `${size}px ${
-      /[A-Za-z0-9&@/]/.test(w.char) ? '"Untitled Sans", system-ui, sans-serif'
+      /[A-Za-z0-9&@/]/.test(w.char) ? fontStack(w.font)
                                     : 'system-ui, sans-serif'
     }`;
     oc.textAlign = 'center';
@@ -3803,6 +3828,7 @@ function wireGlyph() {
     state.glyph.char = e.target.value || '✕';
     render();
   });
+  $('r-glyphFont')?.addEventListener('change', e => { state.glyph.font = e.target.value; render(); });
   document.querySelectorAll('#seg-glyphPreset button').forEach(b => {
     b.addEventListener('click', () => {
       state.glyph.char = b.dataset.g;
@@ -3996,6 +4022,7 @@ function wireWindow() {
     state.window.char = e.target.value || '&';
     render();
   });
+  $('r-winFont')?.addEventListener('change', e => { state.window.font = e.target.value; render(); });
   document.querySelectorAll('#seg-winShape button').forEach(b => {
     b.addEventListener('click', () => {
       document.querySelectorAll('#seg-winShape button').forEach(x => x.classList.remove('is-active'));
@@ -4371,17 +4398,18 @@ function sliderFromFriendly(r, n) {
   window._loSchedulePhotoSave = schedulePhotoSave;
 
   function snapshot() {
-    const ranges = {}, checks = {}, texts = {}, segs = {};
+    const ranges = {}, checks = {}, texts = {}, segs = {}, selects = {};
     document.querySelectorAll('input[type=range]').forEach(r => { ranges[r.id] = r.value; });
     document.querySelectorAll('.controls input[type=checkbox]').forEach(c => { checks[c.id] = c.checked; });
     document.querySelectorAll('.controls input[type=text]').forEach(t => {
       if (!t.classList.contains('row__val')) texts[t.id] = t.value;
     });
+    document.querySelectorAll('.controls select').forEach(s => { if (s.id) selects[s.id] = s.value; });
     document.querySelectorAll('.controls .seg, #seg-mode').forEach(seg => {
       const btns = [...seg.querySelectorAll('button')];
       segs[seg.id] = btns.findIndex(b => b.classList.contains('is-active'));
     });
-    return { v: 1, ranges, checks, texts, segs };
+    return { v: 1, ranges, checks, texts, segs, selects };
   }
 
   function applySnapshot(snap) {
@@ -4404,6 +4432,10 @@ function sliderFromFriendly(r, n) {
       Object.entries(snap.ranges || {}).forEach(([id, val]) => {
         const r = document.getElementById(id);
         if (r && r.value !== String(val)) { r.value = val; r.dispatchEvent(new Event('input', { bubbles: true })); }
+      });
+      Object.entries(snap.selects || {}).forEach(([id, val]) => {
+        const s = document.getElementById(id);
+        if (s && s.value !== val) { s.value = val; s.dispatchEvent(new Event('change', { bubbles: true })); }
       });
     } finally {
       window._loSuspendRender = false; window._loApplying = false;
