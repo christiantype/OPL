@@ -173,6 +173,7 @@
   #tbar button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
   #tbar button.rec{color:#e0202a}
   #tbar button.rec:hover{border-color:#e0202a}
+  #tbar button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
   #view{cursor:grab}#view:active{cursor:grabbing}
   #status{display:none}
   .warn{color:var(--cobalt)}.ok{color:var(--cobalt)}
@@ -344,6 +345,8 @@
     <div class="tbar-grp">
       <button id="resetBtn">Reset</button>
       <button id="randBtn">Randomize</button>
+      <button id="audioBtn" title="Add a sound track to recordings — click to upload audio">♪ Sound</button>
+      <input id="audioFile" type="file" accept="audio/*" hidden>
       <button id="recBtn" class="rec">Record</button>
     </div>
   </div>
@@ -1147,16 +1150,45 @@ $('#svgBtn').addEventListener('click',()=>{render();
   downloadBlob('kinetic-type.svg',new Blob([lastSVG],{type:'image/svg+xml'}));});
 $('#pngBtn').addEventListener('click',()=>{render();canvas.toBlob(b=>downloadBlob('kinetic-type.png',b));});
 
+/* ---- optional sound track for recordings — upload an audio file ---- */
+let recAudioEl=null, recAudioSrc=null, recAudioCtx=null, audioReady=false;
+$('#audioBtn').addEventListener('click',()=>$('#audioFile').click());
+$('#audioFile').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f)return;
+  if(!recAudioEl){recAudioEl=new Audio();recAudioEl.loop=true;}   // loop so the whole clip has sound
+  recAudioEl.src=URL.createObjectURL(f); recAudioEl.load();
+  audioReady=true;
+  const b=$('#audioBtn'); b.classList.add('on');
+  b.textContent='♪ '+(f.name.length>14?f.name.slice(0,12)+'…':f.name);
+  b.title='Sound: '+f.name+' — click to change';
+});
+
 let recorder=null,recording=false,recTimer=null,recStart=0;
-$('#recBtn').addEventListener('click',()=>{
+$('#recBtn').addEventListener('click',async()=>{
   if(recording){recorder.stop();return;}
-  const stream=canvas.captureStream(30);
-  const types=['video/mp4;codecs=avc1.42E01E','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const vstream=canvas.captureStream(30);
+  let stream=vstream, withAudio=false;
+  if(audioReady&&recAudioEl){                         // mix the uploaded audio into the clip
+    try{
+      recAudioCtx=recAudioCtx||new (window.AudioContext||window.webkitAudioContext)();
+      if(recAudioCtx.state==='suspended')await recAudioCtx.resume();
+      if(!recAudioSrc)recAudioSrc=recAudioCtx.createMediaElementSource(recAudioEl); // once per element
+      recAudioSrc.disconnect();
+      const dest=recAudioCtx.createMediaStreamDestination();
+      recAudioSrc.connect(dest); recAudioSrc.connect(recAudioCtx.destination);      // record + hear it
+      stream=new MediaStream([...vstream.getVideoTracks(),...dest.stream.getAudioTracks()]);
+      withAudio=true;
+    }catch(err){console.warn('audio mix failed, recording video only:',err);}
+  }
+  const vtypes=['video/mp4;codecs=avc1.42E01E','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const atypes=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  const types=withAudio?atypes:vtypes;
   const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'video/webm';const chunks=[];
-  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12e6});
+  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12e6,audioBitsPerSecond:128e3});
   recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
-  recorder.onstop=()=>{recording=false;clearInterval(recTimer);$('#recBtn').textContent='Record';$('#recBtn').classList.add('rec');
+  recorder.onstop=()=>{recording=false;clearInterval(recTimer);if(recAudioEl)recAudioEl.pause();$('#recBtn').textContent='Record';$('#recBtn').classList.add('rec');
     downloadBlob('kinetic-reel.'+(mime.includes('mp4')?'mp4':'webm'),new Blob(chunks,{type:mime}));};
+  if(withAudio){try{recAudioEl.currentTime=0;await recAudioEl.play();}catch(e){}}
   recorder.start();recording=true;recStart=performance.now();$('#recBtn').classList.remove('rec');$('#recBtn').classList.add('primary');
   if(!playing){playing=true;$('#playBtn').textContent='Freeze';$('#playBtn').classList.add('primary');loop();}
   recTimer=setInterval(()=>{$('#recBtn').textContent='Stop '+((performance.now()-recStart)/1000).toFixed(1)+'s';},100);});
