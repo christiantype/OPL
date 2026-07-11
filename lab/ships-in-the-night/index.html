@@ -113,6 +113,10 @@
       </select>
       <label class="fld">Fit</label>
       <select id="imgFit"><option value="cover" selected>Cover</option><option value="contain">Contain</option></select>
+      <label class="fld">Morph</label>
+      <select id="imgTrans"><option value="cut">Cut</option><option value="fade" selected>Crossfade</option><option value="morph">Slice morph</option></select>
+      <label class="fld">Blend (how images interact)</label>
+      <select id="imgBlend"><option value="source-over" selected>Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="difference">Difference</option><option value="overlay">Overlay</option><option value="lighten">Lighten</option><option value="exclusion">Exclusion</option></select>
       <div id="g-image"></div>
     </div>
     <div class="sec">
@@ -125,6 +129,14 @@
         <option value="mono">Mono</option>
         <option value="courier">Courier</option>
         <option value="serif">Serif</option>
+      </select>
+      <label class="fld">Engine (from Flux)</label>
+      <select id="typeEngine">
+        <option value="solid" selected>Solid</option>
+        <option value="outline">Outline</option>
+        <option value="halftone">Halftone dots</option>
+        <option value="glow">Glow / thermal</option>
+        <option value="lines">Line screen</option>
       </select>
       <div style="display:flex;align-items:center;gap:10px;margin-top:10px"><input type="color" id="textColor" value="#ffffff"><span class="hint" style="margin:0">Text color</span></div>
       <div id="g-type"></div>
@@ -186,17 +198,17 @@ const FONT_STACKS = {
 /* ---- state + sliders ---- */
 const S = {
   bg:'#0a0a14', textColor:'#ffffff',
-  imgSwitch:'beat', imgFit:'cover',
+  imgSwitch:'beat', imgFit:'cover', imgTrans:'fade', imgBlend:'source-over', transTime:0.35,
   imgScale:1, imgX:0, imgY:0,
   imgPulse:0.35, imgShake:0.18, imgZoom:0.12,
-  text:'SHIPS IN THE NIGHT', font:'sans',
+  text:'SHIPS IN THE NIGHT', font:'sans', typeEngine:'solid',
   fontSize:0.11, textX:0.5, textY:0.5, tracking:2,
   typePulse:0.35, typeShake:0.3, typeScatter:0.25,
   chroma:0.3, slice:0.4, pixelate:0, scan:0.18, grain:0.14,
   sensitivity:1.0,
 };
 const SLIDERS = {
-  'g-image':[['imgScale','scale',0.5,3,0.01],['imgX','x offset',-0.5,0.5,0.01],['imgY','y offset',-0.5,0.5,0.01]],
+  'g-image':[['imgScale','scale',0.5,3,0.01],['imgX','x offset',-0.5,0.5,0.01],['imgY','y offset',-0.5,0.5,0.01],['transTime','morph time',0.05,2,0.05]],
   'g-type':[['fontSize','size',0.03,0.4,0.005],['textX','x',0,1,0.01],['textY','y',0,1,0.01],['tracking','tracking',-10,40,1]],
   'g-audio':[['sensitivity','sensitivity',0.2,3,0.05]],
   'g-react':[['imgPulse','image pulse',0,1,0.01],['imgShake','image shake',0,1,0.01],['imgZoom','image drift',0,0.5,0.01],
@@ -225,6 +237,9 @@ $('#text').addEventListener('input',e=>S.text=e.target.value);
 $('#font').addEventListener('change',e=>S.font=e.target.value);
 $('#imgSwitch').addEventListener('change',e=>S.imgSwitch=e.target.value);
 $('#imgFit').addEventListener('change',e=>S.imgFit=e.target.value);
+$('#imgTrans').addEventListener('change',e=>S.imgTrans=e.target.value);
+$('#imgBlend').addEventListener('change',e=>S.imgBlend=e.target.value);
+$('#typeEngine').addEventListener('change',e=>S.typeEngine=e.target.value);
 
 /* ---- images ---- */
 let images=[]; // {img,url}
@@ -240,12 +255,13 @@ function renderThumbs(){
   images.forEach((it,i)=>{
     const d=document.createElement('div'); d.className='thumb';
     d.innerHTML=`<img src="${it.url}"><button title="remove">×</button>`;
-    d.querySelector('button').addEventListener('click',()=>{URL.revokeObjectURL(it.url);images.splice(i,1);if(imgIdx>=images.length)imgIdx=0;renderThumbs();});
+    d.querySelector('button').addEventListener('click',()=>{URL.revokeObjectURL(it.url);images.splice(i,1);imgFrom=imgTo=0;mix=1;renderThumbs();});
     host.appendChild(d);
   });
 }
-let imgIdx=0;
-function curImage(){return images.length?images[imgIdx%images.length].img:null;}
+// Image morph state: cross-blend from imgFrom -> imgTo as mix goes 0..1
+let imgFrom=0, imgTo=0, mix=1;
+function switchImage(){ if(images.length<2)return; imgFrom=imgTo; imgTo=(imgTo+1)%images.length; mix=0; }
 
 /* ---- canvas size ---- */
 function applyAspect(){
@@ -299,8 +315,8 @@ function onBeat(){
   const dot=$('#beatdot'); dot.classList.add('hit'); setTimeout(()=>dot.classList.remove('hit'),90);
   barCount++;
   if(images.length>1){
-    if(S.imgSwitch==='beat') imgIdx=(imgIdx+1)%images.length;
-    else if(S.imgSwitch==='bars' && barCount%4===0) imgIdx=(imgIdx+1)%images.length;
+    if(S.imgSwitch==='beat') switchImage();
+    else if(S.imgSwitch==='bars' && barCount%4===0) switchImage();
   }
   scatterSeed=(scatterSeed+1)|0;
 }
@@ -314,6 +330,9 @@ const sceneC=document.createElement('canvas'),sceneX=sceneC.getContext('2d');
 const stageC=document.createElement('canvas'),stageX=stageC.getContext('2d');
 const tinyC=document.createElement('canvas'),tinyX=tinyC.getContext('2d');
 const chanC=[0,1,2].map(()=>{const c=document.createElement('canvas');return {c,x:c.getContext('2d')};});
+const imgToC=document.createElement('canvas'),imgToX=imgToC.getContext('2d');
+const typeMaskC=document.createElement('canvas'),typeMaskX=typeMaskC.getContext('2d');
+const tmaskC=document.createElement('canvas'),tmaskX=tmaskC.getContext('2d');
 let grainC=null;
 function makeGrain(){
   grainC=document.createElement('canvas');grainC.width=220;grainC.height=220;const gx=grainC.getContext('2d');
@@ -325,48 +344,106 @@ makeGrain();
 
 let zoomPhase=0;
 
-/* ---- draw the scene (bg + image + type) ---- */
+/* ---- draw the scene (bg + images + type) ---- */
+function coverRect(img,W,H){
+  const zoom=1+A.bass*S.imgPulse+Math.sin(zoomPhase)*S.imgZoom*0.5+S.imgZoom*0.5;
+  const s0=(S.imgFit==='contain')?Math.min(W/img.width,H/img.height):Math.max(W/img.width,H/img.height);
+  const s=s0*S.imgScale*zoom;
+  const jx=(Math.random()-0.5)*A.level*S.imgShake*W*0.05, jy=(Math.random()-0.5)*A.level*S.imgShake*H*0.05;
+  const dw=img.width*s,dh=img.height*s;
+  return {dx:(W-dw)/2+S.imgX*W+jx, dy:(H-dh)/2+S.imgY*H+jy, dw, dh};
+}
+function drawImages(g,W,H){
+  const from=images[imgFrom]&&images[imgFrom].img, to=images[imgTo]&&images[imgTo].img;
+  if(from){const r=coverRect(from,W,H); g.drawImage(from,r.dx,r.dy,r.dw,r.dh);}
+  if(to && imgTo!==imgFrom){
+    // render the incoming image (cover) to a temp, then blend it over the outgoing
+    sizeOff(imgToC,W,H); imgToX.clearRect(0,0,W,H);
+    const r=coverRect(to,W,H); imgToX.drawImage(to,r.dx,r.dy,r.dw,r.dh);
+    g.save(); g.globalCompositeOperation=S.imgBlend;
+    if(S.imgTrans==='cut'){ g.globalAlpha=1; g.drawImage(imgToC,0,0); }
+    else if(S.imgTrans==='morph'){ // databend slices settle into place as mix -> 1
+      g.globalAlpha=Math.min(1,mix*1.3);
+      const bands=12;
+      for(let i=0;i<bands;i++){const y0=Math.floor(i/bands*H),bh=Math.ceil(H/bands)+1;
+        const dx=(rnd(i+1)-0.5)*W*(1-mix)*0.7; g.drawImage(imgToC,0,y0,W,bh,dx,y0,W,bh);}
+    } else { g.globalAlpha=mix; g.drawImage(imgToC,0,0); }  // crossfade
+    g.restore();
+  }
+}
 function drawScene(g,W,H){
   g.fillStyle=S.bg; g.fillRect(0,0,W,H);
-  const img=curImage();
-  if(img){
-    const zoom=1+A.bass*S.imgPulse+Math.sin(zoomPhase)*S.imgZoom*0.5+S.imgZoom*0.5;
-    const s0=(S.imgFit==='contain')?Math.min(W/img.width,H/img.height):Math.max(W/img.width,H/img.height);
-    const s=s0*S.imgScale*zoom;
-    const jx=(Math.random()-0.5)*A.level*S.imgShake*W*0.05, jy=(Math.random()-0.5)*A.level*S.imgShake*H*0.05;
-    const dw=img.width*s,dh=img.height*s;
-    g.drawImage(img,(W-dw)/2+S.imgX*W+jx,(H-dh)/2+S.imgY*H+jy,dw,dh);
-  }
+  drawImages(g,W,H);
   drawType(g,W,H);
 }
 function drawType(g,W,H){
   if(!S.text.trim())return;
   const base=S.fontSize*Math.min(W,H);
   const size=base*(1+A.level*S.typePulse);
-  g.save();
-  g.font=`${size}px ${FONT_STACKS[S.font]}`;
-  g.textAlign='center'; g.textBaseline='middle';
-  g.fillStyle=S.textColor;
-  try{g.letterSpacing=`${S.tracking}px`;}catch(e){}
+  const font=`${size}px ${FONT_STACKS[S.font]}`;
+  const cx=S.textX*W;
   const lines=S.text.split('\n');
-  const lh=size*1.12, cy0=S.textY*H-(lines.length-1)*lh/2, cx=S.textX*W;
+  const lh=size*1.12, cy0=S.textY*H-(lines.length-1)*lh/2;
   const shakeX=(Math.random()-0.5)*A.high*S.typeShake*base*0.6, shakeY=(Math.random()-0.5)*A.high*S.typeShake*base*0.6;
-  lines.forEach((line,li)=>{
-    const cy=cy0+li*lh;
-    if(S.typeScatter*A.beat>0.03){ // scatter letters on the beat
-      const chars=[...line]; let total=0; const widths=chars.map(c=>{const w=g.measureText(c).width+S.tracking;total+=w;return w;});
-      let x=cx-total/2;
-      chars.forEach((c,ci)=>{
-        const ox=(rnd(li*100+ci)-0.5)*A.beat*S.typeScatter*base*1.4;
-        const oy=(rnd(li*100+ci+7)-0.5)*A.beat*S.typeScatter*base*1.4;
-        g.fillText(c,x+widths[ci]/2+ox,cy+oy);
-        x+=widths[ci];
-      });
-    } else {
-      g.fillText(line,cx+shakeX,cy+shakeY);
-    }
-  });
+  const eng=S.typeEngine;
+
+  // vector-drawn engines
+  if(eng==='solid'||eng==='outline'){
+    g.save(); g.font=font; g.textAlign='center'; g.textBaseline='middle'; g.lineJoin='round';
+    try{g.letterSpacing=`${S.tracking}px`;}catch(e){}
+    lines.forEach((line,li)=>{
+      const cy=cy0+li*lh;
+      if(eng==='solid' && S.typeScatter*A.beat>0.03){ // per-letter scatter on the beat
+        const chars=[...line]; let total=0; const widths=chars.map(c=>{const w=g.measureText(c).width+S.tracking;total+=w;return w;});
+        let x=cx-total/2;
+        chars.forEach((c,ci)=>{
+          const ox=(rnd(li*100+ci)-0.5)*A.beat*S.typeScatter*base*1.4, oy=(rnd(li*100+ci+7)-0.5)*A.beat*S.typeScatter*base*1.4;
+          g.fillStyle=S.textColor; g.fillText(c,x+widths[ci]/2+ox,cy+oy); x+=widths[ci];
+        });
+      } else if(eng==='outline'){ g.strokeStyle=S.textColor; g.lineWidth=Math.max(1,size*0.022); g.strokeText(line,cx+shakeX,cy+shakeY); }
+      else { g.fillStyle=S.textColor; g.fillText(line,cx+shakeX,cy+shakeY); }
+    });
+    g.restore(); return;
+  }
+
+  // mask-based engines (ported Flux looks): render the text white, then stylize
+  sizeOff(typeMaskC,W,H); typeMaskX.clearRect(0,0,W,H);
+  typeMaskX.save(); typeMaskX.font=font; typeMaskX.textAlign='center'; typeMaskX.textBaseline='middle';
+  try{typeMaskX.letterSpacing=`${S.tracking}px`;}catch(e){}
+  typeMaskX.fillStyle='#fff';
+  lines.forEach((line,li)=>typeMaskX.fillText(line,cx+shakeX,cy0+li*lh+shakeY));
+  typeMaskX.restore();
+
+  if(eng==='halftone') typeHalftone(g,W,H,base);
+  else if(eng==='glow') typeGlow(g,W,H,base);
+  else if(eng==='lines') typeLines(g,W,H,base);
+}
+function tintMask(col,W,H){ sizeOff(tmaskC,W,H); tmaskX.globalCompositeOperation='source-over'; tmaskX.clearRect(0,0,W,H); tmaskX.drawImage(typeMaskC,0,0);
+  tmaskX.globalCompositeOperation='source-in'; tmaskX.fillStyle=col; tmaskX.fillRect(0,0,W,H); tmaskX.globalCompositeOperation='source-over'; return tmaskC; }
+function typeHalftone(g,W,H,base){
+  const data=typeMaskX.getImageData(0,0,W,H).data;
+  const step=Math.max(6,base*0.15);
+  g.save(); g.fillStyle=S.textColor;
+  for(let y=step/2;y<H;y+=step)for(let x=step/2;x<W;x+=step){
+    const a=data[(((y|0)*W)+(x|0))*4+3]; if(a<24)continue;
+    const r=(step*0.52)*(a/255)*(0.65+A.level*0.7); if(r<0.4)continue;
+    g.beginPath(); g.arc(x,y,r,0,6.2832); g.fill();
+  }
   g.restore();
+}
+function typeGlow(g,W,H,base){
+  const tm=tintMask(S.textColor,W,H);
+  g.save(); g.globalCompositeOperation='lighter';
+  g.filter=`blur(${Math.max(1,base*0.06*(0.6+A.level*1.2))}px)`; g.globalAlpha=0.85; g.drawImage(tm,0,0);
+  g.filter='none'; g.globalAlpha=1; g.drawImage(tm,0,0);
+  g.restore();
+}
+function typeLines(g,W,H,base){
+  sizeOff(tmaskC,W,H); tmaskX.globalCompositeOperation='source-over'; tmaskX.clearRect(0,0,W,H); tmaskX.fillStyle=S.textColor;
+  const gap=Math.max(3,base*0.055), th=Math.max(1,gap*(0.35+A.level*0.5));
+  for(let y=0;y<H;y+=gap) tmaskX.fillRect(0,y,W,th);
+  tmaskX.globalCompositeOperation='destination-in'; tmaskX.drawImage(typeMaskC,0,0); tmaskX.globalCompositeOperation='source-over';
+  g.drawImage(tmaskC,0,0);
 }
 
 /* ---- glitch compositing ---- */
@@ -442,7 +519,7 @@ function render(){
 
 /* ---- loop ---- */
 let raf=null;
-function frame(){ zoomPhase+=0.006; readAudio(); render(); updateTransport(); raf=requestAnimationFrame(frame); }
+function frame(){ zoomPhase+=0.006; if(mix<1)mix=Math.min(1,mix+(1/60)/Math.max(0.05,S.transTime)); readAudio(); render(); updateTransport(); raf=requestAnimationFrame(frame); }
 frame();
 
 /* ---- transport ---- */
