@@ -114,7 +114,7 @@
       <label class="fld">Fit</label>
       <select id="imgFit"><option value="cover" selected>Cover</option><option value="contain">Contain</option></select>
       <label class="fld">Morph</label>
-      <select id="imgTrans"><option value="cut">Cut</option><option value="fade" selected>Crossfade</option><option value="morph">Slice morph</option></select>
+      <select id="imgTrans"><option value="cut">Cut</option><option value="fade" selected>Crossfade</option><option value="morph">Slice morph</option><option value="interlace">Interlace (slice into)</option><option value="dissolve">Dissolve (denoise)</option></select>
       <label class="fld">Blend (how images interact)</label>
       <select id="imgBlend"><option value="source-over" selected>Normal</option><option value="screen">Screen</option><option value="multiply">Multiply</option><option value="difference">Difference</option><option value="overlay">Overlay</option><option value="lighten">Lighten</option><option value="exclusion">Exclusion</option></select>
       <div id="g-image"></div>
@@ -205,6 +205,7 @@ const S = {
   fontSize:0.11, textX:0.5, textY:0.5, tracking:2,
   typePulse:0.35, typeShake:0.3, typeScatter:0.25,
   chroma:0.3, slice:0.4, pixelate:0, scan:0.18, grain:0.14,
+  edges:0, disperse:0,
   sensitivity:1.0,
 };
 const SLIDERS = {
@@ -213,7 +214,7 @@ const SLIDERS = {
   'g-audio':[['sensitivity','sensitivity',0.2,3,0.05]],
   'g-react':[['imgPulse','image pulse',0,1,0.01],['imgShake','image shake',0,1,0.01],['imgZoom','image drift',0,0.5,0.01],
              ['typePulse','type pulse',0,1,0.01],['typeShake','type shake',0,1,0.01],['typeScatter','type scatter',0,1,0.01]],
-  'g-glitch':[['chroma','rgb split',0,1,0.01],['slice','slice',0,1,0.01],['pixelate','pixelate',0,1,0.01],['scan','scanlines',0,1,0.01],['grain','grain',0,1,0.01]],
+  'g-glitch':[['edges','edge detect',0,1,0.01],['disperse','disperse / explode',0,1,0.01],['chroma','rgb split',0,1,0.01],['slice','slice',0,1,0.01],['pixelate','pixelate',0,1,0.01],['scan','scanlines',0,1,0.01],['grain','grain',0,1,0.01]],
 };
 function fmt(id,v){const dec=(id==='tracking')?0:2;return (+v).toFixed(dec);}
 function buildSliders(){
@@ -319,8 +320,9 @@ function onBeat(){
     else if(S.imgSwitch==='bars' && barCount%4===0) switchImage();
   }
   scatterSeed=(scatterSeed+1)|0;
+  explodeEnv=1;   // kick the disperse/explode burst
 }
-let scatterSeed=1;
+let scatterSeed=1, explodeEnv=0;
 
 /* ---- deterministic per-frame randoms ---- */
 function rnd(n){const x=Math.sin(n*127.1+scatterSeed*13.7)*43758.5453;return x-Math.floor(x);}
@@ -333,6 +335,9 @@ const chanC=[0,1,2].map(()=>{const c=document.createElement('canvas');return {c,
 const imgToC=document.createElement('canvas'),imgToX=imgToC.getContext('2d');
 const typeMaskC=document.createElement('canvas'),typeMaskX=typeMaskC.getContext('2d');
 const tmaskC=document.createElement('canvas'),tmaskX=tmaskC.getContext('2d');
+const edgeC=document.createElement('canvas'),edgeX=edgeC.getContext('2d');
+const edgeMixC=document.createElement('canvas'),edgeMixX=edgeMixC.getContext('2d');
+const burstC=document.createElement('canvas'),burstX=burstC.getContext('2d');
 let grainC=null;
 function makeGrain(){
   grainC=document.createElement('canvas');grainC.width=220;grainC.height=220;const gx=grainC.getContext('2d');
@@ -367,6 +372,18 @@ function drawImages(g,W,H){
       const bands=12;
       for(let i=0;i<bands;i++){const y0=Math.floor(i/bands*H),bh=Math.ceil(H/bands)+1;
         const dx=(rnd(i+1)-0.5)*W*(1-mix)*0.7; g.drawImage(imgToC,0,y0,W,bh,dx,y0,W,bh);}
+    } else if(S.imgTrans==='interlace'){ // alternating bands slide in from opposite sides — the two images comb into each other
+      g.globalAlpha=1;
+      const bands=Math.max(10,Math.round(18+S.slice*14)), bh=H/bands;
+      for(let i=0;i<bands;i++){
+        const y0=i*bh, side=(i%2===0)?-1:1;
+        const dx=side*(1-mix)*W*(0.6+rnd(i+5)*0.5);
+        g.drawImage(imgToC,0,y0,W,bh+1,dx,y0,W,bh+1);
+      }
+    } else if(S.imgTrans==='dissolve'){ // blocks resolve in as mix -> 1 (denoise reveal)
+      g.globalAlpha=1;
+      const cols=32, rows=Math.max(4,Math.round(cols*H/W)), bw=W/cols, bh=H/rows;
+      for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){ if(rnd(r*cols+c+3)<mix) g.drawImage(imgToC,c*bw,r*bh,bw,bh,c*bw,r*bh,bw,bh); }
     } else { g.globalAlpha=mix; g.drawImage(imgToC,0,0); }  // crossfade
     g.restore();
   }
@@ -454,17 +471,55 @@ function channel(src,tint,W,H){
   x.globalCompositeOperation='multiply'; x.fillStyle=tint; x.fillRect(0,0,W,H);
   x.globalCompositeOperation='source-over'; return c;
 }
+/* Edge detect — difference of the scene against a shifted copy (cheap Sobel-ish),
+   thickness rides the highs; mixed over a dimmed original by the amount. */
+function applyEdges(src,W,H){
+  const d=1+S.edges*(1.5+A.high*5);
+  sizeOff(edgeC,W,H); edgeX.globalCompositeOperation='source-over'; edgeX.clearRect(0,0,W,H); edgeX.drawImage(src,0,0);
+  edgeX.globalCompositeOperation='difference'; edgeX.drawImage(src,d,d); edgeX.globalCompositeOperation='source-over';
+  sizeOff(edgeMixC,W,H); edgeMixX.globalCompositeOperation='source-over'; edgeMixX.clearRect(0,0,W,H);
+  edgeMixX.globalAlpha=1-S.edges*0.82; edgeMixX.drawImage(src,0,0);
+  edgeMixX.globalCompositeOperation='lighter'; edgeMixX.globalAlpha=0.6+S.edges; edgeMixX.drawImage(edgeC,0,0);
+  edgeMixX.globalCompositeOperation='source-over'; edgeMixX.globalAlpha=1;
+  return edgeMixC;
+}
+/* Disperse / explode — sample the scene into a grid of tiles that fly outward from
+   center (bursting on each beat, decaying back), with rotation + fade. Point-cloud/
+   shatter feel; background shows through the gaps. */
+function applyDisperse(src,W,H){
+  sizeOff(burstC,W,H); burstX.globalCompositeOperation='source-over'; burstX.globalAlpha=1; burstX.clearRect(0,0,W,H);
+  burstX.fillStyle=S.bg; burstX.fillRect(0,0,W,H);
+  const env=clamp(S.disperse*(explodeEnv*1.15+A.level*0.45),0,1.5);
+  const cols=Math.max(10,Math.round(16+S.disperse*22)), rows=Math.max(6,Math.round(cols*H/W));
+  const tw=W/cols, th=H/rows, ccx=W/2, ccy=H/2, maxr=Math.hypot(ccx,ccy)*0.9;
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const x=c*tw, y=r*th, mx=x+tw/2, my=y+th/2;
+    let dirx=mx-ccx, diry=my-ccy; const dist=Math.hypot(dirx,diry)||1; dirx/=dist; diry/=dist;
+    const rr=rnd(r*cols+c*7+1);
+    const push=env*(0.35+rr*1.2)*maxr, ang=(rr-0.5)*env*1.2, sc=Math.max(0.25,1-env*0.45);
+    const ex=mx+dirx*push+(rr-0.5)*env*tw*2, ey=my+diry*push+(rnd(r*cols+c*7+2)-0.5)*env*th*2;
+    burstX.save(); burstX.translate(ex,ey); if(ang) burstX.rotate(ang);
+    burstX.globalAlpha=clamp(1-env*0.35,0.2,1);
+    burstX.drawImage(src, x,y,tw,th, -tw*sc/2,-th*sc/2, tw*sc,th*sc);
+    burstX.restore();
+  }
+  burstX.globalAlpha=1;
+  return burstC;
+}
 function render(){
   const W=canvas.width,H=canvas.height;
   sizeOff(sceneC,W,H); sizeOff(stageC,W,H);
   drawScene(sceneX,W,H);
 
-  // pixelate
   let base=sceneC;
+  if(S.edges>0.02) base=applyEdges(base,W,H);
+  if(S.disperse>0.02 && (explodeEnv*0.6+A.level*0.35)>0.03) base=applyDisperse(base,W,H);
+
+  // pixelate
   const px=1+S.pixelate*(0.35+A.level)*60;
   if(px>1.5){
     const sw=Math.max(2,Math.round(W/px)),sh=Math.max(2,Math.round(H/px));
-    sizeOff(tinyC,sw,sh); tinyX.clearRect(0,0,sw,sh); tinyX.imageSmoothingEnabled=true; tinyX.drawImage(sceneC,0,0,sw,sh);
+    sizeOff(tinyC,sw,sh); tinyX.clearRect(0,0,sw,sh); tinyX.imageSmoothingEnabled=true; tinyX.drawImage(base,0,0,sw,sh);
     stageX.imageSmoothingEnabled=false; stageX.clearRect(0,0,W,H); stageX.drawImage(tinyC,0,0,W,H); stageX.imageSmoothingEnabled=true;
     base=stageC;
   }
@@ -519,7 +574,7 @@ function render(){
 
 /* ---- loop ---- */
 let raf=null;
-function frame(){ zoomPhase+=0.006; if(mix<1)mix=Math.min(1,mix+(1/60)/Math.max(0.05,S.transTime)); readAudio(); render(); updateTransport(); raf=requestAnimationFrame(frame); }
+function frame(){ zoomPhase+=0.006; explodeEnv*=0.9; if(mix<1)mix=Math.min(1,mix+(1/60)/Math.max(0.05,S.transTime)); readAudio(); render(); updateTransport(); raf=requestAnimationFrame(frame); }
 frame();
 
 /* ---- transport ---- */
