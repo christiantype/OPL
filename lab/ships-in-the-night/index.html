@@ -52,6 +52,8 @@
     font-size:11px;letter-spacing:.08em;text-transform:uppercase;transition:.15s}
   .btn:hover{border-color:var(--ink)}
   .btn.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .preset-row{display:flex;flex-wrap:wrap;gap:5px}
+  .preset-row .btn{padding:8px 9px;flex:0 0 auto}
 
   /* slider rows */
   .ctrl{margin:9px 0}
@@ -97,6 +99,16 @@
 <main id="stage">
   <!-- LEFT: SCENE -->
   <aside class="island" id="panelL">
+    <div class="sec">
+      <h3>Presets</h3>
+      <div class="preset-row">
+        <button class="btn" data-preset="dream">✨ Dream</button>
+        <button class="btn" data-preset="glitch">Glitch</button>
+        <button class="btn" data-preset="shatter">Shatter</button>
+        <button class="btn" data-preset="retro">Retro</button>
+        <button class="btn" data-preset="clean">Clean</button>
+      </div>
+    </div>
     <div class="sec">
       <h3>Background</h3>
       <div style="display:flex;align-items:center;gap:10px"><input type="color" id="bgColor" value="#0a0a14"><span class="hint" style="margin:0">Solid color behind everything</span></div>
@@ -274,6 +286,37 @@ $('#typeEngine').addEventListener('change',e=>S.typeEngine=e.target.value);
 $('#dispStyle').addEventListener('change',e=>S.dispStyle=e.target.value);
 $('#vizStyle').addEventListener('change',e=>S.vizStyle=e.target.value);
 $('#vizColor').addEventListener('input',e=>S.vizColor=e.target.value);
+
+/* ---- one-click presets ---- */
+const CTRL_EL={typeEngine:'typeEngine',imgSwitch:'imgSwitch',imgTrans:'imgTrans',imgBlend:'imgBlend',imgFit:'imgFit',dispStyle:'dispStyle',vizStyle:'vizStyle',font:'font',bg:'bgColor',textColor:'textColor',vizColor:'vizColor'};
+const PRESETS={
+  dream:{ bloom:0.42, streaks:0.5, haze:0.34, chroma:0.4, grain:0.1, scan:0, edges:0, pixelate:0, slice:0, disperse:0,
+    typeEngine:'glow', imgTrans:'fade', transTime:1.3, imgSwitch:'beat', imgBlend:'screen',
+    imgPulse:0.22, imgShake:0.06, imgZoom:0.22, typePulse:0.22, typeShake:0.1, typeScatter:0.08,
+    vizStyle:'off', bg:'#0a0f2a' },
+  glitch:{ bloom:0, streaks:0, haze:0, slice:0.6, chroma:0.6, pixelate:0.2, edges:0.3, grain:0.25, scan:0.3, disperse:0,
+    typeEngine:'chroma', imgTrans:'morph', transTime:0.14, imgSwitch:'beat', imgBlend:'source-over',
+    imgShake:0.4, typeShake:0.5, typeScatter:0.55, vizStyle:'off' },
+  shatter:{ bloom:0.18, streaks:0, haze:0, disperse:0.72, dispStyle:'shatter', edges:0.4, chroma:0.3, grain:0.15, slice:0, pixelate:0, scan:0,
+    typeEngine:'outline', imgSwitch:'beat', imgTrans:'cut', vizStyle:'off' },
+  retro:{ bloom:0, streaks:0, haze:0, scan:0.5, grain:0.4, chroma:0.3, pixelate:0.15, edges:0, disperse:0, slice:0,
+    typeEngine:'lines', vizStyle:'bars', imgSwitch:'beat', imgTrans:'cut' },
+  clean:{ bloom:0, streaks:0, haze:0, chroma:0, slice:0, pixelate:0, scan:0, grain:0.1, edges:0, disperse:0,
+    typeEngine:'solid', vizStyle:'off', imgTrans:'fade', transTime:0.35 },
+};
+function applyPreset(P){
+  Object.assign(S,P);
+  for(const k in P){
+    const sl=document.getElementById('c-'+k);
+    if(sl){ sl.value=P[k]; const vv=document.getElementById('v-'+k); if(vv)vv.textContent=fmt(k,P[k]); continue; }
+    const elId=CTRL_EL[k]; if(elId){ const el=document.getElementById(elId); if(el) el.value=P[k]; }
+  }
+}
+document.querySelectorAll('[data-preset]').forEach(btn=>btn.addEventListener('click',()=>{
+  const P=PRESETS[btn.dataset.preset]; if(!P)return;
+  applyPreset(P);
+  document.querySelectorAll('[data-preset]').forEach(x=>x.classList.remove('on')); btn.classList.add('on');
+}));
 
 /* ---- images ---- */
 let images=[]; // {img,url}
