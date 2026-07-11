@@ -110,6 +110,7 @@
         <option value="off">Hold first image</option>
         <option value="beat" selected>Cut to next on beat</option>
         <option value="bars">Cut every 4 beats</option>
+        <option value="layer">Layer two (both at once)</option>
       </select>
       <label class="fld">Fit</label>
       <select id="imgFit"><option value="cover" selected>Cover</option><option value="contain">Contain</option></select>
@@ -134,9 +135,15 @@
       <select id="typeEngine">
         <option value="solid" selected>Solid</option>
         <option value="outline">Outline</option>
+        <option value="neon">Neon</option>
+        <option value="glow">Glow</option>
+        <option value="thermal">Thermal</option>
+        <option value="chroma">RGB split</option>
         <option value="halftone">Halftone dots</option>
-        <option value="glow">Glow / thermal</option>
+        <option value="blocks">Blocks / mosaic</option>
+        <option value="confetti">Confetti (scatter)</option>
         <option value="lines">Line screen</option>
+        <option value="hatch">Cross-hatch</option>
       </select>
       <div style="display:flex;align-items:center;gap:10px;margin-top:10px"><input type="color" id="textColor" value="#ffffff"><span class="hint" style="margin:0">Text color</span></div>
       <div id="g-type"></div>
@@ -200,7 +207,7 @@ const FONT_STACKS = {
 /* ---- state + sliders ---- */
 const S = {
   bg:'#0a0a14', textColor:'#ffffff',
-  imgSwitch:'beat', imgFit:'cover', imgTrans:'fade', imgBlend:'source-over', transTime:0.35,
+  imgSwitch:'beat', imgFit:'cover', imgTrans:'fade', imgBlend:'source-over', transTime:0.35, imgMix:0.5,
   imgScale:1, imgX:0, imgY:0,
   imgPulse:0.35, imgShake:0.18, imgZoom:0.12,
   text:'SHIPS IN THE NIGHT', font:'sans', typeEngine:'solid',
@@ -211,7 +218,7 @@ const S = {
   sensitivity:1.0,
 };
 const SLIDERS = {
-  'g-image':[['imgScale','scale',0.5,3,0.01],['imgX','x offset',-0.5,0.5,0.01],['imgY','y offset',-0.5,0.5,0.01],['transTime','morph time',0.05,2,0.05]],
+  'g-image':[['imgScale','scale',0.5,3,0.01],['imgX','x offset',-0.5,0.5,0.01],['imgY','y offset',-0.5,0.5,0.01],['transTime','morph time',0.05,2,0.05],['imgMix','layer mix',0,1,0.01]],
   'g-type':[['fontSize','size',0.03,0.4,0.005],['textX','x',0,1,0.01],['textY','y',0,1,0.01],['tracking','tracking',-10,40,1]],
   'g-audio':[['sensitivity','sensitivity',0.2,3,0.05]],
   'g-react':[['imgPulse','image pulse',0,1,0.01],['imgShake','image shake',0,1,0.01],['imgZoom','image drift',0,0.5,0.01],
@@ -362,6 +369,14 @@ function coverRect(img,W,H){
   return {dx:(W-dw)/2+S.imgX*W+jx, dy:(H-dh)/2+S.imgY*H+jy, dw, dh};
 }
 function drawImages(g,W,H){
+  // Layer mode: show TWO images at once, blended continuously (not just during a transition)
+  if(S.imgSwitch==='layer' && images.length>=2){
+    const a=images[0].img, bImg=images[1].img;
+    const ra=coverRect(a,W,H); g.drawImage(a,ra.dx,ra.dy,ra.dw,ra.dh);
+    g.save(); g.globalCompositeOperation=S.imgBlend; g.globalAlpha=clamp(S.imgMix*(0.7+A.mid*0.7),0,1);
+    const rb=coverRect(bImg,W,H); g.drawImage(bImg,rb.dx,rb.dy,rb.dw,rb.dh);
+    g.restore(); return;
+  }
   const from=images[imgFrom]&&images[imgFrom].img, to=images[imgTo]&&images[imgTo].img;
   if(from){const r=coverRect(from,W,H); g.drawImage(from,r.dx,r.dy,r.dw,r.dh);}
   if(to && imgTo!==imgFrom){
@@ -426,17 +441,70 @@ function drawType(g,W,H){
     g.restore(); return;
   }
 
-  // mask-based engines (ported Flux looks): render the text white, then stylize
+  // mask-based engines (ported Flux looks): render the text (stroke for neon, else fill), then stylize
   sizeOff(typeMaskC,W,H); typeMaskX.clearRect(0,0,W,H);
-  typeMaskX.save(); typeMaskX.font=font; typeMaskX.textAlign='center'; typeMaskX.textBaseline='middle';
+  typeMaskX.save(); typeMaskX.font=font; typeMaskX.textAlign='center'; typeMaskX.textBaseline='middle'; typeMaskX.lineJoin='round';
   try{typeMaskX.letterSpacing=`${S.tracking}px`;}catch(e){}
-  typeMaskX.fillStyle='#fff';
-  lines.forEach((line,li)=>typeMaskX.fillText(line,cx+shakeX,cy0+li*lh+shakeY));
+  if(eng==='neon'){ typeMaskX.strokeStyle='#fff'; typeMaskX.lineWidth=Math.max(1.5,size*0.03); lines.forEach((line,li)=>typeMaskX.strokeText(line,cx+shakeX,cy0+li*lh+shakeY)); }
+  else { typeMaskX.fillStyle='#fff'; lines.forEach((line,li)=>typeMaskX.fillText(line,cx+shakeX,cy0+li*lh+shakeY)); }
   typeMaskX.restore();
 
   if(eng==='halftone') typeHalftone(g,W,H,base);
-  else if(eng==='glow') typeGlow(g,W,H,base);
+  else if(eng==='glow'||eng==='neon') typeGlow(g,W,H,base);
+  else if(eng==='thermal') typeThermal(g,W,H,base);
+  else if(eng==='chroma') typeChromatic(g,W,H,base);
+  else if(eng==='blocks') typeBlocks(g,W,H,base);
+  else if(eng==='confetti') typeConfetti(g,W,H,base);
   else if(eng==='lines') typeLines(g,W,H,base);
+  else if(eng==='hatch') typeHatch(g,W,H,base);
+}
+function typeThermal(g,W,H,base){
+  sizeOff(tmaskC,W,H); tmaskX.globalCompositeOperation='source-over'; tmaskX.globalAlpha=1; tmaskX.filter='none'; tmaskX.clearRect(0,0,W,H);
+  const grad=tmaskX.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#2b0a5e'); grad.addColorStop(.4,'#e5006d'); grad.addColorStop(.72,'#ffb300'); grad.addColorStop(1,'#fff2b0');
+  tmaskX.fillStyle=grad; tmaskX.fillRect(0,0,W,H);
+  tmaskX.globalCompositeOperation='destination-in'; tmaskX.drawImage(typeMaskC,0,0); tmaskX.globalCompositeOperation='source-over';
+  g.save(); g.globalCompositeOperation='lighter'; g.filter=`blur(${Math.max(0.5,base*0.05*(0.5+A.level))}px)`; g.globalAlpha=0.6; g.drawImage(tmaskC,0,0);
+  g.filter='none'; g.globalAlpha=1; g.drawImage(tmaskC,0,0); g.restore();
+}
+function typeChromatic(g,W,H,base){
+  const dx=base*0.03*(0.6+A.high*1.6)+2;
+  g.save(); g.globalCompositeOperation='lighter';
+  g.drawImage(tintMask('#ff0000',W,H),-dx,0);
+  g.drawImage(tintMask('#00ff00',W,H),0,0);
+  g.drawImage(tintMask('#0000ff',W,H),dx,0);
+  g.restore();
+}
+function typeBlocks(g,W,H,base){
+  const data=typeMaskX.getImageData(0,0,W,H).data;
+  const step=Math.max(6,base*0.14);
+  g.save(); g.fillStyle=S.textColor;
+  for(let y=step/2;y<H;y+=step)for(let x=step/2;x<W;x+=step){
+    const a=data[(((y|0)*W)+(x|0))*4+3]; if(a<40)continue;
+    const s=step*(0.82)*(a/255)*(0.7+A.level*0.5); g.fillRect(x-s/2,y-s/2,s,s);
+  }
+  g.restore();
+}
+function typeConfetti(g,W,H,base){
+  const data=typeMaskX.getImageData(0,0,W,H).data;
+  const step=Math.max(6,base*0.12), dot=step*0.5, sc=A.beat*S.typeScatter;
+  g.save(); g.fillStyle=S.textColor;
+  for(let y=step/2;y<H;y+=step)for(let x=step/2;x<W;x+=step){
+    const a=data[(((y|0)*W)+(x|0))*4+3]; if(a<30)continue;
+    const rr=rnd((x|0)*7+(y|0)); const ox=(rr-0.5)*sc*base*3, oy=(rnd((x|0)+(y|0)*7)-0.5)*sc*base*3;
+    g.beginPath(); g.arc(x+ox,y+oy,dot*(0.6+A.level*0.7),0,6.2832); g.fill();
+  }
+  g.restore();
+}
+function typeHatch(g,W,H,base){
+  sizeOff(tmaskC,W,H); tmaskX.globalCompositeOperation='source-over'; tmaskX.globalAlpha=1; tmaskX.filter='none'; tmaskX.clearRect(0,0,W,H);
+  tmaskX.strokeStyle=S.textColor; tmaskX.lineWidth=Math.max(1,base*0.018);
+  const gap=Math.max(5,base*0.09); tmaskX.beginPath();
+  for(let x=-H;x<W;x+=gap){ tmaskX.moveTo(x,0); tmaskX.lineTo(x+H,H); }
+  for(let x=0;x<W+H;x+=gap){ tmaskX.moveTo(x,0); tmaskX.lineTo(x-H,H); }
+  tmaskX.stroke();
+  tmaskX.globalCompositeOperation='destination-in'; tmaskX.drawImage(typeMaskC,0,0); tmaskX.globalCompositeOperation='source-over';
+  g.drawImage(tmaskC,0,0);
 }
 function tintMask(col,W,H){ sizeOff(tmaskC,W,H); tmaskX.globalCompositeOperation='source-over'; tmaskX.clearRect(0,0,W,H); tmaskX.drawImage(typeMaskC,0,0);
   tmaskX.globalCompositeOperation='source-in'; tmaskX.fillStyle=col; tmaskX.fillRect(0,0,W,H); tmaskX.globalCompositeOperation='source-over'; return tmaskC; }
@@ -477,13 +545,19 @@ function channel(src,tint,W,H){
 /* Edge detect — difference of the scene against a shifted copy (cheap Sobel-ish),
    thickness rides the highs; mixed over a dimmed original by the amount. */
 function applyEdges(src,W,H){
-  const d=1+S.edges*(1.5+A.high*5);
-  sizeOff(edgeC,W,H); edgeX.globalCompositeOperation='source-over'; edgeX.clearRect(0,0,W,H); edgeX.drawImage(src,0,0);
-  edgeX.globalCompositeOperation='difference'; edgeX.drawImage(src,d,d); edgeX.globalCompositeOperation='source-over';
-  sizeOff(edgeMixC,W,H); edgeMixX.globalCompositeOperation='source-over'; edgeMixX.clearRect(0,0,W,H);
-  edgeMixX.globalAlpha=1-S.edges*0.82; edgeMixX.drawImage(src,0,0);
-  edgeMixX.globalCompositeOperation='lighter'; edgeMixX.globalAlpha=0.6+S.edges; edgeMixX.drawImage(edgeC,0,0);
-  edgeMixX.globalCompositeOperation='source-over'; edgeMixX.globalAlpha=1;
+  const d=1.5+S.edges*2.5+A.high*4;
+  // edge map = |src - src shifted diagonally|
+  sizeOff(edgeC,W,H); edgeX.globalCompositeOperation='source-over'; edgeX.globalAlpha=1; edgeX.clearRect(0,0,W,H);
+  edgeX.drawImage(src,0,0);
+  edgeX.globalCompositeOperation='difference'; edgeX.drawImage(src,d,d);
+  edgeX.globalCompositeOperation='source-over';
+  // keep the image and ADD bright edges on top (additive) — outlines glow, never darkens
+  sizeOff(edgeMixC,W,H); edgeMixX.globalCompositeOperation='source-over'; edgeMixX.globalAlpha=1; edgeMixX.clearRect(0,0,W,H);
+  edgeMixX.drawImage(src,0,0);
+  edgeMixX.globalCompositeOperation='lighter'; edgeMixX.globalAlpha=1;
+  const boost=Math.round(1+S.edges*6+A.high*2);   // stack the edge map so outlines pop
+  for(let i=0;i<boost;i++) edgeMixX.drawImage(edgeC,0,0);
+  edgeMixX.globalCompositeOperation='source-over';
   return edgeMixC;
 }
 /* Disperse / explode — the scene breaks apart and bursts on each beat, reforming as
