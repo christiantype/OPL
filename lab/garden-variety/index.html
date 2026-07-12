@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow" />
 <title>Garden Variety</title>
 <script src="/lab/shared/gate.js" data-hash="1c8bfe8f801d79745c4631d09fff36c82aa37fc4cce4fc946683d7b336b63032" data-scope="opal-tools"></script>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
 <style>
   :root{
     --ink:#e8e4d8;
@@ -21,6 +22,11 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;background:#0a0908;overflow:hidden;overscroll-behavior:none}
   #stage{position:fixed;inset:0;touch-action:none;cursor:crosshair;display:block}
+
+  /* Shared OPAL shell (topbar + subhead) over the full-bleed canvas — matches every tool */
+  .opal-topbar{position:fixed;top:0;left:0;right:0;z-index:20}
+  .opal-subhead{position:fixed;top:56px;left:0;right:0;z-index:20}
+  .mark{display:none !important}   /* replaced by the shared subhead */
 
   /* Title / back to lab */
   .mark{
@@ -485,7 +491,7 @@
 
   function layoutFrame(){
     const [rw,rh]=RECDIMS[recFmt], ar=rw/rh;
-    const padTop=52, padBottom=78, padX=16;
+    const padTop=112, padBottom=78, padX=16;   // clear the OPAL topbar + subhead
     const availW=W-padX*2, availH=H-padTop-padBottom;
     let h=availH, w=h*ar;
     if(w>availW){ w=availW; h=w/ar; }
@@ -590,5 +596,7 @@
   blit();
 })();
 </script>
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Garden Variety', desc: 'Generative watercolor garden', version: 'v1' });</script>
 </body>
 </html>

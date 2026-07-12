@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow" />
 <title>Puffy Plants</title>
 <script src="/lab/shared/gate.js" data-hash="1c8bfe8f801d79745c4631d09fff36c82aa37fc4cce4fc946683d7b336b63032" data-scope="opal-tools"></script>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
 <style>
   :root{
     --ink:#1c2a24;
@@ -22,6 +23,11 @@
   html,body{margin:0;height:100%;background:#bfe6d0;overflow:hidden;overscroll-behavior:none}
   #gl{position:fixed;inset:0;display:block;touch-action:none;cursor:grab}
   #gl:active{cursor:grabbing}
+
+  /* Shared OPAL shell (topbar + subhead) over the full-bleed canvas — matches every tool */
+  .opal-topbar{position:fixed;top:0;left:0;right:0;z-index:20}
+  .opal-subhead{position:fixed;top:56px;left:0;right:0;z-index:20}
+  .mark{display:none !important}   /* replaced by the shared subhead */
 
   .mark{
     position:fixed;left:calc(20px + var(--safe-left));top:calc(18px + var(--safe-top));z-index:5;
@@ -417,7 +423,7 @@ void main(){
 
   function layoutFrame(){
     const [rw,rh]=RECDIMS[recFmt], ar=rw/rh;
-    const padTop=52, padBottom=78, padX=16;
+    const padTop=112, padBottom=78, padX=16;   // clear the OPAL topbar + subhead
     const availW=W-padX*2, availH=H-padTop-padBottom;
     let h=availH, w=h*ar;
     if(w>availW){ w=availW; h=w/ar; }
@@ -512,5 +518,7 @@ void main(){
   requestAnimationFrame(render);
 })();
 </script>
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Puffy Plants', desc: 'Iridescent raymarched resin', version: 'v1' });</script>
 </body>
 </html>
