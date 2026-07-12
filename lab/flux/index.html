@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Flux — experimental type instrument</title>
 <script src="/lab/shared/gate.js" data-hash="1c8bfe8f801d79745c4631d09fff36c82aa37fc4cce4fc946683d7b336b63032" data-scope="opal-tools"></script>
 <link rel="stylesheet" href="/lab/shared/opal.css" />
@@ -177,6 +177,21 @@
   #view{cursor:grab}#view:active{cursor:grabbing}
   #status{display:none}
   .warn{color:var(--cobalt)}.ok{color:var(--cobalt)}
+
+  /* ── Mobile: icon rail becomes a top bar, the flyout a slide-up bottom sheet ── */
+  @media (max-width:760px){
+    #railL{top:8px;left:8px;right:8px;bottom:auto;width:auto;height:46px;flex-direction:row;align-items:center;padding:5px 6px;gap:3px}
+    #railL button{width:36px;height:36px}
+    #railL button.rail-bottom{margin-top:0;margin-left:auto}
+    #panel{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:72vh;border-radius:16px 16px 0 0;overflow-y:auto;z-index:14;
+      box-shadow:0 -12px 40px -16px rgba(0,0,0,.24)}
+    #canvasArea{left:8px !important;right:8px;top:62px;bottom:56px}
+    body.panel-closed #canvasArea{left:8px}
+    body.dim-mode #canvasArea{left:8px;top:62px}
+    #tbar{flex-wrap:wrap;height:auto;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));gap:6px;justify-content:center}
+    #tbar button{padding:8px 10px}
+    #tbar .tbar-line{display:none}
+  }
 </style>
 
 <div id="panel">
