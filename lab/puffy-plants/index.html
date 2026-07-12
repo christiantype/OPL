@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Puffy Plants</title>
+<script src="/lab/shared/gate.js" data-hash="1c8bfe8f801d79745c4631d09fff36c82aa37fc4cce4fc946683d7b336b63032" data-scope="opal-tools"></script>
+<style>
+  :root{
+    --ink:#1c2a24;
+    --accent:#b06fd6;
+    --panel:rgba(18,26,22,.5);
+    --hair:rgba(28,42,36,.16);
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+    --safe-left:env(safe-area-inset-left,0px);
+    --safe-right:env(safe-area-inset-right,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#bfe6d0;overflow:hidden;overscroll-behavior:none}
+  #gl{position:fixed;inset:0;display:block;touch-action:none;cursor:grab}
+  #gl:active{cursor:grabbing}
+
+  .mark{
+    position:fixed;left:calc(20px + var(--safe-left));top:calc(18px + var(--safe-top));z-index:5;
+    font-family:var(--mono);color:var(--ink);letter-spacing:.22em;text-decoration:none;
+    font-size:11px;text-transform:uppercase;opacity:.55;
+    transition:opacity 1.2s ease;text-shadow:0 1px 8px rgba(255,255,255,.4);
+  }
+  .mark:hover{opacity:.85}
+  .mark small{display:block;margin-top:5px;letter-spacing:.14em;opacity:.62;font-size:9.5px}
+  .mark small .back{color:var(--accent)}
+  .mark.dim{opacity:.18}
+
+  .hint{
+    position:fixed;left:50%;top:calc(50% + 30vh);transform:translate(-50%,-50%);z-index:4;
+    font-family:var(--mono);color:var(--ink);opacity:.4;font-size:11px;
+    letter-spacing:.16em;text-transform:uppercase;pointer-events:none;
+    transition:opacity .6s ease;text-align:center;text-shadow:0 1px 8px rgba(255,255,255,.4);
+  }
+  .hint.gone{opacity:0}
+
+  .bar{
+    position:fixed;left:50%;bottom:calc(22px + var(--safe-bottom));transform:translateX(-50%);z-index:6;
+    display:flex;align-items:center;gap:15px;
+    padding:11px 15px;border:1px solid rgba(255,255,255,.16);border-radius:3px;
+    background:var(--panel);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);
+    font-family:var(--mono);color:#eef4f0;max-width:calc(100vw - 24px);
+    box-shadow:0 8px 40px rgba(20,40,30,.18);
+  }
+  .divide{width:1px;height:22px;background:rgba(255,255,255,.14)}
+
+  .ctl{display:flex;align-items:center;gap:9px}
+  .ctl label{font-size:9px;letter-spacing:.15em;text-transform:uppercase;opacity:.6}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:66px;height:2px;
+    background:rgba(255,255,255,.22);border-radius:2px;outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#eef4f0;border:none;cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#eef4f0;border:none;cursor:pointer}
+
+  .btn{
+    font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+    color:#eef4f0;background:none;border:1px solid rgba(255,255,255,.2);border-radius:3px;
+    padding:7px 11px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;white-space:nowrap;
+  }
+  .btn:hover{border-color:var(--accent);color:#f3e6fb}
+  .btn:active{background:rgba(176,111,214,.12)}
+  .btn:focus-visible{border-color:var(--accent);color:#f3e6fb}
+  .btn:disabled{opacity:.38;cursor:default;border-color:rgba(255,255,255,.14);color:#eef4f0}
+
+  .fmt{display:flex;gap:6px}
+  .fmtbtn.on{border-color:var(--accent);color:#f3e6fb}
+  .rec .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#e0574f;margin-right:8px;vertical-align:middle}
+  .rec.live{border-color:#e0574f;color:#ffd9d5}
+  .rec.live .dot{animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.22}}
+  #rectime{margin-left:8px;opacity:.75;font-variant-numeric:tabular-nums}
+
+  .frame{
+    position:fixed;z-index:3;pointer-events:none;display:none;border-radius:2px;
+    border:1px solid rgba(255,255,255,.55);box-shadow:0 0 0 9999px rgba(70,90,80,.34);
+    transition:border-color .3s,box-shadow .3s;
+  }
+  .frame.show{display:block}
+  .frame.live{border-color:var(--accent);box-shadow:0 0 0 9999px rgba(60,50,80,.42)}
+
+  #toast{
+    position:fixed;left:50%;bottom:calc(80px + var(--safe-bottom));transform:translateX(-50%);z-index:9;
+    font-family:var(--mono);font-size:11px;letter-spacing:.03em;line-height:1.45;
+    color:#eef4f0;background:var(--panel);border:1px solid rgba(255,255,255,.16);border-radius:3px;
+    padding:10px 14px;max-width:min(90vw,430px);text-align:center;opacity:0;
+    transition:opacity .3s;pointer-events:none;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  }
+  #toast.show{opacity:1}
+
+  @media (max-width:600px){
+    .bar{gap:10px;padding:10px 12px;flex-wrap:wrap;justify-content:center;row-gap:11px}
+    .ctl.hue{display:none}
+    .mark{font-size:10px}
+    .btn{padding:10px 13px;font-size:11px}
+    input[type=range]{width:88px}
+    .divide{display:none}
+  }
+</style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+
+  <a class="mark" id="mark" href="/lab/">Puffy&nbsp;Plants<small>iridescent resin &middot; raymarched &nbsp;·&nbsp; <span class="back">← lab</span></small></a>
+  <div class="hint" id="hint">Drag to turn &middot; pinch to zoom</div>
+  <div class="frame" id="frame" aria-hidden="true"></div>
+
+  <div class="bar" role="toolbar" aria-label="Controls">
+    <div class="ctl"><label for="puff">Puff</label><input id="puff" type="range" min="0" max="100" value="56" aria-label="Puffiness" /></div>
+    <div class="ctl"><label for="iris">Iris</label><input id="iris" type="range" min="0" max="100" value="72" aria-label="Iridescence" /></div>
+    <div class="ctl hue"><label for="hue">Hue</label><input id="hue" type="range" min="0" max="100" value="0" aria-label="Hue" /></div>
+    <button class="btn" id="shuffle" aria-label="Reshuffle form">Shuffle</button>
+    <div class="divide"></div>
+    <button class="btn" id="save" aria-label="Save image">Save</button>
+    <div class="divide"></div>
+    <div class="fmt" id="fmt" role="group" aria-label="Video format">
+      <button class="btn fmtbtn on" data-fmt="9:16" aria-label="Vertical 9 by 16">9:16</button>
+      <button class="btn fmtbtn" data-fmt="1:1" aria-label="Square 1 by 1">1:1</button>
+    </div>
+    <button class="btn rec" id="rec" aria-label="Record video"><span class="dot"></span><span id="reclabel">Rec</span><span id="rectime"></span></button>
+  </div>
+
+<script id="vert" type="x-shader/x-vertex">
+attribute vec2 a_pos;
+void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }
+</script>
+
+<script id="frag" type="x-shader/x-fragment">
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+uniform vec2  u_res;
+uniform float u_time;
+uniform float u_yaw;
+uniform float u_pitch;
+uniform float u_dist;
+uniform float u_puff;   // smin k
+uniform float u_iris;   // iridescence amount
+uniform float u_hue;    // hue offset 0..1
+uniform float u_seed;   // reshuffle
+uniform int   u_steps;  // march steps
+
+#define COUNT 7
+
+// --- iridescent palette: violet -> magenta -> cyan -> violet ---------------
+vec3 iriColor(float t){
+  vec3 c1 = vec3(0.42, 0.34, 0.95); // violet-blue
+  vec3 c2 = vec3(0.98, 0.45, 0.86); // magenta-pink
+  vec3 c3 = vec3(0.55, 0.90, 0.99); // cyan
+  t = fract(t) * 3.0;
+  if(t < 1.0) return mix(c1, c2, t);
+  else if(t < 2.0) return mix(c2, c3, t - 1.0);
+  else return mix(c3, c1, t - 2.0);
+}
+
+// --- procedural studio environment (mint + soft key light) -----------------
+vec3 env(vec3 d){
+  float g = 0.5 + 0.5 * d.y;
+  vec3 base = mix(vec3(0.55,0.82,0.72), vec3(0.86,0.96,0.89), g);
+  float k1 = pow(max(dot(d, normalize(vec3(0.3,0.85,0.5))), 0.0), 8.0);
+  base += vec3(1.0) * k1 * 0.95;                          // bright softbox
+  float k2 = pow(max(dot(d, normalize(vec3(-0.45,0.25,-0.6))), 0.0), 4.0);
+  base += vec3(0.80,0.90,1.0) * k2 * 0.22;                // cool fill
+  return base;
+}
+
+float smin(float a, float b, float k){
+  float h = clamp(0.5 + 0.5*(a-b)/k, 0.0, 1.0);
+  return mix(a, b, h) - k*h*(1.0-h);
+}
+
+vec3 blobPos(int i){
+  float fi = float(i) + u_seed * 3.17;
+  float sp = 0.35;
+  return vec3(
+    sin(u_time*sp        + fi*2.11) * 1.18,
+    sin(u_time*sp*0.83   + fi*1.73) * 0.98,
+    cos(u_time*sp*1.07   + fi*1.31) * 0.92
+  );
+}
+
+float map(vec3 p){
+  float d = 1e5;
+  for(int i=0;i<COUNT;i++){
+    float fi = float(i) + u_seed*3.17;
+    float r = 0.5 * (0.78 + 0.32 * sin(fi*1.9));
+    float ds = length(p - blobPos(i)) - r;
+    d = smin(d, ds, u_puff);
+  }
+  return d;
+}
+
+vec3 calcNormal(vec3 p){
+  vec2 e = vec2(0.0016, 0.0);
+  return normalize(vec3(
+    map(p+e.xyy) - map(p-e.xyy),
+    map(p+e.yxy) - map(p-e.yxy),
+    map(p+e.yyx) - map(p-e.yyx)
+  ));
+}
+
+float calcAO(vec3 p, vec3 n){
+  float o = 0.0, s = 1.0;
+  for(int i=0;i<5;i++){
+    float h = 0.02 + 0.13*float(i);
+    o += (h - map(p + n*h)) * s;
+    s *= 0.82;
+  }
+  return clamp(1.0 - 1.4*o, 0.0, 1.0);
+}
+
+float march(vec3 ro, vec3 rd, out vec3 pos){
+  float t = 0.0;
+  for(int i=0;i<120;i++){
+    if(i >= u_steps) break;
+    pos = ro + rd*t;
+    float d = map(pos);
+    if(d < 0.0012) return t;
+    if(t > 14.0) break;
+    t += d * 0.9;
+  }
+  return -1.0;
+}
+
+void main(){
+  vec2 uv = (gl_FragCoord.xy - 0.5*u_res) / u_res.y;
+
+  // orbit camera
+  vec3 ro = u_dist * vec3(cos(u_pitch)*sin(u_yaw), sin(u_pitch), cos(u_pitch)*cos(u_yaw));
+  vec3 ww = normalize(-ro);
+  vec3 uu = normalize(cross(vec3(0.0,1.0,0.0), ww));
+  vec3 vv = cross(ww, uu);
+  vec3 rd = normalize(uv.x*uu + uv.y*vv + 1.7*ww);
+
+  vec3 pos;
+  float t = march(ro, rd, pos);
+  vec3 col;
+
+  if(t > 0.0){
+    vec3 n = calcNormal(pos);
+    vec3 v = -rd;
+    float ndv = clamp(dot(n, v), 0.0, 1.0);
+    float fres = pow(1.0 - ndv, 4.0);
+
+    // thin-film hue swept by view angle + fold
+    float ht = clamp(mix(0.10, 0.92, fres) + 0.20*n.y + 0.08*sin(6.0*fres + u_time*0.3), 0.0, 1.0);
+    vec3 iri = iriColor(fract(ht + u_hue));
+    vec3 body = mix(vec3(0.86,0.90,0.95), iri, u_iris);
+
+    // glassy rim reflection
+    vec3 reflCol = env(reflect(rd, n));
+
+    // per-channel IOR dispersion (thin translucency)
+    vec3 disp = vec3(
+      env(refract(rd, n, 0.66)).r,
+      env(refract(rd, n, 0.68)).g,
+      env(refract(rd, n, 0.70)).b
+    );
+
+    col = mix(body, reflCol, fres*0.8);
+    col = mix(col, disp, 0.12);
+
+    // specular hotspots — the wet gloss
+    vec3 L1 = normalize(vec3(0.35,0.78,0.55));
+    vec3 L2 = normalize(vec3(-0.55,0.30,0.40));
+    float s1 = pow(max(dot(n, normalize(v+L1)), 0.0), 150.0);
+    float s2 = pow(max(dot(n, normalize(v+L2)), 0.0), 55.0);
+    col += vec3(1.0)*s1*1.15 + vec3(0.9,0.96,1.0)*s2*0.4;
+
+    // warm gold pooling in the crevices
+    float ao = calcAO(pos, n);
+    col += vec3(1.0,0.72,0.28) * pow(1.0 - ao, 1.6) * 0.5;
+
+    col += iri * fres * 0.25; // rim iridescence glow
+  } else {
+    float g = gl_FragCoord.y / u_res.y;
+    col = mix(vec3(0.66,0.88,0.75), vec3(0.82,0.95,0.84), g);
+    col += 0.05 * exp(-2.0 * dot(uv, uv));
+  }
+
+  col = clamp(col, 0.0, 1.0);
+  col = pow(col, vec3(0.92));
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+(() => {
+  "use strict";
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const isMobile = matchMedia("(pointer:coarse)").matches;
+
+  const cv = document.getElementById("gl");
+  const gl = cv.getContext("webgl", {preserveDrawingBuffer:true, antialias:true, alpha:false, premultipliedAlpha:false});
+
+  if(!gl){ document.body.innerHTML = "<p style='font-family:monospace;color:#1c2a24;padding:40px'>WebGL isn't available in this browser. Try opening in Safari or Chrome.</p>"; return; }
+
+  function compile(type, src){
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, document.getElementById("vert").textContent));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, document.getElementById("frag").textContent));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(prog, "a_pos");
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  const U = n => gl.getUniformLocation(prog, n);
+  const u = {
+    res:U("u_res"), time:U("u_time"), yaw:U("u_yaw"), pitch:U("u_pitch"),
+    dist:U("u_dist"), puff:U("u_puff"), iris:U("u_iris"), hue:U("u_hue"),
+    seed:U("u_seed"), steps:U("u_steps"),
+  };
+
+  // ---- state ---------------------------------------------------------------
+  let W=0,H=0,DPR=1;
+  let yaw=0.5, pitch=0.15, dist=4.4, seed=Math.random()*10;
+  let idleSpin=true;
+  const puffEl=document.getElementById("puff"), irisEl=document.getElementById("iris"), hueEl=document.getElementById("hue");
+
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio||1, isMobile?1.25:1.6);
+    W=window.innerWidth; H=window.innerHeight;
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+    cv.style.width=W+"px"; cv.style.height=H+"px";
+    gl.viewport(0,0,cv.width,cv.height);
+  }
+
+  const clock = ()=>performance.now()/1000;
+  const t0 = clock();
+
+  function render(){
+    const time = reduce ? (clock()-t0)*0.35 : (clock()-t0);
+    if(idleSpin && !dragging) yaw += reduce?0.0006:0.0016;
+    gl.uniform2f(u.res, cv.width, cv.height);
+    gl.uniform1f(u.time, time);
+    gl.uniform1f(u.yaw, yaw);
+    gl.uniform1f(u.pitch, pitch);
+    gl.uniform1f(u.dist, dist);
+    gl.uniform1f(u.puff, 0.12 + (puffEl.value/100)*0.68);
+    gl.uniform1f(u.iris, (irisEl.value/100)*1.05);
+    gl.uniform1f(u.hue, hueEl.value/100);
+    gl.uniform1f(u.seed, seed);
+    gl.uniform1i(u.steps, isMobile?84:104);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    requestAnimationFrame(render);
+  }
+
+  // ---- interaction ---------------------------------------------------------
+  let dragging=false, px=0, py=0, pinchD=0;
+  function down(e){
+    dismissHint(); dragging=true; idleSpin=false;
+    const p=e.touches?e.touches[0]:e; px=p.clientX; py=p.clientY;
+    if(e.touches&&e.touches.length===2){ pinchD=dist2(e.touches); }
+  }
+  function move(e){
+    if(!dragging) return; e.preventDefault();
+    if(e.touches&&e.touches.length===2){
+      const d=dist2(e.touches);
+      if(pinchD) dist=clamp(dist*(pinchD/d),2.8,7.5);
+      pinchD=d; return;
+    }
+    const p=e.touches?e.touches[0]:e;
+    yaw   -= (p.clientX-px)*0.006;
+    pitch  = clamp(pitch + (p.clientY-py)*0.006, -1.35, 1.35);
+    px=p.clientX; py=p.clientY;
+  }
+  function up(){ dragging=false; pinchD=0; setTimeout(()=>{ if(!dragging) idleSpin=true; },2600); }
+  function dist2(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+  cv.addEventListener("mousedown",down);
+  window.addEventListener("mousemove",move);
+  window.addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",down,{passive:false});
+  cv.addEventListener("touchmove",move,{passive:false});
+  window.addEventListener("touchend",up);
+  cv.addEventListener("wheel",e=>{ e.preventDefault(); dist=clamp(dist+e.deltaY*0.002,2.8,7.5); },{passive:false});
+
+  document.getElementById("shuffle").addEventListener("click",()=>{ seed=Math.random()*10; });
+
+  // ---- save PNG ------------------------------------------------------------
+  document.getElementById("save").addEventListener("click",()=>{
+    const a=document.createElement("a");
+    a.download="puffy-plants.png"; a.href=cv.toDataURL("image/png"); a.click();
+  });
+
+  // ---- record: capture at social dimensions --------------------------------
+  const RECDIMS={ "9:16":[1080,1920], "1:1":[1080,1080] };
+  let recFmt="9:16", recording=false, mediaRec=null, recChunks=[], recStart=0, recRAF=null, recTimer=null, frameHideT=null;
+  let frameRect={x:0,y:0,w:0,h:0};
+  const frameEl=document.getElementById("frame"), recBtn=document.getElementById("rec"),
+        recLabel=document.getElementById("reclabel"), recTimeEl=document.getElementById("rectime"),
+        fmtEl=document.getElementById("fmt");
+  const recCanvas=document.createElement("canvas"), rctx=recCanvas.getContext("2d");
+
+  function layoutFrame(){
+    const [rw,rh]=RECDIMS[recFmt], ar=rw/rh;
+    const padTop=52, padBottom=78, padX=16;
+    const availW=W-padX*2, availH=H-padTop-padBottom;
+    let h=availH, w=h*ar;
+    if(w>availW){ w=availW; h=w/ar; }
+    const x=(W-w)/2, y=padTop+(availH-h)/2;
+    frameRect={x,y,w,h};
+    frameEl.style.left=x+"px"; frameEl.style.top=y+"px"; frameEl.style.width=w+"px"; frameEl.style.height=h+"px";
+  }
+  const showFrame=on=>frameEl.classList.toggle("show",on);
+
+  fmtEl.querySelectorAll(".fmtbtn").forEach(b=>{
+    b.addEventListener("click",()=>{
+      if(recording) return;
+      recFmt=b.dataset.fmt;
+      fmtEl.querySelectorAll(".fmtbtn").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      layoutFrame(); showFrame(true);
+      clearTimeout(frameHideT); frameHideT=setTimeout(()=>{ if(!recording) showFrame(false); },2800);
+    });
+  });
+
+  function pickMime(){
+    const list=["video/mp4;codecs=avc1.42E01E","video/mp4","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"];
+    for(const m of list){ if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return m; }
+    return "";
+  }
+  function startRec(){
+    if(!window.MediaRecorder){ toast("Recording needs Safari or Chrome — open this page in a browser."); return; }
+    const mime=pickMime();
+    if(!mime){ toast("This browser can't encode video. Try Safari or Chrome."); return; }
+    const [rw,rh]=RECDIMS[recFmt];
+    recCanvas.width=rw; recCanvas.height=rh;
+    dismissHint(); layoutFrame(); showFrame(true); frameEl.classList.add("live");
+    const stream=recCanvas.captureStream(30); recChunks=[];
+    try{ mediaRec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12000000}); }
+    catch(e){ mediaRec=new MediaRecorder(stream); }
+    mediaRec.ondataavailable=e=>{ if(e.data&&e.data.size) recChunks.push(e.data); };
+    mediaRec.onstop=finishRec; mediaRec.start(100);
+    recording=true; recStart=performance.now();
+    recBtn.classList.add("live"); recLabel.textContent="Stop";
+    fmtEl.querySelectorAll(".fmtbtn").forEach(b=>b.disabled=true);
+    recLoop(); recTimer=setInterval(updateTime,200); updateTime();
+  }
+  function recLoop(){
+    const sx=frameRect.x*DPR, sy=frameRect.y*DPR, sw=frameRect.w*DPR, sh=frameRect.h*DPR;
+    // gl canvas origin is top-left in CSS; drawImage samples from top-left too
+    rctx.drawImage(cv, sx, sy, sw, sh, 0, 0, recCanvas.width, recCanvas.height);
+    if(recording) recRAF=requestAnimationFrame(recLoop);
+  }
+  function updateTime(){
+    const s=(performance.now()-recStart)/1000;
+    recTimeEl.textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(Math.floor(s%60)).padStart(2,"0");
+  }
+  function stopRec(){
+    if(!recording) return;
+    recording=false; cancelAnimationFrame(recRAF); clearInterval(recTimer);
+    try{ mediaRec.stop(); }catch(e){}
+    recBtn.classList.remove("live"); recLabel.textContent="Rec"; recTimeEl.textContent="";
+    frameEl.classList.remove("live");
+    fmtEl.querySelectorAll(".fmtbtn").forEach(b=>b.disabled=false);
+    setTimeout(()=>{ if(!recording) showFrame(false); },1400);
+  }
+  function finishRec(){
+    const type=(mediaRec&&mediaRec.mimeType)||pickMime()||"video/webm";
+    const blob=new Blob(recChunks,{type});
+    const ext=type.includes("mp4")?"mp4":"webm";
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=`puffy-plants-${recFmt.replace(":","x")}.${ext}`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    if(ext==="webm") toast("Saved as .webm (desktop-friendly). To post from a phone, record in your phone's browser for .mp4.");
+  }
+  recBtn.addEventListener("click",()=> recording?stopRec():startRec());
+
+  let toastT=null;
+  function toast(msg){
+    let el=document.getElementById("toast");
+    if(!el){ el=document.createElement("div"); el.id="toast"; document.body.appendChild(el); }
+    el.textContent=msg; el.classList.add("show");
+    clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"),5200);
+  }
+
+  // ---- hint / title fade ---------------------------------------------------
+  const hintEl=document.getElementById("hint"), markEl=document.getElementById("mark");
+  let hintGone=false;
+  function dismissHint(){ if(hintGone) return; hintGone=true; hintEl.classList.add("gone"); setTimeout(()=>markEl.classList.add("dim"),2600); }
+  setTimeout(dismissHint, 6000);
+
+  // ---- boot ----------------------------------------------------------------
+  window.addEventListener("resize",()=>{ resize(); if(frameEl.classList.contains("show")) layoutFrame(); });
+  resize();
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
