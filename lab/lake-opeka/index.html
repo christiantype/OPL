@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>OP/AL — Lake Opeka</title>
 <script src="/lab/shared/gate.js" data-hash="1c8bfe8f801d79745c4631d09fff36c82aa37fc4cce4fc946683d7b336b63032" data-scope="opal-tools"></script>
 <style>
@@ -646,11 +646,32 @@
     transition: width 0.05s, height 0.05s;
   }
 
-  /* ── Mobile fallback (read-only) ────────────────────────────── */
-  @media (max-width: 880px) {
-    .app { grid-template-columns: 1fr; grid-template-rows: 56px 220px 1fr 280px; }
-    .images { border-right: none; border-bottom: 1px solid var(--hairline); }
-    .controls { border-left: none; border-top: 1px solid var(--hairline); }
+  /* mobile panel toggles (hidden on desktop) */
+  .m-toggle { display: none; font-family: var(--sans); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    background: rgba(255,255,255,.92); border: 1px solid var(--hairline); border-radius: 10px; padding: 9px 13px; color: var(--text);
+    cursor: pointer; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 6px 20px -10px rgba(0,0,0,.3); }
+
+  /* ── Mobile: the Sources + Controls islands become slide-up bottom sheets ── */
+  @media (max-width: 760px) {
+    .stage { padding: 8px 8px 62px; }
+    .empty { left: 50%; }
+    .stage-info { top: 10px; }
+    .m-toggle { display: block; position: fixed; z-index: 20; top: calc(110px + env(safe-area-inset-top,0px)); }
+    .m-toggle.m-left { left: 12px; }
+    .m-toggle.m-right { right: 12px; }
+    .canvas-size { top: 10px; right: 10px; padding: 5px; gap: 4px; }
+    .canvas-size select { width: 82px; font-size: 11px; padding: 7px 18px 7px 7px; }
+    .stage-actions { flex-wrap: wrap; max-width: calc(100vw - 24px); left: 12px; bottom: calc(12px + env(safe-area-inset-bottom,0px)); gap: 6px; }
+    .stage-actions button { padding: 9px 11px; }
+    .images, .controls {
+      position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none;
+      max-height: 74vh; border-radius: 16px 16px 0 0; padding: 16px 16px calc(72px + env(safe-area-inset-bottom,0px));
+      transform: translateY(105%); transition: transform .28s cubic-bezier(.2,.7,.2,1); z-index: 18;
+      box-shadow: 0 -12px 40px -16px rgba(0,0,0,.28); border: none;
+    }
+    body.sources-open .images { transform: none; }
+    body.controls-open .controls { transform: none; }
+    body.sources-open .m-left, body.controls-open .m-right { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   }
 </style>
 </head>
@@ -813,6 +834,8 @@
 
   <!-- CENTER: CANVAS -->
   <section class="stage" id="stage">
+    <button id="mSources" class="m-toggle m-left">☰ Sources</button>
+    <button id="mControls" class="m-toggle m-right">Controls ☰</button>
     <canvas id="canvas" width="1000" height="1000"></canvas>
     <div id="brush-cursor"></div>
     <div class="empty" id="empty" style="display:none">
@@ -1592,6 +1615,9 @@ const DOT = {
 
 // ── DOM refs ──────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
+// mobile: slide-up bottom-sheet panels (Sources / Controls), one at a time
+$('mSources')?.addEventListener('click',()=>{document.body.classList.remove('controls-open');document.body.classList.toggle('sources-open');});
+$('mControls')?.addEventListener('click',()=>{document.body.classList.remove('sources-open');document.body.classList.toggle('controls-open');});
 const canvas    = $('canvas');
 const ctx       = canvas.getContext('2d');
 const stage     = $('stage');
