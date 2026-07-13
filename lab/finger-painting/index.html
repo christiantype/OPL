@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Finger Painting</title>
+<script src="/lab/shared/gate.js" data-hash="1c8bfe8f801d79745c4631d09fff36c82aa37fc4cce4fc946683d7b336b63032" data-scope="opal-tools"></script>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{
+    --ink:#2a2622; --accent:#d9482f;
+    --panel:rgba(28,24,20,.62); --hair:rgba(255,255,255,.16);
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+    --safe-left:env(safe-area-inset-left,0px); --safe-right:env(safe-area-inset-right,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#efe9dd;overflow:hidden;overscroll-behavior:none}
+  #stage{position:fixed;inset:0;display:block;touch-action:none;cursor:crosshair}
+
+  /* Shared OPAL shell over the full-bleed canvas — matches every tool */
+  .opal-topbar{position:fixed;top:0;left:0;right:0;z-index:20}
+  .opal-subhead{position:fixed;top:56px;left:0;right:0;z-index:20}
+
+  .hint{
+    position:fixed;left:50%;top:calc(50% + 26vh);transform:translate(-50%,-50%);z-index:4;
+    font-family:var(--mono);color:var(--ink);opacity:.4;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;pointer-events:none;transition:opacity .6s ease;text-align:center;
+  }
+  .hint.gone{opacity:0}
+
+  .bar{
+    position:fixed;left:50%;bottom:calc(20px + var(--safe-bottom));transform:translateX(-50%);z-index:6;
+    display:flex;align-items:center;gap:14px;padding:11px 15px;border:1px solid var(--hair);border-radius:3px;
+    background:var(--panel);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);
+    font-family:var(--mono);color:#f3ede2;max-width:calc(100vw - 24px);box-shadow:0 8px 40px rgba(30,20,10,.22);
+  }
+  .swatches{display:flex;gap:7px;align-items:center;flex-wrap:wrap;max-width:220px}
+  .sw{width:18px;height:18px;border-radius:50%;border:1px solid rgba(0,0,0,.35);cursor:pointer;padding:0;position:relative;transition:transform .12s ease;outline:none}
+  .sw:hover{transform:scale(1.14)}
+  .sw.on{box-shadow:0 0 0 1.5px #2a2622,0 0 0 3px #f3ede2}
+  .sw.auto{background:conic-gradient(#e0328c,#4bd24b,#f2d21a,#e0322a,#2fb6c4,#7a3fd0,#e0328c)}
+  .sw.auto.on{box-shadow:0 0 0 1.5px #2a2622,0 0 0 3px var(--accent)}
+
+  .divide{width:1px;height:22px;background:var(--hair)}
+  .ctl{display:flex;align-items:center;gap:9px}
+  .ctl label{font-size:9px;letter-spacing:.15em;text-transform:uppercase;opacity:.62}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:64px;height:2px;background:rgba(255,255,255,.24);border-radius:2px;outline:none;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#f3ede2;border:none;cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#f3ede2;border:none;cursor:pointer}
+
+  .btn{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#f3ede2;
+    background:none;border:1px solid var(--hair);border-radius:3px;padding:7px 11px;cursor:pointer;
+    transition:border-color .15s,color .15s,background .15s;white-space:nowrap}
+  .btn:hover{border-color:var(--accent);color:#ffd9cf}
+  .btn:active{background:rgba(217,72,47,.14)}
+  .btn.on{border-color:var(--accent);color:#ffd9cf}
+  .btn:disabled{opacity:.38;cursor:default;border-color:var(--hair);color:#f3ede2}
+
+  .mode{display:flex;gap:6px}
+  .fmt{display:flex;gap:6px}
+  .fmtbtn.on{border-color:var(--accent);color:#ffd9cf}
+  .rec .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#e0574f;margin-right:8px;vertical-align:middle}
+  .rec.live{border-color:#e0574f;color:#ffd9d5}
+  .rec.live .dot{animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.22}}
+  #rectime{margin-left:8px;opacity:.75;font-variant-numeric:tabular-nums}
+
+  .frame{position:fixed;z-index:3;pointer-events:none;display:none;border-radius:2px;border:1px solid rgba(40,30,20,.4);box-shadow:0 0 0 9999px rgba(120,110,95,.34);transition:border-color .3s,box-shadow .3s}
+  .frame.show{display:block}
+  .frame.live{border-color:var(--accent);box-shadow:0 0 0 9999px rgba(120,90,70,.4)}
+
+  #toast{position:fixed;left:50%;bottom:calc(80px + var(--safe-bottom));transform:translateX(-50%);z-index:9;
+    font-family:var(--mono);font-size:11px;letter-spacing:.03em;line-height:1.45;color:#f3ede2;background:var(--panel);
+    border:1px solid var(--hair);border-radius:3px;padding:10px 14px;max-width:min(90vw,430px);text-align:center;opacity:0;
+    transition:opacity .3s;pointer-events:none;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  #toast.show{opacity:1}
+
+  @media (max-width:640px){
+    .bar{gap:10px;padding:10px 12px;flex-wrap:wrap;justify-content:center;row-gap:11px}
+    .ctl.wet{order:2}
+    .swatches{max-width:none}
+    .btn{padding:10px 13px;font-size:11px}
+    input[type=range]{width:96px}
+    .divide{display:none}
+  }
+</style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div class="hint" id="hint">Drag to smear paint</div>
+  <div class="frame" id="frame" aria-hidden="true"></div>
+
+  <div class="bar" role="toolbar" aria-label="Finger painting controls">
+    <div class="swatches" id="swatches" aria-label="Color"></div>
+    <div class="divide"></div>
+    <div class="ctl"><label for="size">Size</label><input id="size" type="range" min="12" max="180" value="64" aria-label="Brush size" /></div>
+    <div class="ctl wet"><label for="wet">Wet</label><input id="wet" type="range" min="0" max="100" value="62" aria-label="Wetness / smear" /></div>
+    <div class="mode" id="mode" role="group" aria-label="Brush mode">
+      <button class="btn on" data-mode="paint">Paint</button>
+      <button class="btn" data-mode="smear">Smear</button>
+    </div>
+    <div class="divide"></div>
+    <button class="btn" id="clear" aria-label="Clear canvas">Clear</button>
+    <button class="btn" id="save" aria-label="Save image">Save</button>
+    <div class="divide"></div>
+    <div class="fmt" id="fmt" role="group" aria-label="Video format">
+      <button class="btn fmtbtn on" data-fmt="9:16">9:16</button>
+      <button class="btn fmtbtn" data-fmt="1:1">1:1</button>
+    </div>
+    <button class="btn rec" id="rec" aria-label="Record video"><span class="dot"></span><span id="reclabel">Rec</span><span id="rectime"></span></button>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+  const cv = document.getElementById("stage");
+  const view = cv.getContext("2d");
+  const paint = document.createElement("canvas");   // persistent artwork (device px)
+  const pctx = paint.getContext("2d", { willReadFrequently: true });
+  const buf = document.createElement("canvas"), bctx = buf.getContext("2d");     // the "finger" buffer
+  const stamp = document.createElement("canvas"), sctx = stamp.getContext("2d"); // masked stamp
+  let W=0,H=0,DPR=1, bristle=null;
+
+  // ── painterly palette (vivid crowd colours + neutrals) ──
+  const PAL = {
+    magenta:"#e0328c", pink:"#ee7ab0", red:"#e0322a", maroon:"#6e1a24",
+    orange:"#e8792b", gold:"#e6b012", yellow:"#f2d21a", lime:"#8ec63f",
+    green:"#2fae4e", teal:"#2fb6c4", blue:"#2a4bd0", purple:"#7a3fd0",
+    black:"#1c1a18", cream:"#efe9dd",
+  };
+  const KEYS = Object.keys(PAL);
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  function hexRgb(h){h=h.replace('#','');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+  // small perceptual jitter so no two dabs are identical (paint is never flat)
+  function jitterColor(hex){
+    const c=hexRgb(hex), f=rnd(0.9,1.12), h=rnd(-10,10);
+    return `rgb(${clamp(c[0]*f+h,0,255)|0},${clamp(c[1]*f+h*0.6,0,255)|0},${clamp(c[2]*f-h*0.4,0,255)|0})`;
+  }
+
+  // ── warm paper ground with a linen tooth ──
+  function ground(){
+    pctx.setTransform(1,0,0,1,0,0);
+    pctx.fillStyle="#efe9dd"; pctx.fillRect(0,0,paint.width,paint.height);
+    const s=200, g=document.createElement("canvas"); g.width=g.height=s;
+    const gx=g.getContext("2d"), id=gx.createImageData(s,s), d=id.data;
+    for(let i=0;i<d.length;i+=4){ const n=(Math.random()*255)|0; d[i]=d[i+1]=d[i+2]=n; d[i+3]=Math.random()*20; }
+    gx.putImageData(id,0,0);
+    const pat=pctx.createPattern(g,"repeat");
+    pctx.globalAlpha=1; pctx.fillStyle=pat; pctx.fillRect(0,0,paint.width,paint.height);
+    blit();
+  }
+
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio||1, 2);
+    W=window.innerWidth; H=window.innerHeight;
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+    cv.style.width=W+"px"; cv.style.height=H+"px";
+    // preserve artwork across resize
+    const keep=document.createElement("canvas"); keep.width=paint.width||1; keep.height=paint.height||1;
+    if(paint.width) keep.getContext("2d").drawImage(paint,0,0);
+    paint.width=cv.width; paint.height=cv.height;
+    if(keep.width>1){ pctx.setTransform(1,0,0,1,0,0); pctx.drawImage(keep,0,0); } else ground();
+    view.setTransform(1,0,0,1,0,0);
+    blit();
+  }
+  function blit(){ view.clearRect(0,0,cv.width,cv.height); view.drawImage(paint,0,0); }
+
+  // ── bristle mask: a tip with body + streaks that run ALONG the drag, plus a
+  //    dry, broken edge so paint catches the tooth instead of a clean airbrush blur ──
+  function makeBristle(D){
+    const c=document.createElement("canvas"); c.width=c.height=D; const x=c.getContext("2d"); const R=D/2;
+    // firmer body, quicker fall only at the very rim (paint has substance)
+    const g=x.createRadialGradient(R,R,0,R,R,R);
+    g.addColorStop(0,"rgba(255,255,255,1)"); g.addColorStop(.72,"rgba(255,255,255,.98)"); g.addColorStop(.9,"rgba(255,255,255,.7)"); g.addColorStop(1,"rgba(255,255,255,0)");
+    x.fillStyle=g; x.beginPath(); x.arc(R,R,R,0,7); x.fill();
+    // carve parallel bristle furrows (rotated to the stroke when stamped)
+    x.globalCompositeOperation="destination-out"; x.lineCap="round";
+    const n=14+((Math.random()*16)|0);
+    for(let i=0;i<n;i++){
+      const y=Math.random()*D; x.globalAlpha=.14+Math.random()*.5; x.lineWidth=D*(0.006+Math.random()*0.028);
+      x.beginPath(); x.moveTo(-4,y); x.lineTo(D+4,y+ (Math.random()-0.5)*D*0.1); x.stroke();
+    }
+    // speckle the outer ring (dry-brush grit) so the edge breaks up
+    x.globalAlpha=1;
+    const dots=(D*0.9)|0;
+    for(let i=0;i<dots;i++){
+      const a=Math.random()*7, rr=R*(0.66+Math.random()*0.42);
+      const px=R+Math.cos(a)*rr, py=R+Math.sin(a)*rr;
+      x.globalAlpha=Math.random()*0.6; x.beginPath(); x.arc(px,py,D*(0.004+Math.random()*0.012),0,7); x.fill();
+    }
+    x.globalCompositeOperation="source-over"; x.globalAlpha=1;
+    return c;
+  }
+
+  // ── controls / state ──
+  let chosen="magenta", brushR=32, wet=0.62, mode="paint";
+  const sizeEl=document.getElementById("size"), wetEl=document.getElementById("wet");
+  sizeEl.addEventListener("input",()=>brushR=+sizeEl.value/2);
+  wetEl.addEventListener("input",()=>wet=+wetEl.value/100);
+  document.querySelectorAll("#mode .btn").forEach(b=>b.addEventListener("click",()=>{
+    mode=b.dataset.mode; document.querySelectorAll("#mode .btn").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+  }));
+  const swWrap=document.getElementById("swatches");
+  function addSwatch(key,cls){
+    const b=document.createElement("button"); b.className="sw "+(cls||""); b.setAttribute("aria-label",key);
+    if(key!=="auto") b.style.background=PAL[key];
+    if(key===chosen) b.classList.add("on");
+    b.addEventListener("click",()=>{ chosen=key; [...swWrap.children].forEach(c=>c.classList.remove("on")); b.classList.add("on"); if(mode==="smear"){mode="paint";document.querySelectorAll("#mode .btn").forEach(x=>x.classList.toggle("on",x.dataset.mode==="paint"));} });
+    swWrap.appendChild(b);
+  }
+  addSwatch("auto","auto");
+  ["magenta","red","orange","yellow","lime","teal","blue","purple","black","cream"].forEach(addSwatch);
+  const currentColor=()=> chosen==="auto" ? PAL[KEYS[(Math.random()*(KEYS.length-2))|0]] : PAL[chosen];
+
+  // ── the smear engine ──────────────────────────────────────────
+  // A soft "finger" buffer carries paint; it deposits (masked by bristles) and
+  // gradually picks up whatever colour it drags over — real wet-on-wet pulling.
+  let painting=false, last=null, strokeColor="#000", Rd=0;
+  function toXY(e){ const r=cv.getBoundingClientRect(); const p=e.touches?e.touches[0]:e; return {x:(p.clientX-r.left)*DPR, y:(p.clientY-r.top)*DPR}; }
+
+  function startStroke(x,y){
+    Rd=Math.max(3, brushR*DPR); const D=Math.round(Rd*2);
+    buf.width=buf.height=D; stamp.width=stamp.height=D;
+    bristle=makeBristle(D);
+    strokeColor=currentColor();
+    // load the finger from the canvas it starts on
+    bctx.clearRect(0,0,D,D); bctx.drawImage(paint, x-Rd,y-Rd,D,D, 0,0,D,D);
+    if(mode==="paint") loadPaint(x,y,0.9);
+    last={x,y};
+  }
+  function loadPaint(x,y,amt){
+    // press fresh paint onto the finger buffer (soft dab, jittered)
+    const D=buf.width, R=D/2;
+    const g=bctx.createRadialGradient(R,R,0,R,R,R);
+    const col=jitterColor(strokeColor);
+    g.addColorStop(0,col); g.addColorStop(.6, col); g.addColorStop(1,"rgba(0,0,0,0)");
+    bctx.globalAlpha=amt; bctx.fillStyle=g; bctx.beginPath(); bctx.arc(R,R,R,0,7); bctx.fill(); bctx.globalAlpha=1;
+  }
+  function stampAt(x,y,dir){
+    const D=buf.width, R=D/2;
+    if(mode==="paint") loadPaint(x,y, 0.16 + (1-wet)*0.34);   // keep re-loading so paint doesn't run out
+    // build the masked stamp: finger buffer clipped by the bristle tip (rotated to travel)
+    sctx.setTransform(1,0,0,1,0,0); sctx.clearRect(0,0,D,D);
+    sctx.drawImage(buf,0,0);
+    sctx.globalCompositeOperation="destination-in";
+    sctx.save(); sctx.translate(R,R); sctx.rotate(dir); sctx.drawImage(bristle,-R,-R,D,D); sctx.restore();
+    sctx.globalCompositeOperation="source-over";
+    // lay it down
+    const flow = mode==="paint" ? 0.72 : 0.85;
+    pctx.setTransform(1,0,0,1,0,0); pctx.globalAlpha=flow;
+    pctx.drawImage(stamp, x-R, y-R); pctx.globalAlpha=1;
+    // the finger picks up the colour it just dragged over (this is the smear)
+    const pick = 1 - wet;            // wetter = holds its colour longer = longer pull
+    bctx.globalAlpha = pick*0.9;
+    bctx.drawImage(paint, x-R, y-R, D, D, 0,0, D,D);
+    bctx.globalAlpha=1;
+  }
+  function segment(x0,y0,x1,y1){
+    const dx=x1-x0, dy=y1-y0, len=Math.hypot(dx,dy), dir=Math.atan2(dy,dx);
+    const sp=Math.max(1, Rd*0.16), n=Math.max(1, Math.round(len/sp));
+    for(let i=1;i<=n;i++){ const t=i/n; stampAt(x0+dx*t, y0+dy*t, dir); }
+  }
+
+  function down(e){ e.preventDefault(); dismissHint(); painting=true; const p=toXY(e); startStroke(p.x,p.y); stampAt(p.x,p.y,0); blit(); }
+  function move(e){ if(!painting) return; e.preventDefault(); const p=toXY(e); segment(last.x,last.y,p.x,p.y); last=p; blit(); }
+  function up(){ painting=false; last=null; }
+  cv.addEventListener("mousedown",down); window.addEventListener("mousemove",move); window.addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",down,{passive:false}); cv.addEventListener("touchmove",move,{passive:false}); window.addEventListener("touchend",up);
+
+  document.getElementById("clear").addEventListener("click",()=>{ ground(); });
+  document.getElementById("save").addEventListener("click",()=>{ const a=document.createElement("a"); a.download="finger-painting.png"; a.href=paint.toDataURL("image/png"); a.click(); });
+
+  // ── record (social dimensions) ──
+  const RECDIMS={ "9:16":[1080,1920], "1:1":[1080,1080] };
+  let recFmt="9:16", recording=false, mediaRec=null, recChunks=[], recStart=0, recRAF=null, recTimer=null, frameHideT=null;
+  let frameRect={x:0,y:0,w:0,h:0};
+  const frameEl=document.getElementById("frame"), recBtn=document.getElementById("rec"),
+        recLabel=document.getElementById("reclabel"), recTimeEl=document.getElementById("rectime"), fmtEl=document.getElementById("fmt");
+  const recCanvas=document.createElement("canvas"), rctx=recCanvas.getContext("2d");
+  function layoutFrame(){
+    const [rw,rh]=RECDIMS[recFmt], ar=rw/rh; const padTop=112, padBottom=78, padX=16;
+    const availW=W-padX*2, availH=H-padTop-padBottom; let h=availH, w=h*ar; if(w>availW){ w=availW; h=w/ar; }
+    const x=(W-w)/2, y=padTop+(availH-h)/2; frameRect={x,y,w,h};
+    frameEl.style.left=x+"px"; frameEl.style.top=y+"px"; frameEl.style.width=w+"px"; frameEl.style.height=h+"px";
+  }
+  const showFrame=on=>frameEl.classList.toggle("show",on);
+  fmtEl.querySelectorAll(".fmtbtn").forEach(b=>b.addEventListener("click",()=>{
+    if(recording) return; recFmt=b.dataset.fmt; fmtEl.querySelectorAll(".fmtbtn").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+    layoutFrame(); showFrame(true); clearTimeout(frameHideT); frameHideT=setTimeout(()=>{ if(!recording) showFrame(false); },2800);
+  }));
+  function pickMime(){ const list=["video/mp4;codecs=avc1.42E01E","video/mp4","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"];
+    for(const m of list){ if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return m; } return ""; }
+  function startRec(){
+    if(!window.MediaRecorder){ toast("Recording needs Safari or Chrome."); return; }
+    const mime=pickMime(); if(!mime){ toast("This browser can't encode video. Try Safari or Chrome."); return; }
+    const [rw,rh]=RECDIMS[recFmt]; recCanvas.width=rw; recCanvas.height=rh;
+    dismissHint(); layoutFrame(); showFrame(true); frameEl.classList.add("live");
+    const stream=recCanvas.captureStream(30); recChunks=[];
+    try{ mediaRec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12000000}); }catch(e){ mediaRec=new MediaRecorder(stream); }
+    mediaRec.ondataavailable=e=>{ if(e.data&&e.data.size) recChunks.push(e.data); };
+    mediaRec.onstop=finishRec; mediaRec.start(100);
+    recording=true; recStart=performance.now(); recBtn.classList.add("live"); recLabel.textContent="Stop";
+    fmtEl.querySelectorAll(".fmtbtn").forEach(b=>b.disabled=true); recLoop(); recTimer=setInterval(updateTime,200); updateTime();
+  }
+  function recLoop(){ const sx=frameRect.x*DPR, sy=frameRect.y*DPR, sw=frameRect.w*DPR, sh=frameRect.h*DPR;
+    rctx.drawImage(paint, sx,sy,sw,sh, 0,0, recCanvas.width, recCanvas.height); if(recording) recRAF=requestAnimationFrame(recLoop); }
+  function updateTime(){ const s=(performance.now()-recStart)/1000; recTimeEl.textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(Math.floor(s%60)).padStart(2,"0"); }
+  function stopRec(){ if(!recording) return; recording=false; cancelAnimationFrame(recRAF); clearInterval(recTimer);
+    try{ mediaRec.stop(); }catch(e){} recBtn.classList.remove("live"); recLabel.textContent="Rec"; recTimeEl.textContent="";
+    frameEl.classList.remove("live"); fmtEl.querySelectorAll(".fmtbtn").forEach(b=>b.disabled=false); setTimeout(()=>{ if(!recording) showFrame(false); },1400); }
+  function finishRec(){ const type=(mediaRec&&mediaRec.mimeType)||pickMime()||"video/webm"; const blob=new Blob(recChunks,{type});
+    const ext=type.includes("mp4")?"mp4":"webm"; const url=URL.createObjectURL(blob); const a=document.createElement("a");
+    a.href=url; a.download=`finger-painting-${recFmt.replace(":","x")}.${ext}`; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    if(ext==="webm") toast("Saved as .webm (desktop-friendly). To post from a phone, record in your phone's browser for .mp4."); }
+  recBtn.addEventListener("click",()=> recording?stopRec():startRec());
+
+  let toastT=null;
+  function toast(msg){ let el=document.getElementById("toast"); if(!el){ el=document.createElement("div"); el.id="toast"; document.body.appendChild(el); }
+    el.textContent=msg; el.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"),5200); }
+
+  const hintEl=document.getElementById("hint"); let hintGone=false;
+  function dismissHint(){ if(hintGone) return; hintGone=true; hintEl.classList.add("gone"); }
+  setTimeout(dismissHint, 7000);
+
+  window.addEventListener("resize",()=>{ resize(); if(frameEl.classList.contains("show")) layoutFrame(); });
+  resize();
+})();
+</script>
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Finger Painting', desc: 'Smeared paint studio', version: 'v1' });</script>
+</body>
+</html>
