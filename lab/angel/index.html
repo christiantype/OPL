@@ -11,10 +11,10 @@
      rather than the usual additive glow — see BLEND in the script. */
   :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
     --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
-    --track:rgba(0,0,0,.3); --top:100px; --rail:290px; }
+    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:100px; --rail:290px; }
   body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
     --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
-    --track:rgba(255,255,255,.3); }
+    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
     font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
@@ -105,6 +105,24 @@
   body.fs #mood{ display:none; }
   #mood b{ font-weight:600; letter-spacing:.18em; }
   #mood span{ opacity:.5; font-size:9px; letter-spacing:.14em; }
+  body.kbd #mood{ bottom:150px; }
+
+  /* Playable keyboard — plays the selected lane's voice; computer keys or clicks. */
+  #kbd{ position:fixed; left:50%; bottom:64px; transform:translateX(-50%); z-index:9;
+    display:flex; height:104px; padding:9px; border-radius:10px; user-select:none;
+    background:var(--panel); -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
+    border:1px solid var(--hair); box-shadow:0 12px 40px -20px rgba(0,0,0,.45); transition:opacity .5s ease; }
+  #kbd.hidden{ display:none; }
+  body.idle #kbd{ opacity:0; pointer-events:none; }
+  body.fs #kbd{ display:none; }
+  .wk{ position:relative; width:30px; height:100%; border:1px solid var(--hair); border-top:0;
+    border-radius:0 0 4px 4px; background:var(--paper); cursor:pointer; touch-action:none; }
+  .wk:last-child{ }
+  .bk{ position:absolute; top:0; width:20px; height:62%; margin-left:-10px; z-index:2;
+    background:var(--ink); border-radius:0 0 4px 4px; cursor:pointer; touch-action:none; }
+  .wk.lit{ background:var(--liton); }
+  .bk.lit{ background:var(--liton); }
+  .wk .kc{ position:absolute; bottom:4px; left:0; right:0; text-align:center; font-size:8px; color:var(--mute); pointer-events:none; }
   .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
     color:var(--mute); white-space:nowrap; }
   .rail .grp > label{ white-space:normal; }
@@ -180,8 +198,10 @@
 <div id="status"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
 <button id="mood" aria-label="change mood"><b id="moodName">Bloom</b><span>mood</span></button>
+<div id="kbd" class="hidden" aria-label="playable keyboard"></div>
 <div id="bar">
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
+  <button class="icon" id="kbdBtn" aria-label="keyboard" title="Playable keyboard" aria-pressed="false">&#9835;</button>
   <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen — canvas only">&#9974;</button>
   <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
 </div>
@@ -818,8 +838,20 @@
     requestAnimationFrame(resize); }
   $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
   $('exitFs').addEventListener('click',()=>setFs(false));
-  addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.body.classList.contains('fs')) setFs(false);
-    else if((e.key==='f'||e.key==='F')&&!/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) setFs(!document.body.classList.contains('fs')); });
+  const typing=()=>/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
+  addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; }
+    if(typing()) return;
+    if(kbdOpen()&&!e.repeat){
+      const k=e.key.toLowerCase();
+      if(k==='z'){ kbOct=Math.max(-2,kbOct-1); buildKbd(); return; }
+      if(k==='x'){ kbOct=Math.min(3,kbOct+1); buildKbd(); return; }
+      if(KEYROW[k]!=null){ kbDown(KEYROW[k]); return; }
+    }
+    if(e.key==='f'||e.key==='F') setFs(!document.body.classList.contains('fs'));
+  });
+  addEventListener('keyup',e=>{ if(typing()) return; const k=e.key.toLowerCase();
+    if(kbdOpen()&&KEYROW[k]!=null) kbUp(KEYROW[k]); });
   // leaving native full-screen by Esc/gesture should drop our class too
   document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && document.body.classList.contains('fs')) setFs(false); });
   // the exit affordance fades in on movement, then gets out of the way again
@@ -1297,6 +1329,50 @@
     idleT=setTimeout(()=>{ if(!document.body.classList.contains('panels')) document.body.classList.add('idle'); },3200); };
   ['pointermove','pointerdown','keydown','wheel'].forEach(ev=>addEventListener(ev,stirr,{passive:true}));
   stirr();
+
+  /* ---------- playable keyboard ----------
+     Two octaves from the current Pitch, playing the selected lane's voice so you pick a lane
+     (say Grand Piano) and perform it. Computer keys use the standard tracker row; keys light
+     as they sound, from click, touch or keyboard. */
+  const WHITE=[0,2,4,5,7,9,11], BLACK={1:0,3:1,6:3,8:4,10:5};   // black offset by white index
+  const KEYROW={ a:0,w:1,s:2,e:3,d:4,f:5,t:6,g:7,y:8,h:9,u:10,j:11,
+                 k:12,o:13,l:14,p:15,';':16,"'":17 };
+  const KEYLABEL=Object.fromEntries(Object.entries(KEYROW).map(([k,v])=>[v,k.toUpperCase()]));
+  let kbOct=0, kbHeld={};
+  function kbBase(){ return Math.max(24,Math.min(96, state.root + kbOct*12)); }
+  function buildKbd(){ const host=$('kbd'); host.innerHTML=''; const base=kbBase();
+    const wkEls={};
+    for(let o=0;o<2;o++) for(let wi=0;wi<7;wi++){
+      const semi=o*12+WHITE[wi], w=document.createElement('div'); w.className='wk'; w.dataset.semi=semi;
+      if(KEYLABEL[semi]!=null) w.innerHTML=`<span class="kc">${KEYLABEL[semi]}</span>`;
+      host.appendChild(w); wkEls[semi]=w;
+    }
+    // black keys sit between whites, positioned over the gaps
+    for(let o=0;o<2;o++) for(const semiStr in BLACK){ const semi=o*12+ +semiStr, afterWhite=o*7+BLACK[semiStr];
+      const bk=document.createElement('div'); bk.className='bk'; bk.dataset.semi=semi;
+      const ref=host.children[afterWhite]; if(ref) bk.style.left=(ref.offsetLeft+ref.offsetWidth)+'px';
+      host.appendChild(bk);
+    }
+    host.querySelectorAll('.wk,.bk').forEach(el=>{
+      const semi=+el.dataset.semi;
+      const down=ev=>{ ev.preventDefault(); kbDown(semi); };
+      const up=ev=>{ ev.preventDefault(); kbUp(semi); };
+      el.addEventListener('pointerdown',down); el.addEventListener('pointerup',up);
+      el.addEventListener('pointerleave',e=>{ if(e.buttons) kbUp(semi); });
+    });
+  }
+  function litEl(semi,on){ const el=$('kbd').querySelector(`[data-semi="${semi}"]`); if(el) el.classList.toggle('lit',on); }
+  function kbDown(semi){ if(kbHeld[semi]) return; kbHeld[semi]=true; litEl(semi,true);
+    if(!audio) return; const midi=Math.max(21,Math.min(108, kbBase()+semi));
+    fire(laneVoice(editLane), lanes[editLane].instr, midi, .6, lanes[editLane].env);
+    // a matching flash on the canvas so playing is visible there too
+    const R=ringRadius(editLane), {cx,cy}=center(), a=(-Math.PI/2)+ (semi/12)*Math.PI*0.9;
+    rings.push({x:cx+Math.cos(a)*R, y:cy+Math.sin(a)*R, r:6, life:1, hue:hueOf(editLane), w:2}); }
+  function kbUp(semi){ if(!kbHeld[semi]) return; kbHeld[semi]=false; litEl(semi,false); }
+  function kbdOpen(){ return !$('kbd').classList.contains('hidden'); }
+  $('kbdBtn').addEventListener('click',()=>{ const open=$('kbd').classList.toggle('hidden')===false;
+    document.body.classList.toggle('kbd',open); $('kbdBtn').setAttribute('aria-pressed',String(open));
+    if(open){ buildKbd(); document.body.classList.remove('idle'); } });
 
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
