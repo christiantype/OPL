@@ -219,6 +219,7 @@
         <option value="pluck">Pluck</option>
         <option value="bell">Bell</option>
         <option value="mallet">Mallet</option>
+        <optgroup label="Sampled"><option value="cello">Cello</option><option value="violin">Violin</option><option value="contrabass">Contrabass</option><option value="flute">Flute</option><option value="clarinet">Clarinet</option><option value="french-horn">French Horn</option><option value="harp">Harp</option><option value="guitar-nylon">Guitar Nylon</option><option value="xylophone">Xylophone</option><option value="saxophone">Saxophone</option></optgroup>
       </select>
     </div>
     <div class="duo">
@@ -338,6 +339,7 @@
         <option value="pluck">Pluck</option>
         <option value="bell">Bell</option>
         <option value="mallet">Mallet</option>
+        <optgroup label="Sampled"><option value="cello">Cello</option><option value="violin">Violin</option><option value="contrabass">Contrabass</option><option value="flute">Flute</option><option value="clarinet">Clarinet</option><option value="french-horn">French Horn</option><option value="harp">Harp</option><option value="guitar-nylon">Guitar Nylon</option><option value="xylophone">Xylophone</option><option value="saxophone">Saxophone</option></optgroup>
       </select>
     </div>
     <div class="quad">
@@ -498,6 +500,10 @@
 
   // ---------- audio ----------
   let audio=null; const logCut=v=>120*Math.pow(14000/120,v/100);
+  // Vendored acoustic instruments (nbrosowsky/tonejs-instruments, CC0/CC-BY), lazily loaded:
+  // a Sampler is only built when its instrument is first chosen, so startup stays light.
+  const SAMPLED={"cello":{"A#2":"As2.mp3","A#3":"As3.mp3","A2":"A2.mp3","A3":"A3.mp3","A4":"A4.mp3","B2":"B2.mp3","B3":"B3.mp3","B4":"B4.mp3","C#3":"Cs3.mp3","C#4":"Cs4.mp3","C2":"C2.mp3","C3":"C3.mp3","C4":"C4.mp3","C5":"C5.mp3","D#2":"Ds2.mp3","D#3":"Ds3.mp3","D#4":"Ds4.mp3","D2":"D2.mp3","D3":"D3.mp3","D4":"D4.mp3","E2":"E2.mp3","E3":"E3.mp3","E4":"E4.mp3","F#3":"Fs3.mp3","F#4":"Fs4.mp3","F2":"F2.mp3","F3":"F3.mp3","F4":"F4.mp3","G#2":"Gs2.mp3","G#3":"Gs3.mp3","G#4":"Gs4.mp3","G2":"G2.mp3","G3":"G3.mp3","G4":"G4.mp3"},"violin":{"A3":"A3.mp3","A4":"A4.mp3","A5":"A5.mp3","A6":"A6.mp3","C4":"C4.mp3","C5":"C5.mp3","C6":"C6.mp3","C7":"C7.mp3","E4":"E4.mp3","E5":"E5.mp3","E6":"E6.mp3","G3":"G3.mp3","G4":"G4.mp3","G5":"G5.mp3","G6":"G6.mp3"},"contrabass":{"A#1":"As1.mp3","A2":"A2.mp3","B3":"B3.mp3","C#3":"Cs3.mp3","C2":"C2.mp3","D2":"D2.mp3","E2":"E2.mp3","E3":"E3.mp3","F#1":"Fs1.mp3","F#2":"Fs2.mp3","G#2":"Gs2.mp3","G#3":"Gs3.mp3","G1":"G1.mp3"},"flute":{"A4":"A4.mp3","A5":"A5.mp3","A6":"A6.mp3","C4":"C4.mp3","C5":"C5.mp3","C6":"C6.mp3","C7":"C7.mp3","E4":"E4.mp3","E5":"E5.mp3","E6":"E6.mp3"},"clarinet":{"A#3":"As3.mp3","A#4":"As4.mp3","A#5":"As5.mp3","D3":"D3.mp3","D4":"D4.mp3","D5":"D5.mp3","D6":"D6.mp3","F#6":"Fs6.mp3","F3":"F3.mp3","F4":"F4.mp3","F5":"F5.mp3"},"french-horn":{"A1":"A1.mp3","A3":"A3.mp3","C2":"C2.mp3","C4":"C4.mp3","D#2":"Ds2.mp3","D3":"D3.mp3","D5":"D5.mp3","F3":"F3.mp3","F5":"F5.mp3","G2":"G2.mp3"},"harp":{"A2":"A2.mp3","A4":"A4.mp3","A6":"A6.mp3","B1":"B1.mp3","B3":"B3.mp3","B5":"B5.mp3","B6":"B6.mp3","C3":"C3.mp3","C5":"C5.mp3","D2":"D2.mp3","D4":"D4.mp3","D6":"D6.mp3","D7":"D7.mp3","E1":"E1.mp3","E3":"E3.mp3","E5":"E5.mp3","F2":"F2.mp3","F4":"F4.mp3","F6":"F6.mp3","F7":"F7.mp3","G1":"G1.mp3","G3":"G3.mp3","G5":"G5.mp3"},"guitar-nylon":{"A#5":"As5.mp3","A2":"A2.mp3","A3":"A3.mp3","A4":"A4.mp3","A5":"A5.mp3","B1":"B1.mp3","B2":"B2.mp3","B3":"B3.mp3","B4":"B4.mp3","C#3":"Cs3.mp3","C#4":"Cs4.mp3","C#5":"Cs5.mp3","D#4":"Ds4.mp3","D2":"D2.mp3","D3":"D3.mp3","D5":"D5.mp3","E2":"E2.mp3","E3":"E3.mp3","E4":"E4.mp3","E5":"E5.mp3","F#2":"Fs2.mp3","F#3":"Fs3.mp3","F#4":"Fs4.mp3","F#5":"Fs5.mp3","G#2":"Gs2.mp3","G#4":"Gs4.mp3","G#5":"Gs5.mp3","G3":"G3.mp3","G5":"G5.mp3"},"xylophone":{"C5":"C5.mp3","C6":"C6.mp3","C7":"C7.mp3","C8":"C8.mp3","G4":"G4.mp3","G5":"G5.mp3","G6":"G6.mp3","G7":"G7.mp3"},"saxophone":{"A#3":"As3.mp3","A#4":"As4.mp3","A4":"A4.mp3","A5":"A5.mp3","B3":"B3.mp3","B4":"B4.mp3","C#3":"Cs3.mp3","C#4":"Cs4.mp3","C#5":"Cs5.mp3","C4":"C4.mp3","C5":"C5.mp3","D#3":"Ds3.mp3","D#4":"Ds4.mp3","D#5":"Ds5.mp3","D3":"D3.mp3","D4":"D4.mp3","D5":"D5.mp3","E3":"E3.mp3","E4":"E4.mp3","E5":"E5.mp3","F#3":"Fs3.mp3","F#4":"Fs4.mp3","F#5":"Fs5.mp3","F3":"F3.mp3","F4":"F4.mp3","F5":"F5.mp3","G#3":"Gs3.mp3","G#4":"Gs4.mp3","G#5":"Gs5.mp3","G3":"G3.mp3","G4":"G4.mp3","G5":"G5.mp3"}};
+  const SAMPLED_NAMES=Object.keys(SAMPLED);
   const PIANO_URLS={ "A0":"A0.mp3","C1":"C1.mp3","D#1":"Ds1.mp3","F#1":"Fs1.mp3","A1":"A1.mp3","C2":"C2.mp3","D#2":"Ds2.mp3","F#2":"Fs2.mp3",
     "A2":"A2.mp3","C3":"C3.mp3","D#3":"Ds3.mp3","F#3":"Fs3.mp3","A3":"A3.mp3","C4":"C4.mp3","D#4":"Ds4.mp3","F#4":"Fs4.mp3",
     "A4":"A4.mp3","C5":"C5.mp3","D#5":"Ds5.mp3","F#5":"Fs5.mp3","A5":"A5.mp3","C6":"C6.mp3" };
@@ -522,6 +528,10 @@
     else if(name==='sample'){
       if(!sampleBuf) return null;                       // nothing recorded yet — stays silent
       n=new Tone.Sampler({ urls:{ C4:sampleBuf }, release:1.4 }); }
+    else if(SAMPLED[name]){
+      n=new Tone.Sampler({ baseUrl:`/assets/audio/inst/${name}/`, urls:SAMPLED[name], release:1.4,
+        onload:()=>setStatus('') });
+      setStatus('loading '+name.replace('-',' ')+'…'); }
     else { // piano
       if(pianoBuffers){ n=new Tone.Sampler({ urls:pianoBuffers, release:1.2 }); pianoReady=true; }
       else { n=new Tone.Sampler({ baseUrl:'/assets/audio/salamander/', urls:PIANO_URLS, release:1.2,
@@ -540,7 +550,7 @@
     try{
       if(name==='pluck'){ node.set({ resonance:Math.max(0.5,Math.min(0.995,0.72+e.s*0.2+Math.min(e.r,8)*0.02)),
         dampening:Math.max(300,6000-e.a*3000) }); return; }
-      if(name==='piano'||name==='sample'){ node.attack=Math.max(0,e.a); node.release=Math.max(0.05,e.r); return; }
+      if(name==='piano'||name==='sample'||SAMPLED[name]){ node.attack=Math.max(0,e.a); node.release=Math.max(0.05,e.r); return; }
       node.set({ envelope:{ attack:Math.max(0.001,e.a), decay:Math.max(0.01,e.d),
         sustain:Math.max(0,Math.min(1,e.s)), release:Math.max(0.02,e.r) } });
     }catch(err){}
@@ -581,10 +591,14 @@
     return Math.max(0.06, e.a + e.d + (e.s>0.02 ? 0.5 + e.s*2.6 : 0)); };
   function fire(node,instr,midi,vel,env){ if(!node) return;
     if(instr==='piano' && !pianoReady) return;
-    if(instr==='sample' && !sampleBuf) return; const note=midiToNote(midi);
+    if(instr==='sample' && !sampleBuf) return;
+    if(SAMPLED[instr] && node.loaded===false) return; const note=midiToNote(midi);
     try{ if(instr==='pluck') node.triggerAttack(note); else node.triggerAttackRelease(note, noteDur(env), undefined, vel); }catch(e){} }
   function triggerLane(i,midi,vel){ if(!audio) return; fire(laneVoice(i),lanes[i].instr,midi,vel,lanes[i].env); }
-  function trigger(instr,midi,vel){ if(!audio) return; fire(audio.orbSet[instr],instr,midi,vel,state.orbEnv); }
+  function orbVoiceNode(name){ if(!audio) return null;
+    if(!audio.orbSet[name]){ audio.orbSet[name]=makeInstr(name,audio.filter); if(audio.orbSet[name]) applyEnv(audio.orbSet[name],name,state.orbEnv); }
+    return audio.orbSet[name]; }
+  function trigger(instr,midi,vel){ if(!audio) return; fire(orbVoiceNode(instr),instr,midi,vel,state.orbEnv); }
   const usesPiano=()=>lanes.some(l=>l.instr==='piano');
   function setStatus(t){ const s=document.getElementById('status'); s.textContent=t; s.style.display=t?'block':'none'; }
 
