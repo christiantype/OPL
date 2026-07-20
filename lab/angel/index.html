@@ -20,7 +20,7 @@
     font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
   /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
      wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
-  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; }
+  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:var(--rail); bottom:0; }
   #stage{ display:block; width:100%; height:100%; touch-action:none; }
 
   /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
@@ -36,7 +36,7 @@
   body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
-  body.fs #rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
   body.fs #stagewrap{ top:0; left:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
@@ -48,47 +48,49 @@
     font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
 
   /* one hairline control strip — everything else is off until asked for */
-  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:9; display:flex; gap:8px; }
+  #bar{ position:fixed; top:calc(var(--top) + 12px); right:calc(var(--rail) + 14px); z-index:9; display:flex; gap:8px; }
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
     background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
   .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  #recDot{ position:fixed; top:calc(var(--top) + 18px); right:96px; z-index:9; font-size:10px;
+  #recDot{ position:fixed; top:calc(var(--top) + 18px); right:calc(var(--rail) + 130px); z-index:9; font-size:10px;
     letter-spacing:.12em; color:#c8102e; display:none; align-items:center; gap:6px; }
   #recDot.on{ display:flex; }
   #recDot i{ width:7px;height:7px;border-radius:50%;background:#c8102e; animation:blink 1s infinite; }
   @keyframes blink{ 50%{opacity:.2;} }
 
-  /* Frosted glass: the fill has to stay genuinely translucent or backdrop-filter has
-     nothing to show through — at .95 the blur was invisible and it just read as a slab. */
-  /* Left rail — always on, so the instrument and its controls stay in view while it plays.
-     Frosted: the fill stays translucent or backdrop-filter has nothing to work with. */
-  #rail{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
+  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
+     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
+     work with. */
+  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
     padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:var(--panel);
     -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
-    border-right:1px solid var(--edge);
     display:flex; flex-direction:column; transition:transform .28s ease; }
+  .rail-l{ left:0; border-right:1px solid var(--edge); }
+  .rail-r{ right:0; border-left:1px solid var(--edge); }
   .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
     padding:14px 0; border-bottom:1px solid var(--edge); }
   .row:last-of-type{ border-bottom:0; }
   .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
     font-weight:600; opacity:.9; padding-bottom:2px; }
   .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
-  #rail input[type=range]{ width:100%; }
-  #rail select{ width:100%; }
-  #rail .seg{ width:100%; }
-  #rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  .rail input[type=range]{ width:100%; }
+  .rail select{ width:100%; }
+  .rail .seg{ width:100%; }
+  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   /* narrow screens: rail slides away behind the ··· button */
-  @media (max-width:820px){
+  @media (max-width:1180px){
     :root{ --rail:0px; }
-    #rail{ width:284px; transform:translateX(-100%); box-shadow:0 0 60px -20px rgba(0,0,0,.5); }
-    #rail.open{ transform:none; }
+    .rail{ width:284px; box-shadow:0 0 60px -20px rgba(0,0,0,.5); }
+    .rail-l{ transform:translateX(-100%); }
+    .rail-r{ transform:translateX(100%); }
+    .rail.open{ transform:none; }
   }
   .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
     color:var(--mute); white-space:nowrap; }
-  #rail .grp > label{ white-space:normal; }
+  .rail .grp > label{ white-space:normal; }
   .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
   .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
   .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
@@ -133,10 +135,13 @@
     border-radius:2px; font:inherit; font-size:10px; letter-spacing:.02em; font-variant-numeric:tabular-nums;
     transition:background .12s ease, color .12s ease, border-color .12s ease; }
   #stepRow button:hover{ border-color:var(--mute); }
-  #stepRow button.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  #stepRow button.on{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   #stepRow button.sel{ box-shadow:0 0 0 2px var(--ink), 0 0 0 3px var(--paper); }
-  #noteEd{ display:flex; gap:6px; align-items:center; }
-  #noteEd.off{ opacity:.3; pointer-events:none; }
+  #noteEd{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  #noteEd #noteSel{ flex:1 1 108px; min-width:104px; }
+  #noteEd #octSel{ flex:0 0 62px; width:62px; }
+  #noteEd #stepOff{ flex:0 0 auto; }
+  #noteEd.off{ opacity:.55; pointer-events:none; }
 
   #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
@@ -161,8 +166,8 @@
 </div>
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
-<div id="rail">
-  <div class="row">
+<div id="rail" class="rail rail-l">
+<div class="row">
     <div class="rowhead">Lane</div>
     <div class="grp"><div class="seg lanes" id="laneSeg"></div></div>
     <div class="grp"><label>Instrument</label>
@@ -186,9 +191,9 @@
   </div>
 
   <div class="row">
-    <div class="rowhead">Steps &#183; click a cell, then set its note</div>
+    <div class="rowhead">Steps</div>
     <div class="grp"><div id="stepRow"></div></div>
-    <div class="grp"><label>Note</label>
+    <div class="grp"><label>Note &#183; select a step above</label>
       <div id="noteEd" class="off">
         <select id="noteSel">
           <option value="auto">Auto (scale)</option>
@@ -204,9 +209,11 @@
       </div>
     </div>
   </div>
+</div>
 
-  <div class="row">
-    <div class="rowhead">Modulation &#183; patch a shape to a parameter</div>
+<div id="railR" class="rail rail-r">
+<div class="row">
+    <div class="rowhead">Modulation</div>
     <div id="modWrap"></div>
   </div>
 
@@ -289,18 +296,25 @@
   const isDark = ()=>THEME==='dark';
   const PAPERC = ()=>isDark()?'#07080f':'#ffffff';
   const BLENDC = ()=>isDark()?'lighter':'multiply';
-  const IL = l => isDark() ? l : Math.max(6,Math.min(94,100-l));
+  const IL = l => isDark() ? l : 34 + (100-l)*0.42;
   let W=0,H=0,DPR=1;
+  // offscreen for the soft-trail feedback pass (named tfb — `fb` is taken inside shatter())
+  const tfb=document.createElement('canvas'), tfbx=tfb.getContext('2d');
+  // Persistent trail layer. Everything that should smear lives here and nowhere else, so the
+  // ring geometry — drawn straight to the visible canvas — can never enter the feedback.
+  // (Snapshotting the visible canvas doesn't work: it is never cleared, only alpha-washed,
+  // so last frame's rings are still sitting in it.)
+  const pl=document.createElement('canvas'), plx=pl.getContext('2d');
   const wrap=document.getElementById('stagewrap');
   function resize(){ DPR=Math.min(window.devicePixelRatio||1,2);
     // The wrapper is a normal block and does stretch to its inset box, so its rect is the
     // truth whether the rail is showing, hidden, or we're full-screen.
     const r=wrap.getBoundingClientRect();
     W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height));
-    cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); }
+    cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+    pl.width=W*DPR; pl.height=H*DPR; plx.setTransform(DPR,0,0,DPR,0,0);
+    plx.fillStyle=PAPERC(); plx.fillRect(0,0,W,H); }
   addEventListener('resize',resize); resize();
-  // offscreen for the soft-trail feedback pass (named tfb — `fb` is taken inside shatter())
-  const tfb=document.createElement('canvas'), tfbx=tfb.getContext('2d');
 
   const PALETTES={ AURORA:[155,185,265,300], EMBER:[8,28,45,330], OCEAN:[185,205,225,255], PRISM:[0,55,150,285] };
   const SCALES={ Pentatonic:[0,2,4,7,9], MinorPenta:[0,3,5,7,10], Dorian:[0,2,3,5,7,9,10], Lydian:[0,2,4,6,7,9,11] };
@@ -427,7 +441,7 @@
   // ---------- draw ----------
   let lastT=performance.now();
   function draw(t){ const dt=Math.min(.05,(t-lastT)/1000), now=t; lastT=t; drift+=dt*7;
-    ctx.globalCompositeOperation='source-over';
+    plx.globalCompositeOperation='source-over';
     // Soft trails: diffuse the previous frame through a half-res blurred feedback pass before
     // washing it back toward paper. A plain alpha wash alone leaves hard vector edges —
     // this bleeds them outward so the trail reads as pigment rather than geometry.
@@ -435,10 +449,11 @@
     // ring geometry — so the rings never feed the blur and never grow a halo. Only things
     // that should smear (orbs, node glows, shards) are in it.
     if(state.soft>0.001 && tfb.width>1){
-      ctx.save(); ctx.globalAlpha=state.soft; ctx.filter=`blur(${(1.1+state.soft*2.2).toFixed(2)}px)`;
-      ctx.drawImage(tfb,0,0,W,H); ctx.restore(); ctx.filter='none'; ctx.globalAlpha=1;
+      plx.save(); plx.globalAlpha=state.soft; plx.filter=`blur(${(1.1+state.soft*2.2).toFixed(2)}px)`;
+      plx.drawImage(tfb,0,0,W,H); plx.restore(); plx.filter='none'; plx.globalAlpha=1;
     }
-    ctx.fillStyle=hsla(drift*0.6,18,IL(5),state.trail); ctx.fillRect(0,0,W,H);
+    plx.fillStyle= isDark() ? hsla(drift*0.6,18,5,state.trail) : `rgba(255,255,255,${state.trail})`;
+    plx.fillRect(0,0,W,H);
 
     for(const b of orbs){ b.x+=b.dx*BASE*dt; b.y+=b.dy*BASE*dt;
       if(b.x-b.r<0){b.x=b.r;b.dx=Math.abs(b.dx);hitWall(b,'x',t);} else if(b.x+b.r>W){b.x=W-b.r;b.dx=-Math.abs(b.dx);hitWall(b,'x',t);}
@@ -447,7 +462,7 @@
     for(let mi=0;mi<mods.length;mi++){ const el=$('mv'+mi); if(el) el.textContent=modVal(mods[mi],t/1000).toFixed(2); }
     advance(dt);
 
-    ctx.globalCompositeOperation=BLENDC();
+    plx.globalCompositeOperation=BLENDC();
     const {cx,cy}=center();
 
     // PASS A — only what should smear: the step glows and playhead lamps.
@@ -455,30 +470,28 @@
       const active=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]!=null) active.push(k);
       for(const k of active){ const a=stepAngle(k,L.steps),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;
         let pl=L.nodePulse&&L.nodePulse[k]?L.nodePulse[k]:0; if(pl>.01){ L.nodePulse[k]*=.9; } const sz=(6+pl*16)*1.6;
-        const g=ctx.createRadialGradient(x,y,0,x,y,sz); g.addColorStop(0,hsla(hue+drift,95,IL(72),.95)); g.addColorStop(.5,hsla(hue+drift,90,IL(58),.5)); g.addColorStop(1,hsla(hue+drift,90,IL(50),0));
-        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,sz,0,6.283); ctx.fill(); }
+        const g=plx.createRadialGradient(x,y,0,x,y,sz); g.addColorStop(0,hsla(hue+drift,95,IL(72),.95)); g.addColorStop(.5,hsla(hue+drift,90,IL(58),.5)); g.addColorStop(1,hsla(hue+drift,90,IL(50),0));
+        plx.fillStyle=g; plx.beginPath(); plx.arc(x,y,sz,0,6.283); plx.fill(); }
       const px=cx+Math.cos(L.ang)*R, py=cy+Math.sin(L.ang)*R;
-      const pg=ctx.createRadialGradient(px,py,0,px,py,10); pg.addColorStop(0,hsla(drift,60,IL(92),.85)); pg.addColorStop(1,hsla(hue,70,IL(70),0));
-      ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(px,py,10,0,6.283); ctx.fill(); }
+      const pg=plx.createRadialGradient(px,py,0,px,py,10); pg.addColorStop(0,hsla(drift,60,IL(92),.85)); pg.addColorStop(1,hsla(hue,70,IL(70),0));
+      plx.fillStyle=pg; plx.beginPath(); plx.arc(px,py,10,0,6.283); plx.fill(); }
 
-    const hb=ctx.createRadialGradient(cx,cy,0,cx,cy,46); hb.addColorStop(0,hsla(drift,80,IL(78),.20)); hb.addColorStop(1,hsla(drift,80,IL(60),0));
-    ctx.fillStyle=hb; ctx.beginPath(); ctx.arc(cx,cy,46,0,6.283); ctx.fill();
 
     for(let i=shards.length-1;i>=0;i--){ const s=shards[i]; if(now<s.appearsAt) continue; s.life+=dt*1000; const tf=s.life/s.maxLife;
       if(tf>=1){ shards.splice(i,1); continue; } s.x+=s.vx*dt; s.y+=s.vy*dt; s.vx*=.965; s.vy*=.965;
-      const a=s.alpha0*(1-tf), sz=s.size*(1-.2*tf)*1.6, g=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,sz);
+      const a=s.alpha0*(1-tf), sz=s.size*(1-.2*tf)*1.6, g=plx.createRadialGradient(s.x,s.y,0,s.x,s.y,sz);
       g.addColorStop(0,hsla(s.hue,90,IL(68),a)); g.addColorStop(.5,hsla(s.hue,90,IL(55),a*.4)); g.addColorStop(1,hsla(s.hue,90,IL(50),0));
-      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(s.x,s.y,sz,0,6.283); ctx.fill(); }
+      plx.fillStyle=g; plx.beginPath(); plx.arc(s.x,s.y,sz,0,6.283); plx.fill(); }
 
     for(const b of orbs){ if(b.pulse>.01) b.pulse*=.9; const R=b.r*(1.7+b.pulse*.9);
-      const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,R);
+      const g=plx.createRadialGradient(b.x,b.y,0,b.x,b.y,R);
       g.addColorStop(0,hsla(b.baseHue+drift,95,IL(72),.95)); g.addColorStop(.35,hsla(b.baseHue+drift,90,IL(58),.55)); g.addColorStop(1,hsla(b.baseHue+drift,90,IL(50),0));
-      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(b.x,b.y,R,0,6.283); ctx.fill();
-      ctx.fillStyle=hsla(b.baseHue+drift,60,IL(92),.9); ctx.beginPath(); ctx.arc(b.x,b.y,b.r*.28,0,6.283); ctx.fill(); }
+      plx.fillStyle=g; plx.beginPath(); plx.arc(b.x,b.y,R,0,6.283); plx.fill();
+      plx.fillStyle=hsla(b.baseHue+drift,60,IL(92),.9); plx.beginPath(); plx.arc(b.x,b.y,b.r*.28,0,6.283); plx.fill(); }
 
     for(let i=rings.length-1;i>=0;i--){ const g=rings[i]; g.r+=120*dt; g.life-=dt*1.3;
-      if(g.life<=0){rings.splice(i,1);continue;} ctx.strokeStyle=hsla(g.hue+drift,90,IL(70),Math.max(0,g.life)*.7); ctx.lineWidth=g.w;
-      ctx.beginPath(); ctx.arc(g.x,g.y,g.r,0,6.283); ctx.stroke(); }
+      if(g.life<=0){rings.splice(i,1);continue;} plx.strokeStyle=hsla(g.hue+drift,90,IL(70),Math.max(0,g.life)*.7); plx.lineWidth=g.w;
+      plx.beginPath(); plx.arc(g.x,g.y,g.r,0,6.283); plx.stroke(); }
 
     // Snapshot for the next frame's trail — taken HERE, so everything above smears and
     // nothing below does.
@@ -486,11 +499,19 @@
       const sw=Math.max(1,W>>1), sh=Math.max(1,H>>1);
       if(tfb.width!==sw||tfb.height!==sh){ tfb.width=sw; tfb.height=sh; }
       tfbx.setTransform(1,0,0,1,0,0); tfbx.globalAlpha=1; tfbx.filter='none';
-      tfbx.clearRect(0,0,sw,sh); tfbx.drawImage(cv,0,0,sw,sh);
+      tfbx.clearRect(0,0,sw,sh); tfbx.drawImage(pl,0,0,sw,sh);
     }
+
+    // trail layer to screen, then the crisp geometry on top of it
+    ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1; ctx.filter='none';
+    ctx.drawImage(pl,0,0,W,H);
+    ctx.globalCompositeOperation=BLENDC();
 
     // PASS B — ring geometry, drawn fresh every frame and never fed back, so the lines stay
     // crisp while the steps keep their bloom.
+    const hb=ctx.createRadialGradient(cx,cy,0,cx,cy,46);
+    hb.addColorStop(0,hsla(drift,70,IL(78),.16)); hb.addColorStop(1,hsla(drift,70,IL(60),0));
+    ctx.fillStyle=hb; ctx.beginPath(); ctx.arc(cx,cy,46,0,6.283); ctx.fill();
     for(let i=0;i<lanes.length;i++){ const L=lanes[i], R=ringRadius(i), hue=hueOf(i), sel=(i===editLane);
       ctx.strokeStyle=hsla(hue,70,IL(48),sel?.5:.3); ctx.lineWidth=sel?1.6:1;
       ctx.beginPath(); ctx.arc(cx,cy,R,0,6.283); ctx.stroke();
@@ -590,7 +611,8 @@
   if(!(typeof MediaRecorder!=='undefined' && HTMLCanvasElement.prototype.captureStream)){
     ['recBtn','audBtn'].forEach(id=>{ const b=$(id); b.disabled=true; b.title='Recording is not available in this browser'; }); }
   /* ---------- rail / full-screen / theme ---------- */
-  $('toggle').addEventListener('click',()=>{ const open=$('rail').classList.toggle('open');
+  $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open');
+    document.querySelectorAll('.rail').forEach(r=>r.classList.toggle('open',open));
     $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
 
   function setTheme(t){ THEME=t; document.body.classList.toggle('dark',t==='dark');
@@ -599,6 +621,9 @@
     // repaint the ground immediately so the wash doesn't cross-fade from the old theme
     ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation='source-over';
     ctx.fillStyle=PAPERC(); ctx.fillRect(0,0,cv.width,cv.height); ctx.restore();
+    plx.save(); plx.setTransform(1,0,0,1,0,0); plx.globalCompositeOperation='source-over';
+    plx.fillStyle=PAPERC(); plx.fillRect(0,0,pl.width,pl.height); plx.restore();
+    tfbx.clearRect(0,0,tfb.width,tfb.height);
     refreshLaneSeg(); buildMods(); }
   $('themeBtn').addEventListener('click',()=>setTheme(isDark()?'light':'dark'));
 
