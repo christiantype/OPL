@@ -129,6 +129,9 @@
     padding:8px 12px; cursor:pointer; border-radius:2px; }
   .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  input[type=text]::placeholder{ color:var(--mute); }
 
   /* step editor — a row of cells for the active lane; click one to set its note */
   #stepRow{ display:flex; flex-wrap:wrap; gap:3px; }
@@ -289,6 +292,32 @@
   </div>
 
   <div class="row">
+    <div class="rowhead">Sample &#183; record or load, then pick "Sample" as a voice</div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="micBtn" style="flex:1">Record mic</button>
+      <button class="btn" id="fileBtn" style="flex:1">Load file</button>
+    </div></div>
+    <div class="grp"><label>Loaded <b id="sampInfo">none</b></label></div>
+    <input id="sampFile" type="file" accept="audio/*" hidden />
+  </div>
+
+  <div class="row">
+    <div class="rowhead">Track</div>
+    <div class="grp"><input id="trackName" type="text" placeholder="track name" spellcheck="false" /></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="saveTrack" style="flex:1">Save</button>
+      <button class="btn" id="delTrack" style="flex:1">Delete</button>
+    </div></div>
+    <div class="grp"><select id="trackList"></select></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="loadTrack" style="flex:1">Load</button>
+      <button class="btn" id="expTrack" style="flex:1">Export</button>
+      <button class="btn" id="impBtn" style="flex:1">Import</button>
+    </div></div>
+    <input id="impFile" type="file" accept="application/json,.json" hidden />
+  </div>
+
+  <div class="row">
     <div class="rowhead">Export</div>
     <div class="grp"><label>Size</label>
       <div class="seg" id="sizeSeg">
@@ -395,7 +424,7 @@
   const PIANO_URLS={ "A0":"A0.mp3","C1":"C1.mp3","D#1":"Ds1.mp3","F#1":"Fs1.mp3","A1":"A1.mp3","C2":"C2.mp3","D#2":"Ds2.mp3","F#2":"Fs2.mp3",
     "A2":"A2.mp3","C3":"C3.mp3","D#3":"Ds3.mp3","F#3":"Fs3.mp3","A3":"A3.mp3","C4":"C4.mp3","D#4":"Ds4.mp3","F#4":"Fs4.mp3",
     "A4":"A4.mp3","C5":"C5.mp3","D#5":"Ds5.mp3","F#5":"Fs5.mp3","A5":"A5.mp3","C6":"C6.mp3" };
-  let pianoBuffers=null;
+  let pianoBuffers=null, sampleBuf=null;
   /* One voice, built fresh onto a given destination. Per-lane filtering needs per-lane
      instruments — a shared synth has one output and can't be filtered two ways at once.
      The piano is the costly case, so its 22 buffers are decoded once and every Sampler
@@ -413,13 +442,16 @@
       n.set({harmonicity:1,modulationIndex:2.2,oscillator:{type:'sine'},envelope:{attack:.001,decay:.5,sustain:0,release:.7},
         modulation:{type:'sine'},modulationEnvelope:{attack:.001,decay:.2,sustain:0,release:.2}}); }
     else if(name==='pluck'){ n=new Tone.PluckSynth({attackNoise:1.2,dampening:2400,resonance:.94}); }
+    else if(name==='sample'){
+      if(!sampleBuf) return null;                       // nothing recorded yet — stays silent
+      n=new Tone.Sampler({ urls:{ C4:sampleBuf }, release:1.4 }); }
     else { // piano
       if(pianoBuffers){ n=new Tone.Sampler({ urls:pianoBuffers, release:1.2 }); pianoReady=true; }
       else { n=new Tone.Sampler({ baseUrl:'/assets/audio/salamander/', urls:PIANO_URLS, release:1.2,
         onload:()=>{ pianoReady=true; pianoBuffers=pianoBuffers||n._buffers&&n._buffers._buffers; setStatus(''); } });
         setStatus('loading grand piano…'); }
     }
-    return n.connect(dest);
+    return n?n.connect(dest):null;
   }
   /* Not every voice has a textbook ADSR, so map rather than pretend:
      - Pluck is a physical model with no envelope — attack drives its dampening (brightness)
@@ -431,10 +463,15 @@
     try{
       if(name==='pluck'){ node.set({ resonance:Math.max(0.5,Math.min(0.995,0.72+e.s*0.2+Math.min(e.r,8)*0.02)),
         dampening:Math.max(300,6000-e.a*3000) }); return; }
-      if(name==='piano'){ node.attack=Math.max(0,e.a); node.release=Math.max(0.05,e.r); return; }
+      if(name==='piano'||name==='sample'){ node.attack=Math.max(0,e.a); node.release=Math.max(0.05,e.r); return; }
       node.set({ envelope:{ attack:Math.max(0.001,e.a), decay:Math.max(0.01,e.d),
         sustain:Math.max(0,Math.min(1,e.s)), release:Math.max(0.02,e.r) } });
     }catch(err){}
+  }
+  function rebuildSampleVoices(){
+    lanes.forEach((L,i)=>{ if(L.instr==='sample'){ if(L._voice){try{L._voice.dispose();}catch(e){}} L._voice=null; L._voiceName=null; laneVoice(i); } });
+    if(audio){ try{ audio.orbSet.sample && audio.orbSet.sample.dispose(); }catch(e){}
+      audio.orbSet.sample=makeInstr('sample',audio.filter); applyEnv(audio.orbSet.sample,'sample',state.orbEnv); }
   }
   function laneVoice(i){ const L=lanes[i];
     if(L._voiceName!==L.instr){ if(L._voice){ try{L._voice.dispose();}catch(e){} }
@@ -461,7 +498,8 @@
   const noteDur=e=>{ if(!e) return 1.8;
     return Math.max(0.06, e.a + e.d + (e.s>0.02 ? 0.5 + e.s*2.6 : 0)); };
   function fire(node,instr,midi,vel,env){ if(!node) return;
-    if(instr==='piano' && !pianoReady) return; const note=midiToNote(midi);
+    if(instr==='piano' && !pianoReady) return;
+    if(instr==='sample' && !sampleBuf) return; const note=midiToNote(midi);
     try{ if(instr==='pluck') node.triggerAttack(note); else node.triggerAttackRelease(note, noteDur(env), undefined, vel); }catch(e){} }
   function triggerLane(i,midi,vel){ if(!audio) return; fire(laneVoice(i),lanes[i].instr,midi,vel,lanes[i].env); }
   function trigger(instr,midi,vel){ if(!audio) return; fire(audio.orbSet[instr],instr,midi,vel,state.orbEnv); }
@@ -476,9 +514,10 @@
   // ---------- orbs + shards ----------
   const orbs=[], shards=[], rings=[], MAXO=14, BASE=64; let orbCount=0;
   const ORB_INSTR=['bloom','glass','pluck','bell','mallet'];
-  const ALL_INSTR=['piano','bloom','glass','pluck','bell','mallet'];
+  const ALL_INSTR=['piano','bloom','glass','pluck','bell','mallet','sample'];
   function addOrb(x,y){ if(orbs.length>=MAXO) orbs.shift();
     const r=14+Math.random()*26,a=Math.random()*6.283,s=.5+Math.random()*.7, vi=orbCount++%ORB_INSTR.length;
+    const voice = state.orbVoice==='cycle' ? ORB_INSTR[vi] : state.orbVoice;
     orbs.push({x,y,r,voice,dx:Math.cos(a)*s,dy:Math.sin(a)*s,baseHue:hueOf(vi)+(Math.random()*20-10),last:0,pulse:1}); }
   function shatter(b,nx,ny){ rings.push({x:b.x,y:b.y,r:2,life:1,hue:b.baseHue,w:2}); const fb=state.delayFb; if(fb<0.05) return;
     const taps=Math.max(1,Math.min(12,Math.ceil(Math.log(0.08)/Math.log(fb)))), dMs=(audio?audio.delay.delayTime.value:0.4)*1000, now=performance.now();
@@ -970,9 +1009,112 @@
     [0,3].forEach(k=>lanes[0].pattern[k]='auto'); [0,5].forEach(k=>lanes[1].pattern[k]='auto');
     [0,7].forEach(k=>lanes[2].pattern[k]='auto'); [4].forEach(k=>lanes[3].pattern[k]='auto'); refreshSteps();
   },{once:true});
+  /* ---------- sampling ----------
+     Record the mic or drop in a file; the buffer becomes a pitched voice you can select for
+     any lane or for the orbs. Playback is a one-zone Sampler rooted at C4, so the sequencer's
+     notes transpose it. */
+  function useBuffer(buf,label){
+    sampleBuf=buf;
+    $('sampInfo').textContent=`${label} · ${buf.duration.toFixed(2)}s`;
+    // make "Sample" selectable now that there's something behind it
+    [ $('instrSel'), $('orbVoice') ].forEach(sel=>{
+      if(!sel || [...sel.options].some(o=>o.value==='sample')) return;
+      const o=document.createElement('option'); o.value='sample'; o.textContent='Sample'; sel.appendChild(o); });
+    rebuildSampleVoices();
+  }
+  async function decodeBlob(blob,label){
+    try{ const ab=await blob.arrayBuffer();
+      const ctxA=Tone.getContext().rawContext;
+      const buf=await ctxA.decodeAudioData(ab);
+      useBuffer(buf,label);
+    }catch(e){ setStatus('could not decode that audio'); setTimeout(()=>setStatus(''),2500); }
+  }
+  $('fileBtn').addEventListener('click',()=>$('sampFile').click());
+  $('sampFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) decodeBlob(f,f.name.replace(/\.[^.]+$/,'')); });
+
+  let micRec=null, micChunks=[], micStream=null;
+  $('micBtn').addEventListener('click',async()=>{
+    if(micRec && micRec.state!=='inactive'){ micRec.stop(); return; }
+    try{
+      micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const mime=pickMime('audio'); micChunks=[];
+      micRec=new MediaRecorder(micStream, mime?{mimeType:mime}:undefined);
+      micRec.ondataavailable=e=>{ if(e.data.size) micChunks.push(e.data); };
+      micRec.onstop=async()=>{
+        micStream.getTracks().forEach(t=>t.stop()); micStream=null;
+        $('micBtn').textContent='Record mic'; $('micBtn').setAttribute('aria-pressed','false');
+        await decodeBlob(new Blob(micChunks,{type:mime||'audio/webm'}),'mic');
+      };
+      micRec.start(); $('micBtn').textContent='Stop'; $('micBtn').setAttribute('aria-pressed','true');
+    }catch(e){ setStatus('microphone unavailable'); setTimeout(()=>setStatus(''),2500); }
+  });
+
+  /* ---------- tracks ----------
+     A track is the whole patch: every lane with its pattern, envelope and routing, both
+     modulators, and the global controls. Saved to localStorage by name, and exportable as
+     JSON so a patch can leave the browser. */
+  const TRACK_KEY='angel-tracks';
+  const CTRL_IDS=['tempo','pitch','trails','smear','cutoff','revWet','delFb'];
+  function snapshot(){
+    return { v:1, theme:THEME,
+      lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,
+        env:Object.assign({},L.env), pattern:L.pattern.slice()})),
+      mods:mods.map(m=>({shape:m.shape,secs:m.secs,depth:m.depth,target:m.target,lanes:m.lanes.slice()})),
+      palette:state.palette, scale:state.scale, exportSize:state.exportSize,
+      orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
+      ctrl:Object.fromEntries(CTRL_IDS.map(id=>[id, $(id)?$(id).value:null])) };
+  }
+  function restore(o){
+    if(!o||!o.lanes) return false;
+    o.lanes.forEach((L,i)=>{ if(!lanes[i]) return; const T=lanes[i];
+      T.instr=L.instr; T.steps=L.steps; T.speed=L.speed; T.oct=L.oct; T.cut=L.cut; T.vol=L.vol;
+      T.env=Object.assign({},L.env); T.pattern=L.pattern.slice(); T.lastStep=-1;
+      if(T._voice){ try{T._voice.dispose();}catch(e){} } T._voice=null; T._voiceName=null; });
+    if(o.mods) o.mods.forEach((m,i)=>{ if(mods[i]) Object.assign(mods[i],m,{lanes:m.lanes.slice()}); });
+    state.palette=o.palette||state.palette; state.scale=o.scale||state.scale;
+    state.orbVoice=o.orbVoice||'cycle'; if(o.orbEnv) state.orbEnv=Object.assign({},o.orbEnv);
+    if(o.ctrl) CTRL_IDS.forEach(id=>{ const el=$(id); if(el&&o.ctrl[id]!=null){ el.value=o.ctrl[id];
+      el.dispatchEvent(new Event('input',{bubbles:true})); } });
+    // segmented controls follow the restored state
+    document.querySelectorAll('#palSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.p===state.palette)));
+    document.querySelectorAll('#scaleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===state.scale)));
+    if($('orbVoice')) $('orbVoice').value=state.orbVoice;
+    if(o.theme) setTheme(o.theme);
+    editLane=0; refreshLaneSeg(); syncLane(); buildMods(); knobify();
+    paintEnv(ORB_IDS,state.orbEnv); syncKnobs();
+    if(audio) lanes.forEach((L,i)=>laneVoice(i));
+    return true;
+  }
+  const readTracks=()=>{ try{ return JSON.parse(localStorage.getItem(TRACK_KEY)||'{}'); }catch(e){ return {}; } };
+  const writeTracks=t=>{ try{ localStorage.setItem(TRACK_KEY,JSON.stringify(t)); }catch(e){
+    setStatus('could not save — storage full?'); setTimeout(()=>setStatus(''),2500); } };
+  function refreshTracks(sel){
+    const t=readTracks(), el=$('trackList'); el.innerHTML='';
+    const names=Object.keys(t).sort();
+    if(!names.length){ const o=document.createElement('option'); o.textContent='— no saved tracks —'; o.value=''; el.appendChild(o); return; }
+    names.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; el.appendChild(o); });
+    if(sel && t[sel]) el.value=sel;
+  }
+  $('saveTrack').addEventListener('click',()=>{
+    const name=($('trackName').value||'').trim(); if(!name){ $('trackName').focus(); return; }
+    const t=readTracks(); t[name]=snapshot(); writeTracks(t); refreshTracks(name);
+    setStatus('saved “'+name+'”'); setTimeout(()=>setStatus(''),1800); });
+  $('loadTrack').addEventListener('click',()=>{ const n=$('trackList').value; if(!n) return;
+    const t=readTracks(); if(restore(t[n])){ $('trackName').value=n; setStatus('loaded “'+n+'”'); setTimeout(()=>setStatus(''),1800); } });
+  $('delTrack').addEventListener('click',()=>{ const n=$('trackList').value; if(!n) return;
+    const t=readTracks(); delete t[n]; writeTracks(t); refreshTracks(); });
+  $('expTrack').addEventListener('click',()=>{ const name=($('trackName').value||'angel-track').trim();
+    dl(new Blob([JSON.stringify(snapshot(),null,2)],{type:'application/json'}), name+'.json'); });
+  $('impBtn').addEventListener('click',()=>$('impFile').click());
+  $('impFile').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f) return;
+    try{ const o=JSON.parse(await f.text()); if(restore(o)){ $('trackName').value=f.name.replace(/\.json$/,'');
+      setStatus('imported'); setTimeout(()=>setStatus(''),1800); } }
+    catch(err){ setStatus('not a valid track file'); setTimeout(()=>setStatus(''),2500); } });
+  refreshTracks();
+
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
-  window.angel={ lanes, mods, state, setTheme, setFs, __modVal:modVal };
+  window.angel={ lanes, mods, state, orbs, shards, setTheme, setFs, addOrb, snapshot, restore, useBuffer, __modVal:modVal };
 })();
 </script>
 </body>
