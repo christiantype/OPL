@@ -9,12 +9,12 @@
 <style>
   /* Angel runs light: paper ground, ink marks. The canvas composites with multiply
      rather than the usual additive glow — see BLEND in the script. */
-  :root{ --ink:#1a1a1a; --hair:rgba(0,0,0,.14); --mute:rgba(0,0,0,.45); --paper:#ffffff;
-    --panel:rgba(252,252,253,.66); --edge:rgba(0,0,0,.08); --cell:rgba(255,255,255,.7);
-    --track:rgba(0,0,0,.2); --top:100px; --rail:290px; }
-  body.dark{ --ink:#eceef2; --hair:rgba(255,255,255,.16); --mute:rgba(255,255,255,.5); --paper:#07080f;
-    --panel:rgba(14,15,22,.66); --edge:rgba(255,255,255,.1); --cell:rgba(255,255,255,.05);
-    --track:rgba(255,255,255,.22); }
+  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
+    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
+    --track:rgba(0,0,0,.3); --top:100px; --rail:290px; }
+  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
+    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
+    --track:rgba(255,255,255,.3); }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
     font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
@@ -72,8 +72,8 @@
   .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
     padding:14px 0; border-bottom:1px solid var(--edge); }
   .row:last-of-type{ border-bottom:0; }
-  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:8px; color:var(--mute);
-    opacity:.75; padding-bottom:2px; }
+  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
+    font-weight:600; opacity:.9; padding-bottom:2px; }
   .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
   #rail input[type=range]{ width:100%; }
   #rail select{ width:100%; }
@@ -117,7 +117,7 @@
   .knob.drag .k-vl{ stroke-width:3.6; }
   .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
   .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
-  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:8px; line-height:1.15;
+  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
     color:var(--mute); text-align:center; white-space:nowrap; }
   .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
   .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
@@ -130,7 +130,7 @@
   #stepRow{ display:flex; flex-wrap:wrap; gap:3px; }
   #stepRow button{ appearance:none; min-width:27px; height:27px; padding:0 5px; cursor:pointer;
     border:1px solid var(--hair); background:var(--cell); color:var(--mute);
-    border-radius:2px; font:inherit; font-size:9px; letter-spacing:.02em; font-variant-numeric:tabular-nums;
+    border-radius:2px; font:inherit; font-size:10px; letter-spacing:.02em; font-variant-numeric:tabular-nums;
     transition:background .12s ease, color .12s ease, border-color .12s ease; }
   #stepRow button:hover{ border-color:var(--mute); }
   #stepRow button.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
@@ -431,11 +431,10 @@
     // Soft trails: diffuse the previous frame through a half-res blurred feedback pass before
     // washing it back toward paper. A plain alpha wash alone leaves hard vector edges —
     // this bleeds them outward so the trail reads as pigment rather than geometry.
-    if(state.soft>0.001 && W>1 && H>1){
-      const sw=Math.max(1,W>>1), sh=Math.max(1,H>>1);
-      if(tfb.width!==sw||tfb.height!==sh){ tfb.width=sw; tfb.height=sh; }
-      tfbx.setTransform(1,0,0,1,0,0); tfbx.globalAlpha=1; tfbx.filter='none';
-      tfbx.clearRect(0,0,sw,sh); tfbx.drawImage(cv,0,0,sw,sh);
+    // tfb was captured near the END of the previous frame — after the glows but before the
+    // ring geometry — so the rings never feed the blur and never grow a halo. Only things
+    // that should smear (orbs, node glows, shards) are in it.
+    if(state.soft>0.001 && tfb.width>1){
       ctx.save(); ctx.globalAlpha=state.soft; ctx.filter=`blur(${(1.1+state.soft*2.2).toFixed(2)}px)`;
       ctx.drawImage(tfb,0,0,W,H); ctx.restore(); ctx.filter='none'; ctx.globalAlpha=1;
     }
@@ -451,22 +450,14 @@
     ctx.globalCompositeOperation=BLENDC();
     const {cx,cy}=center();
 
-    for(let i=0;i<lanes.length;i++){ const L=lanes[i], R=ringRadius(i), hue=hueOf(i), sel=(i===editLane);
-      ctx.strokeStyle=hsla(hue,70,IL(55),sel?.22:.12); ctx.lineWidth=sel?1.6:1; ctx.beginPath(); ctx.arc(cx,cy,R,0,6.283); ctx.stroke();
-      for(let k=0;k<L.steps;k++){ if(L.pattern[k]!=null) continue; const a=stepAngle(k,L.steps);
-        ctx.fillStyle=hsla(hue,60,IL(60),.18); ctx.beginPath(); ctx.arc(cx+Math.cos(a)*R,cy+Math.sin(a)*R,2,0,6.283); ctx.fill(); }
-      const active=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]) active.push(k);
-      if(active.length>1){ ctx.strokeStyle=hsla(hue+drift,80,IL(62),.28); ctx.lineWidth=1.2; ctx.beginPath();
-        active.forEach((k,idx)=>{ const a=stepAngle(k,L.steps),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R; idx?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); }
+    // PASS A — only what should smear: the step glows and playhead lamps.
+    for(let i=0;i<lanes.length;i++){ const L=lanes[i], R=ringRadius(i), hue=hueOf(i);
+      const active=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]!=null) active.push(k);
       for(const k of active){ const a=stepAngle(k,L.steps),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;
         let pl=L.nodePulse&&L.nodePulse[k]?L.nodePulse[k]:0; if(pl>.01){ L.nodePulse[k]*=.9; } const sz=(6+pl*16)*1.6;
         const g=ctx.createRadialGradient(x,y,0,x,y,sz); g.addColorStop(0,hsla(hue+drift,95,IL(72),.95)); g.addColorStop(.5,hsla(hue+drift,90,IL(58),.5)); g.addColorStop(1,hsla(hue+drift,90,IL(50),0));
         ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,sz,0,6.283); ctx.fill(); }
-      // this lane's own playhead + thin hand
       const px=cx+Math.cos(L.ang)*R, py=cy+Math.sin(L.ang)*R;
-      if(state.tempo>0.001){ const lg=ctx.createLinearGradient(cx,cy,px,py);
-        lg.addColorStop(0,hsla(hue+drift,70,IL(68),.10)); lg.addColorStop(1,hsla(hue+drift,80,IL(66),.32));
-        ctx.strokeStyle=lg; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.stroke(); }
       const pg=ctx.createRadialGradient(px,py,0,px,py,10); pg.addColorStop(0,hsla(drift,60,IL(92),.85)); pg.addColorStop(1,hsla(hue,70,IL(70),0));
       ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(px,py,10,0,6.283); ctx.fill(); }
 
@@ -488,6 +479,30 @@
     for(let i=rings.length-1;i>=0;i--){ const g=rings[i]; g.r+=120*dt; g.life-=dt*1.3;
       if(g.life<=0){rings.splice(i,1);continue;} ctx.strokeStyle=hsla(g.hue+drift,90,IL(70),Math.max(0,g.life)*.7); ctx.lineWidth=g.w;
       ctx.beginPath(); ctx.arc(g.x,g.y,g.r,0,6.283); ctx.stroke(); }
+
+    // Snapshot for the next frame's trail — taken HERE, so everything above smears and
+    // nothing below does.
+    if(state.soft>0.001 && W>1 && H>1){
+      const sw=Math.max(1,W>>1), sh=Math.max(1,H>>1);
+      if(tfb.width!==sw||tfb.height!==sh){ tfb.width=sw; tfb.height=sh; }
+      tfbx.setTransform(1,0,0,1,0,0); tfbx.globalAlpha=1; tfbx.filter='none';
+      tfbx.clearRect(0,0,sw,sh); tfbx.drawImage(cv,0,0,sw,sh);
+    }
+
+    // PASS B — ring geometry, drawn fresh every frame and never fed back, so the lines stay
+    // crisp while the steps keep their bloom.
+    for(let i=0;i<lanes.length;i++){ const L=lanes[i], R=ringRadius(i), hue=hueOf(i), sel=(i===editLane);
+      ctx.strokeStyle=hsla(hue,70,IL(48),sel?.5:.3); ctx.lineWidth=sel?1.6:1;
+      ctx.beginPath(); ctx.arc(cx,cy,R,0,6.283); ctx.stroke();
+      for(let k=0;k<L.steps;k++){ if(L.pattern[k]!=null) continue; const a=stepAngle(k,L.steps);
+        ctx.fillStyle=hsla(hue,60,IL(52),.42); ctx.beginPath(); ctx.arc(cx+Math.cos(a)*R,cy+Math.sin(a)*R,2,0,6.283); ctx.fill(); }
+      const active=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]!=null) active.push(k);
+      if(active.length>1){ ctx.strokeStyle=hsla(hue+drift,80,IL(55),.42); ctx.lineWidth=1.2; ctx.beginPath();
+        active.forEach((k,idx)=>{ const a=stepAngle(k,L.steps),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R; idx?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); }
+      const px=cx+Math.cos(L.ang)*R, py=cy+Math.sin(L.ang)*R;
+      if(state.tempo>0.001){ const lg=ctx.createLinearGradient(cx,cy,px,py);
+        lg.addColorStop(0,hsla(hue+drift,70,IL(62),.12)); lg.addColorStop(1,hsla(hue+drift,80,IL(58),.42));
+        ctx.strokeStyle=lg; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.stroke(); } }
 
     if(state.recording && recCtx){ const [w,h]=SIZES[state.exportSize]; coverDraw(recCtx,w,h); }  // runs until you stop it
     requestAnimationFrame(draw); }
