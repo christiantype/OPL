@@ -86,8 +86,9 @@
     #rail{ width:284px; transform:translateX(-100%); box-shadow:0 0 60px -20px rgba(0,0,0,.5); }
     #rail.open{ transform:none; }
   }
-  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1;
+  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
     color:var(--mute); white-space:nowrap; }
+  #rail .grp > label{ white-space:normal; }
   .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
   .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
   .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
@@ -100,17 +101,25 @@
     font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
     background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
     background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
-  /* opal.css gives ranges a 22px pill track — override the pseudo-elements themselves,
-     not just the input, or the pill wins and the control looks like a lozenge. */
-  input[type=range]{ -webkit-appearance:none; appearance:none; width:104px; height:14px;
-    background:transparent; outline:none; margin:0; cursor:pointer; }
-  input[type=range]::-webkit-slider-runnable-track{ height:2px; border-radius:2px; background:var(--track); border:0; }
-  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:11px; height:11px; margin-top:-4.5px;
-    border-radius:50%; background:var(--ink); border:0; box-shadow:none; cursor:pointer; }
-  
-  input[type=range]::-moz-range-track{ height:2px; border-radius:2px; background:var(--track); border:0; }
-  input[type=range]::-moz-range-thumb{ width:11px; height:11px; border-radius:50%;
-    border:0; background:var(--ink); box-shadow:none; }
+  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
+     it's just visually replaced, so listeners and readouts are untouched. */
+  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
+  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; margin:0; pointer-events:none; }
+  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
+  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
+  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
+    transition:stroke-dasharray .04s linear; }
+  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
+  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+  .knob:focus-visible{ outline:none; }
+  .knob:focus-visible .k-hub{ stroke:var(--ink); }
+  .knob.drag .k-vl{ stroke-width:3.6; }
+  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
+  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:8px; line-height:1.15;
+    color:var(--mute); text-align:center; white-space:nowrap; }
+  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
   .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
     color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
     padding:8px 12px; cursor:pointer; border-radius:2px; }
@@ -638,11 +647,71 @@
     $('lspeed').value=Math.round(L.speed*100); $('lspeedR').textContent=L.speed.toFixed(2)+'×';
     $('lcut').value=L.cut; $('lcutR').textContent=L.cut>=100?'open':Math.round(logCut(L.cut))+'Hz';
     $('lvol').value=L.vol; $('lvolR').textContent=L.vol;
-    selStep=-1; syncNoteEd(); refreshSteps(); }
+    selStep=-1; syncNoteEd(); refreshSteps(); syncKnobs(); }
 
   function refreshLaneSeg(){ const el=$('laneSeg'); el.innerHTML=''; lanes.forEach((L,i)=>{ const b=document.createElement('button');
     b.textContent=i+1; b.style.color=hsla(hueOf(i),80,IL(62),1); b.setAttribute('aria-pressed', i===editLane);
     b.addEventListener('click',()=>{ editLane=i; syncLane(); refreshLaneSeg(); }); el.appendChild(b); }); }
+  /* ---------- knobs ----------
+     Each range input keeps its identity and its listeners; the knob is a skin that writes to
+     it and dispatches 'input'. Programmatic writes (syncLane, presets) call syncKnobs() to
+     pull the visuals back into line, so the input stays the single source of truth. */
+  const K_R=17, K_SWEEP=270, K_CIRC=2*Math.PI*K_R, K_ARC=K_CIRC*(K_SWEEP/360);
+  const knobs=[];
+  function paintKnob(k){
+    const inp=k.input, min=+inp.min, max=+inp.max, v=+inp.value;
+    const t=max>min ? (v-min)/(max-min) : 0;
+    k.val.setAttribute('stroke-dasharray',`${(t*K_ARC).toFixed(2)} ${K_CIRC.toFixed(2)}`);
+    const a=(-K_SWEEP/2 + t*K_SWEEP)*Math.PI/180;   // straight up = centre of travel
+    const x=23+Math.sin(a)*11.5, y=23-Math.cos(a)*11.5;
+    k.pt.setAttribute('x2',x.toFixed(2)); k.pt.setAttribute('y2',y.toFixed(2));
+    k.el.setAttribute('aria-valuenow',String(v));
+  }
+  function makeKnob(inp){
+    if(inp.dataset.knob) return; inp.dataset.knob='1';
+    const el=document.createElement('div'); el.className='knob'; el.tabIndex=0;
+    el.setAttribute('role','slider');
+    el.setAttribute('aria-valuemin',inp.min); el.setAttribute('aria-valuemax',inp.max);
+    inp.parentNode.insertBefore(el,inp);
+    el.innerHTML=
+      `<svg viewBox="0 0 46 46">`+
+      `<circle class="k-tr" cx="23" cy="23" r="${K_R}" transform="rotate(135 23 23)"`+
+      ` stroke-dasharray="${K_ARC.toFixed(2)} ${K_CIRC.toFixed(2)}"/>`+
+      `<circle class="k-vl" cx="23" cy="23" r="${K_R}" transform="rotate(135 23 23)" stroke-dasharray="0 ${K_CIRC.toFixed(2)}"/>`+
+      `<circle class="k-hub" cx="23" cy="23" r="11.5"/>`+
+      `<line class="k-pt" x1="23" y1="23" x2="23" y2="11.5"/></svg>`;
+    el.appendChild(inp);
+    const k={el,input:inp,val:el.querySelector('.k-vl'),pt:el.querySelector('.k-pt')};
+    knobs.push(k); paintKnob(k);
+    const step=+inp.step||1, span=(+inp.max)-(+inp.min);
+    const bump=(d)=>{ const nv=Math.min(+inp.max,Math.max(+inp.min,(+inp.value)+d));
+      if(nv===+inp.value) return; inp.value=String(nv);
+      inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); };
+    let drag=null;
+    el.addEventListener('pointerdown',e=>{ drag={y:e.clientY,v:+inp.value}; el.classList.add('drag');
+      el.setPointerCapture(e.pointerId); el.focus(); e.preventDefault(); });
+    el.addEventListener('pointermove',e=>{ if(!drag) return;
+      // ~170px of travel covers the full range; shift for fine work
+      const fine=e.shiftKey?4:1, dy=(drag.y-e.clientY)/(170*fine);
+      const nv=Math.min(+inp.max,Math.max(+inp.min, drag.v + dy*span));
+      const snapped=Math.round(nv/step)*step;
+      if(snapped===+inp.value) return;
+      inp.value=String(snapped); inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); });
+    const end=e=>{ if(!drag) return; drag=null; el.classList.remove('drag');
+      try{ el.releasePointerCapture(e.pointerId); }catch(_){}
+      inp.dispatchEvent(new Event('change',{bubbles:true})); };
+    el.addEventListener('pointerup',end); el.addEventListener('pointercancel',end);
+    el.addEventListener('wheel',e=>{ e.preventDefault(); bump(Math.sign(-e.deltaY)*step*(e.shiftKey?1:2)); },{passive:false});
+    el.addEventListener('keydown',e=>{ const big=span/10;
+      if(e.key==='ArrowUp'||e.key==='ArrowRight') bump(step);
+      else if(e.key==='ArrowDown'||e.key==='ArrowLeft') bump(-step);
+      else if(e.key==='PageUp') bump(big); else if(e.key==='PageDown') bump(-big);
+      else if(e.key==='Home') bump(+inp.min-+inp.value); else if(e.key==='End') bump(+inp.max-+inp.value);
+      else return; e.preventDefault(); });
+  }
+  const knobify=root=>(root||document).querySelectorAll('input[type=range]:not([data-knob])').forEach(makeKnob);
+  const syncKnobs=()=>knobs.forEach(paintKnob);
+
   /* ---------- modulation ----------
      Two free-running shapes you can patch at a parameter and arm per lane. They're slow by
      design — cycles are measured in seconds-per-cycle, not Hz, because the point is drift
@@ -723,9 +792,10 @@
         if(k==='secs') $('ms'+el.dataset.m).textContent=m.secs+'s';
         if(k==='depth') $('md'+el.dataset.m).textContent=m.depth; });
     });
+    knobify(host); syncKnobs();
   }
 
-  refreshLaneSeg(); syncLane(); buildMods(); setTheme(THEME);
+  refreshLaneSeg(); syncLane(); buildMods(); knobify(); syncKnobs(); setTheme(THEME);
   $('pitchR').textContent=midiLabel(state.root);
   $('cutR').textContent=Math.round(logCut(+$('cutoff').value))+'Hz';
 
