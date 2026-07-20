@@ -253,6 +253,13 @@
 
   <div class="row">
     <div class="rowhead">Sound</div>
+    <div class="grp"><label>Visual</label>
+      <div class="seg" id="visSeg">
+        <button data-v="glow" aria-pressed="true">Glow</button>
+        <button data-v="aura" aria-pressed="false">Aura</button>
+        <button data-v="ink" aria-pressed="false">Ink</button>
+      </div>
+    </div>
     <div class="grp"><label>Palette</label>
       <div class="seg" id="palSeg">
         <button data-p="AURORA" aria-pressed="true">Aurora</button>
@@ -396,6 +403,26 @@
   // so last frame's rings are still sitting in it.)
   const pl=document.createElement('canvas'), plx=pl.getContext('2d');
   const wrap=document.getElementById('stagewrap');
+  const inkColor=a=> isDark()? `rgba(242,244,248,${a})` : `rgba(20,20,20,${a})`;
+  // One node painter, three skins. Callers pass a resolved hue; the visual only decides how
+  // that colour is rendered, not what it is.
+  function paintBlob(g,x,y,sz,hueF,coreA){
+    const v=state.visual;
+    if(v==='ink'){ g.fillStyle=inkColor(Math.min(1,coreA+0.12));
+      g.beginPath(); g.arc(x,y,Math.max(1.6,sz*0.52),0,6.283); g.fill(); return; }
+    const scale=v==='aura'?4.2:1, r=sz*scale, grad=g.createRadialGradient(x,y,0,x,y,r);
+    if(v==='aura'){ grad.addColorStop(0,hsla(hueF,85,IL(62),coreA*0.66));
+      grad.addColorStop(.32,hsla(hueF,82,IL(56),coreA*0.36)); grad.addColorStop(.7,hsla(hueF,80,IL(52),coreA*0.12)); grad.addColorStop(1,hsla(hueF,80,IL(50),0)); }
+    else { grad.addColorStop(0,hsla(hueF,95,IL(72),coreA));
+      grad.addColorStop(.5,hsla(hueF,90,IL(58),coreA*0.53)); grad.addColorStop(1,hsla(hueF,90,IL(50),0)); }
+    g.fillStyle=grad; g.beginPath(); g.arc(x,y,r,0,6.283); g.fill();
+  }
+  // Grain tile for Aura — built once, stamped with a random offset each frame so it lives.
+  const grain=document.createElement('canvas');
+  function ensureGrain(){ if(grain.width) return; const sz=200; grain.width=grain.height=sz;
+    const gx=grain.getContext('2d'), id=gx.createImageData(sz,sz), d=id.data;
+    for(let i=0;i<d.length;i+=4){ const v=198+Math.random()*57|0; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; }
+    gx.putImageData(id,0,0); }
   function resize(){ DPR=Math.min(window.devicePixelRatio||1,2);
     // The wrapper is a normal block and does stretch to its inset box, so its rect is the
     // truth whether the rail is showing, hidden, or we're full-screen.
@@ -425,7 +452,7 @@
 
   const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.126, trail:0.0, soft:0.0, delayFb:0.42,
     exportSize:'RL', ready:false, recording:false, recAudio:false,
-    orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42 };
+    orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow' };
   let drift=0, pianoReady=false;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -593,7 +620,7 @@
     for(let mi=0;mi<mods.length;mi++){ const el=$('mv'+mi); if(el) el.textContent=modVal(mods[mi],t/1000).toFixed(2); }
     advance(dt);
 
-    plx.globalCompositeOperation=BLENDC();
+    plx.globalCompositeOperation = state.visual==='ink' ? 'source-over' : BLENDC();
     const {cx,cy}=center();
 
     // PASS A — only what should smear: the step glows and playhead lamps.
@@ -601,24 +628,20 @@
       const active=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]!=null) active.push(k);
       for(const k of active){ const a=stepAngle(k,L.steps),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;
         let pl=L.nodePulse&&L.nodePulse[k]?L.nodePulse[k]:0; if(pl>.01){ L.nodePulse[k]*=.9; } const sz=(6+pl*16)*1.6;
-        const g=plx.createRadialGradient(x,y,0,x,y,sz); g.addColorStop(0,hsla(hue+drift,95,IL(72),.95)); g.addColorStop(.5,hsla(hue+drift,90,IL(58),.5)); g.addColorStop(1,hsla(hue+drift,90,IL(50),0));
-        plx.fillStyle=g; plx.beginPath(); plx.arc(x,y,sz,0,6.283); plx.fill(); }
+        paintBlob(plx,x,y,sz,hue+drift,.95); }
       const px=cx+Math.cos(L.ang)*R, py=cy+Math.sin(L.ang)*R;
-      const pg=plx.createRadialGradient(px,py,0,px,py,10); pg.addColorStop(0,hsla(drift,60,IL(92),.85)); pg.addColorStop(1,hsla(hue,70,IL(70),0));
-      plx.fillStyle=pg; plx.beginPath(); plx.arc(px,py,10,0,6.283); plx.fill(); }
+      paintBlob(plx,px,py,10,hue+drift,.7); }
 
 
     for(let i=shards.length-1;i>=0;i--){ const s=shards[i]; if(now<s.appearsAt) continue; s.life+=dt*1000; const tf=s.life/s.maxLife;
       if(tf>=1){ shards.splice(i,1); continue; } s.x+=s.vx*dt; s.y+=s.vy*dt; s.vx*=.965; s.vy*=.965;
-      const a=s.alpha0*(1-tf), sz=s.size*(1-.2*tf)*1.6, g=plx.createRadialGradient(s.x,s.y,0,s.x,s.y,sz);
-      g.addColorStop(0,hsla(s.hue,90,IL(68),a)); g.addColorStop(.5,hsla(s.hue,90,IL(55),a*.4)); g.addColorStop(1,hsla(s.hue,90,IL(50),0));
-      plx.fillStyle=g; plx.beginPath(); plx.arc(s.x,s.y,sz,0,6.283); plx.fill(); }
+      const a=s.alpha0*(1-tf), sz=s.size*(1-.2*tf)*1.6;
+      paintBlob(plx,s.x,s.y,sz,s.hue,a); }
 
     for(const b of orbs){ if(b.pulse>.01) b.pulse*=.9; const R=b.r*(1.7+b.pulse*.9);
-      const g=plx.createRadialGradient(b.x,b.y,0,b.x,b.y,R);
-      g.addColorStop(0,hsla(b.baseHue+drift,95,IL(72),.95)); g.addColorStop(.35,hsla(b.baseHue+drift,90,IL(58),.55)); g.addColorStop(1,hsla(b.baseHue+drift,90,IL(50),0));
-      plx.fillStyle=g; plx.beginPath(); plx.arc(b.x,b.y,R,0,6.283); plx.fill();
-      plx.fillStyle=hsla(b.baseHue+drift,60,IL(92),.9); plx.beginPath(); plx.arc(b.x,b.y,b.r*.28,0,6.283); plx.fill(); }
+      paintBlob(plx,b.x,b.y,R,b.baseHue+drift,.95);
+      if(state.visual!=='aura'){ plx.fillStyle= state.visual==='ink'? inkColor(.95) : hsla(b.baseHue+drift,60,IL(92),.9);
+        plx.beginPath(); plx.arc(b.x,b.y,b.r*.28,0,6.283); plx.fill(); } }
 
     for(let i=rings.length-1;i>=0;i--){ const g=rings[i]; g.r+=120*dt; g.life-=dt*1.3;
       if(g.life<=0){rings.splice(i,1);continue;} plx.strokeStyle=hsla(g.hue+drift,90,IL(70),Math.max(0,g.life)*.7); plx.lineWidth=g.w;
@@ -640,21 +663,37 @@
 
     // PASS B — ring geometry, drawn fresh every frame and never fed back, so the lines stay
     // crisp while the steps keep their bloom.
-    const hb=ctx.createRadialGradient(cx,cy,0,cx,cy,46);
-    hb.addColorStop(0,hsla(drift,70,IL(78),.16)); hb.addColorStop(1,hsla(drift,70,IL(60),0));
-    ctx.fillStyle=hb; ctx.beginPath(); ctx.arc(cx,cy,46,0,6.283); ctx.fill();
+    const inkV=state.visual==='ink', auraV=state.visual==='aura';
+    // Aura is pure atmosphere — the ring scaffolding all but disappears. Ink makes it bold.
+    if(!auraV){ const hb=ctx.createRadialGradient(cx,cy,0,cx,cy,46);
+      hb.addColorStop(0,hsla(drift,70,IL(78),inkV?0:.16)); hb.addColorStop(1,hsla(drift,70,IL(60),0));
+      ctx.fillStyle=hb; ctx.beginPath(); ctx.arc(cx,cy,46,0,6.283); ctx.fill(); }
     for(let i=0;i<lanes.length;i++){ const L=lanes[i], R=ringRadius(i), hue=hueOf(i), sel=(i===editLane);
-      ctx.strokeStyle=hsla(hue,70,IL(48),sel?.5:.3); ctx.lineWidth=sel?1.6:1;
+      const rA = auraV? (sel?.10:.05) : inkV? (sel?.95:.62) : (sel?.5:.3);
+      const rW = inkV? (sel?3.2:2.2) : (sel?1.6:1);
+      ctx.strokeStyle = inkV? inkColor(rA) : hsla(hue,70,IL(48),rA); ctx.lineWidth=rW;
       ctx.beginPath(); ctx.arc(cx,cy,R,0,6.283); ctx.stroke();
+      const dotR = inkV?4:2, dotA = auraV?.12 : inkV?.7 : .42;
       for(let k=0;k<L.steps;k++){ if(L.pattern[k]!=null) continue; const a=stepAngle(k,L.steps);
-        ctx.fillStyle=hsla(hue,60,IL(52),.42); ctx.beginPath(); ctx.arc(cx+Math.cos(a)*R,cy+Math.sin(a)*R,2,0,6.283); ctx.fill(); }
+        ctx.fillStyle= inkV? inkColor(dotA) : hsla(hue,60,IL(52),dotA);
+        ctx.beginPath(); ctx.arc(cx+Math.cos(a)*R,cy+Math.sin(a)*R,dotR,0,6.283); ctx.fill(); }
       const active=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]!=null) active.push(k);
-      if(active.length>1){ ctx.strokeStyle=hsla(hue+drift,80,IL(55),.42); ctx.lineWidth=1.2; ctx.beginPath();
+      if(active.length>1 && !auraV){ ctx.strokeStyle= inkV? inkColor(.5) : hsla(hue+drift,80,IL(55),.42);
+        ctx.lineWidth= inkV?2:1.2; ctx.beginPath();
         active.forEach((k,idx)=>{ const a=stepAngle(k,L.steps),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R; idx?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); }
       const px=cx+Math.cos(L.ang)*R, py=cy+Math.sin(L.ang)*R;
-      if(state.tempo>0.001){ const lg=ctx.createLinearGradient(cx,cy,px,py);
-        lg.addColorStop(0,hsla(hue+drift,70,IL(62),.12)); lg.addColorStop(1,hsla(hue+drift,80,IL(58),.42));
-        ctx.strokeStyle=lg; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.stroke(); } }
+      if(state.tempo>0.001 && !auraV){
+        if(inkV){ ctx.strokeStyle=inkColor(.5); ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.stroke(); }
+        else { const lg=ctx.createLinearGradient(cx,cy,px,py);
+          lg.addColorStop(0,hsla(hue+drift,70,IL(62),.12)); lg.addColorStop(1,hsla(hue+drift,80,IL(58),.42));
+          ctx.strokeStyle=lg; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.stroke(); } } }
+
+    // Aura grain — stamp the tile over the finished frame with a random offset so it shimmers.
+    if(auraV){ ensureGrain(); const tile=grain.width;
+      ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=.55;
+      const ox=-((Math.random()*tile)|0), oy=-((Math.random()*tile)|0);
+      for(let gy=oy;gy<H;gy+=tile) for(let gx=ox;gx<W;gx+=tile) ctx.drawImage(grain,gx,gy);
+      ctx.restore(); ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over'; }
 
     if(state.recording && recCtx){ const [w,h]=SIZES[state.exportSize]; coverDraw(recCtx,w,h); }  // runs until you stop it
     requestAnimationFrame(draw); }
@@ -731,7 +770,7 @@
 
   function seg(id,key,attr,after){ document.getElementById(id).addEventListener('click',(e)=>{ const b=e.target.closest('button'); if(!b) return;
     state[key]=b.dataset[attr]; [...b.parentNode.children].forEach(c=>c.setAttribute('aria-pressed',c===b)); after&&after(); }); }
-  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z');
+  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v');
   const $=id=>document.getElementById(id);
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
@@ -1109,7 +1148,7 @@
       lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,
         env:Object.assign({},L.env), pattern:L.pattern.slice()})),
       mods:mods.map(m=>({shape:m.shape,secs:m.secs,depth:m.depth,target:m.target,lanes:m.lanes.slice()})),
-      palette:state.palette, scale:state.scale, exportSize:state.exportSize,
+      palette:state.palette, scale:state.scale, exportSize:state.exportSize, visual:state.visual,
       orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
       ctrl:Object.fromEntries(CTRL_IDS.map(id=>[id, $(id)?$(id).value:null])) };
   }
@@ -1120,12 +1159,13 @@
       T.env=Object.assign({},L.env); T.pattern=L.pattern.slice(); T.lastStep=-1;
       if(T._voice){ try{T._voice.dispose();}catch(e){} } T._voice=null; T._voiceName=null; });
     if(o.mods) o.mods.forEach((m,i)=>{ if(mods[i]) Object.assign(mods[i],m,{lanes:m.lanes.slice()}); });
-    state.palette=o.palette||state.palette; state.scale=o.scale||state.scale;
+    state.palette=o.palette||state.palette; state.scale=o.scale||state.scale; state.visual=o.visual||state.visual;
     state.orbVoice=o.orbVoice||'cycle'; if(o.orbEnv) state.orbEnv=Object.assign({},o.orbEnv);
     if(o.ctrl) CTRL_IDS.forEach(id=>{ const el=$(id); if(el&&o.ctrl[id]!=null){ el.value=o.ctrl[id];
       el.dispatchEvent(new Event('input',{bubbles:true})); } });
     // segmented controls follow the restored state
     document.querySelectorAll('#palSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.p===state.palette)));
+    document.querySelectorAll('#visSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===state.visual)));
     document.querySelectorAll('#scaleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===state.scale)));
     if($('orbVoice')) $('orbVoice').value=state.orbVoice;
     if(o.theme) setTheme(o.theme);
