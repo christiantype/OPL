@@ -20,7 +20,7 @@
     font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
   /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
      wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
-  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:var(--rail); bottom:0; }
+  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
   #stage{ display:block; width:100%; height:100%; touch-action:none; }
 
   /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
@@ -48,12 +48,12 @@
     font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
 
   /* one hairline control strip — everything else is off until asked for */
-  #bar{ position:fixed; top:calc(var(--top) + 12px); right:calc(var(--rail) + 14px); z-index:9; display:flex; gap:8px; }
+  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
     background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
   .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  #recDot{ position:fixed; top:calc(var(--top) + 18px); right:calc(var(--rail) + 130px); z-index:9; font-size:10px;
+  #recDot{ position:fixed; top:calc(var(--top) + 18px); right:130px; z-index:10; font-size:10px;
     letter-spacing:.12em; color:#c8102e; display:none; align-items:center; gap:6px; }
   #recDot.on{ display:flex; }
   #recDot i{ width:7px;height:7px;border-radius:50%;background:#c8102e; animation:blink 1s infinite; }
@@ -82,14 +82,29 @@
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
   .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
-  /* narrow screens: rail slides away behind the ··· button */
-  @media (max-width:1180px){
-    :root{ --rail:0px; }
-    .rail{ width:284px; box-shadow:0 0 60px -20px rgba(0,0,0,.5); }
-    .rail-l{ transform:translateX(-100%); }
-    .rail-r{ transform:translateX(100%); }
-    .rail.open{ transform:none; }
-  }
+  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
+     nothing between you and the piece unless you ask for it. */
+  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
+  .rail-l{ transform:translateX(-100%); }
+  .rail-r{ transform:translateX(100%); }
+  .rail.open{ transform:none; }
+
+  /* Chrome fades out while you listen and comes back on movement. */
+  #bar{ transition:opacity .5s ease; }
+  body.idle #bar{ opacity:0; pointer-events:none; }
+  body.panels #bar{ opacity:1; pointer-events:auto; }
+
+  /* Mood — the one control that stays reachable. */
+  #mood{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:9;
+    display:flex; align-items:center; gap:12px; padding:9px 16px; border-radius:999px;
+    border:1px solid var(--hair); background:var(--panel); color:var(--ink); cursor:pointer;
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
+    font:inherit; font-size:10px; letter-spacing:.22em; text-transform:uppercase;
+    transition:opacity .5s ease; }
+  body.idle #mood{ opacity:0; }
+  body.fs #mood{ display:none; }
+  #mood b{ font-weight:600; letter-spacing:.18em; }
+  #mood span{ opacity:.5; font-size:9px; letter-spacing:.14em; }
   .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
     color:var(--mute); white-space:nowrap; }
   .rail .grp > label{ white-space:normal; }
@@ -164,6 +179,7 @@
 <div id="stagewrap"><canvas id="stage"></canvas></div>
 <div id="status"></div>
 <div id="recDot"><i></i>REC</div>
+<button id="mood" aria-label="change mood"><b id="moodName">Bloom</b><span>mood</span></button>
 <div id="bar">
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
   <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen — canvas only">&#9974;</button>
@@ -714,6 +730,8 @@
   /* ---------- rail / full-screen / theme ---------- */
   $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open');
     document.querySelectorAll('.rail').forEach(r=>r.classList.toggle('open',open));
+    document.body.classList.toggle('panels',open);
+    if(open) document.body.classList.remove('idle');
     $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
 
   function setTheme(t){ THEME=t; document.body.classList.toggle('dark',t==='dark');
@@ -1112,9 +1130,77 @@
     catch(err){ setStatus('not a valid track file'); setTimeout(()=>setStatus(''),2500); } });
   refreshTracks();
 
+  /* ---------- moods ----------
+     A mood is a whole patch, not a parameter — voices, envelopes, patterns, tuning and
+     motion together. One tap moves the piece somewhere else; the rails are still there if
+     you want to take it apart. Compact spec expands into the same shape restore() takes.
+     lane = [instrument, steps, speed, octave, envelope, active steps, filter, level] */
+  const MOODS=[
+    { name:'Bloom', pal:'AURORA', scale:'Pentatonic', tempo:14, pitch:48, rev:78, del:56, cut:44, trail:16,
+      lanes:[['bloom',6,0.22,-1,{a:1.2,d:1.3,s:.55,r:6.5},[0,3],62,78],
+             ['glass',8,0.34,0,{a:.6,d:1.4,s:.35,r:5.0},[0,5],74,66],
+             ['bell',12,0.15,1,{a:.01,d:1.6,s:0,r:4.0},[0,7],88,44],
+             ['bloom',16,0.50,1,{a:1.6,d:1.6,s:.5,r:7.0},[4],80,40]],
+      mods:[['sine',26,45,'speed',[1,1,0,0]],['tri',41,35,'lcut',[0,0,1,1]]] },
+    { name:'Drift', pal:'OCEAN', scale:'Lydian', tempo:8, pitch:44, rev:88, del:66, cut:36, trail:10,
+      lanes:[['bloom',4,0.12,-1,{a:2.6,d:2.0,s:.7,r:8.0},[0],54,74],
+             ['bloom',6,0.18,0,{a:2.2,d:1.8,s:.65,r:7.5},[0,3],62,60],
+             ['glass',8,0.10,1,{a:1.4,d:2.2,s:.5,r:8.0},[2],72,48],
+             ['bell',16,0.26,2,{a:.02,d:2.2,s:0,r:6.0},[8],86,30]],
+      mods:[['drunk',60,55,'lcut',[1,1,1,1]],['sine',90,30,'pitch',[0,0,0,0]]] },
+    { name:'Rain', pal:'PRISM', scale:'MinorPenta', tempo:38, pitch:52, rev:52, del:40, cut:62, trail:30,
+      lanes:[['pluck',12,0.9,0,{a:.001,d:.22,s:0,r:.30},[0,3,6,9],78,70],
+             ['mallet',16,1.3,1,{a:.001,d:.30,s:0,r:.45},[0,4,8,12],86,54],
+             ['pluck',8,0.6,-1,{a:.001,d:.28,s:0,r:.40},[0,5],70,58],
+             ['bell',24,1.7,2,{a:.004,d:.9,s:0,r:1.2},[3,11,19],92,32]],
+      mods:[['sh',6,60,'lvol',[1,1,0,0]],['sqr',14,40,'speed',[0,0,1,1]]] },
+    { name:'Chapel', pal:'EMBER', scale:'Dorian', tempo:11, pitch:46, rev:92, del:70, cut:40, trail:12,
+      lanes:[['piano',8,0.20,-1,{a:.004,d:.9,s:0,r:2.4},[0,4],66,72],
+             ['bloom',6,0.14,0,{a:2.0,d:1.8,s:.6,r:7.5},[0,3],58,58],
+             ['glass',12,0.28,1,{a:.9,d:1.6,s:.4,r:6.0},[0,6],76,44],
+             ['piano',16,0.42,1,{a:.004,d:1.2,s:0,r:3.0},[2,10],84,30]],
+      mods:[['env',33,50,'lvol',[0,0,1,1]],['sine',55,28,'master',[0,0,0,0]]] },
+    { name:'Dusk', pal:'EMBER', scale:'MinorPenta', tempo:20, pitch:42, rev:70, del:60, cut:48, trail:18,
+      lanes:[['bell',8,0.30,-1,{a:.01,d:1.8,s:0,r:4.5},[0,5],60,70],
+             ['bloom',12,0.22,0,{a:1.4,d:1.5,s:.5,r:6.5},[0,4,8],68,58],
+             ['mallet',16,0.55,1,{a:.001,d:.6,s:0,r:1.0},[2,10],80,42],
+             ['glass',6,0.18,1,{a:1.0,d:1.6,s:.45,r:5.5},[3],74,36]],
+      mods:[['tri',37,45,'lcut',[1,1,0,0]],['saw',52,35,'reverb',[0,0,0,0]]] },
+    { name:'Static', pal:'AURORA', scale:'Lydian', tempo:26, pitch:50, rev:60, del:48, cut:56, trail:24,
+      lanes:[['glass',5,0.42,0,{a:.3,d:.9,s:.25,r:3.0},[0,2],72,64],
+             ['mallet',7,0.66,1,{a:.001,d:.4,s:0,r:.7},[0,3],82,52],
+             ['pluck',11,0.9,0,{a:.001,d:.25,s:0,r:.35},[0,5,8],76,48],
+             ['bell',13,0.34,2,{a:.01,d:1.1,s:0,r:2.2},[6],88,30]],
+      mods:[['sh',9,55,'speed',[0,0,1,1]],['rand',30,40,'lcut',[1,1,0,0]]] },
+  ];
+  function moodSnapshot(M){
+    return { v:1,
+      lanes:M.lanes.map(([instr,steps,speed,oct,env,on,cut,vol])=>{
+        const pat=Array(steps).fill(null); on.forEach(k=>{ if(k<steps) pat[k]='auto'; });
+        return {instr,steps,speed,oct,cut,vol,env:Object.assign({},env),pattern:pat}; }),
+      mods:M.mods.map(([shape,secs,depth,target,ln])=>({shape,secs,depth,target,lanes:ln.map(Boolean)})),
+      palette:M.pal, scale:M.scale, orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
+      ctrl:{ tempo:String(M.tempo), pitch:String(M.pitch), trails:String(M.trail),
+             smear:$('smear')?$('smear').value:'0', cutoff:String(M.cut),
+             revWet:String(M.rev), delFb:String(M.del) } };
+  }
+  let moodIx=0;
+  function setMood(i,quiet){ moodIx=((i%MOODS.length)+MOODS.length)%MOODS.length;
+    const M=MOODS[moodIx]; $('moodName').textContent=M.name;
+    restore(moodSnapshot(M));
+    if(!quiet){ setStatus(M.name); setTimeout(()=>setStatus(''),1400); } }
+  $('mood').addEventListener('click',()=>setMood(moodIx+1));
+
+  /* Chrome retreats while you listen. */
+  let idleT=null;
+  const stirr=()=>{ document.body.classList.remove('idle'); clearTimeout(idleT);
+    idleT=setTimeout(()=>{ if(!document.body.classList.contains('panels')) document.body.classList.add('idle'); },3200); };
+  ['pointermove','pointerdown','keydown','wheel'].forEach(ev=>addEventListener(ev,stirr,{passive:true}));
+  stirr();
+
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
-  window.angel={ lanes, mods, state, orbs, shards, setTheme, setFs, addOrb, snapshot, restore, useBuffer, __modVal:modVal };
+  window.angel={ lanes, mods, state, orbs, shards, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
 })();
 </script>
 </body>
