@@ -240,7 +240,10 @@
       <div class="grp"><label>Pitch <b id="pitchR">C3</b></label><input id="pitch" type="range" min="36" max="60" value="48" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Trails <b id="trailsR">6</b></label><input id="trails" type="range" min="3" max="55" value="6" /></div>
+      <div class="grp"><label>Trails <b id="trailsR">16</b></label><input id="trails" type="range" min="3" max="55" value="16" /></div>
+      <div class="grp"><label>Smear <b id="smearR">0</b></label><input id="smear" type="range" min="0" max="60" value="0" /></div>
+    </div>
+    <div class="duo">
       <div class="grp"><label>Master <b id="cutR">&#8212;</b></label><input id="cutoff" type="range" min="0" max="100" value="46" /></div>
     </div>
     <div class="duo">
@@ -333,7 +336,7 @@
   lanes.forEach(l=>l.pattern=Array(l.steps).fill(null));
   let editLane=0, selStep=-1;
 
-  const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.224, trail:0.06, soft:0.46, delayFb:0.58,
+  const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.224, trail:0.16, soft:0.0, delayFb:0.58,
     exportSize:'RL', ready:false, recording:false, recAudio:false };
   let drift=0, pianoReady=false;
 
@@ -345,7 +348,8 @@
   function stepMidi(li,k){ const cell=lanes[li].pattern[k];
     if(typeof cell==='number') return Math.max(21,Math.min(108,cell));   // note pinned on this step
     const st=SCALES[state.scale], total=st.length*2, deg=Math.round(k/lanes[li].steps*total);
-    const o=Math.floor(deg/st.length), i=deg%st.length; return Math.max(24,Math.min(96, state.root+lanes[li].oct*12+o*12+st[i])); }
+    const root=(state.rootEff!=null?state.rootEff:state.root);
+    const o=Math.floor(deg/st.length), i=deg%st.length; return Math.max(24,Math.min(96, root+lanes[li].oct*12+o*12+st[i])); }
   const NOTE_NAMES=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
   const midiLabel=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1);
 
@@ -452,7 +456,8 @@
       plx.save(); plx.globalAlpha=state.soft; plx.filter=`blur(${(1.1+state.soft*2.2).toFixed(2)}px)`;
       plx.drawImage(tfb,0,0,W,H); plx.restore(); plx.filter='none'; plx.globalAlpha=1;
     }
-    plx.fillStyle= isDark() ? hsla(drift*0.6,18,5,state.trail) : `rgba(255,255,255,${state.trail})`;
+    const tr=(state.trailEff!=null?state.trailEff:state.trail);
+    plx.fillStyle= isDark() ? hsla(drift*0.6,18,5,tr) : `rgba(255,255,255,${tr})`;
     plx.fillRect(0,0,W,H);
 
     for(const b of orbs){ b.x+=b.dx*BASE*dt; b.y+=b.dy*BASE*dt;
@@ -598,7 +603,8 @@
   const $=id=>document.getElementById(id);
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
-  $('trails').addEventListener('input',e=>{ state.trail=+e.target.value/100; state.soft=Math.max(.12,Math.min(.6,.5-state.trail*.7)); $('trailsR').textContent=e.target.value; });
+  $('trails').addEventListener('input',e=>{ state.trail=+e.target.value/100; $('trailsR').textContent=e.target.value; });
+  $('smear').addEventListener('input',e=>{ state.soft=+e.target.value/100; $('smearR').textContent=e.target.value; });
   $('cutoff').addEventListener('input',e=>{ const v=+e.target.value; $('cutR').textContent=Math.round(logCut(v))+'Hz';
     if(audio) audio.filter.frequency.rampTo(logCut(v),.05); });
   $('revWet').addEventListener('input',e=>{ $('revR').textContent=e.target.value; if(audio) audio.reverb.wet.value=+e.target.value/100; });
@@ -759,41 +765,68 @@
      turning a mod off restores exactly what the slider says. */
   const MOD_TARGETS=[
     ['none','— off —'],['speed','Lane speed'],['lcut','Lane filter'],['lvol','Lane level'],
-    ['master','Master filter'],['tempo','Tempo'],['reverb','Reverb'] ];
-  const MOD_SHAPES=[['sine','Sine'],['tri','Triangle'],['ramp','Ramp'],['rand','Random']];
+    ['master','Master filter'],['tempo','Tempo'],['reverb','Reverb'],['delay','Delay tail'],
+    ['pitch','Pitch'],['trail','Trails'] ];
+  const MOD_SHAPES=[
+    ['sine','Sine'],['tri','Triangle'],['ramp','Ramp up'],['saw','Ramp down'],
+    ['sqr','Square'],['env','Envelope (AD)'],['sh','Sample &amp; hold'],
+    ['rand','Smooth random'],['drunk','Drunk walk'] ];
   const mods=[
     { shape:'sine', secs:26, depth:45, target:'speed', lanes:[true,true,false,false], ph:Math.random() },
     { shape:'tri',  secs:41, depth:35, target:'lcut',  lanes:[false,false,true,true],  ph:Math.random() },
   ];
+  // Deterministic noise for the random-ish shapes. Angel has no vnoise/grand of its own —
+  // those live in Flux, and referencing them here threw the moment a random shape was picked.
+  const mhash=n=>{ const x=Math.sin(n*127.1+311.7)*43758.5453; return x-Math.floor(x); };
+  const mnoise=x=>{ const i=Math.floor(x), f=x-i, u=f*f*(3-2*f);
+    return mhash(i)*(1-u)+mhash(i+1)*u; };
   // bipolar −1..1
   function modVal(m,tSec){
-    const ph=(tSec/Math.max(1,m.secs)+m.ph)%1;
-    if(m.shape==='sine') return Math.sin(ph*Math.PI*2);
-    if(m.shape==='tri')  return 1-4*Math.abs(ph-0.5)+ (ph<0.5?0:0);
-    if(m.shape==='ramp') return ph*2-1;
-    return vnoise(ph*6.0, m.ph*17.0, 0)*2-1;
+    const cyc=Math.max(1,m.secs), ph=(tSec/cyc+m.ph)%1;
+    switch(m.shape){
+      case 'sine': return Math.sin(ph*Math.PI*2);
+      case 'tri':  return 1-4*Math.abs(ph-0.5);
+      case 'ramp': return ph*2-1;
+      case 'saw':  return 1-ph*2;
+      case 'sqr':  return ph<0.5?1:-1;
+      // one-shot-shaped: snaps up, decays away — the envelope feel, retriggered each cycle
+      case 'env':  { const a=0.08; return ph<a ? (ph/a)*2-1 : 2*Math.exp(-(ph-a)*4.5)-1; }
+      // stepped: holds a fresh random value for each cycle
+      case 'sh':   { const step=Math.floor(tSec/cyc); return mhash(step*13+Math.floor(m.ph*997))*2-1; }
+      case 'drunk':{ // random walk that wanders and is gently pulled back to centre
+        if(m._w==null){ m._w=0; m._wt=tSec; }
+        const dt=Math.min(0.5,Math.max(0,tSec-m._wt)); m._wt=tSec;
+        m._w += (mhash(Math.floor(tSec*8)+Math.floor(m.ph*613))*2-1)*dt*(6/cyc) - m._w*dt*(0.6/cyc);
+        m._w=Math.max(-1,Math.min(1,m._w)); return m._w; }
+      default: return mnoise(ph*6.0 + m.ph*17.0)*2-1;   // smooth random
+    }
   }
   function applyMods(tSec){
     // start from the slider values every frame, then let armed mods push them around
     for(const L of lanes){ L.speedEff=L.speed; L.cutEff=L.cut; L.volEff=L.vol; }
     let masterEff=+$('cutoff').value, tempoEff=state.tempo, revEff=+$('revWet').value/100;
+    let delEff=state.delayFb, pitchEff=state.root, trailEff=+$('trails').value/100;
     for(const m of mods){ if(m.target==='none'||m.depth<=0) continue;
       const v=modVal(m,tSec), d=m.depth/100;
       if(m.target==='master'){ masterEff=clamp01x(masterEff+v*d*55,0,100); continue; }
       if(m.target==='tempo'){ tempoEff=Math.max(0,tempoEff*(1+v*d*0.85)); continue; }
       if(m.target==='reverb'){ revEff=clamp01x(revEff+v*d*0.5,0,1); continue; }
+      if(m.target==='delay'){ delEff=clamp01x(delEff+v*d*0.45,0,0.85); continue; }
+      if(m.target==='pitch'){ pitchEff=Math.round(clamp01x(pitchEff+v*d*12,24,84)); continue; }
+      if(m.target==='trail'){ trailEff=clamp01x(trailEff+v*d*0.3,0.01,0.6); continue; }
       lanes.forEach((L,i)=>{ if(!m.lanes[i]) return;
         if(m.target==='speed') L.speedEff=Math.max(0.01,L.speedEff*(1+v*d*0.9));
         else if(m.target==='lcut') L.cutEff=clamp01x(L.cutEff+v*d*55,0,100);
         else if(m.target==='lvol') L.volEff=clamp01x(L.volEff+v*d*60,0,100); });
     }
-    state.tempoEff=tempoEff;
+    state.tempoEff=tempoEff; state.rootEff=pitchEff; state.trailEff=trailEff;
     if(audio){
       lanes.forEach(L=>{ if(!L.chan) return;
         L.chan.filter.frequency.rampTo(logCut(L.cutEff),.08);
         L.chan.gain.gain.rampTo(L.volEff/100,.08); });
       audio.filter.frequency.rampTo(logCut(masterEff),.08);
       audio.reverb.wet.rampTo ? audio.reverb.wet.rampTo(revEff,.1) : (audio.reverb.wet.value=revEff);
+      audio.delay.feedback.rampTo ? audio.delay.feedback.rampTo(delEff,.1) : (audio.delay.feedback.value=delEff);
     }
   }
   const clamp01x=(v,a,b)=>v<a?a:v>b?b:v;
@@ -846,7 +879,7 @@
   },{once:true});
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
-  window.angel={ lanes, mods, state, setTheme, setFs };
+  window.angel={ lanes, mods, state, setTheme, setFs, __modVal:modVal };
 })();
 </script>
 </body>
