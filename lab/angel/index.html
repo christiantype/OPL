@@ -80,6 +80,8 @@
   .rail .seg{ width:100%; }
   .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
   /* narrow screens: rail slides away behind the ··· button */
   @media (max-width:1180px){
     :root{ --rail:0px; }
@@ -209,6 +211,19 @@
       </div>
     </div>
   </div>
+  <div class="row">
+    <div class="rowhead">Envelope</div>
+    <div class="quad">
+      <div class="grp"><label>Attack <b id="eaR">—</b></label><input id="ea" type="range" min="0" max="100" value="52" /></div>
+      <div class="grp"><label>Decay <b id="edR">—</b></label><input id="ed" type="range" min="0" max="100" value="55" /></div>
+      <div class="grp"><label>Sustain <b id="esR">—</b></label><input id="es" type="range" min="0" max="100" value="50" /></div>
+      <div class="grp"><label>Release <b id="erR">—</b></label><input id="er" type="range" min="0" max="100" value="87" /></div>
+    </div>
+    <div class="seg" id="envPre">
+      <button data-e="pluck">Pluck</button><button data-e="key">Key</button>
+      <button data-e="pad">Pad</button><button data-e="swell">Swell</button>
+    </div>
+  </div>
 </div>
 
 <div id="railR" class="rail rail-r">
@@ -249,6 +264,27 @@
     <div class="duo">
       <div class="grp"><label>Reverb <b id="revR">74</b></label><input id="revWet" type="range" min="0" max="100" value="74" /></div>
       <div class="grp"><label>Delay <b id="delR">58</b></label><input id="delFb" type="range" min="0" max="85" value="58" /></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="rowhead">Orbs &#183; tap the field to drop one</div>
+    <div class="grp"><label>Voice</label>
+      <select id="orbVoice">
+        <option value="cycle">Cycle through all</option>
+        <option value="piano">Grand Piano</option>
+        <option value="bloom">Bloom</option>
+        <option value="glass">Glass</option>
+        <option value="pluck">Pluck</option>
+        <option value="bell">Bell</option>
+        <option value="mallet">Mallet</option>
+      </select>
+    </div>
+    <div class="quad">
+      <div class="grp"><label>Attack <b id="oaR">—</b></label><input id="oa" type="range" min="0" max="100" value="5" /></div>
+      <div class="grp"><label>Decay <b id="odR">—</b></label><input id="od" type="range" min="0" max="100" value="47" /></div>
+      <div class="grp"><label>Sustain <b id="osR">—</b></label><input id="os" type="range" min="0" max="100" value="0" /></div>
+      <div class="grp"><label>Release <b id="orR">—</b></label><input id="or" type="range" min="0" max="100" value="55" /></div>
     </div>
   </div>
 
@@ -328,16 +364,17 @@
   // pattern cells: null = off, 'auto' = pitch from the scale, <number> = that exact MIDI note.
   // cut/vol are per-lane and feed each lane's own filter+gain before the master chain.
   const lanes=[
-    { instr:'bloom', steps:6,  speed:0.25, oct:-1, pattern:[], ang:-Math.PI/2, lastStep:-1, cut:62, vol:78 },
-    { instr:'glass', steps:8,  speed:0.38, oct:0,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:74, vol:70 },
-    { instr:'bloom', steps:12, speed:0.16, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:88, vol:52 },
-    { instr:'bell',  steps:16, speed:0.52, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:80, vol:44 },
+    { instr:'bloom', steps:6,  speed:0.25, oct:-1, pattern:[], ang:-Math.PI/2, lastStep:-1, cut:62, vol:78, env:{a:1.10,d:1.20,s:0.50,r:6.0} },
+    { instr:'glass', steps:8,  speed:0.38, oct:0,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:74, vol:70, env:{a:0.50,d:1.40,s:0.30,r:5.0} },
+    { instr:'bloom', steps:12, speed:0.16, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:88, vol:52, env:{a:1.60,d:1.60,s:0.45,r:7.0} },
+    { instr:'bell',  steps:16, speed:0.52, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:80, vol:44, env:{a:0.01,d:1.40,s:0.00,r:3.4} },
   ];
   lanes.forEach(l=>l.pattern=Array(l.steps).fill(null));
   let editLane=0, selStep=-1;
 
   const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.224, trail:0.16, soft:0.0, delayFb:0.58,
-    exportSize:'RL', ready:false, recording:false, recAudio:false };
+    exportSize:'RL', ready:false, recording:false, recAudio:false,
+    orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4} };
   let drift=0, pianoReady=false;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -384,10 +421,25 @@
     }
     return n.connect(dest);
   }
+  /* Not every voice has a textbook ADSR, so map rather than pretend:
+     - Pluck is a physical model with no envelope — attack drives its dampening (brightness)
+       and sustain/release its resonance (how long the string rings).
+     - The Sampler plays a recorded piano, so decay and sustain are already in the recording;
+       only attack and release are ours to shape. */
+  function applyEnv(node,name,e){
+    if(!node||!e) return;
+    try{
+      if(name==='pluck'){ node.set({ resonance:Math.max(0.5,Math.min(0.995,0.72+e.s*0.2+Math.min(e.r,8)*0.02)),
+        dampening:Math.max(300,6000-e.a*3000) }); return; }
+      if(name==='piano'){ node.attack=Math.max(0,e.a); node.release=Math.max(0.05,e.r); return; }
+      node.set({ envelope:{ attack:Math.max(0.001,e.a), decay:Math.max(0.01,e.d),
+        sustain:Math.max(0,Math.min(1,e.s)), release:Math.max(0.02,e.r) } });
+    }catch(err){}
+  }
   function laneVoice(i){ const L=lanes[i];
     if(L._voiceName!==L.instr){ if(L._voice){ try{L._voice.dispose();}catch(e){} }
       L._voice=makeInstr(L.instr,L.chan.filter); L._voiceName=L.instr; }
-    return L._voice; }
+    applyEnv(L._voice,L.instr,L.env); return L._voice; }
   function buildAudio(){
     const limiter=new Tone.Limiter(-2).toDestination();
     const vol=new Tone.Volume(-9).connect(limiter);
@@ -401,15 +453,18 @@
       L.chan={filter:f,gain:g}; L._voice=null; L._voiceName=null; });
     lanes.forEach((L,i)=>laneVoice(i));
     // orbs keep a shared set straight into the master — they aren't lane-bound
-    const orbSet={}; ORB_INSTR.forEach(nm=>{ orbSet[nm]=makeInstr(nm,filter); });
+    const orbSet={}; ALL_INSTR.forEach(nm=>{ orbSet[nm]=makeInstr(nm,filter); applyEnv(orbSet[nm],nm,state.orbEnv); });
     audio={filter,delay,reverb,orbSet};
   }
-  const durFor={ piano:3.2, bloom:5.5, glass:4.6, bell:3.4, mallet:1.4 };
-  function fire(node,instr,midi,vel){ if(!node) return;
+  // Note length follows the envelope: percussive settings (no sustain) get a short note,
+  // sustained ones are held. A fixed per-instrument table made every patch sound like a pad.
+  const noteDur=e=>{ if(!e) return 1.8;
+    return Math.max(0.06, e.a + e.d + (e.s>0.02 ? 0.5 + e.s*2.6 : 0)); };
+  function fire(node,instr,midi,vel,env){ if(!node) return;
     if(instr==='piano' && !pianoReady) return; const note=midiToNote(midi);
-    try{ if(instr==='pluck') node.triggerAttack(note); else node.triggerAttackRelease(note, durFor[instr]||1.8, undefined, vel); }catch(e){} }
-  function triggerLane(i,midi,vel){ if(!audio) return; fire(laneVoice(i),lanes[i].instr,midi,vel); }
-  function trigger(instr,midi,vel){ if(!audio) return; fire(audio.orbSet[instr],instr,midi,vel); }
+    try{ if(instr==='pluck') node.triggerAttack(note); else node.triggerAttackRelease(note, noteDur(env), undefined, vel); }catch(e){} }
+  function triggerLane(i,midi,vel){ if(!audio) return; fire(laneVoice(i),lanes[i].instr,midi,vel,lanes[i].env); }
+  function trigger(instr,midi,vel){ if(!audio) return; fire(audio.orbSet[instr],instr,midi,vel,state.orbEnv); }
   const usesPiano=()=>lanes.some(l=>l.instr==='piano');
   function setStatus(t){ const s=document.getElementById('status'); s.textContent=t; s.style.display=t?'block':'none'; }
 
@@ -421,9 +476,10 @@
   // ---------- orbs + shards ----------
   const orbs=[], shards=[], rings=[], MAXO=14, BASE=64; let orbCount=0;
   const ORB_INSTR=['bloom','glass','pluck','bell','mallet'];
+  const ALL_INSTR=['piano','bloom','glass','pluck','bell','mallet'];
   function addOrb(x,y){ if(orbs.length>=MAXO) orbs.shift();
     const r=14+Math.random()*26,a=Math.random()*6.283,s=.5+Math.random()*.7, vi=orbCount++%ORB_INSTR.length;
-    orbs.push({x,y,r,voice:ORB_INSTR[vi],dx:Math.cos(a)*s,dy:Math.sin(a)*s,baseHue:hueOf(vi)+(Math.random()*20-10),last:0,pulse:1}); }
+    orbs.push({x,y,r,voice,dx:Math.cos(a)*s,dy:Math.sin(a)*s,baseHue:hueOf(vi)+(Math.random()*20-10),last:0,pulse:1}); }
   function shatter(b,nx,ny){ rings.push({x:b.x,y:b.y,r:2,life:1,hue:b.baseHue,w:2}); const fb=state.delayFb; if(fb<0.05) return;
     const taps=Math.max(1,Math.min(12,Math.ceil(Math.log(0.08)/Math.log(fb)))), dMs=(audio?audio.delay.delayTime.value:0.4)*1000, now=performance.now();
     for(let i=1;i<=taps;i++){ const ang=Math.atan2(ny,nx)+(Math.random()-.5)*1.4, sp=(30+Math.random()*34)/(i*.7);
@@ -689,11 +745,47 @@
   $('octSel').addEventListener('change',applyNote);
   $('stepOff').addEventListener('click',()=>{ if(selStep<0) return; lanes[editLane].pattern[selStep]=null; refreshSteps(); });
 
+  /* ---------- envelope wiring ----------
+     Knobs are 0-100; A/D/R map through a square curve so the low end — where plucks and
+     keys live — gets most of the travel instead of being crushed into the first few pixels. */
+  const envTo   = {a:v=>Math.pow(v/100,2)*4, d:v=>Math.pow(v/100,2)*4, s:v=>v/100, r:v=>Math.pow(v/100,2)*8};
+  const envFrom = {a:x=>Math.sqrt(Math.min(1,x/4))*100, d:x=>Math.sqrt(Math.min(1,x/4))*100,
+                   s:x=>x*100, r:x=>Math.sqrt(Math.min(1,x/8))*100};
+  const envTxt  = (k,x)=> k==='s' ? Math.round(x*100)+'%' : (x<1 ? Math.round(x*1000)+'ms' : x.toFixed(2)+'s');
+  const ENV_PRESETS={
+    pluck:{a:0.001,d:0.22,s:0.0,r:0.30},
+    key:  {a:0.004,d:0.85,s:0.0,r:1.40},
+    pad:  {a:1.10,d:1.20,s:0.55,r:5.50},
+    swell:{a:2.60,d:1.80,s:0.70,r:7.50},
+  };
+  function bindEnv(ids, get, after){
+    ['a','d','s','r'].forEach(k=>{
+      const inp=$(ids[k]); if(!inp) return;
+      inp.addEventListener('input',e=>{ const env=get(); env[k]=envTo[k](+e.target.value);
+        $(ids[k]+'R').textContent=envTxt(k,env[k]); after(env); });
+    });
+  }
+  function paintEnv(ids, env){
+    ['a','d','s','r'].forEach(k=>{ const inp=$(ids[k]); if(!inp) return;
+      inp.value=String(Math.round(envFrom[k](env[k]))); $(ids[k]+'R').textContent=envTxt(k,env[k]); });
+    syncKnobs();
+  }
+  const LANE_IDS={a:'ea',d:'ed',s:'es',r:'er'}, ORB_IDS={a:'oa',d:'od',s:'os',r:'or'};
+  bindEnv(LANE_IDS, ()=>lanes[editLane].env, ()=>{ if(audio) applyEnv(laneVoice(editLane),lanes[editLane].instr,lanes[editLane].env); });
+  bindEnv(ORB_IDS,  ()=>state.orbEnv, ()=>{ if(audio) ALL_INSTR.forEach(n=>applyEnv(audio.orbSet[n],n,state.orbEnv)); });
+  $('envPre').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    lanes[editLane].env=Object.assign({},ENV_PRESETS[b.dataset.e]);
+    paintEnv(LANE_IDS,lanes[editLane].env);
+    if(audio) applyEnv(laneVoice(editLane),lanes[editLane].instr,lanes[editLane].env); });
+  $('orbVoice').addEventListener('change',e=>{ state.orbVoice=e.target.value;
+    if(state.orbVoice!=='cycle' && usesOrbPiano() && !pianoReady) setStatus('loading grand piano…'); });
+  const usesOrbPiano=()=>state.orbVoice==='piano';
+
   function syncLane(){ const L=lanes[editLane]; $('instrSel').value=L.instr; $('steps').value=L.steps; $('stepsR').textContent=L.steps;
     $('lspeed').value=Math.round(L.speed*100); $('lspeedR').textContent=L.speed.toFixed(2)+'×';
     $('lcut').value=L.cut; $('lcutR').textContent=L.cut>=100?'open':Math.round(logCut(L.cut))+'Hz';
     $('lvol').value=L.vol; $('lvolR').textContent=L.vol;
-    selStep=-1; syncNoteEd(); refreshSteps(); syncKnobs(); }
+    selStep=-1; syncNoteEd(); refreshSteps(); paintEnv(LANE_IDS,L.env); syncKnobs(); }
 
   function refreshLaneSeg(){ const el=$('laneSeg'); el.innerHTML=''; lanes.forEach((L,i)=>{ const b=document.createElement('button');
     b.textContent=i+1; b.style.color=hsla(hueOf(i),80,IL(62),1); b.setAttribute('aria-pressed', i===editLane);
@@ -868,7 +960,8 @@
     knobify(host); syncKnobs();
   }
 
-  refreshLaneSeg(); syncLane(); buildMods(); knobify(); syncKnobs(); setTheme(THEME);
+  refreshLaneSeg(); syncLane(); buildMods(); knobify();
+  paintEnv(ORB_IDS,state.orbEnv); syncKnobs(); setTheme(THEME);
   $('pitchR').textContent=midiLabel(state.root);
   $('cutR').textContent=Math.round(logCut(+$('cutoff').value))+'Hz';
 
