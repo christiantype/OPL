@@ -280,6 +280,14 @@
         <button data-v="ink" aria-pressed="false">Ink</button>
       </div>
     </div>
+    <div class="grp"><label>Shape</label>
+      <div class="seg" id="shapeSeg">
+        <button data-h="circle" aria-pressed="true">Circle</button>
+        <button data-h="flower" aria-pressed="false">Flower</button>
+        <button data-h="star" aria-pressed="false">Star</button>
+        <button data-h="squircle" aria-pressed="false">Square</button>
+      </div>
+    </div>
     <div class="grp"><label>Palette</label>
       <div class="seg" id="palSeg">
         <button data-p="AURORA" aria-pressed="true">Aurora</button>
@@ -472,7 +480,7 @@
 
   const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.126, trail:0.0, soft:0.0, delayFb:0.42,
     exportSize:'RL', ready:false, recording:false, recAudio:false,
-    orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow' };
+    orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
   let drift=0, pianoReady=false;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -584,6 +592,16 @@
   const center=()=>({cx:W/2, cy:H/2, maxR:Math.min(W,H)*0.42});
   const ringRadius=i=>center().maxR*(0.30+i*0.155);
   const stepAngle=(k,steps)=>-Math.PI/2 + k/steps*Math.PI*2;
+  function shapeFactor(th){ switch(state.shape){
+    case 'flower':   return 0.84 + 0.22*Math.sin(4*th - Math.PI/2);   // quatrefoil, 4 lobes
+    case 'star':     return 0.84 + 0.18*Math.cos(5*th);              // 5-point
+    case 'squircle':{ const n=4, c=Math.abs(Math.cos(th)), si=Math.abs(Math.sin(th));
+      return 0.90/Math.pow(Math.pow(c,n)+Math.pow(si,n),1/n); }       // rounded square
+    default: return 1; } }
+  const shapeR=(i,th)=>ringRadius(i)*shapeFactor(th);
+  // sample a lane's path as points, for drawing non-circular outlines
+  function shapePath(i,N){ const pts=[]; for(let k=0;k<=N;k++){ const th=-Math.PI/2 + k/N*Math.PI*2;
+    const r=shapeR(i,th); pts.push([Math.cos(th)*r, Math.sin(th)*r]); } return pts; }
 
   // ---------- orbs + shards ----------
   const orbs=[], shards=[], rings=[], MAXO=14, BASE=64; let orbCount=0;
@@ -608,7 +626,7 @@
       const norm=((L.ang+Math.PI/2)%(Math.PI*2)+(Math.PI*2))%(Math.PI*2);
       const cur=Math.floor(norm/(Math.PI*2)*L.steps)%L.steps;
       if(cur!==L.lastStep){ L.lastStep=cur; if(L.pattern[cur]!=null){ triggerLane(i, stepMidi(i,cur), .5);
-        const r=ringRadius(i), a=stepAngle(cur,L.steps), {cx,cy}=center();
+        const a=stepAngle(cur,L.steps), r=shapeR(i,a), {cx,cy}=center();
         rings.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,r:6,life:1,hue:hueOf(i),w:1.6}); L.nodePulse=L.nodePulse||{}; L.nodePulse[cur]=1; } } } }
 
   // ---------- draw ----------
@@ -644,12 +662,12 @@
     const {cx,cy}=center();
 
     // PASS A — only what should smear: the step glows and playhead lamps.
-    for(let i=0;i<lanes.length;i++){ const L=lanes[i], R=ringRadius(i), hue=hueOf(i);
+    for(let i=0;i<lanes.length;i++){ const L=lanes[i], hue=hueOf(i);
       const active=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]!=null) active.push(k);
-      for(const k of active){ const a=stepAngle(k,L.steps),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;
+      for(const k of active){ const a=stepAngle(k,L.steps),r=shapeR(i,a),x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;
         let pl=L.nodePulse&&L.nodePulse[k]?L.nodePulse[k]:0; if(pl>.01){ L.nodePulse[k]*=.9; } const sz=(6+pl*16)*1.6;
         paintBlob(plx,x,y,sz,hue+drift,.95); }
-      const px=cx+Math.cos(L.ang)*R, py=cy+Math.sin(L.ang)*R;
+      const pr=shapeR(i,L.ang), px=cx+Math.cos(L.ang)*pr, py=cy+Math.sin(L.ang)*pr;
       paintBlob(plx,px,py,10,hue+drift,.7); }
 
 
@@ -688,20 +706,25 @@
     if(!auraV){ const hb=ctx.createRadialGradient(cx,cy,0,cx,cy,46);
       hb.addColorStop(0,hsla(drift,70,IL(78),inkV?0:.16)); hb.addColorStop(1,hsla(drift,70,IL(60),0));
       ctx.fillStyle=hb; ctx.beginPath(); ctx.arc(cx,cy,46,0,6.283); ctx.fill(); }
+    const circle=state.shape==='circle';
     for(let i=0;i<lanes.length;i++){ const L=lanes[i], R=ringRadius(i), hue=hueOf(i), sel=(i===editLane);
       const rA = auraV? (sel?.10:.05) : inkV? (sel?.95:.62) : (sel?.5:.3);
       const rW = inkV? (sel?3.2:2.2) : (sel?1.6:1);
       ctx.strokeStyle = inkV? inkColor(rA) : hsla(hue,70,IL(48),rA); ctx.lineWidth=rW;
-      ctx.beginPath(); ctx.arc(cx,cy,R,0,6.283); ctx.stroke();
+      ctx.beginPath();
+      if(circle){ ctx.arc(cx,cy,R,0,6.283); }
+      else { const pts=shapePath(i,160); ctx.moveTo(cx+pts[0][0],cy+pts[0][1]);
+        for(let k=1;k<pts.length;k++) ctx.lineTo(cx+pts[k][0],cy+pts[k][1]); }
+      ctx.stroke();
       const dotR = inkV?4:2, dotA = auraV?.12 : inkV?.7 : .42;
-      for(let k=0;k<L.steps;k++){ if(L.pattern[k]!=null) continue; const a=stepAngle(k,L.steps);
+      for(let k=0;k<L.steps;k++){ if(L.pattern[k]!=null) continue; const a=stepAngle(k,L.steps),r=shapeR(i,a);
         ctx.fillStyle= inkV? inkColor(dotA) : hsla(hue,60,IL(52),dotA);
-        ctx.beginPath(); ctx.arc(cx+Math.cos(a)*R,cy+Math.sin(a)*R,dotR,0,6.283); ctx.fill(); }
+        ctx.beginPath(); ctx.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,dotR,0,6.283); ctx.fill(); }
       const active=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]!=null) active.push(k);
       if(active.length>1 && !auraV){ ctx.strokeStyle= inkV? inkColor(.5) : hsla(hue+drift,80,IL(55),.42);
         ctx.lineWidth= inkV?2:1.2; ctx.beginPath();
-        active.forEach((k,idx)=>{ const a=stepAngle(k,L.steps),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R; idx?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); }
-      const px=cx+Math.cos(L.ang)*R, py=cy+Math.sin(L.ang)*R;
+        active.forEach((k,idx)=>{ const a=stepAngle(k,L.steps),r=shapeR(i,a),x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r; idx?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); }
+      const pr=shapeR(i,L.ang), px=cx+Math.cos(L.ang)*pr, py=cy+Math.sin(L.ang)*pr;
       if(state.tempo>0.001 && !auraV){
         if(inkV){ ctx.strokeStyle=inkColor(.5); ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.stroke(); }
         else { const lg=ctx.createLinearGradient(cx,cy,px,py);
@@ -780,7 +803,8 @@
   function pt(e){ const rc=cv.getBoundingClientRect(),s=e.touches?e.touches[0]:e; return {x:s.clientX-rc.left,y:s.clientY-rc.top}; }
   cv.addEventListener('pointerdown',(e)=>{ if(!state.ready) return; const p=pt(e), {cx,cy,maxR}=center(); const d=Math.hypot(p.x-cx,p.y-cy);
     const band=maxR*0.075; let best=-1,bestDiff=1e9;
-    for(let i=0;i<lanes.length;i++){ const diff=Math.abs(d-ringRadius(i)); if(diff<band && diff<bestDiff){ best=i; bestDiff=diff; } }
+    const clickTh=Math.atan2(p.y-cy,p.x-cx);
+    for(let i=0;i<lanes.length;i++){ const diff=Math.abs(d-shapeR(i,clickTh)); if(diff<band && diff<bestDiff){ best=i; bestDiff=diff; } }
     if(best>=0){ let ang=Math.atan2(p.y-cy,p.x-cx); const st=lanes[best].steps;
       const k=((Math.round((ang+Math.PI/2)/(Math.PI*2)*st))%st+st)%st;
       lanes[best].pattern[k]= lanes[best].pattern[k]==null ? 'auto' : null; selStep=k; refreshSteps();
@@ -790,7 +814,7 @@
 
   function seg(id,key,attr,after){ document.getElementById(id).addEventListener('click',(e)=>{ const b=e.target.closest('button'); if(!b) return;
     state[key]=b.dataset[attr]; [...b.parentNode.children].forEach(c=>c.setAttribute('aria-pressed',c===b)); after&&after(); }); }
-  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v');
+  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v'); seg('shapeSeg','shape','h');
   const $=id=>document.getElementById(id);
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
@@ -1180,7 +1204,7 @@
       lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,
         env:Object.assign({},L.env), pattern:L.pattern.slice()})),
       mods:mods.map(m=>({shape:m.shape,secs:m.secs,depth:m.depth,target:m.target,lanes:m.lanes.slice()})),
-      palette:state.palette, scale:state.scale, exportSize:state.exportSize, visual:state.visual,
+      palette:state.palette, scale:state.scale, exportSize:state.exportSize, visual:state.visual, shape:state.shape,
       orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
       ctrl:Object.fromEntries(CTRL_IDS.map(id=>[id, $(id)?$(id).value:null])) };
   }
@@ -1191,13 +1215,14 @@
       T.env=Object.assign({},L.env); T.pattern=L.pattern.slice(); T.lastStep=-1;
       if(T._voice){ try{T._voice.dispose();}catch(e){} } T._voice=null; T._voiceName=null; });
     if(o.mods) o.mods.forEach((m,i)=>{ if(mods[i]) Object.assign(mods[i],m,{lanes:m.lanes.slice()}); });
-    state.palette=o.palette||state.palette; state.scale=o.scale||state.scale; state.visual=o.visual||state.visual;
+    state.palette=o.palette||state.palette; state.scale=o.scale||state.scale; state.visual=o.visual||state.visual; state.shape=o.shape||state.shape;
     state.orbVoice=o.orbVoice||'cycle'; if(o.orbEnv) state.orbEnv=Object.assign({},o.orbEnv);
     if(o.ctrl) CTRL_IDS.forEach(id=>{ const el=$(id); if(el&&o.ctrl[id]!=null){ el.value=o.ctrl[id];
       el.dispatchEvent(new Event('input',{bubbles:true})); } });
     // segmented controls follow the restored state
     document.querySelectorAll('#palSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.p===state.palette)));
     document.querySelectorAll('#visSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===state.visual)));
+    document.querySelectorAll('#shapeSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.h===state.shape)));
     document.querySelectorAll('#scaleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===state.scale)));
     if($('orbVoice')) $('orbVoice').value=state.orbVoice;
     if(o.theme) setTheme(o.theme);
