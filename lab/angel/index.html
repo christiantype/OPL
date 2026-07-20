@@ -274,7 +274,7 @@
       <div class="grp"><label>Pitch <b id="pitchR">C3</b></label><input id="pitch" type="range" min="36" max="60" value="48" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Trails <b id="trailsR">11</b></label><input id="trails" type="range" min="3" max="55" value="11" /></div>
+      <div class="grp"><label>Trails <b id="trailsR">off</b></label><input id="trails" type="range" min="0" max="55" value="0" /></div>
       <div class="grp"><label>Evolve <b id="evoR">42</b></label><input id="evolve" type="range" min="0" max="100" value="42" /></div>
     </div>
     <div class="duo">
@@ -423,7 +423,7 @@
   lanes.forEach(l=>l.pattern=Array(l.steps).fill(null));
   let editLane=0, selStep=-1;
 
-  const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.126, trail:0.11, soft:0.0, delayFb:0.42,
+  const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.126, trail:0.0, soft:0.0, delayFb:0.42,
     exportSize:'RL', ready:false, recording:false, recAudio:false,
     orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42 };
   let drift=0, pianoReady=false;
@@ -578,8 +578,12 @@
       plx.save(); plx.globalAlpha=state.soft; plx.filter=`blur(${(1.1+state.soft*2.2).toFixed(2)}px)`;
       plx.drawImage(tfb,0,0,W,H); plx.restore(); plx.filter='none'; plx.globalAlpha=1;
     }
+    // Trail off by default: a full opaque repaint clears the layer every frame, so nothing
+    // lingers. Raise Trails and it becomes a partial wash again — the smaller the alpha, the
+    // longer the fade.
     const tr=(state.trailEff!=null?state.trailEff:state.trail);
-    plx.fillStyle= isDark() ? hsla(drift*0.6,18,5,tr) : `rgba(255,255,255,${tr})`;
+    if(tr>0.001){ plx.fillStyle= isDark() ? hsla(drift*0.6,18,5,tr) : `rgba(255,255,255,${tr})`; }
+    else { plx.fillStyle=PAPERC(); }
     plx.fillRect(0,0,W,H);
 
     for(const b of orbs){ b.x+=b.dx*BASE*dt; b.y+=b.dy*BASE*dt;
@@ -725,7 +729,7 @@
   const $=id=>document.getElementById(id);
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
-  $('trails').addEventListener('input',e=>{ state.trail=+e.target.value/100; $('trailsR').textContent=e.target.value; });
+  $('trails').addEventListener('input',e=>{ state.trail=+e.target.value/100; $('trailsR').textContent = state.trail>0 ? e.target.value : 'off'; });
   $('smear').addEventListener('input',e=>{ state.soft=+e.target.value/100; $('smearR').textContent=e.target.value; });
   $('warm').addEventListener('input',e=>{ const v=+e.target.value; $('warmR').textContent=v;
     if(audio) audio.air.gain.rampTo(-v,.1); });
@@ -1180,37 +1184,37 @@
      you want to take it apart. Compact spec expands into the same shape restore() takes.
      lane = [instrument, steps, speed, octave, envelope, active steps, filter, level] */
   const MOODS=[
-    { name:'Bloom', pal:'AURORA', scale:'Pentatonic', tempo:9, pitch:46, rev:72, del:44, cut:40, trail:11,
+    { name:'Bloom', pal:'AURORA', scale:'Pentatonic', tempo:9, pitch:46, rev:72, del:44, cut:40, trail:0,
       lanes:[['bloom',5,1.9000,-1,{a:2.4,d:2.2,s:.62,r:9.0},[0,3],52,76],
              ['glass',7,1.1742,0,{a:1.6,d:2.4,s:.42,r:8.0},[0,4],64,58],
              ['bell',11,0.7258,1,{a:.02,d:2.6,s:0,r:6.5},[6],80,38],
              ['bloom',13,0.4484,1,{a:3.0,d:2.4,s:.55,r:10.0},[9],72,32]],
       mods:[['sine',96,42,'lcut',[1,1,0,0]],['drunk',150,34,'lvol',[0,0,1,1]]] },
-    { name:'Drift', pal:'OCEAN', scale:'Lydian', tempo:6, pitch:42, rev:78, del:48, cut:34, trail:8,
+    { name:'Drift', pal:'OCEAN', scale:'Lydian', tempo:6, pitch:42, rev:78, del:48, cut:34, trail:0,
       lanes:[['bloom',4,1.7500,-1,{a:3.6,d:3.0,s:.72,r:12.0},[0],46,72],
              ['bloom',6,1.0815,0,{a:3.2,d:2.8,s:.68,r:11.0},[3],56,56],
              ['glass',9,0.6685,1,{a:2.2,d:3.2,s:.55,r:11.0},[5],68,42],
              ['bell',14,0.4130,2,{a:.03,d:3.2,s:0,r:9.0},[11],82,26]],
       mods:[['drunk',180,52,'lcut',[1,1,1,1]],['sine',240,26,'pitch',[0,0,0,0]]] },
-    { name:'Rain', pal:'PRISM', scale:'MinorPenta', tempo:22, pitch:50, rev:60, del:38, cut:56, trail:22,
+    { name:'Rain', pal:'PRISM', scale:'MinorPenta', tempo:22, pitch:50, rev:60, del:38, cut:56, trail:0,
       lanes:[['pluck',12,2.6000,0,{a:.001,d:.34,s:0,r:.55},[0,7],72,64],
              ['mallet',17,1.6068,1,{a:.001,d:.42,s:0,r:.70},[0,9],82,46],
              ['pluck',7,0.9932,-1,{a:.001,d:.40,s:0,r:.60},[3],66,52],
              ['bell',23,0.6136,2,{a:.004,d:1.3,s:0,r:2.0},[14],88,28]],
       mods:[['sh',22,58,'lvol',[1,1,0,0]],['drunk',110,40,'speed',[0,0,1,1]]] },
-    { name:'Chapel', pal:'EMBER', scale:'Dorian', tempo:7, pitch:44, rev:80, del:50, cut:36, trail:9,
+    { name:'Chapel', pal:'EMBER', scale:'Dorian', tempo:7, pitch:44, rev:80, del:50, cut:36, trail:0,
       lanes:[['piano',6,2.2000,-1,{a:.006,d:1.4,s:0,r:5.0},[0],58,70],
              ['bloom',9,1.3596,0,{a:3.0,d:2.6,s:.66,r:11.0},[4],52,54],
              ['glass',13,0.8404,1,{a:1.8,d:2.6,s:.5,r:9.0},[7],70,40],
              ['piano',19,0.5192,1,{a:.006,d:1.8,s:0,r:6.0},[12],80,26]],
       mods:[['env',130,46,'lvol',[0,0,1,1]],['sine',200,30,'master',[0,0,0,0]]] },
-    { name:'Dusk', pal:'EMBER', scale:'MinorPenta', tempo:12, pitch:40, rev:70, del:44, cut:44, trail:14,
+    { name:'Dusk', pal:'EMBER', scale:'MinorPenta', tempo:12, pitch:40, rev:70, del:44, cut:44, trail:0,
       lanes:[['bell',7,1.8500,-1,{a:.02,d:2.6,s:0,r:7.0},[0],54,68],
              ['bloom',11,1.1433,0,{a:2.2,d:2.4,s:.58,r:9.5},[5],62,54],
              ['mallet',17,0.7067,1,{a:.001,d:.9,s:0,r:1.6},[9],76,38],
              ['glass',5,0.4366,1,{a:1.8,d:2.4,s:.5,r:8.5},[2],70,30]],
       mods:[['tri',120,44,'lcut',[1,1,0,0]],['saw',175,32,'reverb',[0,0,0,0]]] },
-    { name:'Static', pal:'AURORA', scale:'Lydian', tempo:16, pitch:48, rev:64, del:40, cut:50, trail:18,
+    { name:'Static', pal:'AURORA', scale:'Lydian', tempo:16, pitch:48, rev:64, del:40, cut:50, trail:0,
       lanes:[['glass',5,1.9500,0,{a:.7,d:1.6,s:.3,r:5.0},[0],66,62],
              ['mallet',8,1.2051,1,{a:.001,d:.7,s:0,r:1.2},[3],78,48],
              ['pluck',13,0.7449,0,{a:.001,d:.35,s:0,r:.5},[7],72,44],
