@@ -202,6 +202,14 @@
   <div class="oc-sec">
     <div class="oc-lbl">Typeface</div>
     <select id="fontPick">
+      <option value="bentonsans">Benton Sans Bold</option>
+      <optgroup label="Univers Next Pro">
+        <option value="universultralight">UltraLight</option>
+        <option value="universthin">Thin</option>
+        <option value="universlight">Light</option>
+        <option value="universmedium">Medium</option>
+        <option value="universbold">Bold</option>
+      </optgroup>
       <option value="arimo">Arimo (Arial / Helvetica)</option>
       <option value="inter">Inter (clean sans)</option>
       <option value="archivoblack">Archivo Black (heavy grotesk)</option>
@@ -225,39 +233,60 @@
       <option value="outline">Contour rings</option>
       <option value="network">Network / constellation</option>
       <option value="glow">Luminous halftone</option>
-      <option value="cells">Voronoi cells</option>
-      <option value="scales">Color scales</option>
       <option value="slice">Databend slice</option>
-      <option value="neon">Neon glow</option>
       <option value="topo">Topographic lines</option>
       <option value="streams">Flow streamlines</option>
       <option value="linescreen">Line screen (engraving)</option>
-      <option value="stipple">Stipple</option>
       <option value="moire">Moiré interference</option>
       <option value="lowpoly">Low-poly facets</option>
       <option value="iso">Isometric relief</option>
       <option value="weave">Weave</option>
       <option value="metaballs">Metaballs</option>
+      <option value="bubbles">Bubbles · soap film (3D)</option>
+      <option value="marble">Marble · ink in water</option>
+      <option value="relief">Relief · shaded topography</option>
+      <option value="wood">Woodgrain · annual rings</option>
+      <option value="ferro">Ferrofluid · magnetic spikes</option>
+      <option value="shatter">Shatter · fractured shards</option>
       <option value="pixelsort">Pixel sort</option>
-      <option value="duotone">Duotone riso</option>
       <option value="ascii">Glyph mosaic</option>
-      <option value="typeintype">Type-in-type</option>
+      <optgroup label="Vector · B&amp;W (SVG line-art)">
+        <option value="beziers">Vector · béziers (editor view)</option>
+        <option value="isoline">Isolines · topographic</option>
+        <option value="fieldfill">Metaball fill</option>
+        <option value="ripple">Ripple interference</option>
+        <option value="truchet">Truchet weave</option>
+        <option value="hatch">Contour hatch (engraving)</option>
+        <option value="polygon">Polygon wireframe (hand-drawn)</option>
+        <option value="stitch">Stitch · embroidered thread</option>
+        <option value="crosshatch">Crosshatch · engraving</option>
+        <option value="dendrite">Dendrite · branching growth</option>
+        <option value="blueprint">Blueprint · drafting sheet</option>
+        <option value="wireframe">Wireframe · 3D mesh</option>
+      </optgroup>
       <option value="dimensional">Dimensional · glass 3D</option>
     </select>
   </div>
   <div class="eng-params">
     <div class="oc-lbl">Settings</div>
-        <div id="g-render"></div><div id="renderNote" class="renderNote"></div>
+        <div id="g-render"></div>
+        <div id="style-mosaic" class="mini hidden">
+          <div class="row"><label>mosaic glyphs · light → dark</label></div>
+          <input type="text" id="mosaicChars" value=".:-=+*#%@" spellcheck="false" autocapitalize="off"
+                 title="Characters to build the mosaic from, lightest first. One character = a single-glyph mosaic shaded by opacity.">
+        </div>
+        <div id="renderNote" class="renderNote"></div>
   </div>
     <div class="grp"><h3>Color <span class="tw">▾</span></h3><div class="gbody">
       <div class="two">
-        <div><div class="row"><label>fill</label></div><input type="color" id="fillColor" value="#f2f0e9"></div>
-        <div><div class="row"><label>background</label></div><input type="color" id="bgColor" value="#0a0a12"></div>
+        <div><div class="row"><label>fill</label></div><input type="color" id="fillColor" value="#ffffff"></div>
+        <div><div class="row"><label>background</label></div><input type="color" id="bgColor" value="#000000"></div>
       </div>
       <div id="g-style" style="margin-top:8px">
         <div id="style-colorway" class="mini hidden">
           <div class="row"><label>colorway</label></div>
           <select id="heatPalette">
+            <option value="custom">Custom · your colors</option>
             <option value="turbo">Turbo · astro</option>
             <option value="inferno">Inferno</option>
             <option value="ice">Ice</option>
@@ -307,6 +336,7 @@
         <option value="1000x1500">Pinterest · 1000×1500</option>
       </optgroup>
       <optgroup label="Print · 300 dpi">
+        <option value="2175x2850" selected>Studio · 7.25×9.5″ · 2175×2850</option>
         <option value="2480x3508">A4 · 2480×3508</option>
         <option value="1748x2480">A5 · 1748×2480</option>
         <option value="2550x3300">US Letter · 2550×3300</option>
@@ -317,13 +347,13 @@
     </select>
     <div class="oc-lbl" style="margin-top:12px">Canvas · px</div>
     <div class="two">
-      <input type="number" id="docW" value="1080" title="width px">
-      <input type="number" id="docH" value="1920" title="height px">
+      <input type="number" id="docW" value="2175" title="width px">
+      <input type="number" id="docH" value="2850" title="height px">
     </div>
     <div class="oc-lbl" style="margin-top:12px">Print · inches × dpi</div>
     <div class="three">
-      <input type="number" id="printW" value="18" min="1" step="0.25" title="width in">
-      <input type="number" id="printH" value="24" min="1" step="0.25" title="height in">
+      <input type="number" id="printW" value="7.25" min="1" step="0.25" title="width in">
+      <input type="number" id="printH" value="9.5" min="1" step="0.25" title="height in">
       <select id="printDpi" title="dpi"><option value="150">150</option><option value="300" selected>300</option><option value="600">600</option></select>
     </div>
     <button class="filebtn" id="applyPrint" style="margin-top:8px">Set print size</button>
@@ -398,8 +428,11 @@ const CONTROLS={
     ['fieldDrift','organic drift',0,140,1,34],
     ['grain','film grain',0,60,1,14],
     ['cellSize','cell size',10,150,1,64],
-    ['sliceW','slice width',2,60,1,12],
+    ['sliceW','slice width',2,240,1,12],
     ['sliceShift','slice shift',0,440,1,150],
+    ['inflate','inflate letters',0,60,1,0],
+    ['openEdge','open perimeter %',0,100,1,0],
+    ['filmThick','film thickness nm',80,900,5,340],
   ],
   warp:[
     ['flow','flow field',0,220,1,0],
@@ -410,6 +443,7 @@ const CONTROLS={
     ['waveAmp','wave amp',0,300,1,0],
     ['waveFreq','wave freq',0.1,8,0.1,1.2],
     ['pinch','pinch ← / bloat →',-100,100,1,0],
+    ['fisheye','fisheye ± (barrel)',-100,100,1,0],
     ['twist','twist °',-360,360,1,0],
     ['glitchSlice','glitch slice',0,140,1,0],
   ],
@@ -450,7 +484,7 @@ const CONTROLS={
     ['reveal','reveal (typewriter)',0,1,0.01,1],
   ],
   type:[
-    ['size','size',20,600,1,300],
+    ['size','size',20,2400,1,300],
     ['lineHeight','leading',0.4,2,0.01,0.95],
     ['tracking','kerning',-160,280,1,0],
   ],
@@ -486,6 +520,10 @@ const smooth=t=>t*t*(3-2*t),lerp=(a,b,t)=>a+(b-a)*t,clamp=(v,a,b)=>v<a?a:v>b?b:v
 const hexA=(h,a)=>`rgba(${parseInt(h.substr(1,2),16)},${parseInt(h.substr(3,2),16)},${parseInt(h.substr(5,2),16)},${a})`;
 const hexRGB=h=>[parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];
 const darken=(h,f)=>{const c=hexRGB(h);return `rgb(${Math.round(c[0]*f)},${Math.round(c[1]*f)},${Math.round(c[2]*f)})`;};
+/* Ceiling on SVG elements per export. This is a runaway guard, not a budget — set it low
+   and a dense render quietly ships an .svg that disagrees with the canvas. If it is ever
+   hit, finishSVG says so out loud rather than handing over a short file. */
+const SVGMAX=200000;
 /* rasterize the letterforms into a (optionally blurred) coverage field, sampled by maskAt */
 function buildField(glyphs,C,W,H,fw,blur){
   const scale=fw/W,fh=Math.max(1,Math.round(H*scale));
@@ -525,6 +563,13 @@ const PALETTES={
 function ramp(arr,t){t=clamp(t,0,1);for(let i=1;i<arr.length;i++){if(t<=arr[i][0]){const a=arr[i-1],b=arr[i],k=(t-a[0])/(b[0]-a[0]);
   return [Math.round(lerp(a[1][0],b[1][0],k)),Math.round(lerp(a[1][1],b[1][1],k)),Math.round(lerp(a[1][2],b[1][2],k))];}}
   const L=arr[arr.length-1][1];return [L[0],L[1],L[2]];}
+/* Custom colorway: the four colour pickers become the ramp, cold -> hot.
+   background = the field at rest, fill = the hottest cores (the word itself). */
+const customPal=()=>{const c=id=>hexRGB($('#'+id).value);
+  return [[0,c('bgColor')],[.42,c('accentColor')],[.72,c('accent2')],[1,c('fillColor')]];};
+function heatPal(){const pe=$('#heatPalette'),k=pe?pe.value:'turbo';
+  return k==='custom'?customPal():(PALETTES[k]||TURBO);}
+const luma=c=>(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255;
 
 function layout(W,H){
   const lines=$('#text').value.split('\n');
@@ -562,6 +607,7 @@ function makeT(gl,C){
     let X=gcx+dx*cR-dy*sR+ex+jx,Y=gcy+dx*sR+dy*cR+ey+jy+fl;
     let rx=X-C.cx,ry=Y-C.cyMid;const dist=Math.hypot(rx,ry),t=Math.max(0,1-dist/C.R);
     if(S.pinch){const s=1+(S.pinch/100)*t;rx*=s;ry*=s;}
+    if(S.fisheye){const rn=dist/C.R,f=1+(S.fisheye/100)*(rn*rn-0.34);rx*=f;ry*=f;} // barrel(+)/pincushion(−) lens
     if(S.twist){const a=S.twist*DEG*t,c=Math.cos(a),si=Math.sin(a);const nx=rx*c-ry*si;ry=rx*si+ry*c;rx=nx;}
     X=C.cx+rx;Y=C.cyMid+ry;
     if(S.flow){const fs=S.flowScale/1000,ang=vnoise(X*fs,Y*fs,phase)*TAU*2;X+=Math.cos(ang)*S.flow;Y+=Math.sin(ang)*S.flow;}
@@ -578,7 +624,7 @@ function makeT(gl,C){
     const f=persp/Math.max(60,persp+z2);
     return [C.cx+x1*f,C.cyMid+y1*f];};
 }
-const nonlinear=()=>S.flow||S.melt||S.distort||S.waveAmp||S.pinch||S.twist||S.glitchSlice||
+const nonlinear=()=>S.flow||S.melt||S.distort||S.waveAmp||S.pinch||S.fisheye||S.twist||S.glitchSlice||
   S.rotX||S.rotY||S.rotZ||S.posZ||S.spin||S.tumble||S.roll||S.extrude>0;
 
 /* bezier eval */
@@ -650,17 +696,14 @@ function render(){
   // solid background color shows everywhere outside the letterforms.
   const clipToLetters=!!($('#clipGlyph')&&$('#clipGlyph').checked);
   function drawEngine(){
+  if(style==='bubbles'){drawBubbles(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · bubbles · ${W}×${H}<span class="ok"> · WebGL thin-film · PNG</span>`;return;}
   if(style==='heatmap'){drawThermalField(glyphs,C,W,H);rasterMode=true;
     $('#status').innerHTML=`${glyphs.length} glyphs · thermal field · ${W}×${H}<span class="ok"> · living · PNG/video</span>`;return;}
   if(style==='halftone'){drawHalftone(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='glow'){drawGlowHalftone(glyphs,C,W,H,fill);rasterMode=true;
     $('#status').innerHTML=`${glyphs.length} glyphs · luminous halftone · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
-  if(style==='cells'){drawCells(glyphs,C,W,H,fill,bgc);rasterMode=true;
-    $('#status').innerHTML=`${glyphs.length} glyphs · voronoi cells · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
-  if(style==='scales'){drawScales(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='slice'){drawSlice(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
-  if(style==='neon'){drawNeon(glyphs,C,W,H,fill);rasterMode=true;
-    $('#status').innerHTML=`${glyphs.length} glyphs · neon glow · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
   if(style==='topo'){drawTopo(glyphs,C,W,H,fill,bgc);rasterMode=true;
     $('#status').innerHTML=`${glyphs.length} glyphs · topographic · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
   if(style==='streams'){drawStreams(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
@@ -669,22 +712,37 @@ function render(){
   if(style==='lowpoly'){drawLowPoly(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='iso'){drawIso(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='weave'){drawWeave(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
-  if(style==='stipple'){drawStipple(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='ascii'){drawAscii(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
-  if(style==='duotone'){drawDuotone(glyphs,C,W,H,fill);rasterMode=true;
-    $('#status').innerHTML=`${glyphs.length} glyphs · duotone riso · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
   if(style==='metaballs'){drawMetaballs(glyphs,C,W,H,fill,bgc);rasterMode=true;
     $('#status').innerHTML=`${glyphs.length} glyphs · metaballs · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
   if(style==='moire'){drawMoire(glyphs,C,W,H,fill,bgc);rasterMode=true;
     $('#status').innerHTML=`${glyphs.length} glyphs · moiré · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
-  if(style==='typeintype'){drawTypeInType(glyphs,C,W,H,fill);rasterMode=true;
-    $('#status').innerHTML=`${glyphs.length} glyphs · type-in-type · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='isoline'){drawIsoline(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='fieldfill'){drawFieldFill(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='ripple'){drawRipple(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='truchet'){drawTruchet(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='hatch'){drawHatch(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='polygon'){drawPolygon(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='stitch'){drawStitch(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='crosshatch'){drawCrosshatch(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='dendrite'){drawDendrite(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='blueprint'){drawBlueprint(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='ferro'){drawFerro(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='shatter'){drawShatter(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='wood'){drawWood(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · woodgrain · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='marble'){drawMarble(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · marble · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='relief'){drawRelief(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · relief · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='wireframe'){drawWireframe(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
 
   for(const gl of glyphs){
     const T=makeT(gl,C);
     if(style==='particles'){drawParticles(gl,T,fill,svg,acc);continue;}
     if(style==='network'){drawNetwork(gl,T,fill,svg);continue;}
     if(style==='outline'){drawOutline(gl,T,C,fill,svg);continue;}
+    if(style==='beziers'){drawBeziers(gl,T,fill,svg);continue;}
     const d=buildD(gl,T,0);
     // echo / trails (behind, any style)
     if(S.echo>0){const n=Math.min(28,Math.round(S.echo));
@@ -743,7 +801,7 @@ function drawParticles(gl,T,fill,svg,acc){
     const r=grand(gl.index*977+k,8.1);
     const col=spread?(r<0.5?fill:r<0.75?acc[0]:acc[1]):fill;
     ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,rad,0,TAU);ctx.fill();
-    if(svg.length<8000)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${col}"/>`);}
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${col}"/>`);}
 }
 
 function drawNetwork(gl,T,fill,svg){
@@ -751,14 +809,18 @@ function drawNetwork(gl,T,fill,svg){
   const P=pts.map((p,k)=>{let x=p[0],y=p[1];
     if(spread){const a=grand(gl.index*7+k,2.2)*TAU,m=grand(gl.index*7+k,5.5)*vnoise(x*0.01,y*0.01,phase);
       x+=Math.cos(a)*m*spread;y+=Math.sin(a)*m*spread;}return [x,y];});
-  const link=S.linkDist,l2=link*link;ctx.strokeStyle=fill;ctx.lineWidth=1;ctx.globalAlpha=0.5;ctx.beginPath();
+  // A dense constellation runs to tens of thousands of links. The cap is a runaway guard,
+  // not a budget — set it low and the .svg quietly disagrees with what's on the canvas.
+  const NETMAX=SVGMAX;
+  const link=S.linkDist,l2=link*link;ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.globalAlpha=0.5;ctx.beginPath();
   let lines=0;
   for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const dx=P[i][0]-P[j][0],dy=P[i][1]-P[j][1];
     if(dx*dx+dy*dy<l2){ctx.moveTo(P[i][0],P[i][1]);ctx.lineTo(P[j][0],P[j][1]);
-      if(lines++<6000)svg.push(`<line x1="${P[i][0].toFixed(1)}" y1="${P[i][1].toFixed(1)}" x2="${P[j][0].toFixed(1)}" y2="${P[j][1].toFixed(1)}" stroke="${fill}" stroke-width="1" opacity="0.5"/>`);}}
+      if(lines++<NETMAX)svg.push(`<line x1="${P[i][0].toFixed(1)}" y1="${P[i][1].toFixed(1)}" x2="${P[j][0].toFixed(1)}" y2="${P[j][1].toFixed(1)}" stroke="${fill}" stroke-width="${S.strokeW}" opacity="0.5"/>`);}}
   ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle=fill;
-  for(const p of P){ctx.beginPath();ctx.arc(p[0],p[1],1.8,0,TAU);ctx.fill();
-    if(svg.length<8000)svg.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.8" fill="${fill}"/>`);}
+  const nr=Math.max(1,S.strokeW*1.6);
+  for(const p of P){ctx.beginPath();ctx.arc(p[0],p[1],nr,0,TAU);ctx.fill();
+    if(svg.length<NETMAX+8000)svg.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${nr.toFixed(2)}" fill="${fill}"/>`);}
 }
 
 function drawOutline(gl,T,C,fill,svg){
@@ -779,7 +841,7 @@ function drawHalftone(glyphs,C,W,H,fill,svg){
     const v=maskAt(m,x,y)/255;if(v<0.06)continue;
     const rad=step*0.56*Math.sqrt(v);
     ctx.beginPath();ctx.arc(x,y,rad,0,TAU);ctx.fill();
-    if(svg.length<9000)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${fill}"/>`);}
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${fill}"/>`);}
 }
 /* luminous halftone — glowing dots + chromatic fringe on black (reference #1) */
 function drawGlowHalftone(glyphs,C,W,H,fill){
@@ -798,46 +860,6 @@ function drawGlowHalftone(glyphs,C,W,H,fill){
       ctx.fillStyle=`rgba(40,90,255,${0.28*v})`;ctx.beginPath();ctx.arc(x+o,y,rad,0,TAU);ctx.fill();}}
   ctx.restore();if(S.grain)addGrain(W,H,S.grain);
 }
-/* voronoi cells — letterforms seed a living cellular membrane (reference #3) */
-function drawCells(glyphs,C,W,H,fill,bg){
-  const fw=Math.min(320,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
-  const gapF=Math.max(5,S.cellSize*scale),jit=gapF*0.4,sites=[];let si=0;
-  for(let y=gapF*0.5;y<fh;y+=gapF)for(let x=gapF*0.5;x<fw;x+=gapF){
-    let sx=x+(grand(si,1.1)*2-1)*jit,sy=y+(grand(si,2.2)*2-1)*jit;si++;
-    const a=vnoise(sx*0.05,sy*0.05,phase)*TAU;sx+=Math.cos(a)*S.fieldDrift*scale*0.4;sy+=Math.sin(a)*S.fieldDrift*scale*0.4;
-    sites.push(sx,sy);}
-  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
-    for(let k=0;k<pts.length;k+=6)sites.push(pts[k][0]*scale,pts[k][1]*scale);}
-  const ns=sites.length/2,buf=new Int32Array(fw*fh);
-  const m=buildField(glyphs,C,W,H,fw,0),inSite=new Uint8Array(ns);
-  for(let i=0;i<ns;i++){const sx=clamp(sites[i*2]|0,0,fw-1),sy=clamp(sites[i*2+1]|0,0,fh-1);inSite[i]=m.data[(sy*fw+sx)*4]>60?1:0;}
-  for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){let best=1e18,bi=0;
-    for(let i=0;i<ns;i++){const dx=x-sites[i*2],dy=y-sites[i*2+1],d=dx*dx+dy*dy;if(d<best){best=d;bi=i;}}
-    buf[y*fw+x]=bi;}
-  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
-  const img=oc.createImageData(fw,fh),D=img.data,W3=hexRGB(fill),B3=hexRGB(bg);
-  const I3=[Math.round(lerp(B3[0],W3[0],0.34)),Math.round(lerp(B3[1],W3[1],0.34)),Math.round(lerp(B3[2],W3[2],0.34))];
-  for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){const i=y*fw+x,p=i*4;
-    const edge=(x+1<fw&&buf[i]!==buf[i+1])||(y+1<fh&&buf[i]!==buf[i+fw]);
-    const c=edge?W3:(inSite[buf[i]]?I3:B3);D[p]=c[0];D[p+1]=c[1];D[p+2]=c[2];D[p+3]=255;}
-  oc.putImageData(img,0,0);
-  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H); // fine walls: no glow pass
-}
-/* color scales — overlapping sequin tiles; letters emerge as the vivid region (reference #5) */
-/* color scales — overlapping tiles on a spectrum gradient; the word glows brighter */
-function drawScales(glyphs,C,W,H,fill,svg){
-  const m=buildField(glyphs,C,W,H,360,0);
-  const size=Math.max(12,S.cellSize),rh=size*0.7,rad=size*0.62,flow=S.pSpread;
-  for(let row=0,y=0;y<H+rh;row++,y+=rh){const off=(row%2)*size/2;
-    for(let x=-size;x<W+size;x+=size){let cx=x+off,cy=y;
-      if(flow){const a=vnoise(cx*0.004,cy*0.004,phase)*TAU;cx+=Math.cos(a)*flow;cy+=Math.sin(a)*flow;}
-      const inside=maskAt(m,cx,cy)>60;
-      const hue=(((cx/W)*300+(cy/H)*50+row*4)%360+360)%360;
-      const col=`hsl(${hue|0},${inside?78:30}%,${inside?58:24}%)`;
-      ctx.fillStyle=col;ctx.beginPath();ctx.arc(cx,cy,rad,0,TAU);ctx.fill();
-      if(svg.length<8000)svg.push(`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${rad.toFixed(1)}" fill="${col}"/>`);}}
-}
-/* databend slice — shred the type into shifted/stretched vertical columns (reference #4) */
 function drawSlice(glyphs,C,W,H,fill,svg){
   const m=buildField(glyphs,C,W,H,440,0);
   const cw=Math.max(2,S.sliceW),rh=cw;
@@ -846,14 +868,20 @@ function drawSlice(glyphs,C,W,H,fill,svg){
     const sc=0.55+vnoise(c*0.35+50,phase*1.5,0)*1.1;
     for(let y=0;y<H;y+=rh){const sy=(y-H/2-shift)/sc+H/2;
       if(maskAt(m,x+cw/2,sy)>60){ctx.fillStyle=fill;ctx.fillRect(x,y,cw+0.6,rh+0.6);
-        if(svg.length<9000)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(cw+0.6).toFixed(1)}" height="${(rh+0.6).toFixed(1)}" fill="${fill}"/>`);}}}
+        if(svg.length<SVGMAX)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(cw+0.6).toFixed(1)}" height="${(rh+0.6).toFixed(1)}" fill="${fill}"/>`);}}}
 }
 
 /* ---- thermal field: letterforms seed a blurred, breathing, glowing organism ----
    Intensity is biased LOW (so black/indigo dominates and only dense stroke areas
    go hot) and points scatter so the word disperses into a soft constellation. */
+/* Field resolution. The maths below is resolution-independent (radii and blur all
+   scale), so this only trades detail for speed: cheap while animating, full detail
+   when still, and true output resolution on export — a 300dpi print needs real
+   pixels, not a 640px field upscaled 6x. */
+let hiRes=false;
+const thermalRes=W=>Math.min(W,hiRes?4096:playing?640:1400);
 function drawThermalField(glyphs,C,W,H){
-  const fw=Math.min(640,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const fw=thermalRes(W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
   const A=document.createElement('canvas');A.width=fw;A.height=fh;const a=A.getContext('2d');
   a.fillStyle='#000';a.fillRect(0,0,fw,fh);a.globalCompositeOperation='lighter';
   const br=S.breath,t=phase,spread=S.pSpread;
@@ -882,16 +910,21 @@ function drawThermalField(glyphs,C,W,H){
   const B=document.createElement('canvas');B.width=fw;B.height=fh;const b=B.getContext('2d');
   b.filter=`blur(${Math.max(1.2,S.bloom*scale*0.7)}px)`;b.drawImage(A,0,0);b.filter='none';
   const img=b.getImageData(0,0,fw,fh),px=img.data,bias=S.heatShift/100;
-  const pe=$('#heatPalette'),PAL=PALETTES[pe?pe.value:'turbo']||TURBO;
+  const PAL=heatPal();
   for(let i=0;i<px.length;i+=4){const col=ramp(PAL,clamp(px[i]/255*S.gain+bias,0,1));
     px[i]=col[0];px[i+1]=col[1];px[i+2]=col[2];px[i+3]=255;}
   b.putImageData(img,0,0);
+  // the cold end of the ramp is the field at rest — base fill and vignette follow it
+  const cold=ramp(PAL,0),coldCSS=`rgb(${cold[0]},${cold[1]},${cold[2]})`;
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);ctx.drawImage(B,0,0,W,H);
-  ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.32;ctx.filter=`blur(${S.bloom*0.8}px)`;
-  ctx.drawImage(B,0,0,W,H);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;
+  ctx.fillStyle=coldCSS;ctx.fillRect(0,0,W,H);ctx.drawImage(B,0,0,W,H);
+  // additive glow would blow a light background out to white — fade it as the bg brightens
+  const glow=0.32*(1-luma(cold));
+  if(glow>0.01){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=glow;ctx.filter=`blur(${S.bloom*0.8}px)`;
+    ctx.drawImage(B,0,0,W,H);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;}
   const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.16,W/2,H/2,Math.max(W,H)*0.72);
-  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,0.62)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+  vg.addColorStop(0,`rgba(${cold[0]},${cold[1]},${cold[2]},0)`);vg.addColorStop(1,`rgba(${cold[0]},${cold[1]},${cold[2]},0.62)`);
+  ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
   if(S.grain)addGrain(W,H,S.grain);
 }
 function addGrain(W,H,amt){
@@ -903,20 +936,100 @@ function addGrain(W,H,amt){
   ctx.save();ctx.globalCompositeOperation='overlay';ctx.globalAlpha=amt/100*0.45;ctx.imageSmoothingEnabled=true;
   ctx.drawImage(g,0,0,W,H);ctx.restore();ctx.globalAlpha=1;
 }
-/* neon glow — glowing tube outline of the letterforms */
-function drawNeon(glyphs,C,W,H,fill){
-  const bw=Math.max(1,S.strokeW),bl=Math.max(1,S.bloom),g=S.gain,o=S.chromatic;
-  ctx.save();ctx.globalCompositeOperation='lighter';ctx.lineJoin='round';ctx.lineCap='round';
-  for(const gl of glyphs){const T=makeT(gl,C),p=new Path2D(buildD(gl,T,0));
-    ctx.filter=`blur(${bl}px)`;ctx.strokeStyle=hexA(fill,0.5*g);ctx.lineWidth=bw*5;ctx.stroke(p);
-    ctx.filter=`blur(${bl*0.5}px)`;ctx.strokeStyle=hexA(fill,0.7*g);ctx.lineWidth=bw*2.4;ctx.stroke(p);
-    ctx.filter='none';
-    if(o){ctx.strokeStyle='rgba(255,60,60,0.5)';ctx.lineWidth=bw*1.1;ctx.save();ctx.translate(-o,0);ctx.stroke(p);ctx.restore();
-      ctx.strokeStyle='rgba(60,120,255,0.5)';ctx.save();ctx.translate(o,0);ctx.stroke(p);ctx.restore();}
-    ctx.strokeStyle=fill;ctx.lineWidth=bw*1.3;ctx.stroke(p);
-    ctx.strokeStyle='rgba(255,255,255,0.92)';ctx.lineWidth=bw*0.55;ctx.stroke(p);}
-  ctx.restore();ctx.filter='none';
+function drawPixelSort(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,440,0),cw=Math.max(2,S.sliceW);
+  const rect=(x,y,w,h,a)=>{ctx.fillStyle=hexA(fill,a);ctx.fillRect(x,y,w,h);
+    if(a>0.06&&svg.length<SVGMAX)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}" fill-opacity="${a.toFixed(2)}"/>`);};
+  for(let x=0;x<W;x+=cw){let inRun=false,top=0;
+    for(let y=0;y<=H;y+=cw){const ink=y<H&&maskAt(m,x+cw/2,y)>60;
+      if(ink&&!inRun){inRun=true;top=y;}
+      else if(!ink&&inRun){inRun=false;const len=y-top,smear=(0.4+vnoise(x*0.05,top*0.02,phase))*S.sliceShift;
+        for(let yy=top;yy<Math.min(H,top+len+smear);yy+=cw){const a=yy<top+len?1:Math.max(0,1-(yy-top-len)/(smear||1));rect(x,yy,cw+0.6,cw+0.6,a);}}}}
 }
+/* line screen — engraved horizontal lines, weight follows ink density */
+function drawLineScreen(glyphs,C,W,H,fill,svg){
+  const gap=Math.max(3,S.dotSize),m=buildField(glyphs,C,W,H,420,gap*0.25);
+  for(let y=gap/2;y<H;y+=gap)for(let x=0;x<W;x+=gap*0.8){
+    const v=Math.min(1,maskAt(m,x+gap*0.4,y)/255*S.gain),th=v*gap*0.92;if(th<0.4)continue;
+    ctx.fillStyle=fill;ctx.fillRect(x,y-th/2,gap*0.8+0.6,th);
+    if(svg.length<SVGMAX)svg.push(`<rect x="${x.toFixed(1)}" y="${(y-th/2).toFixed(1)}" width="${(gap*0.8+0.6).toFixed(1)}" height="${th.toFixed(1)}" fill="${fill}"/>`);}
+}
+function drawLowPoly(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,360,S.cellSize*0.15),s=Math.max(16,S.cellSize);
+  const B3=hexRGB(bg),F3=hexRGB(fill),pt=(r,c)=>[c*s-(r%2)*s/2+(grand(r*97+c,1.1)*2-1)*s*0.3,r*s+(grand(r*97+c,2.2)*2-1)*s*0.3];
+  for(let r=-1;r<H/s+1;r++)for(let c=-1;c<W/s+2;c++){const a=pt(r,c),b=pt(r,c+1),d=pt(r+1,c),e=pt(r+1,c+1);
+    for(const tri of [[a,b,d],[b,e,d]]){const cx=(tri[0][0]+tri[1][0]+tri[2][0])/3,cy=(tri[0][1]+tri[1][1]+tri[2][1])/3;
+      const v=maskAt(m,cx,cy)/255,sh=0.82+0.32*grand(r*31+c,3.3);
+      const col=`rgb(${lerp(B3[0],F3[0],v)*sh|0},${lerp(B3[1],F3[1],v)*sh|0},${lerp(B3[2],F3[2],v)*sh|0})`;
+      ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(tri[0][0],tri[0][1]);ctx.lineTo(tri[1][0],tri[1][1]);ctx.lineTo(tri[2][0],tri[2][1]);ctx.closePath();ctx.fill();
+      if(svg.length<SVGMAX)svg.push(`<polygon points="${tri.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${col}"/>`);}}
+}
+/* isometric relief — blocks built from the letterforms */
+function drawIso(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,300,0),s=Math.max(14,S.cellSize),w=s*0.5,hh=w*0.5,ch=s*Math.max(0.2,S.gain);
+  const top=fill,left=darken(fill,0.55),right=darken(fill,0.78),cells=[];
+  for(let gy=-2;gy<H/hh+4;gy++)for(let gx=-2;gx<W/w+4;gx++){const sx=W*0.5+(gx-gy)*w,sy=H*0.28+(gx+gy)*hh;
+    if(sx<-s||sx>W+s||sy<-s||sy>H+s)continue;if(maskAt(m,sx,sy)>60)cells.push([gx+gy,sx,sy]);}
+  cells.sort((a,b)=>a[0]-b[0]);
+  const poly=(pts,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.closePath();ctx.fill();
+    if(svg.length<SVGMAX)svg.push(`<polygon points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${col}"/>`);};
+  for(const [,sx,sy] of cells){const A=[sx,sy-ch],B=[sx+w,sy+hh-ch],D=[sx,sy+2*hh-ch],E=[sx-w,sy+hh-ch],B2=[sx+w,sy+hh],D2=[sx,sy+2*hh],E2=[sx-w,sy+hh];
+    poly([E,D,D2,E2],left);poly([B,D,D2,B2],right);poly([A,B,D,E],top);}
+}
+/* weave — over-under strips */
+function drawWeave(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,320,0),s=Math.max(8,S.cellSize),g=Math.max(0,S.strokeW);ctx.fillStyle=fill;
+  const rect=(x,y,w,h)=>{ctx.fillRect(x,y,w,h);if(svg.length<SVGMAX)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"/>`);};
+  for(let gy=0;gy*s<H;gy++)for(let gx=0;gx*s<W;gx++){const x=gx*s,y=gy*s;if(maskAt(m,x+s/2,y+s/2)<60)continue;
+    if((gx+gy)%2===0)rect(x,y+s*0.22,s,s*0.56-g);else rect(x+s*0.22,y,s*0.56-g,s);}
+}
+/* metaballs — merging gooey blobs (thresholded field) */
+function drawMetaballs(glyphs,C,W,H,fill,bg){
+  const fw=Math.min(320,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const A=document.createElement('canvas');A.width=fw;A.height=fh;const a=A.getContext('2d');
+  a.fillStyle='#000';a.fillRect(0,0,fw,fh);a.globalCompositeOperation='lighter';
+  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
+    for(let k=0;k<pts.length;k+=2){const x=pts[k][0]*scale,y=pts[k][1]*scale,rad=(16+S.bloom)*scale;
+      const g=a.createRadialGradient(x,y,0,x,y,rad);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(1,'rgba(0,0,0,0)');
+      a.fillStyle=g;a.beginPath();a.arc(x,y,rad,0,TAU);a.fill();}}
+  const data=a.getImageData(0,0,fw,fh).data,thr=255*clamp(1.5-S.gain,0.15,1.2);
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data,F=hexRGB(fill),Bk=hexRGB(bg);
+  for(let i=0;i<data.length;i+=4){const t=clamp((data[i]-thr)/12+0.5,0,1);
+    D[i]=lerp(Bk[0],F[0],t);D[i+1]=lerp(Bk[1],F[1],t);D[i+2]=lerp(Bk[2],F[2],t);D[i+3]=255;}
+  oc.putImageData(img,0,0);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H);
+}
+function drawMoire(glyphs,C,W,H,fill,bg){
+  const sp=Math.max(3,S.dotSize),diff=S.chromatic*0.012;
+  const lines=ang=>{ctx.save();ctx.translate(W/2,H/2);ctx.rotate(ang);ctx.strokeStyle=fill;ctx.lineWidth=sp*0.42;
+    const R=Math.hypot(W,H);ctx.beginPath();for(let d=-R;d<R;d+=sp){ctx.moveTo(d,-R);ctx.lineTo(d,R);}ctx.stroke();ctx.restore();};
+  lines(0);
+  ctx.save();const clip=new Path2D();for(const gl of glyphs){const T=makeT(gl,C);clip.addPath(new Path2D(buildD(gl,T,0)));}
+  ctx.clip(clip);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);lines(diff);ctx.restore();
+}
+/* glyph mosaic — your characters mapped to ink density, lightest first. Pick a single
+   character and there's no ramp left to climb, so density rides opacity instead. */
+const ASCII_RAMP='.:-=+*#%@';
+const xmlEsc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function drawAscii(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,320,S.dotSize*0.15),s=Math.max(8,S.dotSize);
+  const el=$('#mosaicChars'),set=[...((el&&el.value)||ASCII_RAMP)],one=set.length===1;
+  ctx.font=`${s}px "SF Mono",ui-monospace,monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let y=s/2;y<H;y+=s)for(let x=s/2;x<W;x+=s){const v=maskAt(m,x,y)/255;if(v<0.04)continue;
+    const ch=one?set[0]:set[Math.min(set.length-1,Math.floor(v*set.length))];if(ch===' ')continue;
+    // steep on purpose: solid ink should hit full weight and only the edge falls away,
+    // otherwise a one-glyph mosaic reads as a grey haze rather than a word
+    const al=one?Math.min(1,0.24+v*1.7):1;
+    ctx.fillStyle=hexA(fill,al);ctx.fillText(ch,x,y);
+    if(svg.length<SVGMAX)svg.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="monospace" font-size="${s}" fill="${fill}" fill-opacity="${al.toFixed(2)}" text-anchor="middle" dominant-baseline="middle">${xmlEsc(ch)}</text>`);}
+}
+function _chaikin(pl,it){let p=pl,cl=pl.closed;for(let k=0;k<it;k++){const n=p.length,o=[];
+  if(cl){for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}}
+  else{o.push(p[0]);for(let i=0;i<n-1;i++){const a=p[i],b=p[i+1];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}o.push(p[n-1]);}
+  o.closed=cl;p=o;}return p;}
+function _strokePl(pl){ctx.beginPath();ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);if(pl.closed)ctx.closePath();ctx.stroke();}
+function _mstep(W){return Math.max(4,W/240);}
+
 /* topographic lines — contour rings rippling out from the letterforms */
 function drawTopo(glyphs,C,W,H,fill,bg){
   const fw=Math.min(360,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
@@ -945,117 +1058,924 @@ function drawStreams(glyphs,C,W,H,fill,svg){
     ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();
     if(svg.length<7000)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-opacity="${alpha}"/>`);}
 }
-/* ---------- fine-art engine set (restrained, monochrome-leaning) ---------- */
-/* pixel sort — tone bleeds downward from each ink column */
-function drawPixelSort(glyphs,C,W,H,fill,svg){
-  const m=buildField(glyphs,C,W,H,440,0),cw=Math.max(2,S.sliceW);
-  const rect=(x,y,w,h,a)=>{ctx.fillStyle=hexA(fill,a);ctx.fillRect(x,y,w,h);
-    if(a>0.06&&svg.length<9000)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}" fill-opacity="${a.toFixed(2)}"/>`);};
-  for(let x=0;x<W;x+=cw){let inRun=false,top=0;
-    for(let y=0;y<=H;y+=cw){const ink=y<H&&maskAt(m,x+cw/2,y)>60;
-      if(ink&&!inRun){inRun=true;top=y;}
-      else if(!ink&&inRun){inRun=false;const len=y-top,smear=(0.4+vnoise(x*0.05,top*0.02,phase))*S.sliceShift;
-        for(let yy=top;yy<Math.min(H,top+len+smear);yy+=cw){const a=yy<top+len?1:Math.max(0,1-(yy-top-len)/(smear||1));rect(x,yy,cw+0.6,cw+0.6,a);}}}}
+function _msGrid(sample,W,H,step){
+  const gx=Math.ceil(W/step)+1, gy=Math.ceil(H/step)+1, v=new Float32Array(gx*gy);
+  for(let j=0;j<gy;j++){const y=j*step;for(let i=0;i<gx;i++)v[j*gx+i]=sample(i*step,y);}
+  return {v,gx,gy,step};
 }
-/* line screen — engraved horizontal lines, weight follows ink density */
-function drawLineScreen(glyphs,C,W,H,fill,svg){
-  const gap=Math.max(3,S.dotSize),m=buildField(glyphs,C,W,H,420,gap*0.25);
-  for(let y=gap/2;y<H;y+=gap)for(let x=0;x<W;x+=gap*0.8){
-    const v=Math.min(1,maskAt(m,x+gap*0.4,y)/255*S.gain),th=v*gap*0.92;if(th<0.4)continue;
-    ctx.fillStyle=fill;ctx.fillRect(x,y-th/2,gap*0.8+0.6,th);
-    if(svg.length<9000)svg.push(`<rect x="${x.toFixed(1)}" y="${(y-th/2).toFixed(1)}" width="${(gap*0.8+0.6).toFixed(1)}" height="${th.toFixed(1)}" fill="${fill}"/>`);}
+function _msLevel(g,level){
+  const {v,gx,gy,step}=g, at=(i,j)=>v[j*gx+i];
+  const lp=(x0,y0,a,x1,y1,b)=>{const t=(level-a)/(b-a);return [x0+(x1-x0)*t,y0+(y1-y0)*t];};
+  const pts=new Map(), adj=new Map();
+  const put=(id,p)=>{if(!pts.has(id))pts.set(id,p);if(!adj.has(id))adj.set(id,[]);};
+  const seg=(e0,p0,e1,p1)=>{put(e0,p0);put(e1,p1);adj.get(e0).push(e1);adj.get(e1).push(e0);};
+  const hE=(i,j)=>'h'+i+'_'+j, vE=(i,j)=>'v'+i+'_'+j;
+  for(let j=0;j<gy-1;j++)for(let i=0;i<gx-1;i++){
+    const x0=i*step,y0=j*step,x1=x0+step,y1=y0+step;
+    const va=at(i,j),vb=at(i+1,j),vc=at(i+1,j+1),vd=at(i,j+1);
+    let c=0;if(va>=level)c|=1;if(vb>=level)c|=2;if(vc>=level)c|=4;if(vd>=level)c|=8;
+    if(c===0||c===15)continue;
+    const TT=()=>[hE(i,j),lp(x0,y0,va,x1,y0,vb)], RR=()=>[vE(i+1,j),lp(x1,y0,vb,x1,y1,vc)],
+          BB=()=>[hE(i,j+1),lp(x0,y1,vd,x1,y1,vc)], LL=()=>[vE(i,j),lp(x0,y0,va,x0,y1,vd)];
+    const cc=[];
+    switch(c){
+      case 1:case 14:cc.push([LL(),TT()]);break; case 2:case 13:cc.push([TT(),RR()]);break;
+      case 3:case 12:cc.push([LL(),RR()]);break; case 4:case 11:cc.push([RR(),BB()]);break;
+      case 6:case 9:cc.push([TT(),BB()]);break;  case 7:case 8:cc.push([LL(),BB()]);break;
+      case 5:{const m=(va+vb+vc+vd)*.25;if(m>=level){cc.push([LL(),TT()]);cc.push([RR(),BB()]);}else{cc.push([TT(),RR()]);cc.push([LL(),BB()]);}break;}
+      case 10:{const m=(va+vb+vc+vd)*.25;if(m>=level){cc.push([TT(),RR()]);cc.push([LL(),BB()]);}else{cc.push([LL(),TT()]);cc.push([RR(),BB()]);}break;}
+    }
+    for(const [a,b] of cc) seg(a[0],a[1],b[0],b[1]);
+  }
+  const lines=[], rm=(a,b)=>{const la=adj.get(a);let k=la.indexOf(b);if(k>=0)la.splice(k,1);const lb=adj.get(b);k=lb.indexOf(a);if(k>=0)lb.splice(k,1);};
+  const keys=[...adj.keys()], ns=()=>{for(const k of keys)if(adj.get(k).length===1)return k;for(const k of keys)if(adj.get(k).length>0)return k;return null;};
+  let s;while((s=ns())!==null){const line=[pts.get(s)];let cur=s;
+    while(true){const nb=adj.get(cur);if(!nb||!nb.length)break;const nx=nb[0];rm(cur,nx);line.push(pts.get(nx));cur=nx;if(cur===s){line.closed=true;break;}}
+    if(line.length>1)lines.push(line);}
+  return lines;
 }
-/* duotone risograph — two inks with slight misregistration + grain (light bg) */
-function drawDuotone(glyphs,C,W,H,fill){
-  const o=S.chromatic,c=hexRGB(fill),inkB=`rgb(${c[2]},${c[0]},${c[1]})`;
-  ctx.save();ctx.globalCompositeOperation='multiply';
-  for(const gl of glyphs){const T=makeT(gl,C),p=new Path2D(buildD(gl,T,0));
-    ctx.fillStyle=fill;ctx.save();ctx.translate(-o,0);ctx.fill(p);ctx.restore();
-    ctx.fillStyle=inkB;ctx.save();ctx.translate(o,o*0.5);ctx.fill(p);ctx.restore();}
-  ctx.restore();if(S.grain)addGrain(W,H,S.grain);
+function _chaikin(pl,it){let p=pl,cl=pl.closed;for(let k=0;k<it;k++){const n=p.length,o=[];
+  if(cl){for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}}
+  else{o.push(p[0]);for(let i=0;i<n-1;i++){const a=p[i],b=p[i+1];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}o.push(p[n-1]);}
+  o.closed=cl;p=o;}return p;}
+const _pd=pl=>{let d='M'+pl[0][0].toFixed(1)+' '+pl[0][1].toFixed(1);for(let i=1;i<pl.length;i++)d+='L'+pl[i][0].toFixed(1)+' '+pl[i][1].toFixed(1);if(pl.closed)d+='Z';return d;};
+function _strokePl(pl){ctx.beginPath();ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);if(pl.closed)ctx.closePath();ctx.stroke();}
+function _mstep(W){return Math.max(4,W/240);}
+
+/* Isolines — vector topographic contour rings around the letters */
+function drawIsoline(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2.5,S.bloom*0.42));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const N=Math.max(2,Math.round(S.ringCount));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let k=0;k<N;k++){const level=14+k*(232/N);
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<13000)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}}
 }
-/* low-poly facets */
-function drawLowPoly(glyphs,C,W,H,fill,bg,svg){
-  const m=buildField(glyphs,C,W,H,360,S.cellSize*0.15),s=Math.max(16,S.cellSize);
-  const B3=hexRGB(bg),F3=hexRGB(fill),pt=(r,c)=>[c*s-(r%2)*s/2+(grand(r*97+c,1.1)*2-1)*s*0.3,r*s+(grand(r*97+c,2.2)*2-1)*s*0.3];
-  for(let r=-1;r<H/s+1;r++)for(let c=-1;c<W/s+2;c++){const a=pt(r,c),b=pt(r,c+1),d=pt(r+1,c),e=pt(r+1,c+1);
-    for(const tri of [[a,b,d],[b,e,d]]){const cx=(tri[0][0]+tri[1][0]+tri[2][0])/3,cy=(tri[0][1]+tri[1][1]+tri[2][1])/3;
-      const v=maskAt(m,cx,cy)/255,sh=0.82+0.32*grand(r*31+c,3.3);
-      const col=`rgb(${lerp(B3[0],F3[0],v)*sh|0},${lerp(B3[1],F3[1],v)*sh|0},${lerp(B3[2],F3[2],v)*sh|0})`;
-      ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(tri[0][0],tri[0][1]);ctx.lineTo(tri[1][0],tri[1][1]);ctx.lineTo(tri[2][0],tri[2][1]);ctx.closePath();ctx.fill();
-      if(svg.length<9000)svg.push(`<polygon points="${tri.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${col}"/>`);}}
+function _msGrid(sample,W,H,step){
+  const gx=Math.ceil(W/step)+1, gy=Math.ceil(H/step)+1, v=new Float32Array(gx*gy);
+  for(let j=0;j<gy;j++){const y=j*step;for(let i=0;i<gx;i++)v[j*gx+i]=sample(i*step,y);}
+  return {v,gx,gy,step};
 }
-/* isometric relief — blocks built from the letterforms */
-function drawIso(glyphs,C,W,H,fill,bg,svg){
-  const m=buildField(glyphs,C,W,H,300,0),s=Math.max(14,S.cellSize),w=s*0.5,hh=w*0.5,ch=s*Math.max(0.2,S.gain);
-  const top=fill,left=darken(fill,0.55),right=darken(fill,0.78),cells=[];
-  for(let gy=-2;gy<H/hh+4;gy++)for(let gx=-2;gx<W/w+4;gx++){const sx=W*0.5+(gx-gy)*w,sy=H*0.28+(gx+gy)*hh;
-    if(sx<-s||sx>W+s||sy<-s||sy>H+s)continue;if(maskAt(m,sx,sy)>60)cells.push([gx+gy,sx,sy]);}
-  cells.sort((a,b)=>a[0]-b[0]);
-  const poly=(pts,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.closePath();ctx.fill();
-    if(svg.length<9000)svg.push(`<polygon points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${col}"/>`);};
-  for(const [,sx,sy] of cells){const A=[sx,sy-ch],B=[sx+w,sy+hh-ch],D=[sx,sy+2*hh-ch],E=[sx-w,sy+hh-ch],B2=[sx+w,sy+hh],D2=[sx,sy+2*hh],E2=[sx-w,sy+hh];
-    poly([E,D,D2,E2],left);poly([B,D,D2,B2],right);poly([A,B,D,E],top);}
+function _msLevel(g,level){
+  const {v,gx,gy,step}=g, at=(i,j)=>v[j*gx+i];
+  const lp=(x0,y0,a,x1,y1,b)=>{const t=(level-a)/(b-a);return [x0+(x1-x0)*t,y0+(y1-y0)*t];};
+  const pts=new Map(), adj=new Map();
+  const put=(id,p)=>{if(!pts.has(id))pts.set(id,p);if(!adj.has(id))adj.set(id,[]);};
+  const seg=(e0,p0,e1,p1)=>{put(e0,p0);put(e1,p1);adj.get(e0).push(e1);adj.get(e1).push(e0);};
+  const hE=(i,j)=>'h'+i+'_'+j, vE=(i,j)=>'v'+i+'_'+j;
+  for(let j=0;j<gy-1;j++)for(let i=0;i<gx-1;i++){
+    const x0=i*step,y0=j*step,x1=x0+step,y1=y0+step;
+    const va=at(i,j),vb=at(i+1,j),vc=at(i+1,j+1),vd=at(i,j+1);
+    let c=0;if(va>=level)c|=1;if(vb>=level)c|=2;if(vc>=level)c|=4;if(vd>=level)c|=8;
+    if(c===0||c===15)continue;
+    const TT=()=>[hE(i,j),lp(x0,y0,va,x1,y0,vb)], RR=()=>[vE(i+1,j),lp(x1,y0,vb,x1,y1,vc)],
+          BB=()=>[hE(i,j+1),lp(x0,y1,vd,x1,y1,vc)], LL=()=>[vE(i,j),lp(x0,y0,va,x0,y1,vd)];
+    const cc=[];
+    switch(c){
+      case 1:case 14:cc.push([LL(),TT()]);break; case 2:case 13:cc.push([TT(),RR()]);break;
+      case 3:case 12:cc.push([LL(),RR()]);break; case 4:case 11:cc.push([RR(),BB()]);break;
+      case 6:case 9:cc.push([TT(),BB()]);break;  case 7:case 8:cc.push([LL(),BB()]);break;
+      case 5:{const m=(va+vb+vc+vd)*.25;if(m>=level){cc.push([LL(),TT()]);cc.push([RR(),BB()]);}else{cc.push([TT(),RR()]);cc.push([LL(),BB()]);}break;}
+      case 10:{const m=(va+vb+vc+vd)*.25;if(m>=level){cc.push([TT(),RR()]);cc.push([LL(),BB()]);}else{cc.push([LL(),TT()]);cc.push([RR(),BB()]);}break;}
+    }
+    for(const [a,b] of cc) seg(a[0],a[1],b[0],b[1]);
+  }
+  const lines=[], rm=(a,b)=>{const la=adj.get(a);let k=la.indexOf(b);if(k>=0)la.splice(k,1);const lb=adj.get(b);k=lb.indexOf(a);if(k>=0)lb.splice(k,1);};
+  const keys=[...adj.keys()], ns=()=>{for(const k of keys)if(adj.get(k).length===1)return k;for(const k of keys)if(adj.get(k).length>0)return k;return null;};
+  let s;while((s=ns())!==null){const line=[pts.get(s)];let cur=s;
+    while(true){const nb=adj.get(cur);if(!nb||!nb.length)break;const nx=nb[0];rm(cur,nx);line.push(pts.get(nx));cur=nx;if(cur===s){line.closed=true;break;}}
+    if(line.length>1)lines.push(line);}
+  return lines;
 }
-/* weave — over-under strips */
-function drawWeave(glyphs,C,W,H,fill,bg,svg){
-  const m=buildField(glyphs,C,W,H,320,0),s=Math.max(8,S.cellSize),g=Math.max(0,S.strokeW);ctx.fillStyle=fill;
-  const rect=(x,y,w,h)=>{ctx.fillRect(x,y,w,h);if(svg.length<9000)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"/>`);};
-  for(let gy=0;gy*s<H;gy++)for(let gx=0;gx*s<W;gx++){const x=gx*s,y=gy*s;if(maskAt(m,x+s/2,y+s/2)<60)continue;
-    if((gx+gy)%2===0)rect(x,y+s*0.22,s,s*0.56-g);else rect(x+s*0.22,y,s*0.56-g,s);}
+function _mstep(W){return Math.max(4,W/240);}
+
+/* Isolines — vector topographic contour rings around the letters */
+function drawIsoline(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2.5,S.bloom*0.42));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const N=Math.max(2,Math.round(S.ringCount));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let k=0;k<N;k++){const level=14+k*(232/N);
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<13000)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}}
 }
-/* metaballs — merging gooey blobs (thresholded field) */
-function drawMetaballs(glyphs,C,W,H,fill,bg){
-  const fw=Math.min(320,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
-  const A=document.createElement('canvas');A.width=fw;A.height=fh;const a=A.getContext('2d');
-  a.fillStyle='#000';a.fillRect(0,0,fw,fh);a.globalCompositeOperation='lighter';
-  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
-    for(let k=0;k<pts.length;k+=2){const x=pts[k][0]*scale,y=pts[k][1]*scale,rad=(16+S.bloom)*scale;
-      const g=a.createRadialGradient(x,y,0,x,y,rad);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(1,'rgba(0,0,0,0)');
-      a.fillStyle=g;a.beginPath();a.arc(x,y,rad,0,TAU);a.fill();}}
-  const data=a.getImageData(0,0,fw,fh).data,thr=255*clamp(1.5-S.gain,0.15,1.2);
+function _strokePl(pl){ctx.beginPath();ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);if(pl.closed)ctx.closePath();ctx.stroke();}
+function _mstep(W){return Math.max(4,W/240);}
+
+/* Isolines — vector topographic contour rings around the letters */
+function drawIsoline(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2.5,S.bloom*0.42));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const N=Math.max(2,Math.round(S.ringCount));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let k=0;k<N;k++){const level=14+k*(232/N);
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<13000)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}}
+}
+/* flow streamlines — lines combed through a flow field, densest over the word */
+function drawStreams(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,300,4),step=lerp(24,7,S.pDensity/100);
+  ctx.lineCap='round';
+  for(let y=step*0.5;y<H;y+=step)for(let x=step*0.5;x<W;x+=step){
+    const cov=maskAt(m,x,y)/255;
+    if(cov<0.12)continue;                                    // only over the word -> legible
+    let px=x+(grand(x,1.1)*2-1)*step*0.5,py=y+(grand(y,2.2)*2-1)*step*0.5;
+    const pts=[[px,py]];
+    for(let s=0;s<6;s++){const a=vnoise(px*0.004,py*0.004,phase)*TAU*2;px+=Math.cos(a)*step*0.6;py+=Math.sin(a)*step*0.6;pts.push([px,py]);}
+    const alpha=(0.4+0.6*cov).toFixed(2);ctx.strokeStyle=hexA(fill,+alpha);ctx.lineWidth=S.strokeW;
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();
+    if(svg.length<7000)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-opacity="${alpha}"/>`);}
+}
+/* topographic lines — contour rings rippling out from the letterforms */
+function drawTopo(glyphs,C,W,H,fill,bg){
+  const fw=Math.min(360,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,fw,Math.max(3,S.bloom));
+  const levels=Math.max(3,Math.round(S.ringCount)),lv=v=>Math.floor(v/255*levels);
   const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
-  const img=oc.createImageData(fw,fh),D=img.data,F=hexRGB(fill),Bk=hexRGB(bg);
-  for(let i=0;i<data.length;i+=4){const t=clamp((data[i]-thr)/12+0.5,0,1);
-    D[i]=lerp(Bk[0],F[0],t);D[i+1]=lerp(Bk[1],F[1],t);D[i+2]=lerp(Bk[2],F[2],t);D[i+3]=255;}
-  oc.putImageData(img,0,0);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H);
+  const img=oc.createImageData(fw,fh),D=img.data,W3=hexRGB(fill),B3=hexRGB(bg);
+  for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){const i=y*fw+x,p=i*4,l=lv(m.data[i*4]);
+    const edge=(x+1<fw&&lv(m.data[(i+1)*4])!==l)||(y+1<fh&&lv(m.data[(i+fw)*4])!==l);
+    const c=edge?W3:B3;D[p]=c[0];D[p+1]=c[1];D[p+2]=c[2];D[p+3]=255;}
+  oc.putImageData(img,0,0);
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H);
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.4;ctx.filter='blur(2px)';ctx.drawImage(o,0,0,W,H);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;
 }
-/* stipple — pointillist, density by ink */
-function drawStipple(glyphs,C,W,H,fill,svg){
-  const m=buildField(glyphs,C,W,H,360,S.dotSize*0.2),s=Math.max(3,S.dotSize);ctx.fillStyle=fill;
-  for(let y=0;y<H;y+=s)for(let x=0;x<W;x+=s){const v=maskAt(m,x,y)/255;if(v<0.03||grand(x*7+y,3.1)>v*1.2)continue;
-    const px=x+(grand(x+y,1.1)*2-1)*s*0.5,py=y+(grand(x-y,2.2)*2-1)*s*0.5,r=Math.max(0.5,S.strokeW*(0.4+v));
-    ctx.beginPath();ctx.arc(px,py,r,0,TAU);ctx.fill();
-    if(svg.length<9000)svg.push(`<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}"/>`);}
+/* Isolines — vector topographic contour rings around the letters */
+function drawIsoline(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2.5,S.bloom*0.42));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const N=Math.max(2,Math.round(S.ringCount));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let k=0;k<N;k++){const level=14+k*(232/N);
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<SVGMAX)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}}
 }
-/* moiré interference — two line fields at a slight angle; word emerges */
-function drawMoire(glyphs,C,W,H,fill,bg){
-  const sp=Math.max(3,S.dotSize),diff=S.chromatic*0.012;
-  const lines=ang=>{ctx.save();ctx.translate(W/2,H/2);ctx.rotate(ang);ctx.strokeStyle=fill;ctx.lineWidth=sp*0.42;
-    const R=Math.hypot(W,H);ctx.beginPath();for(let d=-R;d<R;d+=sp){ctx.moveTo(d,-R);ctx.lineTo(d,R);}ctx.stroke();ctx.restore();};
-  lines(0);
-  ctx.save();const clip=new Path2D();for(const gl of glyphs){const T=makeT(gl,C);clip.addPath(new Path2D(buildD(gl,T,0)));}
-  ctx.clip(clip);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);lines(diff);ctx.restore();
+/* Metaball fill — letters merged into filled gooey masses, carved by inner rings */
+function drawFieldFill(glyphs,C,W,H,fill,bg,svg){
+  // Blur here is applied in FIELD space (<=460px), not canvas space. bloom*1.5 put a 45px
+  // blur on a 460px field at the default, which flattened the peak below the 120 contour
+  // level — every isoline vanished and the engine rendered nothing. Keep it in the range
+  // that actually produces closed coasts.
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),clamp(2+S.bloom*0.2,3,12));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const coast=_msLevel(g,120).map(p=>_chaikin(p,2)).filter(p=>p.closed);
+  ctx.fillStyle=fill;ctx.beginPath();
+  for(const pl of coast){ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);ctx.closePath();}
+  ctx.fill('evenodd');
+  if(coast.length)svg.push(`<path d="${coast.map(_pd).join('')}" fill="${fill}" fill-rule="evenodd"/>`);
+  const N=Math.max(0,Math.round(S.ringCount));
+  ctx.strokeStyle=bg;ctx.lineWidth=Math.max(1,S.strokeW);ctx.lineJoin='round';
+  for(let k=1;k<=N;k++){const level=120+k*((238-120)/(N+1));
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<SVGMAX)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${bg}" stroke-width="${Math.max(1,S.strokeW)}"/>`);}}
 }
-/* glyph mosaic — characters mapped to ink density */
-const ASCII_RAMP=' .:-=+*#%@';
-function drawAscii(glyphs,C,W,H,fill,svg){
-  const m=buildField(glyphs,C,W,H,320,S.dotSize*0.15),s=Math.max(8,S.dotSize);
-  ctx.font=`${s}px "SF Mono",ui-monospace,monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=fill;
-  for(let y=s/2;y<H;y+=s)for(let x=s/2;x<W;x+=s){const v=maskAt(m,x,y)/255;if(v<0.04)continue;
-    const ch=ASCII_RAMP[Math.min(ASCII_RAMP.length-1,Math.floor(v*ASCII_RAMP.length))];if(ch===' ')continue;
-    ctx.fillText(ch,x,y);
-    if(svg.length<9000)svg.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="monospace" font-size="${s}" fill="${fill}" text-anchor="middle" dominant-baseline="middle">${ch}</text>`);}
+/* ---------- raster engines below share this: cheap while animating, full detail when
+   still, true output resolution on export (a 300dpi plate needs real pixels) ---------- */
+const rasterRes=W=>Math.min(W,hiRes?4096:playing?520:1300);
+/* resample a polyline to evenly spaced points so stitches land at equal arc length */
+function _resample(pl,step){
+  const out=[pl[0]];let acc=0;
+  for(let i=1;i<pl.length;i++){
+    let ax=pl[i-1][0],ay=pl[i-1][1];const bx=pl[i][0],by=pl[i][1];
+    let seg=Math.hypot(bx-ax,by-ay);
+    while(acc+seg>=step){
+      const t=(step-acc)/seg;ax=lerp(ax,bx,t);ay=lerp(ay,by,t);
+      out.push([ax,ay]);seg=Math.hypot(bx-ax,by-ay);acc=0;}
+    acc+=seg;}
+  return out;
 }
-/* type-in-type — each letter filled with your text, set small */
-function drawTypeInType(glyphs,C,W,H,fill){
-  const s=Math.max(7,S.dotSize),raw=(($('#text').value.replace(/\s+/g,' ').trim())||'TYPE').toUpperCase()+' ';
-  ctx.save();const clip=new Path2D();for(const gl of glyphs){const T=makeT(gl,C);clip.addPath(new Path2D(buildD(gl,T,0)));}
-  ctx.clip(clip);ctx.fillStyle=fill;ctx.textBaseline='top';ctx.font=`bold ${s}px Arimo,Arial,sans-serif`;
-  let ci=0;const cw=ctx.measureText('M').width||s*0.6;
-  for(let y=0;y<H;y+=s*1.08){let line='';while(line.length*cw<W+cw){line+=raw[ci%raw.length];ci++;}ctx.fillText(line,0,y);}
-  ctx.restore();
+/* ---- stitch: the word embroidered — running stitches along the contours, knotted ----
+   Thread is drawn as a slightly darker core with a lighter sheen offset along its length,
+   which is what reads as floss rather than a plain line. */
+function drawStitch(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),clamp(2+S.bloom*0.12,2,9));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const rows=Math.max(1,Math.round(S.ringCount));
+  const len=Math.max(6,S.cellSize*0.42), gap=len*0.42, wob=S.fieldDrift*0.03;
+  const th=Math.max(0.6,S.strokeW), sheen=hexA(fill,0.55);
+  ctx.lineCap='round';ctx.lineJoin='round';
+  let k=0;
+  for(let r=0;r<rows;r++){
+    const level=118+r*(120/(rows+0.5));            // nested contours = concentric stitch rows
+    for(let pl of _msLevel(g,level)){
+      if(pl.length<3)continue;
+      pl=_chaikin(pl,2);
+      const pts=_resample(pl,len+gap);
+      for(let i=0;i+1<pts.length;i++){
+        const a=pts[i],b=pts[i+1];
+        const dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy)||1;
+        // shorten to leave the gap, and wobble so no two stitches sit perfectly true
+        const ux=dx/d,uy=dy/d,nx=-uy,ny=ux;
+        const j=(grand(k,2.3)*2-1)*wob, j2=(grand(k,5.1)*2-1)*wob;
+        const x0=a[0]+nx*j, y0=a[1]+ny*j;
+        const x1=a[0]+ux*len+nx*j2, y1=a[1]+uy*len+ny*j2;
+        ctx.strokeStyle=fill;ctx.lineWidth=th;
+        ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+        // sheen: a thinner highlight riding one edge of the floss
+        ctx.strokeStyle=sheen;ctx.lineWidth=Math.max(0.3,th*0.34);
+        ctx.beginPath();ctx.moveTo(x0+nx*th*0.22,y0+ny*th*0.22);ctx.lineTo(x1+nx*th*0.22,y1+ny*th*0.22);ctx.stroke();
+        // knot where the needle entered
+        ctx.fillStyle=fill;ctx.beginPath();ctx.arc(x0,y0,th*0.62,0,TAU);ctx.fill();
+        if(svg.length<SVGMAX){
+          svg.push(`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${fill}" stroke-width="${th.toFixed(2)}" stroke-linecap="round"/>`);
+          svg.push(`<circle cx="${x0.toFixed(1)}" cy="${y0.toFixed(1)}" r="${(th*0.62).toFixed(2)}" fill="${fill}"/>`);}
+        k++;
+      }
+    }
+  }
 }
+/* ---- marble: ink suspended in water — the letterform dragged through a warped field ----
+   Domain warping (offset the sample point by noise, twice) is what turns a blurred blob
+   into something that looks combed and swirled rather than merely smeared. */
+function drawMarble(glyphs,C,W,H,fill,bg){
+  const fw=rasterRes(W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,Math.min(520,W),clamp(3+S.bloom*0.25,3,16));
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data;
+  const F=hexRGB(fill),B=hexRGB(bg);
+  const sw=Math.max(0,S.fieldDrift)*1.6, ns=0.0016, sep=S.chromatic*0.4;
+  for(let y=0;y<fh;y++){
+    const wy=y/scale;
+    for(let x=0;x<fw;x++){
+      const wx=x/scale;
+      // two-stage domain warp
+      const q1=vnoise(wx*ns,wy*ns,phase*0.15)*2-1, q2=vnoise(wx*ns+5.2,wy*ns+1.3,phase*0.15)*2-1;
+      const r1=vnoise((wx+sw*q1)*ns*2.1+9.1,(wy+sw*q2)*ns*2.1+7.7,phase*0.1)*2-1;
+      const r2=vnoise((wx+sw*q1)*ns*2.1+3.4,(wy+sw*q2)*ns*2.1+2.8,phase*0.1)*2-1;
+      const ox=sw*(q1*0.7+r1*0.5), oy=sw*(q2*0.7+r2*0.5);
+      // sample the ink through the warp; a small channel offset gives the veining colour
+      const s0=maskAt(m,wx+ox,wy+oy)/255;
+      const sR=sep?maskAt(m,wx+ox+sep,wy+oy)/255:s0;
+      const sB=sep?maskAt(m,wx+ox-sep,wy+oy)/255:s0;
+      const g=clamp((s0-0.5)*S.gain+0.5,0,1);
+      const gR=clamp((sR-0.5)*S.gain+0.5,0,1), gB=clamp((sB-0.5)*S.gain+0.5,0,1);
+      const p=(y*fw+x)*4;
+      D[p]  =lerp(B[0],F[0],gR)|0;
+      D[p+1]=lerp(B[1],F[1],g )|0;
+      D[p+2]=lerp(B[2],F[2],gB)|0;
+      D[p+3]=255;
+    }
+  }
+  oc.putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.drawImage(o,0,0,W,H);
+  if(S.grain)addGrain(W,H,S.grain);
+}
+/* ---- relief: the word as shaded topography — height from ink, lit from upper left ---- */
+function drawRelief(glyphs,C,W,H,fill,bg){
+  const fw=rasterRes(W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,Math.min(560,W),clamp(2+S.bloom*0.3,2,20));
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data;
+  const F=hexRGB(fill),B=hexRGB(bg);
+  const amp=S.gain*90, e=2.2/scale;                    // gradient step in canvas units
+  // light from upper-left, normalised
+  const lx=-0.55,ly=-0.62,lz=0.56;
+  const bands=Math.max(0,Math.round(S.ringCount));
+  for(let y=0;y<fh;y++){
+    const wy=y/scale;
+    for(let x=0;x<fw;x++){
+      const wx=x/scale;
+      const h=maskAt(m,wx,wy)/255;
+      const hx=(maskAt(m,wx+e,wy)-maskAt(m,wx-e,wy))/255*amp;
+      const hy=(maskAt(m,wx,wy+e)-maskAt(m,wx,wy-e))/255*amp;
+      // surface normal of the height field
+      let nx=-hx,ny=-hy,nz=1;const nl=Math.hypot(nx,ny,nz)||1;nx/=nl;ny/=nl;nz/=nl;
+      let d=nx*lx+ny*ly+nz*lz;d=clamp(d,0,1);
+      let sh=0.16+0.94*d*d;                            // squared falloff reads more like stone
+      if(bands>1)sh=Math.round(sh*bands)/bands;        // optional terracing
+      const t=clamp(h*1.15,0,1)*sh;
+      const p=(y*fw+x)*4;
+      D[p]  =lerp(B[0],F[0],t)|0;
+      D[p+1]=lerp(B[1],F[1],t)|0;
+      D[p+2]=lerp(B[2],F[2],t)|0;
+      D[p+3]=255;
+    }
+  }
+  oc.putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.drawImage(o,0,0,W,H);
+  if(S.grain)addGrain(W,H,S.grain);
+}
+/* ---- crosshatch engraving: tone built from layered parallel rules ----
+   Each layer adds a set of rules at a new angle and a higher ink threshold, so darker
+   regions accumulate more passes. That accumulation IS the tone — the way an etching works. */
+function drawCrosshatch(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(500,W),clamp(1+S.bloom*0.05,1,5));
+  const layers=Math.max(1,Math.round(S.ringCount));
+  const gap=Math.max(2.5,S.dotSize*0.62), th=Math.max(0.3,S.strokeW*0.6);
+  const diag=Math.hypot(W,H), step=Math.max(1.6,gap*0.34);
+  ctx.strokeStyle=fill;ctx.lineWidth=th;ctx.lineCap='butt';
+  for(let L=0;L<layers;L++){
+    const ang=0.42+S.chromatic*DEG*2+L*(Math.PI/layers);
+    const ca=Math.cos(ang),sa=Math.sin(ang);
+    const thr=255*clamp(0.10+0.74*(L/Math.max(1,layers))/Math.max(0.35,S.gain),0.03,0.97);
+    for(let d=-diag/2;d<diag/2;d+=gap){
+      let sx=0,sy=0,on=false;
+      for(let t=-diag/2;t<=diag/2;t+=step){
+        const x=W/2+ca*t-sa*d, y=H/2+sa*t+ca*d;
+        const ink=(x>=0&&y>=0&&x<W&&y<H)&&maskAt(m,x,y)>thr;
+        if(ink&&!on){sx=x;sy=y;on=true;}
+        else if(!ink&&on){
+          on=false;
+          if(Math.hypot(x-sx,y-sy)>step*0.9){
+            ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(x,y);ctx.stroke();
+            if(svg.length<SVGMAX)svg.push(`<line x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${fill}" stroke-width="${th.toFixed(2)}"/>`);}}
+      }
+    }
+  }
+}
+/* ---- dendrite: branching growth seeded on the letterform ----
+   Branches die when they wander off the ink, so the colony grows into the shape of the
+   word rather than merely being clipped by it. */
+function drawDendrite(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),3);
+  const th=Math.max(0.4,S.strokeW);
+  // Seed from INSIDE the ink on a jittered grid, not from the contour. Contour seeds fire
+  // half their branches straight out of the glyph, where they die on the first step — which
+  // leaves fragments instead of a colony.
+  const seeds=[],gap=Math.max(7,44-S.pDensity*0.34);
+  for(let y=gap/2,r=0;y<H;y+=gap*0.9,r++)for(let x=gap/2;x<W;x+=gap){
+    const jx=x+(r%2)*gap/2+(grand(r*151+x,2.4)*2-1)*gap*0.3,
+          jy=y+(grand(r*151+x,6.2)*2-1)*gap*0.3;
+    if(maskAt(m,jx,jy)>110)seeds.push([jx,jy]);}
+  const seg=Math.max(3,S.linkDist*0.16), maxD=Math.max(1,Math.round(S.ringCount*1.6));
+  ctx.strokeStyle=fill;ctx.lineCap='round';
+  let n=0;
+  const grow=(x,y,a,depth,w)=>{
+    if(depth>maxD||n>26000)return;
+    const wob=(vnoise(x*0.01,y*0.01,phase*0.3)*2-1)*S.fieldDrift*0.02;
+    const na=a+wob+(grand(n,3.7)*2-1)*0.5;
+    const nx=x+Math.cos(na)*seg, ny=y+Math.sin(na)*seg;
+    if(nx<0||ny<0||nx>=W||ny>=H)return;
+    if(maskAt(m,nx,ny)<34)return;                       // off the ink: the branch dies
+    ctx.lineWidth=Math.max(0.25,w);
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(nx,ny);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${fill}" stroke-width="${Math.max(0.25,w).toFixed(2)}" stroke-linecap="round"/>`);
+    n++;
+    grow(nx,ny,na,depth+1,w*0.86);
+    if(grand(n,5.9)>0.62)grow(nx,ny,na+(grand(n,1.7)>0.5?0.7:-0.7),depth+1,w*0.66);  // fork
+  };
+  seeds.forEach((p,i)=>grow(p[0],p[1],grand(i,4.4)*TAU,0,th));
+}
+/* ---- ferrofluid: spikes standing off the contour along the field normal ---- */
+function drawFerro(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),clamp(2+S.bloom*0.14,2,10));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const len=Math.max(6,S.cellSize*0.9), th=Math.max(0.5,S.strokeW);
+  ctx.fillStyle=fill;ctx.strokeStyle=fill;ctx.lineJoin='round';
+  let k=0;
+  for(let pl of _msLevel(g,120)){
+    if(pl.length<4)continue;
+    pl=_chaikin(pl,2);
+    const pts=_resample(pl,Math.max(5,S.cellSize*0.42));
+    for(const p of pts){
+      const e=3;
+      let nx=maskAt(m,p[0]+e,p[1])-maskAt(m,p[0]-e,p[1]);
+      let ny=maskAt(m,p[0],p[1]+e)-maskAt(m,p[0],p[1]-e);
+      const nl=Math.hypot(nx,ny)||1;nx=-nx/nl;ny=-ny/nl;          // outward
+      const L=len*(0.35+0.9*grand(k,2.9))*(0.6+0.5*vnoise(p[0]*0.01,p[1]*0.01,phase));
+      const bx=-ny,by=nx,hw=th*(0.7+0.5*grand(k,6.1));
+      const tipx=p[0]+nx*L, tipy=p[1]+ny*L;
+      ctx.beginPath();
+      ctx.moveTo(p[0]+bx*hw,p[1]+by*hw);ctx.lineTo(tipx,tipy);ctx.lineTo(p[0]-bx*hw,p[1]-by*hw);ctx.closePath();ctx.fill();
+      if(svg.length<SVGMAX)svg.push(`<polygon points="${(p[0]+bx*hw).toFixed(1)},${(p[1]+by*hw).toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)} ${(p[0]-bx*hw).toFixed(1)},${(p[1]-by*hw).toFixed(1)}" fill="${fill}"/>`);
+      k++;
+    }
+  }
+  // solid core so the spikes read as growing off a body
+  const coast=_msLevel(g,120).map(p=>_chaikin(p,2)).filter(p=>p.closed);
+  ctx.beginPath();
+  for(const pl of coast){ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);ctx.closePath();}
+  ctx.fill('evenodd');
+  if(coast.length)svg.push(`<path d="${coast.map(_pd).join('')}" fill="${fill}" fill-rule="evenodd"/>`);
+}
+/* ---- woodgrain: annual rings warped around a pith, cut to the letterform ---- */
+function drawWood(glyphs,C,W,H,fill,bg){
+  const fw=rasterRes(W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,Math.min(520,W),1.5);
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data;
+  const F=hexRGB(fill),B=hexRGB(bg);
+  const px=W*0.5,py=H*1.35, rings=Math.max(1,S.ringCount)*0.9, warp=S.fieldDrift*1.1;
+  for(let y=0;y<fh;y++){
+    const wy=y/scale;
+    for(let x=0;x<fw;x++){
+      const wx=x/scale;
+      const cov=maskAt(m,wx,wy)/255;
+      let t=0;
+      if(cov>0.02){
+        const w1=(vnoise(wx*0.0022,wy*0.010,0)*2-1)*warp;
+        const w2=(vnoise(wx*0.011,wy*0.004,0)*2-1)*warp*0.35;
+        const d=Math.hypot((wx-px)*0.42+w1, (wy-py)+w2);
+        const r=Math.sin(d*0.021*rings)*0.5+0.5;
+        // sharpen the late-wood band; grain is thin dark lines, not a soft sine
+        t=Math.pow(r,Math.max(1,4.2/Math.max(0.3,S.gain)));
+        t=clamp(t*cov*1.15,0,1);
+      }
+      const p=(y*fw+x)*4;
+      D[p]=lerp(B[0],F[0],t)|0;D[p+1]=lerp(B[1],F[1],t)|0;D[p+2]=lerp(B[2],F[2],t)|0;D[p+3]=255;
+    }
+  }
+  oc.putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.drawImage(o,0,0,W,H);
+  if(S.grain)addGrain(W,H,S.grain);
+}
+/* ---- shatter: the word fractured into shards, each thrown off the centre ---- */
+function drawShatter(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),0);
+  let x0=W,y0=H,x1=0,y1=0;
+  for(const gl of glyphs){const T=makeT(gl,C);for(const p of sampleGlyph(gl,T)){
+    if(p[0]<x0)x0=p[0];if(p[1]<y0)y0=p[1];if(p[0]>x1)x1=p[0];if(p[1]>y1)y1=p[1];}}
+  if(x1<=x0)return;
+  const n=Math.max(8,Math.round(S.cellSize*1.4)),P=[];
+  for(let i=0;i<n;i++)P.push([lerp(x0-20,x1+20,grand(i,1.9)),lerp(y0-20,y1+20,grand(i,7.3))]);
+  const cx=(x0+x1)/2, cy=(y0+y1)/2, blast=S.pSpread*0.55, spin=S.fieldDrift*0.004;
+  const tris=delaunay(P);
+  ctx.lineJoin='round';
+  tris.forEach((t,i)=>{
+    const a=P[t[0]],b=P[t[1]],c=P[t[2]];
+    const mx=(a[0]+b[0]+c[0])/3,my=(a[1]+b[1]+c[1])/3;
+    if(maskAt(m,mx,my)<60)return;
+    const dx=mx-cx,dy=my-cy,d=Math.hypot(dx,dy)||1;
+    const push=blast*(0.25+grand(i,3.1))*(0.4+d/Math.max(1,Math.hypot(x1-x0,y1-y0)));
+    const ox=dx/d*push, oy=dy/d*push;
+    const rot=(grand(i,8.8)*2-1)*spin*push;
+    const cr=Math.cos(rot),sr=Math.sin(rot);
+    const put=p=>{const px2=p[0]-mx,py2=p[1]-my;
+      return [mx+px2*cr-py2*sr+ox, my+px2*sr+py2*cr+oy];};
+    const A=put(a),Bp=put(b),Cp=put(c);
+    const sh=0.55+0.45*grand(i,4.6);
+    const col=`rgb(${Math.round(hexRGB(fill)[0]*sh)},${Math.round(hexRGB(fill)[1]*sh)},${Math.round(hexRGB(fill)[2]*sh)})`;
+    ctx.fillStyle=col;ctx.strokeStyle=bg;ctx.lineWidth=Math.max(0.4,S.strokeW*0.5);
+    ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(Bp[0],Bp[1]);ctx.lineTo(Cp[0],Cp[1]);ctx.closePath();
+    ctx.fill();if(S.strokeW>0.3)ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<polygon points="${A[0].toFixed(1)},${A[1].toFixed(1)} ${Bp[0].toFixed(1)},${Bp[1].toFixed(1)} ${Cp[0].toFixed(1)},${Cp[1].toFixed(1)}" fill="${col}" stroke="${bg}" stroke-width="${Math.max(0.4,S.strokeW*0.5).toFixed(2)}"/>`);
+  });
+}
+/* ---- blueprint: the word as a drafting sheet — outline, ticks, dimension rules ---- */
+function drawBlueprint(glyphs,C,W,H,fill,svg){
+  const th=Math.max(0.4,S.strokeW*0.7), faint=hexA(fill,0.26), mid=hexA(fill,0.55);
+  const line=(x1,y1,x2,y2,col,w)=>{ctx.strokeStyle=col;ctx.lineWidth=w;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${fill}" stroke-opacity="${col===faint?0.26:col===mid?0.55:1}" stroke-width="${w.toFixed(2)}"/>`);};
+  // graph paper
+  const g=Math.max(12,S.cellSize);
+  for(let x=0;x<=W;x+=g)line(x,0,x,H,faint,th*0.5);
+  for(let y=0;y<=H;y+=g)line(0,y,W,y,faint,th*0.5);
+  // glyph outlines, thin and precise
+  ctx.lineJoin='round';
+  let bx0=W,by0=H,bx1=0,by1=0;
+  for(const gl of glyphs){const T=makeT(gl,C),d=buildD(gl,T,0);
+    ctx.strokeStyle=fill;ctx.lineWidth=th*1.6;ctx.stroke(new Path2D(d));
+    if(svg.length<SVGMAX)svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-width="${(th*1.6).toFixed(2)}"/>`);
+    for(const p of sampleGlyph(gl,T)){
+      if(p[0]<bx0)bx0=p[0];if(p[1]<by0)by0=p[1];if(p[0]>bx1)bx1=p[0];if(p[1]>by1)by1=p[1];}}
+  if(bx1<=bx0)return;
+  // anchor crosses along the contours
+  const cs=Math.max(3,S.dotSize*0.4);
+  let i=0;const every=Math.max(1,Math.round(26-S.pDensity*0.2));
+  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
+    for(let k=0;k<pts.length;k+=every){const p=pts[k];
+      line(p[0]-cs,p[1],p[0]+cs,p[1],mid,th);line(p[0],p[1]-cs,p[0],p[1]+cs,mid,th);i++;}}
+  // dimension rules around the word
+  const off=Math.max(26,S.ringGap*3.2);
+  const tick=(x,y,vert)=>{vert?line(x-6,y,x+6,y,mid,th):line(x,y-6,x,y+6,mid,th);};
+  line(bx0,by1+off,bx1,by1+off,mid,th);tick(bx0,by1+off,false);tick(bx1,by1+off,false);
+  line(bx0-off,by0,bx0-off,by1,mid,th);tick(bx0-off,by0,true);tick(bx0-off,by1,true);
+  // extension lines
+  line(bx0,by1,bx0,by1+off,faint,th);line(bx1,by1,bx1,by1+off,faint,th);
+  line(bx0,by0,bx0-off,by0,faint,th);line(bx0,by1,bx0-off,by1,faint,th);
+  // corner registration marks
+  for(const [x,y] of [[bx0,by0],[bx1,by0],[bx0,by1],[bx1,by1]]){
+    line(x-11,y,x+11,y,mid,th);line(x,y-11,x,y+11,mid,th);}
+}
+/* Truchet weave — the word rebuilt from woven quarter-arc tiles on a grid */
+function drawTruchet(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),2), s=Math.max(10,S.cellSize);
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineCap='round';ctx.lineJoin='round';
+  const arc=(cxp,cyp,r,a0,a1)=>{const pts=[],n=8;for(let i=0;i<=n;i++){const a=lerp(a0,a1,i/n);pts.push([cxp+Math.cos(a)*r,cyp+Math.sin(a)*r]);}return pts;};
+  for(let gy2=0;gy2<H;gy2+=s)for(let gx2=0;gx2<W;gx2+=s){
+    if(maskAt(m,gx2+s/2,gy2+s/2)/255<0.16)continue;
+    const r=s/2, flip=hash(Math.floor(gx2/s),Math.floor(gy2/s))>0.5;
+    const arcs=flip
+      ? [arc(gx2,gy2,r,0,Math.PI/2), arc(gx2+s,gy2+s,r,Math.PI,Math.PI*1.5)]
+      : [arc(gx2+s,gy2,r,Math.PI/2,Math.PI), arc(gx2,gy2+s,r,-Math.PI/2,0)];
+    for(const pts of arcs){_strokePl(pts);
+      if(svg.length<SVGMAX)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}
+  }
+}
+/* Contour hatch — engraved strokes following the field's contour direction */
+/* ---- polygon wireframe: the word triangulated into a hand-drawn mesh ----
+   Nodes scatter through the glyph interior and along its contour, get Delaunay-
+   triangulated, and only triangles whose centroid sits on ink survive — so the mesh
+   takes the shape of the word, counters and all. Edges only, blob at every node. */
+const orient2=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+function inCircum(p,a,b,c){
+  if(orient2(a,b,c)<0){const t=b;b=c;c=t;}                    // circumcircle test wants CCW
+  const ax=a[0]-p[0],ay=a[1]-p[1],bx=b[0]-p[0],by=b[1]-p[1],cx=c[0]-p[0],cy=c[1]-p[1];
+  return (ax*ax+ay*ay)*(bx*cy-cx*by)-(bx*bx+by*by)*(ax*cy-cx*ay)+(cx*cx+cy*cy)*(ax*by-bx*ay)>0;
+}
+/* Bowyer-Watson. Naive O(n·t) — fine for the few hundred nodes we feed it, and the
+   node count is capped below so a big canvas can't turn this into a hang. */
+function delaunay(P){
+  const n=P.length;if(n<3)return [];
+  let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
+  for(const p of P){mnx=Math.min(mnx,p[0]);mny=Math.min(mny,p[1]);mxx=Math.max(mxx,p[0]);mxy=Math.max(mxy,p[1]);}
+  const d=Math.max(mxx-mnx,mxy-mny)||1,mx=(mnx+mxx)/2,my=(mny+mxy)/2;
+  const V=P.concat([[mx-20*d,my-d],[mx,my+20*d],[mx+20*d,my-d]]);   // super-triangle
+  let tris=[[n,n+1,n+2]];
+  for(let i=0;i<n;i++){
+    const edges=[];
+    for(let t=tris.length-1;t>=0;t--){const tr=tris[t];
+      if(inCircum(V[i],V[tr[0]],V[tr[1]],V[tr[2]])){
+        edges.push([tr[0],tr[1]],[tr[1],tr[2]],[tr[2],tr[0]]);tris.splice(t,1);}}
+    for(let a=0;a<edges.length;a++){if(!edges[a])continue;      // drop edges shared by two
+      for(let b=a+1;b<edges.length;b++){if(!edges[b])continue;  // holes — they're interior
+        if((edges[a][0]===edges[b][0]&&edges[a][1]===edges[b][1])||
+           (edges[a][0]===edges[b][1]&&edges[a][1]===edges[b][0])){edges[a]=null;edges[b]=null;break;}}}
+    for(const e of edges)if(e)tris.push([e[0],e[1],i]);
+  }
+  return tris.filter(t=>t[0]<n&&t[1]<n&&t[2]<n);               // shed the super-triangle
+}
+/* The 3D tail of makeT, factored out. The polygon mesh is built across every glyph at
+   once, so it can't ride makeT's per-glyph camera — it shares this one instead. Returns
+   view depth alongside the projected point so the wireframe can sort and fade by it. */
+function proj3(x,y,z,C){
+  const rX=(S.rotX+S.tumble*phase)*DEG,rY=(S.rotY+S.spin*phase)*DEG,rZ=(S.rotZ+S.roll*phase)*DEG;
+  const cX=Math.cos(rX),sX=Math.sin(rX),cY=Math.cos(rY),sY=Math.sin(rY),cZ=Math.cos(rZ),sZ=Math.sin(rZ);
+  const persp=S.perspective;
+  let px3=x-C.cx,py3=y-C.cyMid,pz3=S.posZ+z;
+  if(rZ){const nx=px3*cZ-py3*sZ;py3=px3*sZ+py3*cZ;px3=nx;}
+  const x1=px3*cY+pz3*sY,z1=-px3*sY+pz3*cY;
+  const y1=py3*cX-z1*sX,z2=py3*sX+z1*cX;
+  const f=persp/Math.max(60,persp+z2);
+  return [C.cx+x1*f,C.cyMid+y1*f,z2];
+}
+function drawPolygon(glyphs,C,W,H,fill,svg){
+  // Inflate blurs the coverage field and reads it at a lower cut, so the mass swells
+  // past the true letterform and neighbouring strokes fuse into one puffy body.
+  const inf=S.inflate||0;
+  // Build the mesh flat, with the camera parked — 2D warps still bake in, but depth is
+  // ours to add below. Otherwise the silhouette would arrive pre-rotated and extruding
+  // it would push the walls in the wrong direction entirely.
+  const cam={rotX:S.rotX,rotY:S.rotY,rotZ:S.rotZ,posZ:S.posZ,tumble:S.tumble,spin:S.spin,roll:S.roll};
+  S.rotX=S.rotY=S.rotZ=S.posZ=S.tumble=S.spin=S.roll=0;
+  let m,contour=[];
+  try{
+    m=buildField(glyphs,C,W,H,Math.min(520,W),inf*0.5);
+    for(const gl of glyphs){const T=makeT(gl,C);for(const p of sampleGlyph(gl,T))contour.push(p);}
+  }finally{Object.assign(S,cam);}
+  const TH=Math.max(26,120-inf*1.6);
+  let step=Math.max(12,S.linkDist);
+  // size the mesh to the ink so a print-res canvas stays tractable
+  let ink=0;for(let y=0;y<H;y+=step)for(let x=0;x<W;x+=step)if(maskAt(m,x,y)>TH)ink++;
+  const MAXN=1000;if(ink>MAXN)step*=Math.sqrt(ink/MAXN);
+  /* Nodes: Poisson-disc grown inward from the contour. Even spacing with no grid to
+     give it away — the letterform's own edge is the scaffold it grows from. */
+  // node spacing sits well under the mesh size: a stroke needs nodes down BOTH of its
+  // edges, and at the full link distance nothing fits across a thin stem.
+  const r=step*0.55,cell=r/Math.SQRT2,gw=Math.ceil(W/cell)+2,gh=Math.ceil(H/cell)+2;
+  const grid=new Int32Array(gw*gh).fill(-1),P=[],active=[];let sd=0;
+  const clear=(x,y)=>{const cx=(x/cell)|0,cy=(y/cell)|0;
+    for(let j=Math.max(0,cy-2);j<=Math.min(gh-1,cy+2);j++)for(let i=Math.max(0,cx-2);i<=Math.min(gw-1,cx+2);i++){
+      const id=grid[j*gw+i];if(id<0)continue;const p=P[id];
+      if((p[0]-x)*(p[0]-x)+(p[1]-y)*(p[1]-y)<r*r)return false;}
+    return true;};
+  const push=(x,y)=>{const cx=(x/cell)|0,cy=(y/cell)|0;
+    if(cx<0||cy<0||cx>=gw||cy>=gh)return;grid[cy*gw+cx]=P.length;active.push(P.length);P.push([x,y]);};
+  // walk a contour node out to the inflated isoline, down the field's own gradient
+  const toIso=(x,y)=>{if(inf<=0)return [x,y];
+    for(let s=0;s<50&&maskAt(m,x,y)>TH;s++){
+      const gx=maskAt(m,x+2,y)-maskAt(m,x-2,y),gy=maskAt(m,x,y+2)-maskAt(m,x,y-2);
+      const g=Math.hypot(gx,gy);if(g<1)break;
+      x-=gx/g*2;y-=gy/g*2;}
+    return [x,y];};
+  for(const p of contour){const [x,y]=toIso(p[0],p[1]);if(clear(x,y))push(x,y);}
+  while(active.length){
+    const ai=(grand(sd++,7.3)*active.length)|0,p=P[active[ai]];let placed=false;
+    for(let t=0;t<10;t++){
+      const a=grand(sd++,1.9)*TAU,d=r*(1+grand(sd++,4.4));
+      const nx=p[0]+Math.cos(a)*d,ny=p[1]+Math.sin(a)*d;
+      if(nx<0||ny<0||nx>=W||ny>=H||maskAt(m,nx,ny)<=TH||!clear(nx,ny))continue;
+      push(nx,ny);placed=true;break;}
+    if(!placed)active.splice(ai,1);}
+  if(P.length<3)return;
+  const key=(i,j)=>i<j?i+'_'+j:j+'_'+i;
+  const tris=delaunay(P),cnt=new Map();
+  for(const t of tris){
+    const a=P[t[0]],b=P[t[1]],c=P[t[2]];
+    if(maskAt(m,(a[0]+b[0]+c[0])/3,(a[1]+b[1]+c[1])/3)<TH)continue;   // triangle off the mass
+    for(const [i,j] of [[t[0],t[1]],[t[1],t[2]],[t[2],t[0]]]){const k=key(i,j);cnt.set(k,(cnt.get(k)||0)+1);}}
+  // an edge carried by a single surviving triangle sits on the silhouette — that's a
+  // load-bearing chord; everything with two is interior web. The whole structural read.
+  let edges=[];
+  for(const [k,c] of cnt){const [i,j]=k.split('_').map(Number);edges.push([i,j,c===1]);}
+  // long spanning braces, like the chords of a space frame — kept only if they stay on the mass
+  const want=Math.round(S.ringCount);let got=0;
+  for(let t=0;t<want*40&&got<want&&P.length>4;t++){
+    const i=(grand(sd++,8.1)*P.length)|0,j=(grand(sd++,9.7)*P.length)|0;
+    if(i===j||cnt.has(key(i,j)))continue;
+    const a=P[i],b=P[j],len=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    if(len<step*3.5||len>step*14)continue;
+    let on=true;
+    for(let s=1;s<24&&on;s++){const u=s/24;if(maskAt(m,lerp(a[0],b[0],u),lerp(a[1],b[1],u))<TH)on=false;}
+    if(!on)continue;
+    cnt.set(key(i,j),1);edges.push([i,j,true]);got++;}
+  // open perimeter — break the silhouette so the form reads as scaffold, not outline
+  const op=S.openEdge||0;
+  if(op>0)edges=edges.filter(([i,j,chord])=>!chord||grand(i*7919+j,3.7)*100>=op);
+  const deg=new Map();for(const [i,j] of edges){deg.set(i,(deg.get(i)||0)+1);deg.set(j,(deg.get(j)||0)+1);}
+  const chordW=S.strokeW*(1+0.55*S.gain),webW=Math.max(0.3,S.strokeW*(1.25-0.42*S.gain));
+  /* Extrude: the flat mesh becomes two parallel sheets joined by walls at the silhouette.
+     Struts only on chord nodes — running one down every interior node turns the middle
+     into noise and you lose the structure entirely. */
+  const dz=S.extrude*3.2;
+  const F=P.map(p=>proj3(p[0],p[1],-dz/2,C)),B=dz>0?P.map(p=>proj3(p[0],p[1],dz/2,C)):null;
+  const segs=[];
+  const seg=(a,b,w,sd2)=>{if(a&&b)segs.push([a,b,w,(a[2]+b[2])/2,sd2]);};
+  for(const [i,j,chord] of edges)seg(F[i],F[j],chord?chordW:webW,i*7919+j);
+  if(B){
+    for(const [i,j,chord] of edges)seg(B[i],B[j],(chord?chordW:webW)*0.82,i*7919+j+5);
+    const wall=new Set();for(const [i,j,chord] of edges)if(chord){wall.add(i);wall.add(j);}
+    for(const i of wall)seg(F[i],B[i],chordW*0.9,i*31+7);
+  }
+  if(!segs.length)return;
+  let zmin=Infinity,zmax=-Infinity;for(const s of segs){zmin=Math.min(zmin,s[3]);zmax=Math.max(zmax,s[3]);}
+  const zr=(zmax-zmin)||1;
+  segs.sort((a,b)=>b[3]-a[3]);                       // painter's order: far members first
+  const wob=S.fieldDrift*0.09;
+  ctx.lineCap='round';ctx.lineJoin='round';
+  for(const [a,b,w0,zc,sd2] of segs){
+    const len=Math.hypot(b[0]-a[0],b[1]-a[1]);if(len<0.01)continue;
+    // far members recede into the ground — the only depth cue a wireframe really has
+    const t=dz>0?(zc-zmin)/zr:0,al=1-0.62*t,lw=w0*(1-0.34*t);
+    const nx=-(b[1]-a[1])/len,ny=(b[0]-a[0])/len,n=Math.max(2,Math.min(10,Math.round(len/16))),pts=[];
+    for(let k=0;k<=n;k++){const u=k/n;
+      // taper the wobble to nothing at both ends so members still meet at their joints
+      const wv=Math.sin(u*Math.PI)*(grand(sd2*17+k,2.7)*2-1)*wob;
+      pts.push([lerp(a[0],b[0],u)+nx*wv,lerp(a[1],b[1],u)+ny*wv]);}
+    ctx.strokeStyle=hexA(fill,al);ctx.lineWidth=lw;
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let k=1;k<pts.length;k++)ctx.lineTo(pts[k][0],pts[k][1]);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-opacity="${al.toFixed(2)}" stroke-width="${lw.toFixed(2)}" stroke-linecap="round"/>`);
+  }
+  // joints: the more members meeting, the heavier the node — a pen dwelling on a junction
+  const dot=(p,rr,al)=>{ctx.fillStyle=hexA(fill,al);ctx.beginPath();ctx.arc(p[0],p[1],rr,0,TAU);ctx.fill();
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${rr.toFixed(1)}" fill="${fill}" fill-opacity="${al.toFixed(2)}"/>`);};
+  if(B)for(const [i,d] of deg){const t=(B[i][2]-zmin)/zr;
+    dot(B[i],S.dotSize*0.15*(0.55+0.12*d)*(0.8+0.4*grand(i,5.1))*(1-0.3*t),1-0.62*t);}
+  for(const [i,d] of deg){const t=dz>0?(F[i][2]-zmin)/zr:0;
+    dot(F[i],S.dotSize*0.15*(0.55+0.12*d)*(0.8+0.4*grand(i,5.1))*(1-0.3*t),1-0.62*t);}
+}
+/* ---- wireframe · 3D mesh: the letter swept through depth as a quad cage ----
+   Each contour is pulled out as a closed loop in font space, then re-projected at every
+   z-slice. The slices are the rings; lines threading the same contour point across all
+   slices are the rails. Unlike the polygon engine this rides makeT's own per-glyph
+   camera, so z is real depth and rotate/perspective drive it directly. */
+function glyphLoops(gl,spacing){
+  const path=gl.g.getPath(gl.x,gl.baseY,S.size),loops=[];
+  let cur=null,pen=[0,0],start=[0,0];
+  const emit=(x,y)=>cur&&cur.push([x,y]);
+  const seg=(a,b)=>{const len=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.max(1,Math.round(len/spacing));
+    for(let i=1;i<=n;i++)emit(lerp(a[0],b[0],i/n),lerp(a[1],b[1],i/n));};
+  const close=()=>{if(cur&&cur.length>2)loops.push(cur);cur=null;};
+  for(const c of path.commands){
+    if(c.type==='M'){close();cur=[];pen=[c.x,c.y];start=pen;emit(c.x,c.y);}
+    else if(c.type==='L'){seg(pen,[c.x,c.y]);pen=[c.x,c.y];}
+    else if(c.type==='Q'){let p=pen;for(let i=1;i<=10;i++){const q=qpt(pen,[c.x1,c.y1],[c.x,c.y],i/10);seg(p,q);p=q;}pen=[c.x,c.y];}
+    else if(c.type==='C'){let p=pen;for(let i=1;i<=12;i++){const q=cpt(pen,[c.x1,c.y1],[c.x2,c.y2],[c.x,c.y],i/12);seg(p,q);p=q;}pen=[c.x,c.y];}
+    else if(c.type==='Z'){seg(pen,start);pen=start;}}
+  close();return loops;
+}
+function drawWireframe(glyphs,C,W,H,fill,svg){
+  // Depth and spacing scale with the type, not the canvas. Absolute pixels would mean the
+  // cage collapses into hatching the moment you set the word bigger — and on a 300dpi page
+  // you always do.
+  const rel=S.size/300;
+  const rings=Math.max(1,Math.round(S.ringCount)),dz=S.extrude*3.2*rel;
+  const spacing=lerp(20,3,S.pDensity/100)*rel,railGap=Math.max(8,S.linkDist*rel);
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineCap='round';ctx.lineJoin='round';
+  const poly=(pts,close)=>{if(pts.length<2)return;
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);
+    if(close)ctx.closePath();ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<path d="M${pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')}${close?'Z':''}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-linecap="round"/>`);};
+  for(const gl of glyphs){
+    const T=makeT(gl,C),loops=glyphLoops(gl,spacing);
+    const zAt=k=>rings<2?0:-dz/2+dz*(k/(rings-1));
+    for(const loop of loops){
+      const at=(p,z)=>T(wsx(gl,p[0]),p[1],z);
+      // rings — the contour redrawn at every depth slice
+      for(let k=0;k<rings;k++)poly(loop.map(p=>at(p,zAt(k))),true);
+      // rails — one contour point threaded through every slice, spaced by arc length
+      if(dz>0&&rings>1){
+        let acc=railGap;
+        for(let i=0;i<loop.length;i++){
+          if(i>0)acc+=Math.hypot(loop[i][0]-loop[i-1][0],loop[i][1]-loop[i-1][1]);
+          if(acc<railGap)continue;acc=0;
+          const rail=[];for(let k=0;k<rings;k++)rail.push(at(loop[i],zAt(k)));
+          poly(rail,false);}}
+    }
+  }
+}
+/* ================= WebGL surface core =================
+   Canvas 2D can fake a highlight, but it cannot do thin-film interference or real Fresnel,
+   and this output is going to print. The physically-shaded engines below render on the GPU
+   at full export resolution and composite back into the 2D context. */
+let _glc=null,_gl=null;const _glProg={};
+function glCtx(W,H){
+  if(!_glc){_glc=document.createElement('canvas');
+    _gl=_glc.getContext('webgl2',{alpha:true,premultipliedAlpha:true,antialias:true,preserveDrawingBuffer:true});}
+  if(!_gl)return null;
+  const MAX=_gl.getParameter(_gl.MAX_TEXTURE_SIZE);
+  if(W>MAX||H>MAX)return null;                       // caller falls back rather than draw nothing
+  if(_glc.width!==W||_glc.height!==H){_glc.width=W;_glc.height=H;}
+  return _gl;
+}
+function glProgram(gl,key,vsSrc,fsSrc){
+  if(_glProg[key])return _glProg[key];
+  const mk=(t,src)=>{const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);
+    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error('shader: '+gl.getShaderInfoLog(s));return s;};
+  const p=gl.createProgram();
+  gl.attachShader(p,mk(gl.VERTEX_SHADER,vsSrc));gl.attachShader(p,mk(gl.FRAGMENT_SHADER,fsSrc));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error('link: '+gl.getProgramInfoLog(p));
+  _glProg[key]=p;return p;
+}
+const GLSL_NOISE=`
+float h31(vec3 p){p=fract(p*0.3183099+vec3(0.71,0.113,0.419));p*=17.0;
+  return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float n3(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(h31(i),h31(i+vec3(1,0,0)),f.x),mix(h31(i+vec3(0,1,0)),h31(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(h31(i+vec3(0,0,1)),h31(i+vec3(1,0,1)),f.x),mix(h31(i+vec3(0,1,1)),h31(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float fbm3(vec3 p){float s=0.0,a=0.5;for(int i=0;i<5;i++){s+=a*n3(p);p*=2.03;a*=0.5;}return s;}`;
+
+/* ---- bubbles: thin-film soap film on instanced spheres ----
+   The iridescence is the real thing — optical path difference through a film of varying
+   thickness, evaluated per RGB wavelength. Thickness drains toward the top under gravity
+   and marbles with turbulence, which is what produces the familiar swirling bands. */
+const BUB_VS=`#version 300 es
+in vec2 a_corner; in vec4 a_bub;
+out vec2 v_uv; out float v_seed; out float v_r;
+uniform vec2 u_res;
+void main(){ v_uv=a_corner; v_seed=a_bub.w; v_r=a_bub.z;
+  vec2 p=a_bub.xy+a_corner*a_bub.z;
+  vec2 c=p/u_res*2.0-1.0;
+  gl_Position=vec4(c.x,-c.y,0.0,1.0); }`;
+const BUB_FS=`#version 300 es
+precision highp float;
+in vec2 v_uv; in float v_seed; in float v_r;
+out vec4 outColor;
+uniform float u_thick,u_turb,u_irid,u_rim,u_expo;
+${GLSL_NOISE}
+// Thin-film interference: OPD = 2*n*d*cos(theta_t), phase-shifted pi at the front reflection.
+vec3 filmColor(float d,float cosI){
+  const float n=1.33;
+  float s=sqrt(max(0.0,1.0-cosI*cosI))/n;
+  float cosT=sqrt(max(0.0,1.0-s*s));
+  float opd=2.0*n*d*cosT;
+  vec3 lam=vec3(680.0,550.0,440.0);
+  vec3 ph=6.2831853*opd/lam+3.1415927;
+  return 0.5+0.5*cos(ph);
+}
+void main(){
+  float r=length(v_uv);
+  float aa=max(fwidth(r),1e-4);
+  if(r>1.0+aa) discard;
+  float z=sqrt(max(0.0,1.0-r*r));
+  vec3 N=normalize(vec3(v_uv,z));
+  vec3 V=vec3(0.0,0.0,1.0);
+  float ndv=clamp(dot(N,V),0.0,1.0);
+  // film thickness: gravity drainage (thin at the crown) x turbulent marbling
+  float turb=fbm3(N*2.4+vec3(v_seed*17.3));
+  float drain=1.0-0.58*N.y;
+  float d=u_thick*drain*(0.5+u_turb*turb);
+  vec3 film=filmColor(d,ndv);
+  film=mix(vec3(dot(film,vec3(0.3333))),film,u_irid);
+  float F=pow(1.0-ndv,3.1);                      // Fresnel: rim bright, centre near-invisible
+  vec3 R=reflect(-V,N);
+  float sky=smoothstep(-0.45,0.95,R.y);
+  vec3 env=mix(vec3(0.02,0.03,0.05),vec3(0.50,0.58,0.70),sky);
+  vec3 L1=normalize(vec3(-0.45,0.75,0.55));
+  vec3 L2=normalize(vec3(0.62,-0.28,0.70));
+  float sp1=pow(max(dot(R,L1),0.0),1500.0);      // tight primary catchlight
+  float sp2=pow(max(dot(R,L2),0.0),240.0)*0.22;  // soft fill
+  vec3 col=film*F*1.55+env*F*0.55+vec3(sp1)*2.6+vec3(sp2);
+  col*=u_expo;
+  float a=clamp(F*u_rim+sp1*1.7+sp2*0.6+F*0.22,0.0,1.0);
+  a*=smoothstep(1.0+aa,1.0-aa*1.6,r);
+  outColor=vec4(col*a,a);                        // premultiplied
+}`;
+function drawBubbles(glyphs,C,W,H,fill,bgc){
+  const gl=glCtx(W,H);
+  if(!gl){ctx.fillStyle=bgc;ctx.fillRect(0,0,W,H);
+    $('#status').innerHTML='<span class="warn">bubbles needs WebGL2 — unavailable at this canvas size</span>';return;}
+  const m=buildField(glyphs,C,W,H,Math.min(560,W),0);
+  const rel=S.size/300, base=Math.max(4,S.cellSize*0.42*rel);
+  // Airy means space between bodies, not a foam. Bubbles scatter through the letterform
+  // with a long tail of small ones, plus a few drifting free of it.
+  const N=Math.round(18+S.pDensity*5.2), B=[];
+  const NSTRAY=Math.round(N*0.12);               // escapees are a fixed share of the total, not
+                                                // a per-attempt roll — that floods out the word
+  const put=(i,stray)=>{
+    const t=Math.pow(grand(i,2.9),2.2);          // many small, few large
+    const rr=base*(0.22+t*1.9)*(stray?0.6:1);
+    let px=grand(i,1.7)*W,py=grand(i,4.3)*H;
+    if(!stray){
+      let ok=false;
+      for(let k=0;k<400;k++){                    // rejection-sample inside the letterform
+        const x=grand(i*401+k,1.7)*W,y=grand(i*401+k,4.3)*H;
+        if(maskAt(m,x,y)>90){px=x;py=y;ok=true;break;}}
+      if(!ok)return;
+      if(S.pSpread){const a=grand(i,6.1)*TAU,mg=Math.pow(grand(i,3.3),1.9)*S.pSpread;
+        px+=Math.cos(a)*mg;py+=Math.sin(a)*mg;}
+    }
+    if(px<-rr||py<-rr||px>W+rr||py>H+rr)return;
+    B.push([px,py,rr,grand(i,8.8)*40]);
+  };
+  for(let i=0;i<N-NSTRAY;i++)put(i,false);
+  for(let i=0;i<NSTRAY;i++)put(9000+i,true);
+  if(!B.length)return;
+  B.sort((a,b)=>b[2]-a[2]);                      // big first: small bubbles read in front
+  const prog=glProgram(gl,'bubbles',BUB_VS,BUB_FS);
+  gl.viewport(0,0,W,H);
+  gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);   // premultiplied over
+  gl.useProgram(prog);
+  const quad=new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]);
+  const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,quad,gl.STATIC_DRAW);
+  const la=gl.getAttribLocation(prog,'a_corner');
+  gl.enableVertexAttribArray(la);gl.vertexAttribPointer(la,2,gl.FLOAT,false,0,0);
+  const ibo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,ibo);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(B.flat()),gl.STATIC_DRAW);
+  const lb=gl.getAttribLocation(prog,'a_bub');
+  gl.enableVertexAttribArray(lb);gl.vertexAttribPointer(lb,4,gl.FLOAT,false,0,0);
+  gl.vertexAttribDivisor(lb,1);
+  gl.uniform2f(gl.getUniformLocation(prog,'u_res'),W,H);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_thick'),S.filmThick);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_turb'),0.25+S.fieldDrift*0.012);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_irid'),clamp(S.gain*0.75,0,1.6));
+  gl.uniform1f(gl.getUniformLocation(prog,'u_rim'),0.55+S.bloom*0.008);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_expo'),0.75+S.gain*0.35);
+  gl.drawArraysInstanced(gl.TRIANGLES,0,6,B.length);
+  gl.deleteBuffer(vbo);gl.deleteBuffer(ibo);
+  ctx.fillStyle=bgc;ctx.fillRect(0,0,W,H);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.drawImage(_glc,0,0);
+  if(S.bloom>2){                                  // airy halo — light scattering off the film
+    ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.30;
+    ctx.filter=`blur(${(S.bloom*0.55*(W/1200)).toFixed(1)}px)`;
+    ctx.drawImage(_glc,0,0);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;}
+  if(S.grain)addGrain(W,H,S.grain);
+}
+function drawHatch(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2,S.bloom*0.4)), gap=Math.max(4,S.dotSize);
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineCap='round';
+  for(let y=gap/2;y<H;y+=gap)for(let x=gap/2;x<W;x+=gap){
+    const cov=maskAt(m,x,y)/255;if(cov<0.14)continue;
+    const gxv=maskAt(m,x+3,y)-maskAt(m,x-3,y), gyv=maskAt(m,x,y+3)-maskAt(m,x,y-3);
+    const ang=Math.atan2(gyv,gxv)+Math.PI/2, len=gap*0.62*(0.5+cov);
+    const x0=x-Math.cos(ang)*len,y0=y-Math.sin(ang)*len,x1=x+Math.cos(ang)*len,y1=y+Math.sin(ang)*len;
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${fill}" stroke-width="${S.strokeW}"/>`);
+  }
+}
+/* Ripple interference — concentric fringes rippling out from the letterforms */
+function drawRipple(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(4,S.bloom)), freq=Math.max(2,S.ringGap)*0.9;
+  const g=_msGrid((x,y)=>Math.sin(maskAt(m,x,y)/255*freq*TAU),W,H,_mstep(W));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let pl of _msLevel(g,0)){pl=_chaikin(pl,2);_strokePl(pl);
+    if(svg.length<SVGMAX)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}
+}
+
+/* Vector · béziers — the editor view: outline + anchor points, control points
+   and handle lines, exactly like a type-design tool. Real SVG. */
+function drawBeziers(gl,T,fill,svg){
+  const path=gl.g.getPath(gl.x,gl.baseY,S.size);
+  const P=(x,y)=>T(wsx(gl,x),y,0);
+  const asz=Math.max(2.2,S.size*0.011), csz=asz*0.95, hw=Math.max(0.5,S.strokeW*0.5);
+  const d=buildD(gl,T,0);
+  ctx.lineJoin='round';ctx.strokeStyle=hexA(fill,0.45);ctx.lineWidth=hw;ctx.stroke(new Path2D(d));
+  if(svg.length<SVGMAX)svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-opacity="0.45" stroke-width="${hw.toFixed(2)}"/>`);
+  const handle=(a,b)=>{ctx.strokeStyle=hexA(fill,0.5);ctx.lineWidth=hw;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${fill}" stroke-opacity="0.5" stroke-width="${hw.toFixed(2)}"/>`);};
+  const ctrl=p=>{ctx.strokeStyle=fill;ctx.lineWidth=hw;ctx.beginPath();ctx.arc(p[0],p[1],csz,0,TAU);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${csz.toFixed(1)}" fill="none" stroke="${fill}" stroke-width="${hw.toFixed(2)}"/>`);};
+  const anch=p=>{ctx.fillStyle=fill;ctx.fillRect(p[0]-asz,p[1]-asz,asz*2,asz*2);
+    if(svg.length<SVGMAX)svg.push(`<rect x="${(p[0]-asz).toFixed(1)}" y="${(p[1]-asz).toFixed(1)}" width="${(asz*2).toFixed(1)}" height="${(asz*2).toFixed(1)}" fill="${fill}"/>`);};
+  let cur=null;
+  for(const c of path.commands){
+    if(c.type==='M'){cur=[c.x,c.y];anch(P(c.x,c.y));}
+    else if(c.type==='L'){anch(P(c.x,c.y));cur=[c.x,c.y];}
+    else if(c.type==='Q'){const a0=P(cur[0],cur[1]),cp=P(c.x1,c.y1),e=P(c.x,c.y);handle(a0,cp);handle(e,cp);ctrl(cp);anch(e);cur=[c.x,c.y];}
+    else if(c.type==='C'){const a0=P(cur[0],cur[1]),c1=P(c.x1,c.y1),c2=P(c.x2,c.y2),e=P(c.x,c.y);handle(a0,c1);handle(e,c2);ctrl(c1);ctrl(c2);anch(e);cur=[c.x,c.y];}
+  }
+}
+
 function finishSVG(parts,W,H,transparent,bgc,style,n){
   const bg=transparent?'':`<rect width="${W}" height="${H}" fill="${bgc}"/>`;
   let defs='',body=parts.join('\n');
@@ -1070,15 +1990,26 @@ ${bg}
 ${body}
 </svg>`;window.lastSVG=lastSVG;
   const note=(style==='halftone'||style==='particles')?' · SVG=dots':style==='network'?' · SVG=dots+lines':style==='chromatic'?' · SVG blend layers':'';
-  $('#status').innerHTML=`${n} glyphs · ${style} · ${W}×${H}<span class="ok">${note}</span>`;
+  // never let the .svg quietly ship shorter than what's on screen
+  if(parts.length>=SVGMAX){
+    $('#status').innerHTML=`${n} glyphs · ${style} · ${W}×${H}<span class="warn"> · SVG capped at ${SVGMAX.toLocaleString()} elements — the .svg is missing detail the canvas shows. Lower density / link distance.</span>`;return;}
+  $('#status').innerHTML=`${n} glyphs · ${style} · ${W}×${H}<span class="ok">${note} · ${parts.length.toLocaleString()} el</span>`;
 }
 
 /* fonts */
-const FONTS={arimo:'ofl/arimo/Arimo%5Bwght%5D.ttf',inter:'ofl/inter/Inter%5Bopsz,wght%5D.ttf',
+/* Google-hosted faces are CDN paths; anything starting with / is served from this site. */
+const FONTS={bentonsans:'/shared/fonts/BentonSans-Bold.otf',
+  universultralight:'/shared/fonts/UniversNextPro-UltraLight.ttf',
+  universthin:'/shared/fonts/UniversNextPro-Thin.ttf',
+  universlight:'/shared/fonts/UniversNextPro-Light.ttf',
+  universmedium:'/shared/fonts/UniversNextPro-Medium.ttf',
+  universbold:'/shared/fonts/UniversNextPro-Bold.ttf',
+  arimo:'ofl/arimo/Arimo%5Bwght%5D.ttf',inter:'ofl/inter/Inter%5Bopsz,wght%5D.ttf',
   archivoblack:'ofl/archivoblack/ArchivoBlack-Regular.ttf',spacegrotesk:'ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf',
   bodoni:'ofl/bodonimoda/BodoniModa%5Bopsz,wght%5D.ttf',dmserif:'ofl/dmserifdisplay/DMSerifDisplay-Regular.ttf'};
 async function loadFont(key){$('#status').textContent='loading font…';
-  try{const buf=await (await fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/'+FONTS[key])).arrayBuffer();
+  try{const p=FONTS[key],url=p[0]==='/'?p:'https://cdn.jsdelivr.net/gh/google/fonts@main/'+p;
+    const buf=await (await fetch(url)).arrayBuffer();
     font=opentype.parse(buf);render();}
   catch(e){$('#status').innerHTML='<span class="warn">font load failed — upload a .ttf/.otf</span>';console.error(e);}}
 $('#fontPick').addEventListener('change',e=>loadFont(e.target.value));
@@ -1092,32 +2023,59 @@ function setControl(k,v){S[k]=v;const c=$('#c-'+k);
   if(k==='renderStyle'){$('#renderStyle').value=v;return;}
   if(k==='bgColor'||k==='fillColor'||k==='accentColor'||k==='accent2'||k==='heatPalette'){const el=$('#'+k);if(el)el.value=v;return;}}
 /* each engine auto-configures to a good starting look when selected (replaces presets) */
+/* Engines default to white on black. The six print/riso screens below are the exception —
+   they're built around light stock and read as mud without it. Accent 1 / accent 2 keep
+   their colour; only fill goes white. */
+const INK='#ffffff',PAPER='#000000';
 const ENGINE_DEFAULTS={
-  solid:{fillColor:'#f2f0e9',bgColor:'#0a0a12'},
-  heatmap:{bloom:20,gain:1.15,breath:0.5,fieldDrift:18,grain:14,heatShift:0,pDensity:66,pSpread:38,bgColor:'#04040a',heatPalette:'turbo'},
-  chromatic:{chromatic:16,bgColor:'#0a0a12',fillColor:'#f2f0e9'},
-  particles:{pDensity:72,pSpread:70,fillColor:'#f2f0e9',bgColor:'#05060f',accentColor:'#ff5ad0',accent2:'#5ecbff'},
-  halftone:{dotSize:12,fillColor:'#111111',bgColor:'#f2efe6'},
-  outline:{ringCount:9,ringGap:7,strokeW:1.4,fillColor:'#f2f0e9',bgColor:'#0a0a12'},
-  network:{pDensity:64,linkDist:48,pSpread:26,fillColor:'#5ecbff',bgColor:'#05060f'},
-  glow:{dotSize:13,bloom:24,gain:1.3,grain:12,chromatic:7,fillColor:'#ff5ad0',bgColor:'#05060f'},
-  cells:{cellSize:78,fieldDrift:14,bgColor:'#0a1570',fillColor:'#ff45c2'},
-  scales:{cellSize:34,pSpread:34,bgColor:'#141414'},
-  slice:{sliceW:12,sliceShift:150,bgColor:'#f2efe6',fillColor:'#0a0a0a'},
-  neon:{strokeW:5,bloom:22,gain:1.2,chromatic:0,fillColor:'#00e6ff',bgColor:'#05050c'},
-  topo:{bloom:26,ringCount:11,fillColor:'#39e6a0',bgColor:'#0a0e1a'},
-  streams:{pDensity:60,strokeW:1.2,fillColor:'#f2f0e9',bgColor:'#0a0a12'},
-  pixelsort:{sliceW:5,sliceShift:200,fillColor:'#eceae1',bgColor:'#0c0c10'},
-  linescreen:{dotSize:8,gain:1.2,fillColor:'#141414',bgColor:'#efe9dd'},
-  duotone:{chromatic:7,grain:16,fillColor:'#233b6e',bgColor:'#efe7d8'},
-  lowpoly:{cellSize:74,fillColor:'#e8e5da',bgColor:'#14151b'},
-  iso:{cellSize:40,gain:1,fillColor:'#dfe6ea',bgColor:'#12141c'},
-  weave:{cellSize:36,strokeW:2,fillColor:'#1a1a1a',bgColor:'#efe9dd'},
-  metaballs:{pDensity:55,gain:1.05,bloom:20,fillColor:'#eceae1',bgColor:'#0b0b10'},
-  stipple:{dotSize:7,strokeW:1,fillColor:'#141414',bgColor:'#efe9dd'},
-  moire:{dotSize:6,chromatic:8,fillColor:'#141414',bgColor:'#efe9dd'},
-  ascii:{dotSize:18,fillColor:'#e8e5da',bgColor:'#0d0d12'},
-  typeintype:{dotSize:15,fillColor:'#141414',bgColor:'#efe9dd'},
+  solid:{fillColor:INK,bgColor:PAPER},
+  heatmap:{bloom:20,gain:1.15,breath:0.5,fieldDrift:18,grain:14,heatShift:0,pDensity:66,pSpread:38,fillColor:INK,bgColor:PAPER,heatPalette:'turbo'},
+  chromatic:{chromatic:16,bgColor:PAPER,fillColor:INK},
+  particles:{pDensity:72,pSpread:70,fillColor:INK,bgColor:PAPER,accentColor:'#ff5ad0',accent2:'#5ecbff'},
+  halftone:{dotSize:12,fillColor:'#111111',bgColor:'#f2efe6'},            // print screen — stays on paper
+  outline:{ringCount:9,ringGap:7,strokeW:1.4,fillColor:INK,bgColor:PAPER},
+  network:{pDensity:64,linkDist:48,pSpread:26,strokeW:1,fillColor:INK,bgColor:PAPER},
+  glow:{dotSize:13,bloom:24,gain:1.3,grain:12,chromatic:7,fillColor:INK,bgColor:PAPER},
+  
+  
+  slice:{sliceW:12,sliceShift:150,bgColor:'#f2efe6',fillColor:'#0a0a0a'}, // print screen — stays on paper
+  
+  topo:{bloom:26,ringCount:11,fillColor:INK,bgColor:PAPER},
+  streams:{pDensity:60,strokeW:1.2,fillColor:INK,bgColor:PAPER},
+  pixelsort:{sliceW:5,sliceShift:200,fillColor:INK,bgColor:PAPER},
+  linescreen:{dotSize:8,gain:1.2,fillColor:'#141414',bgColor:'#efe9dd'},  // print screen — stays on paper
+  
+  lowpoly:{cellSize:74,fillColor:INK,bgColor:PAPER},
+  crosshatch:{ringCount:4,dotSize:9,strokeW:1.1,gain:1.5,bloom:6,chromatic:0,fillColor:INK,bgColor:PAPER},
+  dendrite:{pDensity:64,ringCount:7,linkDist:34,strokeW:1.6,fieldDrift:75,fillColor:INK,bgColor:PAPER},
+  blueprint:{cellSize:46,strokeW:1.5,dotSize:11,pDensity:52,ringGap:12,fillColor:INK,bgColor:PAPER},
+  ferro:{cellSize:52,strokeW:4.5,bloom:16,fillColor:INK,bgColor:PAPER},
+  shatter:{cellSize:96,pSpread:24,fieldDrift:38,strokeW:1.2,fillColor:INK,bgColor:PAPER},
+  wood:{ringCount:16,fieldDrift:58,gain:1.4,grain:10,fillColor:INK,bgColor:PAPER},
+  stitch:{ringCount:2,cellSize:66,strokeW:5.2,fieldDrift:30,bloom:7,fillColor:INK,bgColor:PAPER},
+  marble:{fieldDrift:105,gain:2.7,bloom:8,chromatic:14,grain:10,fillColor:INK,bgColor:PAPER},
+  relief:{bloom:9,gain:2.4,ringCount:1,grain:8,fillColor:INK,bgColor:PAPER},
+  polygon:{linkDist:52,strokeW:3.2,dotSize:26,fieldDrift:30,pDensity:60,gain:1.5,ringCount:8,inflate:0,openEdge:0,fillColor:INK,bgColor:PAPER},
+  // opens already turned in space — a wireframe cage reads as nothing when viewed flat on
+  // opens already turned in space — a wireframe cage reads as nothing viewed flat on. Long
+  // lens by default: these read as technical drawings, and a short one keystones them.
+  wireframe:{ringCount:6,linkDist:105,strokeW:1.2,pDensity:74,extrude:22,rotX:-12,rotY:22,perspective:2200,fillColor:INK,bgColor:PAPER},
+  iso:{cellSize:40,gain:1,fillColor:INK,bgColor:PAPER},
+  weave:{cellSize:36,strokeW:2,fillColor:'#1a1a1a',bgColor:'#efe9dd'},    // print screen — stays on paper
+  metaballs:{pDensity:55,gain:1.05,bloom:20,fillColor:INK,bgColor:PAPER},
+  // airy by default: fewer, larger films with room to drift — dense packing buries the
+  // iridescence that makes this engine worth having
+  bubbles:{pDensity:20,cellSize:230,pSpread:46,filmThick:305,gain:1.32,bloom:38,fieldDrift:60,grain:0,fillColor:INK,bgColor:PAPER},
+  moire:{dotSize:6,chromatic:8,fillColor:'#141414',bgColor:'#efe9dd'},    // print screen — stays on paper
+  ascii:{dotSize:18,fillColor:INK,bgColor:PAPER},
+  
+  // Vector · B&W engines — clean white ink on black
+  beziers:{strokeW:1.4,fillColor:INK,bgColor:PAPER},
+  isoline:{ringCount:12,bloom:20,strokeW:1.1,fillColor:INK,bgColor:PAPER},
+  fieldfill:{ringCount:6,bloom:30,strokeW:1.2,fillColor:INK,bgColor:PAPER},
+  ripple:{ringGap:8,bloom:16,strokeW:1,fillColor:INK,bgColor:PAPER},
+  truchet:{cellSize:40,strokeW:2,fillColor:INK,bgColor:PAPER},
+  hatch:{dotSize:9,bloom:8,strokeW:1,fillColor:INK,bgColor:PAPER},
 };
 function applyEngine(style){setControl('renderStyle',style);
   const dim=style==='dimensional';document.body.classList.toggle('dim-mode',dim);
@@ -1154,7 +2112,9 @@ $('#playBtn').addEventListener('click',e=>{playing=!playing;
 
 function downloadBlob(name,blob){const u=URL.createObjectURL(blob);const a=document.createElement('a');
   a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);}
-$('#svgBtn').addEventListener('click',()=>{render();
+/* Exports render at true output resolution — slower, but print-ready. */
+function renderHiRes(){hiRes=true;try{render();}finally{hiRes=false;}}
+$('#svgBtn').addEventListener('click',()=>{renderHiRes();
   if(rasterMode){ // thermal field is raster — embed hi-res PNG so the .svg still opens
     const png=canvas.toDataURL('image/png'),W=curW,H=curH;
     const svg=`<?xml version="1.0" encoding="UTF-8"?>
@@ -1163,7 +2123,7 @@ $('#svgBtn').addEventListener('click',()=>{render();
 </svg>`;
     downloadBlob('kinetic-art.svg',new Blob([svg],{type:'image/svg+xml'}));return;}
   downloadBlob('kinetic-type.svg',new Blob([lastSVG],{type:'image/svg+xml'}));});
-$('#pngBtn').addEventListener('click',()=>{render();canvas.toBlob(b=>downloadBlob('kinetic-type.png',b));});
+$('#pngBtn').addEventListener('click',()=>{renderHiRes();canvas.toBlob(b=>downloadBlob('kinetic-type.png',b));});
 
 /* ---- optional sound track for recordings — upload an audio file ---- */
 let recAudioEl=null, recAudioSrc=null, recAudioCtx=null, audioReady=false;
@@ -1216,7 +2176,9 @@ function applyPrint(){const w=parseFloat($('#printW').value)||1,h=parseFloat($('
   $('#docW').value=Math.round(w*d);$('#docH').value=Math.round(h*d);$('#format').value='custom';render();updateChips();}
 $('#applyPrint').addEventListener('click',applyPrint);
 ['printW','printH','printDpi'].forEach(id=>$('#'+id).addEventListener('change',applyPrint));
-['fillColor','bgColor','fillOn','strokeOn','bgTransparent','accentColor','accent2','heatPalette','clipGlyph'].forEach(id=>$('#'+id).addEventListener('input',render));
+['fillColor','bgColor','fillOn','strokeOn','bgTransparent','accentColor','accent2','clipGlyph'].forEach(id=>$('#'+id).addEventListener('input',render));
+$('#heatPalette').addEventListener('input',()=>{updateEngineUI();render();});
+$('#mosaicChars').addEventListener('input',render);
 window.addEventListener('resize',()=>{if(font)render();});
 /* tabs + collapsible sub-groups */
 /* Left rail is the sole nav: click an icon to open that section's flyout;
@@ -1251,37 +2213,72 @@ function updateChips(){
 const ENGINE_CTRLS={solid:[],dimensional:[],
   heatmap:['bloom','gain','breath','fieldDrift','grain','heatShift','pDensity','pSpread'],
   chromatic:['chromatic'],particles:['pDensity','pSpread'],halftone:['dotSize'],
-  outline:['ringCount','ringGap'],network:['pDensity','pSpread','linkDist'],
-  glow:['dotSize','bloom','gain','grain','chromatic'],cells:['cellSize','fieldDrift'],
-  scales:['cellSize','pSpread'],slice:['sliceW','sliceShift'],
-  neon:['strokeW','bloom','gain','chromatic'],topo:['bloom','ringCount'],streams:['pDensity','strokeW'],
-  pixelsort:['sliceW','sliceShift'],linescreen:['dotSize','gain'],duotone:['chromatic','grain'],
+  outline:['ringCount','ringGap'],network:['pDensity','pSpread','linkDist','strokeW'],
+  glow:['dotSize','bloom','gain','grain','chromatic'],
+  slice:['sliceW','sliceShift'],
+  topo:['bloom','ringCount'],streams:['pDensity','strokeW'],
+  pixelsort:['sliceW','sliceShift'],linescreen:['dotSize','gain'],
   lowpoly:['cellSize'],iso:['cellSize','gain'],weave:['cellSize','strokeW'],
-  metaballs:['pDensity','gain','bloom'],stipple:['dotSize','strokeW'],moire:['dotSize','chromatic'],
-  ascii:['dotSize'],typeintype:['dotSize']};
+  metaballs:['pDensity','gain','bloom'],
+  bubbles:['pDensity','cellSize','pSpread','filmThick','gain','bloom','fieldDrift','grain'],moire:['dotSize','chromatic'],
+  ascii:['dotSize'],
+  beziers:['strokeW'],isoline:['ringCount','bloom','strokeW'],fieldfill:['ringCount','bloom','strokeW'],
+  ripple:['ringGap','bloom','strokeW'],truchet:['cellSize','strokeW'],hatch:['dotSize','bloom','strokeW'],
+  stitch:['ringCount','cellSize','strokeW','fieldDrift','bloom'],
+  crosshatch:['ringCount','dotSize','strokeW','gain','bloom','chromatic'],
+  dendrite:['pDensity','ringCount','linkDist','strokeW','fieldDrift'],
+  blueprint:['cellSize','strokeW','dotSize','pDensity','ringGap'],
+  ferro:['cellSize','strokeW','bloom'],
+  shatter:['cellSize','pSpread','fieldDrift','strokeW'],
+  wood:['ringCount','fieldDrift','gain','grain'],
+  marble:['fieldDrift','gain','bloom','chromatic','grain'],
+  relief:['bloom','gain','ringCount','grain'],
+  polygon:['linkDist','strokeW','dotSize','fieldDrift','pDensity','gain','ringCount','inflate','openEdge'],
+  wireframe:['ringCount','linkDist','strokeW','pDensity']};
 const RENDER_IDS=CONTROLS.render.map(c=>c[0]);
 const ENGINE_NOTE={solid:'Solid — no engine parameters. Shape it with Warp & Motion.',
   dimensional:'Dimensional — full glass-3D studio. All its controls live in the panel that opens on the right.',
   chromatic:'RGB channels split & sliced into bands — a digital signal glitch. Best on dark backgrounds.',
-  scales:'Overlapping scale tiles fill the page; your word emerges brighter (vivid) against a muted field.',
-  neon:'Glowing tube outline of the letters — stroke width + glow.',
+  
+  
   topo:'Contour rings ripple outward from the letterforms, like a topographic map. More glow = wider spacing; ring count = number of lines.',
   streams:'Flow-field lines combed across the page, densest and brightest over the word.',
   pixelsort:'Tone bleeds downward from each ink column — a restrained pixel-sort.',
   linescreen:'Engraved horizontal line-screen; line weight follows ink density.',
-  duotone:'Two-ink risograph with slight misregistration and grain. Use a light background.',
+  
   lowpoly:'Letterforms faceted into low-poly triangles.',
   iso:'Isometric block relief built from the letterforms.',
   weave:'The type woven from over-under strips.',
   metaballs:'Merging gooey blobs — a hard-edged cousin of the thermal field.',
-  stipple:'Pointillist stipple; dot density follows the form.',
+  bubbles:'Real thin-film optics on GPU-shaded spheres — iridescence is computed from optical path difference, not faked. Film thickness sets the colour bands, drift the marbling, cell size the bubble scale. Renders at full export resolution.',
+  
   moire:'Two line fields at a slight angle — the word emerges through interference.',
   ascii:'Character mosaic mapped to ink density.',
-  typeintype:'Each letter filled with your text, set small.'};
+  
+  beziers:'Editor view — the letterform outlines with their anchor points, control points and handle lines, like a type-design tool. Exports as real SVG.',
+  isoline:'True vector topographic contour rings around the letters. Ring count = number of lines, glow = spacing. Clean SVG paths.',
+  fieldfill:'Letters merged into filled gooey metaball masses, carved by inner contour rings. Vector SVG — raise glow to merge more.',
+  ripple:'Concentric interference fringes rippling out from the letterforms. Ring gap = fringe spacing. Vector SVG.',
+  truchet:'The word rebuilt from woven Truchet quarter-arcs on a grid. Cell size sets the tile. Vector SVG.',
+  hatch:'Contour-following hatch strokes; density follows ink — an engraving. Cell = spacing. Plotter-ready vector.',
+  crosshatch:'Tonal engraving — each layer adds rules at a new angle and a higher ink threshold, so shadow accumulates passes. Ring count = layers, cell = rule spacing. Plotter-ready vector.',
+  dendrite:'Branching growth seeded on the letterform; branches die when they wander off the ink, so the colony grows into the word. Ring count = branch depth, link = segment length. Vector SVG.',
+  blueprint:'The word as a drafting sheet — graph paper, precise outlines, anchor crosses and dimension rules. Cell = grid, ring gap = dimension offset. Vector SVG.',
+  ferro:'Ferrofluid — spikes standing off the contour along the field normal, over a solid core. Cell = spike spacing and length. Vector SVG.',
+  shatter:'The word fractured into shards, each thrown and spun off the centre. Cell = shard count, dispersion = blast, drift = spin. Vector SVG.',
+  wood:'Annual rings warped around a pith and cut to the letterform. Ring count = grain density, drift = warp, intensity = late-wood sharpness.',
+  stitch:'The word embroidered — running stitches along nested contours, each with a knot and a thread sheen. Ring count = stitch rows, cell = stitch length, drift = hand wobble. Vector SVG.',
+  marble:'Ink suspended in water. The letterform is dragged through a twice-warped noise field; drift = swirl, intensity = ink contrast, chromatic = vein colour.',
+  relief:'The word as shaded topography, lit from the upper left. Glow = smoothing, intensity = height, ring count = terracing steps.',
+  polygon:'The word triangulated into a hand-drawn space frame. Silhouette edges read as heavy chords, interior as light web — intensity sets that contrast. Ring count = long braces, inflate swells the letters into one puffy mass, open perimeter breaks the outline. Extrude (3D panel) pulls it into a solid. Vector SVG.',
+  wireframe:'The letters swept through depth as a quad cage — rings at each depth slice, rails running along the extrusion. Ring count = slices, link distance = rail spacing. Drive depth and rotation from the 3D panel. Vector SVG.'};
 function updateEngineUI(){const on=new Set(ENGINE_CTRLS[S.renderStyle]||[]);
   for(const id of RENDER_IDS){const el=document.getElementById('ctrl-'+id);if(el)el.classList.toggle('hidden',!on.has(id));}
   $('#style-colorway').classList.toggle('hidden',S.renderStyle!=='heatmap');
-  $('#style-accents').classList.toggle('hidden',S.renderStyle!=='particles');
+  $('#style-mosaic').classList.toggle('hidden',S.renderStyle!=='ascii');
+  // accents are the two mid stops of the thermal ramp when the colorway is custom
+  const customHeat=S.renderStyle==='heatmap'&&$('#heatPalette').value==='custom';
+  $('#style-accents').classList.toggle('hidden',S.renderStyle!=='particles'&&!customHeat);
   $('#renderNote').textContent=ENGINE_NOTE[S.renderStyle]||'';updateChips();}
 
 /* ---- direct manipulation: drag orbit / shift-move / alt-roll / scroll-dolly ---- */
@@ -1302,5 +2299,12 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();setC('posZ',S.posZ-e.delt
 
 function startPlay(){if(playing)return;playing=true;$('#playBtn').textContent='Freeze';$('#playBtn').classList.add('primary');loop();}
 buildControls();
-loadFont('arimo').then(()=>{applyEngine('heatmap');setControl('size',360);render();startPlay();});
+loadFont('bentonsans').then(()=>{
+  const qs=new URLSearchParams(location.search);
+  applyEngine('heatmap');setControl('size',360);
+  const qe=qs.get('engine'); if(qe)applyEngine(qe);
+  const qt=qs.get('text'); if(qt)$('#text').value=qt;
+  render();
+  if(!qe)startPlay();   // deep-linked engines load static (good for vector export)
+});
 </script>
