@@ -178,7 +178,7 @@
 
 <div id="stagewrap"><canvas id="stage"></canvas></div>
 <div id="status"></div>
-<div id="recDot"><i></i>REC</div>
+<div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
 <button id="mood" aria-label="change mood"><b id="moodName">Bloom</b><span>mood</span></button>
 <div id="bar">
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
@@ -660,7 +660,13 @@
     requestAnimationFrame(draw); }
 
   // ---------- export ----------
-  let recCanvas=null, recCtx=null, mrec=null, chunks=[], recStart=0;
+  let recCanvas=null, recCtx=null, mrec=null, chunks=[], recStart=0, recTimer=null;
+  const fmtClock=ms=>{ const t=Math.floor(ms/1000); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); };
+  function startRecClock(label){ recStart=performance.now();
+    $('recLabel').textContent=label; $('recTime').textContent='0:00'; $('recDot').classList.add('on');
+    clearInterval(recTimer); recTimer=setInterval(()=>{ $('recTime').textContent=fmtClock(performance.now()-recStart); },250); }
+  function stopRecClock(){ clearInterval(recTimer); recTimer=null;
+    if(!state.recording && !state.recAudio) $('recDot').classList.remove('on'); }
   function coverDraw(dctx,dw,dh){ const s=Math.max(dw/cv.width,dh/cv.height), sw=cv.width*s, sh=cv.height*s;
     dctx.fillStyle=PAPERC(); dctx.fillRect(0,0,dw,dh); dctx.drawImage(cv,(dw-sw)/2,(dh-sh)/2,sw,sh); }
   function dl(blob,name){ const u=URL.createObjectURL(blob), a=document.createElement('a'); a.href=u; a.download=name;
@@ -690,11 +696,11 @@
     chunks=[]; mrec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:10000000});
     mrec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     mrec.onstop=()=>{ dl(new Blob(chunks,{type:mime}),`angel-${Date.now()}.${extFor(mime)}`); };
-    mrec.start(); state.recording=true; recStart=performance.now();
-    $('recDot').classList.add('on'); $('recBtn').setAttribute('aria-pressed',true); $('recBtn').textContent='Stop';
+    mrec.start(); state.recording=true; startRecClock('REC');
+    $('recBtn').setAttribute('aria-pressed',true); $('recBtn').textContent='Stop';
   }catch(e){ alert('Video recording is not available in this browser — PNG still works.'); } }
   function stopRec(){ if(mrec && mrec.state!=='inactive') mrec.stop(); state.recording=false; recCanvas=null; recCtx=null;
-    $('recDot').classList.remove('on'); const b=$('recBtn'); b.setAttribute('aria-pressed',false); b.textContent='Video'; }
+    stopRecClock(); const b=$('recBtn'); b.setAttribute('aria-pressed',false); b.textContent='Video'; }
 
   /* Audio-only capture off the master bus. */
   let arec=null, achunks=[];
@@ -705,11 +711,11 @@
     achunks=[]; arec=new MediaRecorder(dest.stream,{mimeType:mime,audioBitsPerSecond:192000});
     arec.ondataavailable=e=>{ if(e.data.size) achunks.push(e.data); };
     arec.onstop=()=>{ dl(new Blob(achunks,{type:mime}),`angel-${Date.now()}.${extFor(mime)}`); };
-    arec.start(); state.recAudio=true;
+    arec.start(); state.recAudio=true; startRecClock('AUDIO');
     $('audBtn').setAttribute('aria-pressed',true); $('audBtn').textContent='Stop audio';
   }catch(e){ alert('Audio recording is not available in this browser.'); } }
   function stopAud(){ if(arec && arec.state!=='inactive') arec.stop(); state.recAudio=false;
-    $('audBtn').setAttribute('aria-pressed',false); $('audBtn').textContent='Audio'; }
+    stopRecClock(); $('audBtn').setAttribute('aria-pressed',false); $('audBtn').textContent='Audio'; }
 
   // ---------- interaction ----------
   function pt(e){ const rc=cv.getBoundingClientRect(),s=e.touches?e.touches[0]:e; return {x:s.clientX-rc.left,y:s.clientY-rc.top}; }
@@ -805,7 +811,13 @@
       b.title = cell==null?'empty':(typeof cell==='number'?'pinned note':'scale note');
       if(cell!=null) b.classList.add('on');
       if(k===selStep) b.classList.add('sel');
-      b.addEventListener('click',()=>{ selStep=(selStep===k?-1:k); syncNoteEd(); refreshSteps(); });
+      // Match the ring: clicking an empty cell PLACES a step on the lane. Clicking a filled
+      // cell selects it (to set its note); clicking the already-selected one clears it.
+      b.addEventListener('click',()=>{ const cur=L.pattern[k];
+        if(cur==null){ L.pattern[k]='auto'; selStep=k; }
+        else if(selStep===k){ L.pattern[k]=null; selStep=-1; }
+        else selStep=k;
+        syncNoteEd(); refreshSteps(); });
       el.appendChild(b); } }
   function syncNoteEd(){ const ed=$('noteEd'); const L=lanes[editLane];
     if(selStep<0){ ed.classList.add('off'); return; }
