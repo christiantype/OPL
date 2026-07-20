@@ -270,19 +270,25 @@
       </div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Tempo <b id="tempoR">16</b></label><input id="tempo" type="range" min="2" max="100" value="16" /></div>
+      <div class="grp"><label>Tempo <b id="tempoR">9</b></label><input id="tempo" type="range" min="1" max="100" value="9" /></div>
       <div class="grp"><label>Pitch <b id="pitchR">C3</b></label><input id="pitch" type="range" min="36" max="60" value="48" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Trails <b id="trailsR">16</b></label><input id="trails" type="range" min="3" max="55" value="16" /></div>
+      <div class="grp"><label>Trails <b id="trailsR">11</b></label><input id="trails" type="range" min="3" max="55" value="11" /></div>
+      <div class="grp"><label>Evolve <b id="evoR">42</b></label><input id="evolve" type="range" min="0" max="100" value="42" /></div>
+    </div>
+    <div class="duo">
       <div class="grp"><label>Smear <b id="smearR">0</b></label><input id="smear" type="range" min="0" max="60" value="0" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Master <b id="cutR">&#8212;</b></label><input id="cutoff" type="range" min="0" max="100" value="46" /></div>
+      <div class="grp"><label>Master <b id="cutR">&#8212;</b></label><input id="cutoff" type="range" min="0" max="100" value="40" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Reverb <b id="revR">74</b></label><input id="revWet" type="range" min="0" max="100" value="74" /></div>
-      <div class="grp"><label>Delay <b id="delR">58</b></label><input id="delFb" type="range" min="0" max="85" value="58" /></div>
+      <div class="grp"><label>Warmth <b id="warmR">11</b></label><input id="warm" type="range" min="0" max="24" value="11" /></div>
+    </div>
+    <div class="duo">
+      <div class="grp"><label>Reverb <b id="revR">72</b></label><input id="revWet" type="range" min="0" max="100" value="72" /></div>
+      <div class="grp"><label>Delay <b id="delR">42</b></label><input id="delFb" type="range" min="0" max="72" value="42" /></div>
     </div>
   </div>
 
@@ -409,17 +415,17 @@
   // pattern cells: null = off, 'auto' = pitch from the scale, <number> = that exact MIDI note.
   // cut/vol are per-lane and feed each lane's own filter+gain before the master chain.
   const lanes=[
-    { instr:'bloom', steps:6,  speed:0.25, oct:-1, pattern:[], ang:-Math.PI/2, lastStep:-1, cut:62, vol:78, env:{a:1.10,d:1.20,s:0.50,r:6.0} },
-    { instr:'glass', steps:8,  speed:0.38, oct:0,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:74, vol:70, env:{a:0.50,d:1.40,s:0.30,r:5.0} },
-    { instr:'bloom', steps:12, speed:0.16, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:88, vol:52, env:{a:1.60,d:1.60,s:0.45,r:7.0} },
-    { instr:'bell',  steps:16, speed:0.52, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:80, vol:44, env:{a:0.01,d:1.40,s:0.00,r:3.4} },
+    { instr:'bloom', steps:5,  speed:1.9000, oct:-1, pattern:[], ang:-Math.PI/2, lastStep:-1, cut:52, vol:76, env:{a:2.4,d:2.2,s:0.62,r:9.0} },
+    { instr:'glass', steps:7,  speed:1.1742, oct:0,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:64, vol:58, env:{a:1.6,d:2.4,s:0.42,r:8.0} },
+    { instr:'bell',  steps:11, speed:0.7258, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:80, vol:38, env:{a:0.02,d:2.6,s:0.00,r:6.5} },
+    { instr:'bloom', steps:13, speed:0.4484, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:72, vol:32, env:{a:3.0,d:2.4,s:0.55,r:10.0} },
   ];
   lanes.forEach(l=>l.pattern=Array(l.steps).fill(null));
   let editLane=0, selStep=-1;
 
-  const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.224, trail:0.16, soft:0.0, delayFb:0.58,
+  const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.126, trail:0.11, soft:0.0, delayFb:0.42,
     exportSize:'RL', ready:false, recording:false, recAudio:false,
-    orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4} };
+    orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42 };
   let drift=0, pianoReady=false;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -447,15 +453,15 @@
      after the first is constructed from those same AudioBuffers. */
   function makeInstr(name,dest){
     let n;
-    if(name==='bloom'){ n=new Tone.PolySynth(Tone.Synth); n.maxPolyphony=32;
+    if(name==='bloom'){ n=new Tone.PolySynth(Tone.Synth); n.maxPolyphony=10;
       n.set({oscillator:{type:'triangle'},envelope:{attack:1.1,decay:1.2,sustain:.5,release:6.0}}); }
-    else if(name==='glass'){ n=new Tone.PolySynth(Tone.AMSynth); n.maxPolyphony=28;
-      n.set({harmonicity:2.5,oscillator:{type:'sine'},envelope:{attack:.5,decay:1.4,sustain:.3,release:5.0}}); }
-    else if(name==='bell'){ n=new Tone.PolySynth(Tone.FMSynth); n.maxPolyphony=28;
-      n.set({harmonicity:3.01,modulationIndex:6,oscillator:{type:'sine'},envelope:{attack:.005,decay:1.4,sustain:0,release:1.8},
+    else if(name==='glass'){ n=new Tone.PolySynth(Tone.AMSynth); n.maxPolyphony=8;
+      n.set({harmonicity:1.5,oscillator:{type:'sine'},envelope:{attack:.5,decay:1.4,sustain:.3,release:5.0}}); }
+    else if(name==='bell'){ n=new Tone.PolySynth(Tone.FMSynth); n.maxPolyphony=8;
+      n.set({harmonicity:2,modulationIndex:2.6,oscillator:{type:'sine'},envelope:{attack:.005,decay:1.4,sustain:0,release:1.8},
         modulation:{type:'sine'},modulationEnvelope:{attack:.02,decay:1.0,sustain:0,release:1.0}}); }
-    else if(name==='mallet'){ n=new Tone.PolySynth(Tone.FMSynth); n.maxPolyphony=24;
-      n.set({harmonicity:1,modulationIndex:2.2,oscillator:{type:'sine'},envelope:{attack:.001,decay:.5,sustain:0,release:.7},
+    else if(name==='mallet'){ n=new Tone.PolySynth(Tone.FMSynth); n.maxPolyphony=8;
+      n.set({harmonicity:1,modulationIndex:1.4,oscillator:{type:'sine'},envelope:{attack:.001,decay:.5,sustain:0,release:.7},
         modulation:{type:'sine'},modulationEnvelope:{attack:.001,decay:.2,sustain:0,release:.2}}); }
     else if(name==='pluck'){ n=new Tone.PluckSynth({attackNoise:1.2,dampening:2400,resonance:.94}); }
     else if(name==='sample'){
@@ -494,10 +500,15 @@
       L._voice=makeInstr(L.instr,L.chan.filter); L._voiceName=L.instr; }
     applyEnv(L._voice,L.instr,L.env); return L._voice; }
   function buildAudio(){
-    const limiter=new Tone.Limiter(-2).toDestination();
-    const vol=new Tone.Volume(-9).connect(limiter);
-    const reverb=new Tone.Reverb({decay:14,preDelay:.03,wet:.74}).connect(vol);
-    const delay=new Tone.FeedbackDelay({delayTime:'2n',feedback:state.delayFb,wet:.38}).connect(reverb);
+    // Listening comfort, in order: shelve off the piercing top, glue with slow compression,
+    // then leave real headroom so the limiter is a safety net rather than an effect.
+    const limiter=new Tone.Limiter(-6).toDestination();
+    const vol=new Tone.Volume(-13).connect(limiter);
+    const comp=new Tone.Compressor({threshold:-26,ratio:2.4,attack:.15,release:.7}).connect(vol);
+    const air=new Tone.Filter({type:'highshelf',frequency:2400,gain:-11}).connect(comp);
+    const ceiling=new Tone.Filter({type:'lowpass',frequency:6200,Q:.4}).connect(air);
+    const reverb=new Tone.Reverb({decay:18,preDelay:.04,wet:.72}).connect(ceiling);
+    const delay=new Tone.FeedbackDelay({delayTime:'1n',feedback:state.delayFb,wet:.36}).connect(reverb);
     // master filter — the global one, after every lane has had its own say
     const filter=new Tone.Filter({type:'lowpass',frequency:logCut(46),Q:.9}).connect(delay);
     // per-lane channel: its own lowpass and level, feeding the master
@@ -507,7 +518,7 @@
     lanes.forEach((L,i)=>laneVoice(i));
     // orbs keep a shared set straight into the master — they aren't lane-bound
     const orbSet={}; ALL_INSTR.forEach(nm=>{ orbSet[nm]=makeInstr(nm,filter); applyEnv(orbSet[nm],nm,state.orbEnv); });
-    audio={filter,delay,reverb,orbSet};
+    audio={filter,delay,reverb,air,comp,orbSet};
   }
   // Note length follows the envelope: percussive settings (no sustain) get a short note,
   // sustained ones are held. A fixed per-instrument table made every patch sound like a pad.
@@ -574,7 +585,7 @@
     for(const b of orbs){ b.x+=b.dx*BASE*dt; b.y+=b.dy*BASE*dt;
       if(b.x-b.r<0){b.x=b.r;b.dx=Math.abs(b.dx);hitWall(b,'x',t);} else if(b.x+b.r>W){b.x=W-b.r;b.dx=-Math.abs(b.dx);hitWall(b,'x',t);}
       if(b.y-b.r<0){b.y=b.r;b.dy=Math.abs(b.dy);hitWall(b,'y',t);} else if(b.y+b.r>H){b.y=H-b.r;b.dy=-Math.abs(b.dy);hitWall(b,'y',t);} }
-    applyMods(t/1000);
+    applyMods(t/1000); evolve(dt);
     for(let mi=0;mi<mods.length;mi++){ const el=$('mv'+mi); if(el) el.textContent=modVal(mods[mi],t/1000).toFixed(2); }
     advance(dt);
 
@@ -716,6 +727,10 @@
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
   $('trails').addEventListener('input',e=>{ state.trail=+e.target.value/100; $('trailsR').textContent=e.target.value; });
   $('smear').addEventListener('input',e=>{ state.soft=+e.target.value/100; $('smearR').textContent=e.target.value; });
+  $('warm').addEventListener('input',e=>{ const v=+e.target.value; $('warmR').textContent=v;
+    if(audio) audio.air.gain.rampTo(-v,.1); });
+  $('evolve').addEventListener('input',e=>{ state.evolve=+e.target.value; $('evoR').textContent=e.target.value;
+    $('evoR').textContent = state.evolve>0 ? Math.round(150-(state.evolve/100)*120)+'s' : 'off'; });
   $('cutoff').addEventListener('input',e=>{ const v=+e.target.value; $('cutR').textContent=Math.round(logCut(v))+'Hz';
     if(audio) audio.filter.frequency.rampTo(logCut(v),.05); });
   $('revWet').addEventListener('input',e=>{ $('revR').textContent=e.target.value; if(audio) audio.reverb.wet.value=+e.target.value/100; });
@@ -1024,8 +1039,8 @@
 
   const veil=document.getElementById('veil');
   veil.addEventListener('click',async()=>{ await Tone.start(); buildAudio(); state.ready=true; veil.style.display='none';
-    [0,3].forEach(k=>lanes[0].pattern[k]='auto'); [0,5].forEach(k=>lanes[1].pattern[k]='auto');
-    [0,7].forEach(k=>lanes[2].pattern[k]='auto'); [4].forEach(k=>lanes[3].pattern[k]='auto'); refreshSteps();
+    [0,3].forEach(k=>lanes[0].pattern[k]='auto'); [0,4].forEach(k=>lanes[1].pattern[k]='auto');
+    [6].forEach(k=>lanes[2].pattern[k]='auto'); [9].forEach(k=>lanes[3].pattern[k]='auto'); refreshSteps();
   },{once:true});
   /* ---------- sampling ----------
      Record the mic or drop in a file; the buffer becomes a pitched voice you can select for
@@ -1072,7 +1087,7 @@
      modulators, and the global controls. Saved to localStorage by name, and exportable as
      JSON so a patch can leave the browser. */
   const TRACK_KEY='angel-tracks';
-  const CTRL_IDS=['tempo','pitch','trails','smear','cutoff','revWet','delFb'];
+  const CTRL_IDS=['tempo','pitch','trails','smear','evolve','cutoff','warm','revWet','delFb'];
   function snapshot(){
     return { v:1, theme:THEME,
       lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,
@@ -1130,48 +1145,77 @@
     catch(err){ setStatus('not a valid track file'); setTimeout(()=>setStatus(''),2500); } });
   refreshTracks();
 
+  /* ---------- evolution ----------
+     Irrational lane speeds stop the rings from ever realigning, but the notes themselves
+     would still be fixed forever. This nudges one step somewhere every minute or two — add,
+     remove, or move — holding each lane inside a density band so it neither empties out nor
+     silts up. Slow enough that you notice the piece has changed without catching it change. */
+  let evoT=0, evoSeed=1;
+  const evoRand=()=>mhash(evoSeed++*7.13);
+  function evolve(dt){
+    if(!state.ready || state.evolve<=0) return;
+    evoT+=dt;
+    const period = 150 - (state.evolve/100)*120;      // 0..100 -> ~150s down to ~30s
+    if(evoT<period) return; evoT=0;
+    const i=Math.floor(evoRand()*lanes.length), L=lanes[i];
+    const on=[],off=[];
+    for(let k=0;k<L.steps;k++) (L.pattern[k]!=null?on:off).push(k);
+    const lo=1, hi=Math.max(2,Math.round(L.steps*0.34));   // keep it sparse
+    const r=evoRand();
+    if(on.length>hi || (on.length>lo && r<0.30)){
+      L.pattern[on[Math.floor(evoRand()*on.length)]]=null;              // thin out
+    } else if(off.length && (on.length<lo || r<0.72)){
+      L.pattern[off[Math.floor(evoRand()*off.length)]]='auto';          // add a voice
+    } else if(on.length && off.length){
+      const from=on[Math.floor(evoRand()*on.length)];
+      const to=off[Math.floor(evoRand()*off.length)];
+      L.pattern[to]=L.pattern[from]; L.pattern[from]=null;              // move one
+    }
+    if(i===editLane) refreshSteps();
+  }
+
   /* ---------- moods ----------
      A mood is a whole patch, not a parameter — voices, envelopes, patterns, tuning and
      motion together. One tap moves the piece somewhere else; the rails are still there if
      you want to take it apart. Compact spec expands into the same shape restore() takes.
      lane = [instrument, steps, speed, octave, envelope, active steps, filter, level] */
   const MOODS=[
-    { name:'Bloom', pal:'AURORA', scale:'Pentatonic', tempo:14, pitch:48, rev:78, del:56, cut:44, trail:16,
-      lanes:[['bloom',6,0.22,-1,{a:1.2,d:1.3,s:.55,r:6.5},[0,3],62,78],
-             ['glass',8,0.34,0,{a:.6,d:1.4,s:.35,r:5.0},[0,5],74,66],
-             ['bell',12,0.15,1,{a:.01,d:1.6,s:0,r:4.0},[0,7],88,44],
-             ['bloom',16,0.50,1,{a:1.6,d:1.6,s:.5,r:7.0},[4],80,40]],
-      mods:[['sine',26,45,'speed',[1,1,0,0]],['tri',41,35,'lcut',[0,0,1,1]]] },
-    { name:'Drift', pal:'OCEAN', scale:'Lydian', tempo:8, pitch:44, rev:88, del:66, cut:36, trail:10,
-      lanes:[['bloom',4,0.12,-1,{a:2.6,d:2.0,s:.7,r:8.0},[0],54,74],
-             ['bloom',6,0.18,0,{a:2.2,d:1.8,s:.65,r:7.5},[0,3],62,60],
-             ['glass',8,0.10,1,{a:1.4,d:2.2,s:.5,r:8.0},[2],72,48],
-             ['bell',16,0.26,2,{a:.02,d:2.2,s:0,r:6.0},[8],86,30]],
-      mods:[['drunk',60,55,'lcut',[1,1,1,1]],['sine',90,30,'pitch',[0,0,0,0]]] },
-    { name:'Rain', pal:'PRISM', scale:'MinorPenta', tempo:38, pitch:52, rev:52, del:40, cut:62, trail:30,
-      lanes:[['pluck',12,0.9,0,{a:.001,d:.22,s:0,r:.30},[0,3,6,9],78,70],
-             ['mallet',16,1.3,1,{a:.001,d:.30,s:0,r:.45},[0,4,8,12],86,54],
-             ['pluck',8,0.6,-1,{a:.001,d:.28,s:0,r:.40},[0,5],70,58],
-             ['bell',24,1.7,2,{a:.004,d:.9,s:0,r:1.2},[3,11,19],92,32]],
-      mods:[['sh',6,60,'lvol',[1,1,0,0]],['sqr',14,40,'speed',[0,0,1,1]]] },
-    { name:'Chapel', pal:'EMBER', scale:'Dorian', tempo:11, pitch:46, rev:92, del:70, cut:40, trail:12,
-      lanes:[['piano',8,0.20,-1,{a:.004,d:.9,s:0,r:2.4},[0,4],66,72],
-             ['bloom',6,0.14,0,{a:2.0,d:1.8,s:.6,r:7.5},[0,3],58,58],
-             ['glass',12,0.28,1,{a:.9,d:1.6,s:.4,r:6.0},[0,6],76,44],
-             ['piano',16,0.42,1,{a:.004,d:1.2,s:0,r:3.0},[2,10],84,30]],
-      mods:[['env',33,50,'lvol',[0,0,1,1]],['sine',55,28,'master',[0,0,0,0]]] },
-    { name:'Dusk', pal:'EMBER', scale:'MinorPenta', tempo:20, pitch:42, rev:70, del:60, cut:48, trail:18,
-      lanes:[['bell',8,0.30,-1,{a:.01,d:1.8,s:0,r:4.5},[0,5],60,70],
-             ['bloom',12,0.22,0,{a:1.4,d:1.5,s:.5,r:6.5},[0,4,8],68,58],
-             ['mallet',16,0.55,1,{a:.001,d:.6,s:0,r:1.0},[2,10],80,42],
-             ['glass',6,0.18,1,{a:1.0,d:1.6,s:.45,r:5.5},[3],74,36]],
-      mods:[['tri',37,45,'lcut',[1,1,0,0]],['saw',52,35,'reverb',[0,0,0,0]]] },
-    { name:'Static', pal:'AURORA', scale:'Lydian', tempo:26, pitch:50, rev:60, del:48, cut:56, trail:24,
-      lanes:[['glass',5,0.42,0,{a:.3,d:.9,s:.25,r:3.0},[0,2],72,64],
-             ['mallet',7,0.66,1,{a:.001,d:.4,s:0,r:.7},[0,3],82,52],
-             ['pluck',11,0.9,0,{a:.001,d:.25,s:0,r:.35},[0,5,8],76,48],
-             ['bell',13,0.34,2,{a:.01,d:1.1,s:0,r:2.2},[6],88,30]],
-      mods:[['sh',9,55,'speed',[0,0,1,1]],['rand',30,40,'lcut',[1,1,0,0]]] },
+    { name:'Bloom', pal:'AURORA', scale:'Pentatonic', tempo:9, pitch:46, rev:72, del:44, cut:40, trail:11,
+      lanes:[['bloom',5,1.9000,-1,{a:2.4,d:2.2,s:.62,r:9.0},[0,3],52,76],
+             ['glass',7,1.1742,0,{a:1.6,d:2.4,s:.42,r:8.0},[0,4],64,58],
+             ['bell',11,0.7258,1,{a:.02,d:2.6,s:0,r:6.5},[6],80,38],
+             ['bloom',13,0.4484,1,{a:3.0,d:2.4,s:.55,r:10.0},[9],72,32]],
+      mods:[['sine',96,42,'lcut',[1,1,0,0]],['drunk',150,34,'lvol',[0,0,1,1]]] },
+    { name:'Drift', pal:'OCEAN', scale:'Lydian', tempo:6, pitch:42, rev:78, del:48, cut:34, trail:8,
+      lanes:[['bloom',4,1.7500,-1,{a:3.6,d:3.0,s:.72,r:12.0},[0],46,72],
+             ['bloom',6,1.0815,0,{a:3.2,d:2.8,s:.68,r:11.0},[3],56,56],
+             ['glass',9,0.6685,1,{a:2.2,d:3.2,s:.55,r:11.0},[5],68,42],
+             ['bell',14,0.4130,2,{a:.03,d:3.2,s:0,r:9.0},[11],82,26]],
+      mods:[['drunk',180,52,'lcut',[1,1,1,1]],['sine',240,26,'pitch',[0,0,0,0]]] },
+    { name:'Rain', pal:'PRISM', scale:'MinorPenta', tempo:22, pitch:50, rev:60, del:38, cut:56, trail:22,
+      lanes:[['pluck',12,2.6000,0,{a:.001,d:.34,s:0,r:.55},[0,7],72,64],
+             ['mallet',17,1.6068,1,{a:.001,d:.42,s:0,r:.70},[0,9],82,46],
+             ['pluck',7,0.9932,-1,{a:.001,d:.40,s:0,r:.60},[3],66,52],
+             ['bell',23,0.6136,2,{a:.004,d:1.3,s:0,r:2.0},[14],88,28]],
+      mods:[['sh',22,58,'lvol',[1,1,0,0]],['drunk',110,40,'speed',[0,0,1,1]]] },
+    { name:'Chapel', pal:'EMBER', scale:'Dorian', tempo:7, pitch:44, rev:80, del:50, cut:36, trail:9,
+      lanes:[['piano',6,2.2000,-1,{a:.006,d:1.4,s:0,r:5.0},[0],58,70],
+             ['bloom',9,1.3596,0,{a:3.0,d:2.6,s:.66,r:11.0},[4],52,54],
+             ['glass',13,0.8404,1,{a:1.8,d:2.6,s:.5,r:9.0},[7],70,40],
+             ['piano',19,0.5192,1,{a:.006,d:1.8,s:0,r:6.0},[12],80,26]],
+      mods:[['env',130,46,'lvol',[0,0,1,1]],['sine',200,30,'master',[0,0,0,0]]] },
+    { name:'Dusk', pal:'EMBER', scale:'MinorPenta', tempo:12, pitch:40, rev:70, del:44, cut:44, trail:14,
+      lanes:[['bell',7,1.8500,-1,{a:.02,d:2.6,s:0,r:7.0},[0],54,68],
+             ['bloom',11,1.1433,0,{a:2.2,d:2.4,s:.58,r:9.5},[5],62,54],
+             ['mallet',17,0.7067,1,{a:.001,d:.9,s:0,r:1.6},[9],76,38],
+             ['glass',5,0.4366,1,{a:1.8,d:2.4,s:.5,r:8.5},[2],70,30]],
+      mods:[['tri',120,44,'lcut',[1,1,0,0]],['saw',175,32,'reverb',[0,0,0,0]]] },
+    { name:'Static', pal:'AURORA', scale:'Lydian', tempo:16, pitch:48, rev:64, del:40, cut:50, trail:18,
+      lanes:[['glass',5,1.9500,0,{a:.7,d:1.6,s:.3,r:5.0},[0],66,62],
+             ['mallet',8,1.2051,1,{a:.001,d:.7,s:0,r:1.2},[3],78,48],
+             ['pluck',13,0.7449,0,{a:.001,d:.35,s:0,r:.5},[7],72,44],
+             ['bell',21,0.4602,2,{a:.02,d:1.6,s:0,r:3.4},[16],86,26]],
+      mods:[['sh',40,52,'speed',[0,0,1,1]],['rand',95,38,'lcut',[1,1,0,0]]] },
   ];
   function moodSnapshot(M){
     return { v:1,
@@ -1200,7 +1244,7 @@
 
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
-  window.angel={ lanes, mods, state, orbs, shards, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
+  window.angel={ lanes, mods, state, orbs, shards, evolve, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
 })();
 </script>
 </body>
