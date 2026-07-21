@@ -53,10 +53,18 @@
     background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
   .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  #recDot{ position:fixed; top:calc(var(--top) + 18px); right:130px; z-index:10; font-size:10px;
-    letter-spacing:.12em; color:#c8102e; display:none; align-items:center; gap:6px; }
+  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
+     fixed right offset kept colliding with it. Stays put in full screen so a recording
+     always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
+    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
+    background:var(--panel); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
   #recDot.on{ display:flex; }
-  #recDot i{ width:7px;height:7px;border-radius:50%;background:#c8102e; animation:blink 1s infinite; }
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  body.fs #recDot{ top:14px; }
   @keyframes blink{ 50%{opacity:.2;} }
 
   /* Two rails: the lane you're editing on the left, everything global on the right, canvas
