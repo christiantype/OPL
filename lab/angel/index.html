@@ -318,6 +318,7 @@
     </div>
     <div class="duo">
       <div class="grp"><label>Master <b id="cutR">&#8212;</b></label><input id="cutoff" type="range" min="0" max="100" value="40" /></div>
+      <div class="grp"><label>Level <b id="levelR">78</b></label><input id="level" type="range" min="0" max="100" value="78" /></div>
     </div>
     <div class="duo">
       <div class="grp"><label>Warmth <b id="warmR">11</b></label><input id="warm" type="range" min="0" max="24" value="11" /></div>
@@ -472,17 +473,17 @@
   // pattern cells: null = off, 'auto' = pitch from the scale, <number> = that exact MIDI note.
   // cut/vol are per-lane and feed each lane's own filter+gain before the master chain.
   const lanes=[
-    { instr:'bloom', steps:5,  speed:1.9000, oct:-1, pattern:[], ang:-Math.PI/2, lastStep:-1, cut:52, vol:76, env:{a:2.4,d:2.2,s:0.62,r:9.0} },
-    { instr:'glass', steps:7,  speed:1.1742, oct:0,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:64, vol:58, env:{a:1.6,d:2.4,s:0.42,r:8.0} },
-    { instr:'bell',  steps:11, speed:0.7258, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:80, vol:38, env:{a:0.02,d:2.6,s:0.00,r:6.5} },
-    { instr:'bloom', steps:13, speed:0.4484, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:72, vol:32, env:{a:3.0,d:2.4,s:0.55,r:10.0} },
+    { instr:'bloom', steps:5,  speed:1.9000, oct:-1, pattern:[], ang:-Math.PI/2, lastStep:-1, cut:52, vol:88, env:{a:2.4,d:2.2,s:0.62,r:9.0} },
+    { instr:'glass', steps:7,  speed:1.1742, oct:0,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:64, vol:76, env:{a:1.6,d:2.4,s:0.42,r:8.0} },
+    { instr:'bell',  steps:11, speed:0.7258, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:80, vol:62, env:{a:0.02,d:2.6,s:0.00,r:6.5} },
+    { instr:'bloom', steps:13, speed:0.4484, oct:1,  pattern:[], ang:-Math.PI/2, lastStep:-1, cut:72, vol:56, env:{a:3.0,d:2.4,s:0.55,r:10.0} },
   ];
   lanes.forEach(l=>l.pattern=Array(l.steps).fill(null));
   let editLane=0, selStep=-1;
 
   const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.126, trail:0.0, soft:0.0, delayFb:0.42,
     exportSize:'RL', ready:false, recording:false, recAudio:false,
-    orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
+    level:78, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
   let drift=0, pianoReady=false;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -564,11 +565,12 @@
     if(L._voiceName!==L.instr){ if(L._voice){ try{L._voice.dispose();}catch(e){} }
       L._voice=makeInstr(L.instr,L.chan.filter); L._voiceName=L.instr; }
     applyEnv(L._voice,L.instr,L.env); return L._voice; }
+  const dbFor=v=>{ v=Math.max(0,Math.min(100,v)); return v<=0 ? -Infinity : (v-100)*0.30; };
   function buildAudio(){
     // Listening comfort, in order: shelve off the piercing top, glue with slow compression,
     // then leave real headroom so the limiter is a safety net rather than an effect.
-    const limiter=new Tone.Limiter(-6).toDestination();
-    const vol=new Tone.Volume(-13).connect(limiter);
+    const limiter=new Tone.Limiter(-2).toDestination();
+    const vol=new Tone.Volume(dbFor(state.level)).connect(limiter);
     const comp=new Tone.Compressor({threshold:-26,ratio:2.4,attack:.15,release:.7}).connect(vol);
     const air=new Tone.Filter({type:'highshelf',frequency:2400,gain:-11}).connect(comp);
     const ceiling=new Tone.Filter({type:'lowpass',frequency:6200,Q:.4}).connect(air);
@@ -582,8 +584,8 @@
       L.chan={filter:f,gain:g}; L._voice=null; L._voiceName=null; });
     lanes.forEach((L,i)=>laneVoice(i));
     // orbs keep a shared set straight into the master — they aren't lane-bound
-    const orbSet={}; ALL_INSTR.forEach(nm=>{ orbSet[nm]=makeInstr(nm,filter); applyEnv(orbSet[nm],nm,state.orbEnv); });
-    audio={filter,delay,reverb,air,comp,orbSet};
+    const orbSet={};   // filled lazily by orbVoiceNode() the first time a voice is needed
+    audio={filter,delay,reverb,air,comp,vol,orbSet};
   }
   // Note length follows the envelope: percussive settings (no sustain) get a short note,
   // sustained ones are held. A fixed per-instrument table made every patch sound like a pad.
@@ -833,6 +835,8 @@
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
   $('trails').addEventListener('input',e=>{ state.trail=+e.target.value/100; $('trailsR').textContent = state.trail>0 ? e.target.value : 'off'; });
+  $('level').addEventListener('input',e=>{ state.level=+e.target.value; $('levelR').textContent=e.target.value;
+    if(audio) audio.vol.volume.rampTo(dbFor(state.level),.05); });
   $('smear').addEventListener('input',e=>{ state.soft=+e.target.value/100; $('smearR').textContent=e.target.value; });
   $('warm').addEventListener('input',e=>{ const v=+e.target.value; $('warmR').textContent=v;
     if(audio) audio.air.gain.rampTo(-v,.1); });
@@ -969,7 +973,7 @@
   }
   const LANE_IDS={a:'ea',d:'ed',s:'es',r:'er'}, ORB_IDS={a:'oa',d:'od',s:'os',r:'or'};
   bindEnv(LANE_IDS, ()=>lanes[editLane].env, ()=>{ if(audio) applyEnv(laneVoice(editLane),lanes[editLane].instr,lanes[editLane].env); });
-  bindEnv(ORB_IDS,  ()=>state.orbEnv, ()=>{ if(audio) ALL_INSTR.forEach(n=>applyEnv(audio.orbSet[n],n,state.orbEnv)); });
+  bindEnv(ORB_IDS,  ()=>state.orbEnv, ()=>{ if(audio) Object.keys(audio.orbSet).forEach(n=>applyEnv(audio.orbSet[n],n,state.orbEnv)); });
   $('envPre').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
     lanes[editLane].env=Object.assign({},ENV_PRESETS[b.dataset.e]);
     paintEnv(LANE_IDS,lanes[editLane].env);
@@ -1163,9 +1167,9 @@
   $('cutR').textContent=Math.round(logCut(+$('cutoff').value))+'Hz';
 
   const veil=document.getElementById('veil');
+  // Opens silent and empty: no steps, nothing sounding. You place the first note.
   veil.addEventListener('click',async()=>{ await Tone.start(); buildAudio(); state.ready=true; veil.style.display='none';
-    [0,3].forEach(k=>lanes[0].pattern[k]='auto'); [0,4].forEach(k=>lanes[1].pattern[k]='auto');
-    [6].forEach(k=>lanes[2].pattern[k]='auto'); [9].forEach(k=>lanes[3].pattern[k]='auto'); refreshSteps();
+    refreshSteps();
   },{once:true});
   /* ---------- sampling ----------
      Record the mic or drop in a file; the buffer becomes a pitched voice you can select for
