@@ -88,6 +88,7 @@
     display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
     width:100%; background:none; border:0; font-family:inherit; text-align:left; }
   .rowhead:hover{ opacity:1; }
+  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
   .rowhead::before{ content:''; width:0; height:0; flex:none;
     border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
     transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
@@ -251,6 +252,7 @@
 <div id="rail" class="rail rail-l">
 <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Lane</button>
+    <p class="rowhint">Four rings, each its own instrument and rhythm. Right-click a lane to recolour it.</p>
     <div class="grp"><div class="seg lanes" id="laneSeg"></div></div>
     <div class="grp"><label>Instrument</label>
       <select id="instrSel">
@@ -275,6 +277,7 @@
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Steps</button>
+    <p class="rowhint">Click a cell to place a note. Click again to select it, once more to clear.</p>
     <div class="grp"><div id="stepRow"></div></div>
     <div class="grp"><label>Note &#183; select a step above</label>
       <div id="noteEd" class="off">
@@ -294,6 +297,7 @@
   </div>
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Envelope</button>
+    <p class="rowhint">How each note swells and fades. Long attack for pads, short for plucks.</p>
     <div class="quad">
       <div class="grp"><label>Attack <b id="eaR">—</b></label><input id="ea" type="range" min="0" max="100" value="52" /></div>
       <div class="grp"><label>Decay <b id="edR">—</b></label><input id="ed" type="range" min="0" max="100" value="55" /></div>
@@ -310,17 +314,21 @@
 <div id="railR" class="rail rail-r">
 <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Modulation</button>
+    <p class="rowhint">Two slow shapes that move a parameter over time. Patch either to any lanes.</p>
     <div id="modWrap"></div>
   </div>
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Sound</button>
+    <p class="rowhint">Palette, key and the global feel — tempo, filter, reverb and output level.</p>
     <div class="grp"><label>Visual</label>
       <div class="seg" id="visSeg">
         <button data-v="glow" aria-pressed="true">Glow</button>
         <button data-v="aura" aria-pressed="false">Aura</button>
         <button data-v="ink" aria-pressed="false">Ink</button>
         <button data-v="lava" aria-pressed="false">Lava</button>
+        <button data-v="grunge" aria-pressed="false">Grunge</button>
+        <button data-v="haze" aria-pressed="false">Haze</button>
       </div>
     </div>
     <div class="grp"><label>Shape</label>
@@ -371,6 +379,10 @@
     <div class="duo">
       <div class="grp"><label>Saturation <b id="satR">88</b></label><input id="sat" type="range" min="0" max="140" value="88" /></div>
     </div>
+    <div class="duo">
+      <div class="grp"><label>Pixel <b id="pixR">7</b></label><input id="pixel" type="range" min="2" max="26" value="7" /></div>
+      <div class="grp"><label>Grit <b id="gritR">45</b></label><input id="grit" type="range" min="0" max="100" value="45" /></div>
+    </div>
     <div class="duo" id="lavaCtls">
       <div class="grp"><label>Melt <b id="fuseR">22</b></label><input id="lavaFuse" type="range" min="4" max="60" value="22" /></div>
       <div class="grp"><label>Orb size <b id="lsizeR">52</b></label><input id="lavaSize" type="range" min="10" max="120" value="52" /></div>
@@ -389,7 +401,8 @@
   </div>
 
   <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Orbs &#183; tap the field to drop one</button>
+    <button type="button" class="rowhead" aria-expanded="true">Orbs</button>
+    <p class="rowhint">Free-floating voices. They sound when they hit an edge; tap one to remove it.</p>
     <div class="grp"><label>Voice</label>
       <select id="orbVoice">
         <option value="cycle">Cycle through all</option>
@@ -411,7 +424,8 @@
   </div>
 
   <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Sample &#183; select a step, then record or load into it</button>
+    <button type="button" class="rowhead" aria-expanded="true">Sample</button>
+    <p class="rowhint">Give a single step its own recording, so one lane can hold a different sound per step.</p>
     <div class="grp"><label>Target <b id="sampTarget">no step selected</b></label></div>
     <div class="grp"><div style="display:flex; gap:6px;">
       <button class="btn" id="micBtn" style="flex:1">Record mic</button>
@@ -424,6 +438,7 @@
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Track</button>
+    <p class="rowhint">Save an exploration to this browser and come back to it. Export shares it as a file.</p>
     <div class="grp"><input id="trackName" type="text" placeholder="track name" spellcheck="false" /></div>
     <div class="grp"><div style="display:flex; gap:6px;">
       <button class="btn" id="saveTrack" style="flex:1">Save</button>
@@ -440,6 +455,7 @@
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Export</button>
+    <p class="rowhint">A still, a video of the canvas, or the audio on its own.</p>
     <div class="grp"><label>Size</label>
       <div class="seg" id="sizeSeg">
         <button data-z="RL" aria-pressed="true">9:16</button>
@@ -482,7 +498,14 @@
   // Same engine, opposite physics — so both are first-class rather than one being a tint.
   let THEME = 'light';
   try{ THEME = localStorage.getItem('angel-theme') || 'light'; }catch(e){}
-  const isDark = ()=>THEME==='dark';
+  // Haze is a white-field mode by definition, so it composites as light regardless of the
+  // theme — additive blending on a white ground saturates the whole canvas to white.
+  // `state` is a const declared further down and these helpers run during setup, so reading
+  // it here throws on the temporal dead zone — and typeof does not save you from that.
+  // A hoisted var, refreshed at the top of every frame, sidesteps it entirely.
+  var HAZE_MODE=false;
+  const lightMode = ()=> HAZE_MODE ? true : THEME!=='dark';
+  const isDark = ()=>!lightMode();
   const PAPERC = ()=>isDark()?'#07080f':'#ffffff';
   const BLENDC = ()=>isDark()?'lighter':'multiply';
   const IL = l => isDark() ? l : 34 + (100-l)*0.42;
@@ -498,6 +521,7 @@
   // blurred as one image and then thresholded — done individually they just overlap.
   const lav=document.createElement('canvas'), lavx=lav.getContext('2d');
   const lav2=document.createElement('canvas'), lav2x=lav2.getContext('2d');
+  const gcv=document.createElement('canvas'), gcx=gcv.getContext('2d',{willReadFrequently:true});
   const wrap=document.getElementById('stagewrap');
   const inkColor=a=> isDark()? `rgba(242,244,248,${a})` : `rgba(20,20,20,${a})`;
   // One node painter, three skins. Callers pass a resolved hue; the visual only decides how
@@ -518,8 +542,21 @@
     }
     if(v==='ink'){ g.fillStyle=inkColor(Math.min(1,coreA+0.12));
       g.beginPath(); g.arc(x,y,Math.max(1.6,sz*0.52),0,6.283); g.fill(); return; }
-    const scale=v==='aura'?4.2:1, r=sz*scale, grad=g.createRadialGradient(x,y,0,x,y,r);
-    if(v==='aura'){ grad.addColorStop(0,hsla(hueF,85,IL(62),coreA*0.66));
+    if(v==='grunge'){
+      // Hard-edged flat colour: the pixelation pass downstream gives this its form, and a
+      // soft blob would just dissolve once it is crushed.
+      g.fillStyle=hsla(hueF,78,IL(58),Math.min(1,coreA+0.15));
+      g.beginPath(); g.arc(x,y,Math.max(2,sz*0.95),0,6.283); g.fill(); return;
+    }
+    const scale = v==='aura' ? 4.2 : v==='haze' ? 6.5 : 1;
+    const r=sz*scale, grad=g.createRadialGradient(x,y,0,x,y,r);
+    if(v==='haze'){
+      grad.addColorStop(0,   hsla(hueF,72,52,coreA*0.30));
+      grad.addColorStop(0.30,hsla(hueF,70,55,coreA*0.16));
+      grad.addColorStop(0.65,hsla(hueF,68,60,coreA*0.06));
+      grad.addColorStop(1,   hsla(hueF,68,62,0));
+    }
+    else if(v==='aura'){ grad.addColorStop(0,hsla(hueF,85,IL(62),coreA*0.66));
       grad.addColorStop(.32,hsla(hueF,82,IL(56),coreA*0.36)); grad.addColorStop(.7,hsla(hueF,80,IL(52),coreA*0.12)); grad.addColorStop(1,hsla(hueF,80,IL(50),0)); }
     else { grad.addColorStop(0,hsla(hueF,95,IL(72),coreA));
       grad.addColorStop(.5,hsla(hueF,90,IL(58),coreA*0.53)); grad.addColorStop(1,hsla(hueF,90,IL(50),0)); }
@@ -565,7 +602,7 @@
 
   const state={ palette:'AURORA', scale:'Pentatonic', root:48, tempo:0.126, trail:0.0, soft:0.0, delayFb:0.42,
     exportSize:'RL', ready:false, recording:false, recAudio:false,
-    level:78, paused:false, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
+    level:78, paused:false, pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
   let drift=0, pianoReady=false;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -760,6 +797,7 @@
   // ---------- draw ----------
   let lastT=performance.now();
   function draw(t){ const dt=Math.min(.05,(t-lastT)/1000), now=t; lastT=t; drift+=dt*7;
+    HAZE_MODE = state.visual==='haze';
     plx.globalCompositeOperation='source-over';
     // Soft trails: diffuse the previous frame through a half-res blurred feedback pass before
     // washing it back toward paper. A plain alpha wash alone leaves hard vector edges —
@@ -775,7 +813,8 @@
     // lingers. Raise Trails and it becomes a partial wash again — the smaller the alpha, the
     // longer the fade.
     const tr=(state.trailEff!=null?state.trailEff:state.trail);
-    if(tr>0.001){ plx.fillStyle= isDark() ? hsla(drift*0.6,18,5,tr) : `rgba(255,255,255,${tr})`; }
+    if(state.visual==='haze'){ plx.fillStyle = tr>0.001 ? `rgba(255,255,255,${tr})` : '#ffffff'; }
+    else if(tr>0.001){ plx.fillStyle= isDark() ? hsla(drift*0.6,18,5,tr) : `rgba(255,255,255,${tr})`; }
     else { plx.fillStyle=PAPERC(); }
     plx.fillRect(0,0,W,H);
 
@@ -842,6 +881,33 @@
       plx.restore(); plx.setTransform(DPR,0,0,DPR,0,0);
     }
 
+    // Grunge: resample the layer to chunky pixels and add an ordered-dither bite, so it
+    // reads as a degraded bitmap rather than a smooth canvas.
+    if(state.visual==='grunge' && W>1 && H>1){
+      const px=Math.max(2,Math.round(state.pixel));
+      const sw=Math.max(1,Math.round(W/px)), sh=Math.max(1,Math.round(H/px));
+      if(gcv.width!==sw||gcv.height!==sh){ gcv.width=sw; gcv.height=sh; }
+      gcx.setTransform(1,0,0,1,0,0); gcx.imageSmoothingEnabled=true;
+      gcx.clearRect(0,0,sw,sh); gcx.drawImage(pl,0,0,sw,sh);
+      const amt=state.grit/100;
+      if(amt>0.001){
+        const img=gcx.getImageData(0,0,sw,sh), d=img.data;
+        const B=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];   // 4x4 Bayer
+        for(let y=0;y<sh;y++) for(let x=0;x<sw;x++){
+          const o=(y*sw+x)*4, t=(B[(y&3)*4+(x&3)]/16-0.5)*90*amt;
+          d[o]=Math.max(0,Math.min(255,d[o]+t));
+          d[o+1]=Math.max(0,Math.min(255,d[o+1]+t));
+          d[o+2]=Math.max(0,Math.min(255,d[o+2]+t));
+        }
+        gcx.putImageData(img,0,0);
+      }
+      plx.save(); plx.setTransform(1,0,0,1,0,0);
+      plx.clearRect(0,0,pl.width,pl.height);
+      plx.imageSmoothingEnabled=false;
+      plx.drawImage(gcv,0,0,pl.width,pl.height);
+      plx.restore(); plx.setTransform(DPR,0,0,DPR,0,0);
+    }
+
     for(let i=rings.length-1;i>=0;i--){ const g=rings[i]; g.r+=120*dt; g.life-=dt*1.3;
       if(g.life<=0){rings.splice(i,1);continue;} plx.strokeStyle=hsla(g.hue+drift,90,IL(70),Math.max(0,g.life)*.7); plx.lineWidth=g.w;
       plx.beginPath(); plx.arc(g.x,g.y,g.r,0,6.283); plx.stroke(); }
@@ -862,7 +928,8 @@
 
     // PASS B — ring geometry, drawn fresh every frame and never fed back, so the lines stay
     // crisp while the steps keep their bloom.
-    const inkV=state.visual==='ink', lavaV=state.visual==='lava', auraV=state.visual==='aura'||lavaV;
+    const inkV=state.visual==='ink', lavaV=state.visual==='lava';
+    const auraV=state.visual==='aura'||lavaV||state.visual==='haze'||state.visual==='grunge';
     // Aura is pure atmosphere — the ring scaffolding all but disappears. Ink makes it bold.
     if(!auraV){ const hb=ctx.createRadialGradient(cx,cy,0,cx,cy,46);
       hb.addColorStop(0,hsla(drift,70,IL(78),inkV?0:.16)); hb.addColorStop(1,hsla(drift,70,IL(60),0));
@@ -998,6 +1065,8 @@
         document.querySelectorAll('#palSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.p==='CUSTOM'))); }
       refreshLaneSeg(); });
   });
+  $('pixel').addEventListener('input',e=>{ state.pixel=+e.target.value; $('pixR').textContent=e.target.value; });
+  $('grit').addEventListener('input',e=>{ state.grit=+e.target.value; $('gritR').textContent=e.target.value; });
   $('sat').addEventListener('input',e=>{ state.sat=+e.target.value; $('satR').textContent=e.target.value; });
   $('lavaFuse').addEventListener('input',e=>{ state.lavaFuse=+e.target.value; $('fuseR').textContent=e.target.value; });
   $('lavaSize').addEventListener('input',e=>{ state.lavaSize=+e.target.value; $('lsizeR').textContent=e.target.value; });
