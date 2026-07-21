@@ -151,6 +151,14 @@
         return;
       }
 
+      // Raw markup (an inline SVG, an embed) rendered as its own block. Only fires when an
+      // item carries .html, so every existing project is untouched.
+      if (item.html) {
+        if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
+        groups.push({ type: 'html', item });
+        return;
+      }
+
       // A short text caption introducing the media that follows.
       if (item.heading) {
         if (gridGroup) { groups.push(gridGroup); gridGroup = null; }
@@ -398,6 +406,8 @@
             <img class="spread-flat" src="${f.src}" alt="${f.alt || ''}">
           </div>
         `;
+      } else if (g.type === 'html') {
+        return `<div class="container project-html">${g.item.html}</div>`;
       } else if (g.type === 'heading') {
         return `
           <div class="container">
