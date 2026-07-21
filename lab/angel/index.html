@@ -52,6 +52,7 @@
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
     background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  .icon svg{ display:block; }
   .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
      fixed right offset kept colliding with it. Stays put in full screen so a recording
@@ -153,6 +154,21 @@
   .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
   .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
   .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .lanepop{ position:fixed; z-index:40; padding:10px; border-radius:10px;
+    background:var(--panel); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 18px 44px -20px rgba(0,0,0,.55); }
+  .lanepop__t{ font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); padding-bottom:8px; }
+  .lanepop__g{ display:grid; grid-template-columns:repeat(6,18px); gap:6px; }
+  .lanepop__s{ width:18px; height:18px; border-radius:50%; border:0; cursor:pointer; padding:0;
+    box-shadow:0 0 0 1px rgba(0,0,0,.2) inset; }
+  .lanepop__s:hover{ transform:scale(1.14); }
+  .lanepop__s.on{ box-shadow:0 0 0 2px var(--ink), 0 0 0 3px var(--panel); }
+  .lanepop__more{ display:flex; align-items:center; justify-content:space-between; gap:8px;
+    margin-top:9px; padding-top:9px; border-top:1px solid var(--hair);
+    font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); cursor:pointer; }
+  .lanepop__more input{ width:26px; height:20px; padding:0; border:1px solid var(--hair);
+    background:none; border-radius:4px; cursor:pointer; }
   .lane-dot{ width:8px; height:8px; border-radius:50%; flex:none; display:inline-block;
     box-shadow:0 0 0 1px rgba(0,0,0,.18) inset; }
   select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
@@ -225,7 +241,7 @@
 <div id="kbd" class="hidden" aria-label="playable keyboard"></div>
 <div id="bar">
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
-  <button class="icon" id="pauseBtn" aria-label="pause" title="Pause / play · space" aria-pressed="false">&#9611;&#9611;</button>
+  <button class="icon" id="pauseBtn" aria-label="pause" title="Pause / play · space" aria-pressed="false"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
   <button class="icon" id="kbdBtn" aria-label="keyboard" title="Playable keyboard" aria-pressed="false">&#9835;</button>
   <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen — canvas only">&#9974;</button>
   <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
@@ -313,6 +329,7 @@
         <button data-h="flower" aria-pressed="false">Flower</button>
         <button data-h="star" aria-pressed="false">Star</button>
         <button data-h="squircle" aria-pressed="false">Square</button>
+        <button data-h="slash" aria-pressed="false">Slash</button>
       </div>
     </div>
     <div class="grp"><label>Palette</label>
@@ -343,7 +360,7 @@
     <div class="duo">
       <div class="grp"><label>Smear <b id="smearR">0</b></label><input id="smear" type="range" min="0" max="60" value="0" /></div>
     </div>
-    <div class="grp"><label>Lane colours <b style="font-weight:400;opacity:.55">right-click a lane</b></label>
+    <div class="grp"><label>Lane colours <b style="font-weight:400;opacity:.55">or right-click a lane</b></label>
       <div id="hueRow" style="display:flex; gap:6px;">
         <input type="color" id="hue0" value="#2ad4a0" title="lane 1">
         <input type="color" id="hue1" value="#2aa8d4" title="lane 2">
@@ -699,6 +716,12 @@
   function shapeFactor(th){ switch(state.shape){
     case 'flower':   return 0.84 + 0.22*Math.sin(4*th - Math.PI/2);   // quatrefoil, 4 lobes
     case 'star':     return 0.84 + 0.18*Math.cos(5*th);              // 5-point
+    case 'slash':{
+      // A superellipse stretched to the wordmark's own proportions and leaned to its angle,
+      // so each lane draws one concentric stroke of the OP/AL slash.
+      const PHI=-58.77*Math.PI/180, ASPECT=0.147, n=7;
+      const t=th-PHI, c=Math.abs(Math.cos(t)), si=Math.abs(Math.sin(t)/ASPECT);
+      return 1/Math.pow(Math.pow(c,n)+Math.pow(si,n),1/n); }
     case 'squircle':{ const n=4, c=Math.abs(Math.cos(th)), si=Math.abs(Math.sin(th));
       return 0.90/Math.pow(Math.pow(c,n)+Math.pow(si,n),1/n); }       // rounded square
     default: return 1; } }
@@ -957,10 +980,12 @@
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
   $('trails').addEventListener('input',e=>{ state.trail=+e.target.value/100; $('trailsR').textContent = state.trail>0 ? e.target.value : 'off'; });
+  const PAUSE_SVG='<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>';
+  const PLAY_SVG='<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3.4 2.2v7.6a.6.6 0 0 0 .92.5l6-3.8a.6.6 0 0 0 0-1l-6-3.8a.6.6 0 0 0-.92.5Z" fill="currentColor"/></svg>';
   function setPaused(on){
     state.paused=!!on;
     const btn=$('pauseBtn');
-    btn.innerHTML = state.paused ? '&#9654;' : '&#9611;&#9611;';
+    btn.innerHTML = state.paused ? PLAY_SVG : PAUSE_SVG;
     btn.setAttribute('aria-pressed', String(state.paused));
     btn.setAttribute('aria-label', state.paused ? 'play' : 'pause');
     if(audio) audio.vol.volume.rampTo(state.paused ? -60 : dbFor(state.level), .35);
@@ -1157,16 +1182,61 @@
     b.title='Click to edit \u00b7 right-click to recolour';
     b.addEventListener('click',()=>{ editLane=i; syncLane(); refreshLaneSeg(); });
     // Colour belongs to the lane, so it is set on the lane: right-click, or long-press on touch.
-    b.addEventListener('contextmenu',e=>{ e.preventDefault(); pickLaneColour(i); });
+    b.addEventListener('contextmenu',e=>{ e.preventDefault(); pickLaneColour(i,b); });
     let lp=null;
-    b.addEventListener('touchstart',()=>{ lp=setTimeout(()=>pickLaneColour(i),550); },{passive:true});
+    b.addEventListener('touchstart',()=>{ lp=setTimeout(()=>pickLaneColour(i,b),550); },{passive:true});
     ['touchend','touchmove','touchcancel'].forEach(ev=>b.addEventListener(ev,()=>clearTimeout(lp),{passive:true}));
     el.appendChild(b); }); }
-  function pickLaneColour(i){
-    const inp=$('hue'+i); if(!inp) return;
-    editLane=i; syncLane();
-    inp.click();     // native picker; its input handler writes the hue back to this lane
+  /* Colour is chosen where the lane is, not across the room in the other rail: a small
+     swatch grid opens against the lane tab and applies on click. */
+  const LANE_SWATCHES=[0,18,32,45,62,90,120,155,175,190,205,225,250,265,285,300,320,340];
+  let lanePop=null;
+  function closeLanePop(){ if(lanePop){ lanePop.remove(); lanePop=null;
+    removeEventListener('pointerdown',outsideLanePop,true); removeEventListener('keydown',escLanePop,true); } }
+  function outsideLanePop(e){ if(lanePop && !lanePop.contains(e.target)) closeLanePop(); }
+  function escLanePop(e){ if(e.key==='Escape') closeLanePop(); }
+  function pickLaneColour(i,anchor){
+    closeLanePop();
+    // Measure the anchor BEFORE refreshLaneSeg(), which rebuilds the tabs and detaches it —
+    // measuring after gave a stale rect and parked the popover in the corner.
+    const r=(anchor||$('laneSeg')).getBoundingClientRect();
+    editLane=i; syncLane(); refreshLaneSeg();
+    const pop=document.createElement('div'); pop.className='lanepop'; lanePop=pop;
+    pop.innerHTML='<div class="lanepop__t">Lane '+(i+1)+'</div><div class="lanepop__g"></div>';
+    const grid=pop.querySelector('.lanepop__g');
+    LANE_SWATCHES.forEach(h=>{
+      const sw=document.createElement('button'); sw.type='button'; sw.className='lanepop__s';
+      sw.style.background=hsla(h,80,IL(58),1); sw.title=Math.round(h)+'\u00b0';
+      if(Math.round(hueOf(i))===h) sw.classList.add('on');
+      sw.addEventListener('click',()=>{ setLaneHue(i,h); closeLanePop(); });
+      grid.appendChild(sw);
+    });
+    // native picker for anything not on the grid
+    const more=document.createElement('label'); more.className='lanepop__more';
+    more.innerHTML='Custom<input type="color" value="'+hslHex(hueOf(i))+'">';
+    more.querySelector('input').addEventListener('input',e=>setLaneHue(i,hexHue(e.target.value)));
+    pop.appendChild(more);
+    document.body.appendChild(pop);
+    const pr=pop.getBoundingClientRect();
+    let left=r.left, top=r.bottom+6;
+    left=Math.max(8,Math.min(left, innerWidth-pr.width-8));
+    if(top+pr.height>innerHeight-8) top=Math.max(8,r.top-pr.height-6);
+    pop.style.left=left+'px'; pop.style.top=top+'px';
+    setTimeout(()=>{ addEventListener('pointerdown',outsideLanePop,true);
+      addEventListener('keydown',escLanePop,true); },0);
   }
+  function setLaneHue(i,h){
+    state.customHues[i]=h;
+    if(state.palette!=='CUSTOM'){ state.palette='CUSTOM';
+      document.querySelectorAll('#palSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.p==='CUSTOM'))); }
+    const inp=$('hue'+i); if(inp) inp.value=hslHex(h);
+    refreshLaneSeg();
+  }
+  // hue -> hex, for seeding the native picker
+  function hslHex(h){ const f=n=>{ const k=(n+h/30)%12, a=0.55*Math.min(0.42,1-0.42);
+      const c=0.5-a*Math.max(-1,Math.min(k-3,9-k,1));
+      return Math.round(255*c).toString(16).padStart(2,'0'); };
+    return '#'+f(0)+f(8)+f(4); }
   /* ---------- knobs ----------
      Each range input keeps its identity and its listeners; the knob is a skin that writes to
      it and dispatches 'input'. Programmatic writes (syncLane, presets) call syncKnobs() to
