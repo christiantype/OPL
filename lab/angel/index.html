@@ -319,8 +319,8 @@
   </div>
 
   <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Sound</button>
-    <p class="rowhint">Palette, key and the global feel — tempo, filter, reverb and output level.</p>
+    <button type="button" class="rowhead" aria-expanded="true">Visual</button>
+    <p class="rowhint">How the piece looks. Each mode is its own medium — the controls beneath follow whichever is selected.</p>
     <div class="grp"><label>Visual</label>
       <div class="seg" id="visSeg">
         <button data-v="glow" aria-pressed="true">Glow</button>
@@ -340,6 +340,33 @@
         <button data-h="slash" aria-pressed="false">Slash</button>
       </div>
     </div>
+    <div class="duo">
+      <div class="grp"><label>Saturation <b id="satR">88</b></label><input id="sat" type="range" min="0" max="140" value="88" /></div>
+    </div>
+    <div class="grp"><label>Lane colours <b style="font-weight:400;opacity:.55">or right-click a lane</b></label>
+      <div id="hueRow" style="display:flex; gap:6px;">
+        <input type="color" id="hue0" value="#2ad4a0" title="lane 1">
+        <input type="color" id="hue1" value="#2aa8d4" title="lane 2">
+        <input type="color" id="hue2" value="#6a5ae0" title="lane 3">
+        <input type="color" id="hue3" value="#d44ec8" title="lane 4">
+      </div>
+    </div>
+    <div class="duo">
+      <div class="grp"><label>Smear <b id="smearR">0</b></label><input id="smear" type="range" min="0" max="60" value="0" /></div>
+    </div>
+    <div class="duo" id="grungeCtls">
+      <div class="grp"><label>Pixel <b id="pixR">7</b></label><input id="pixel" type="range" min="2" max="26" value="7" /></div>
+      <div class="grp"><label>Grit <b id="gritR">45</b></label><input id="grit" type="range" min="0" max="100" value="45" /></div>
+    </div>
+    <div class="duo" id="lavaCtls">
+      <div class="grp"><label>Melt <b id="fuseR">22</b></label><input id="lavaFuse" type="range" min="4" max="60" value="22" /></div>
+      <div class="grp"><label>Orb size <b id="lsizeR">52</b></label><input id="lavaSize" type="range" min="10" max="120" value="52" /></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Sound</button>
+    <p class="rowhint">Key, tempo and the global feel — filter, reverb, delay and output level.</p>
     <div class="grp"><label>Palette</label>
       <div class="seg" id="palSeg">
         <button data-p="AURORA" aria-pressed="true">Aurora</button>
@@ -364,28 +391,6 @@
     <div class="duo">
       <div class="grp"><label>Trails <b id="trailsR">off</b></label><input id="trails" type="range" min="0" max="55" value="0" /></div>
       <div class="grp"><label>Evolve <b id="evoR">42</b></label><input id="evolve" type="range" min="0" max="100" value="42" /></div>
-    </div>
-    <div class="duo">
-      <div class="grp"><label>Smear <b id="smearR">0</b></label><input id="smear" type="range" min="0" max="60" value="0" /></div>
-    </div>
-    <div class="grp"><label>Lane colours <b style="font-weight:400;opacity:.55">or right-click a lane</b></label>
-      <div id="hueRow" style="display:flex; gap:6px;">
-        <input type="color" id="hue0" value="#2ad4a0" title="lane 1">
-        <input type="color" id="hue1" value="#2aa8d4" title="lane 2">
-        <input type="color" id="hue2" value="#6a5ae0" title="lane 3">
-        <input type="color" id="hue3" value="#d44ec8" title="lane 4">
-      </div>
-    </div>
-    <div class="duo">
-      <div class="grp"><label>Saturation <b id="satR">88</b></label><input id="sat" type="range" min="0" max="140" value="88" /></div>
-    </div>
-    <div class="duo">
-      <div class="grp"><label>Pixel <b id="pixR">7</b></label><input id="pixel" type="range" min="2" max="26" value="7" /></div>
-      <div class="grp"><label>Grit <b id="gritR">45</b></label><input id="grit" type="range" min="0" max="100" value="45" /></div>
-    </div>
-    <div class="duo" id="lavaCtls">
-      <div class="grp"><label>Melt <b id="fuseR">22</b></label><input id="lavaFuse" type="range" min="4" max="60" value="22" /></div>
-      <div class="grp"><label>Orb size <b id="lsizeR">52</b></label><input id="lavaSize" type="range" min="10" max="120" value="52" /></div>
     </div>
     <div class="duo">
       <div class="grp"><label>Master <b id="cutR">&#8212;</b></label><input id="cutoff" type="range" min="0" max="100" value="40" /></div>
@@ -550,7 +555,7 @@
       g.fillStyle=hsla(hueF,78,IL(58),Math.min(1,coreA+0.15));
       g.beginPath(); g.arc(x,y,Math.max(2,sz*0.95),0,6.283); g.fill(); return;
     }
-    const scale = v==='aura' ? 4.2 : v==='haze' ? 3.6 : 1;
+    const scale = v==='aura' ? 7.0 : v==='haze' ? 3.6 : 1;
     const r=sz*scale, grad=g.createRadialGradient(x,y,0,x,y,r);
     if(v==='haze'){
       // Airbrushed spectral bloom: the hue sweeps across the blob instead of holding one
@@ -563,8 +568,14 @@
       grad.addColorStop(0.82,hsla(hueF+66,92, 58,coreA*0.16));
       grad.addColorStop(1,   hsla(hueF+80,90, 62,0));
     }
-    else if(v==='aura'){ grad.addColorStop(0,hsla(hueF,85,IL(62),coreA*0.66));
-      grad.addColorStop(.32,hsla(hueF,82,IL(56),coreA*0.36)); grad.addColorStop(.7,hsla(hueF,80,IL(52),coreA*0.12)); grad.addColorStop(1,hsla(hueF,80,IL(50),0)); }
+    else if(v==='aura'){
+      // Aura is weather, not colour: every source shares one slowly drifting hue, so the
+      // field reads as a single luminous fog instead of four tinted glows.
+      const h=drift*0.5;
+      grad.addColorStop(0,  hsla(h,38,IL(70),coreA*0.30));
+      grad.addColorStop(.30,hsla(h,34,IL(62),coreA*0.16));
+      grad.addColorStop(.66,hsla(h,30,IL(56),coreA*0.05));
+      grad.addColorStop(1,  hsla(h,30,IL(54),0)); }
     else { grad.addColorStop(0,hsla(hueF,95,IL(72),coreA));
       grad.addColorStop(.5,hsla(hueF,90,IL(58),coreA*0.53)); grad.addColorStop(1,hsla(hueF,90,IL(50),0)); }
     g.fillStyle=grad; g.beginPath(); g.arc(x,y,r,0,6.283); g.fill();
@@ -905,13 +916,23 @@
         // tiled the empty ground with a checker, which reads as a background pattern rather
         // than as grain on the marks.
         const pc=PAPERC(), pr=parseInt(pc.slice(1,3),16), pg=parseInt(pc.slice(3,5),16), pb=parseInt(pc.slice(5,7),16);
-        for(let y=0;y<sh;y++) for(let x=0;x<sw;x++){
-          const o=(y*sw+x)*4;
-          if(Math.abs(d[o]-pr)+Math.abs(d[o+1]-pg)+Math.abs(d[o+2]-pb) < 26) continue;   // bare ground
-          const t=(B[(y&3)*4+(x&3)]/16-0.5)*90*amt;
-          d[o]=Math.max(0,Math.min(255,d[o]+t));
-          d[o+1]=Math.max(0,Math.min(255,d[o+1]+t));
-          d[o+2]=Math.max(0,Math.min(255,d[o+2]+t));
+        // Posterise hard, then shove the red and blue channels a pixel apart on alternating
+        // rows. Pixelation alone just looks low-resolution; the banding and the channel tear
+        // are what make it read as a degraded, glitched bitmap.
+        const src=new Uint8ClampedArray(d);
+        const lv=Math.max(2, Math.round(9-amt*6)), q=255/(lv-1);
+        for(let y=0;y<sh;y++){
+          const shift = (y%3===0) ? Math.round(amt*2) : 0;
+          for(let x=0;x<sw;x++){
+            const o=(y*sw+x)*4;
+            if(Math.abs(src[o]-pr)+Math.abs(src[o+1]-pg)+Math.abs(src[o+2]-pb) < 26) continue;
+            const xr=Math.min(sw-1,x+shift), xb=Math.max(0,x-shift);
+            const or_=(y*sw+xr)*4, ob=(y*sw+xb)*4;
+            const t=(B[(y&3)*4+(x&3)]/16-0.5)*70*amt;
+            d[o]   = Math.round((src[or_]  +t)/q)*q;
+            d[o+1] = Math.round((src[o+1]  +t)/q)*q;
+            d[o+2] = Math.round((src[ob+2] +t)/q)*q;
+          }
         }
         gcx.putImageData(img,0,0);
       }
@@ -1056,7 +1077,12 @@
 
   function seg(id,key,attr,after){ document.getElementById(id).addEventListener('click',(e)=>{ const b=e.target.closest('button'); if(!b) return;
     state[key]=b.dataset[attr]; [...b.parentNode.children].forEach(c=>c.setAttribute('aria-pressed',c===b)); after&&after(); }); }
-  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v'); seg('shapeSeg','shape','h');
+  // getElementById, not the $ helper: this also runs during setup, before $ is initialised.
+  function syncVisualCtls(){ const v=state.visual;
+    const g=document.getElementById('grungeCtls'), l=document.getElementById('lavaCtls');
+    if(g) g.style.display = v==='grunge' ? '' : 'none';
+    if(l) l.style.display = v==='lava'   ? '' : 'none'; }
+  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v',()=>syncVisualCtls()); seg('shapeSeg','shape','h');
   const $=id=>document.getElementById(id);
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
@@ -1491,7 +1517,7 @@
   }
 
   refreshLaneSeg(); syncLane(); buildMods(); knobify();
-  paintEnv(ORB_IDS,state.orbEnv); syncKnobs(); setTheme(THEME);
+  paintEnv(ORB_IDS,state.orbEnv); syncKnobs(); syncVisualCtls(); setTheme(THEME);
   $('pitchR').textContent=midiLabel(state.root);
   $('cutR').textContent=Math.round(logCut(+$('cutoff').value))+'Hz';
 
