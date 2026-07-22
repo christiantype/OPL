@@ -336,6 +336,35 @@
     </div>
   </div>
   <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Sample</button>
+    <p class="rowhint">Give a single step its own recording, so one lane can hold a different sound per step.</p>
+    <div class="grp" data-tip="Which step a recording will land on. Select a step first, then record or load into it."><label>Target <b id="sampTarget">no step selected</b></label></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="micBtn" style="flex:1" data-tip="Records from your microphone straight onto the selected step.">Record mic</button>
+      <button class="btn" id="fileBtn" style="flex:1" data-tip="Puts an audio file on the selected step.">Load file</button>
+      <button class="btn" id="sampClear" style="flex:1">Clear</button>
+    </div></div>
+    <div class="grp" data-tip="What the selected step is currently holding. One lane can carry a different sound on every step."><label>Step holds <b id="sampInfo">none</b></label></div>
+    <div class="grp" id="chopWrap" data-tip="The recording, drawn end to end. Drag the edges in to keep only the part you want — the rest is trimmed off, and you can always reset back to the whole take.">
+      <label>Chop <b id="chopR">nothing recorded</b></label>
+      <canvas id="chopCv" height="58"></canvas>
+      <div style="display:flex; gap:6px; margin-top:7px;">
+        <button class="btn" id="chopPlay" style="flex:1">Play</button>
+        <button class="btn" id="chopReset" style="flex:1">Whole</button>
+      </div>
+      <div style="display:flex; gap:6px; margin-top:6px;" data-tip="Cuts the kept part into equal pieces and drops them onto the steps that follow this one, so one take becomes a run across the lane.">
+        <select id="chopN" style="flex:1">
+          <option value="2">2 slices</option><option value="3">3 slices</option>
+          <option value="4" selected>4 slices</option><option value="6">6 slices</option>
+          <option value="8">8 slices</option><option value="12">12 slices</option>
+        </select>
+        <button class="btn" id="chopSlice" style="flex:1">Spread</button>
+      </div>
+    </div>
+    <input id="sampFile" type="file" accept="audio/*" hidden />
+  </div>
+
+  <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Envelope</button>
     <p class="rowhint">How each note swells and fades. Long attack for pads, short for plucks.</p>
     <div class="quad">
@@ -455,35 +484,6 @@
       <div class="grp" data-tip="The level an orb note holds at. At zero each bounce is a short hit."><label>Sustain <b id="osR">—</b></label><input id="os" type="range" min="0" max="100" value="0" /></div>
       <div class="grp" data-tip="How long an orb note takes to fade out."><label>Release <b id="orR">—</b></label><input id="or" type="range" min="0" max="100" value="55" /></div>
     </div>
-  </div>
-
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Sample</button>
-    <p class="rowhint">Give a single step its own recording, so one lane can hold a different sound per step.</p>
-    <div class="grp" data-tip="Which step a recording will land on. Select a step first, then record or load into it."><label>Target <b id="sampTarget">no step selected</b></label></div>
-    <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="micBtn" style="flex:1" data-tip="Records from your microphone straight onto the selected step.">Record mic</button>
-      <button class="btn" id="fileBtn" style="flex:1" data-tip="Puts an audio file on the selected step.">Load file</button>
-      <button class="btn" id="sampClear" style="flex:1">Clear</button>
-    </div></div>
-    <div class="grp" data-tip="What the selected step is currently holding. One lane can carry a different sound on every step."><label>Step holds <b id="sampInfo">none</b></label></div>
-    <div class="grp" id="chopWrap" data-tip="The recording, drawn end to end. Drag the edges in to keep only the part you want — the rest is trimmed off, and you can always reset back to the whole take.">
-      <label>Chop <b id="chopR">nothing recorded</b></label>
-      <canvas id="chopCv" height="58"></canvas>
-      <div style="display:flex; gap:6px; margin-top:7px;">
-        <button class="btn" id="chopPlay" style="flex:1">Play</button>
-        <button class="btn" id="chopReset" style="flex:1">Whole</button>
-      </div>
-      <div style="display:flex; gap:6px; margin-top:6px;" data-tip="Cuts the kept part into equal pieces and drops them onto the steps that follow this one, so one take becomes a run across the lane.">
-        <select id="chopN" style="flex:1">
-          <option value="2">2 slices</option><option value="3">3 slices</option>
-          <option value="4" selected>4 slices</option><option value="6">6 slices</option>
-          <option value="8">8 slices</option><option value="12">12 slices</option>
-        </select>
-        <button class="btn" id="chopSlice" style="flex:1">Spread</button>
-      </div>
-    </div>
-    <input id="sampFile" type="file" accept="audio/*" hidden />
   </div>
 
   <div class="row">
@@ -1232,10 +1232,14 @@
   function openRow(title){
     document.querySelectorAll('.rail .rowhead').forEach(h=>{
       if(h.textContent.trim()!==title) return;
-      const row=h.closest('.row'); if(!row||!row.classList.contains('folded')) return;
+      const row=h.closest('.row'); if(!row) return;
+      if(!row.classList.contains('folded')){
+        requestAnimationFrame(()=>{ try{ row.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(e){} });
+        return; }
       row.classList.remove('folded'); h.setAttribute('aria-expanded','true');
       const cur=new Set(readFold()); cur.delete(title);
       try{ localStorage.setItem(FOLD_KEY, JSON.stringify([...cur])); }catch(e){}
+      requestAnimationFrame(()=>{ try{ row.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(e){} });
     });
   }
   function initFolds(){
@@ -1883,7 +1887,7 @@
     }catch(e){ setStatus('could not decode that audio'); setTimeout(()=>setStatus(''),2500); }
   }
   $('sampClear').addEventListener('click',()=>{ if(selStep>=0) clearStepSample(editLane,selStep); });
-  $('fileBtn').addEventListener('click',()=>{ openRow('Sample'); $('sampFile').click(); });
+  $('fileBtn').addEventListener('click',()=>{ ensureStepTarget(); openRow('Sample'); $('sampFile').click(); });
   $('sampFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) decodeBlob(f,f.name.replace(/\.[^.]+$/,'')); });
 
   let micRec=null, micChunks=[], micStream=null, micLive=null, micAnal=null, micRaf=0, countT=null;
@@ -1922,12 +1926,25 @@
   function micMeterStop(){ cancelAnimationFrame(micRaf); micRaf=0;
     try{ micLive&&micLive.disconnect(); }catch(e){} micLive=null; micAnal=null; }
   function micIdle(){ $('micBtn').textContent='Record mic'; $('micBtn').setAttribute('aria-pressed','false'); }
+  /* A take has to land somewhere you can see it. With no step chosen the recording used to
+     become the shared "Sample" voice, which has no waveform and nothing to chop — which
+     looks exactly like the chop being broken. So pick a step first: the first empty one, or
+     step 1 if the lane is full. */
+  function ensureStepTarget(){
+    if(selStep>=0) return true;
+    const L=lanes[editLane];
+    let k=L.pattern.findIndex(c=>c==null); if(k<0) k=0;
+    selStep=k; syncNoteEd(); refreshSteps(); syncStepSample();
+    setStatus(`recording onto step ${k+1}`); setTimeout(()=>setStatus(''),2200);
+    return true;
+  }
   $('micBtn').addEventListener('click',async()=>{
     if(countT){ cancelCount(); micIdle(); return; }                       // click again to call it off
     if(micRec && micRec.state!=='inactive'){ micRec.stop(); return; }
     try{
       micStream=await navigator.mediaDevices.getUserMedia({audio:true});
     }catch(e){ setStatus('microphone unavailable'); setTimeout(()=>setStatus(''),2500); return; }
+    ensureStepTarget();
     openRow('Sample');                       // so the waveform is on screen before the take starts
     $('micBtn').textContent='Cancel'; $('micBtn').setAttribute('aria-pressed','true');
     countIn(3,()=>{
