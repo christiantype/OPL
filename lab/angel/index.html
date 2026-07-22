@@ -454,6 +454,7 @@
         <button data-v="lava" aria-pressed="false">Lava</button>
         <button data-v="grunge" aria-pressed="false">Grunge</button>
         <button data-v="haze" aria-pressed="false">Haze</button>
+        <button data-v="camera" aria-pressed="false">Camera</button>
       </div>
     </div>
     <div class="grp" data-tip="The path the rings trace. Slash is the stroke from the OP/AL wordmark, one line per lane."><label>Shape</label>
@@ -474,6 +475,34 @@
     <div class="duo" id="grungeCtls">
       <div class="grp" data-tip="Size of the grain blocks in the Grunge mode. Bigger blocks, coarser picture."><label>Pixel <b id="pixR">7</b></label><input id="pixel" type="range" min="2" max="26" value="7" /></div>
       <div class="grp" data-tip="How hard the grain bites — how far the picture is crushed down towards flat colour."><label>Grit <b id="gritR">45</b></label><input id="grit" type="range" min="0" max="100" value="45" /></div>
+    </div>
+    <div id="camCtls" style="display:none">
+      <div class="grp" data-tip="Turns on your camera and makes the picture the ground the piece is drawn on. The video never leaves this page — nothing is uploaded, recorded or sent anywhere.">
+        <div style="display:flex; gap:6px;">
+          <button class="btn" id="camBtn" style="flex:1">Turn camera on</button>
+          <button class="btn" id="camFlip" style="flex:0 0 auto" aria-pressed="true">Mirror</button>
+        </div>
+      </div>
+      <div class="grp" data-tip="How the camera is treated. Feedback folds each frame back into the last one, so movement smears into tunnels. Motion shows only what changed, so a still room is black and you draw with your hands. Slit smears time across the frame, one column at a time. Bloom keeps the picture and lets the music burn through it."><label>Look</label>
+        <div class="seg" id="camSeg">
+          <button data-c="feedback" aria-pressed="true">Feedback</button>
+          <button data-c="motion" aria-pressed="false">Motion</button>
+          <button data-c="slit" aria-pressed="false">Slit</button>
+          <button data-c="bloom" aria-pressed="false">Bloom</button>
+        </div>
+      </div>
+      <div class="duo">
+        <div class="grp" data-tip="How much of the last frame survives into the next. High values take a long time to settle and turn any movement into a trail."><label>Feedback <b id="camFbR">72</b></label><input id="camFb" type="range" min="0" max="98" value="72" /></div>
+        <div class="grp" data-tip="How much the fed-back frame grows each time. This is what pulls the image into a tunnel; at zero it stays put and simply ghosts."><label>Zoom <b id="camZmR">14</b></label><input id="camZm" type="range" min="-40" max="60" value="14" /></div>
+      </div>
+      <div class="duo">
+        <div class="grp" data-tip="How much the fed-back frame turns each time. A little makes it spiral; a lot makes it a pinwheel."><label>Spin <b id="camSpR">6</b></label><input id="camSp" type="range" min="-50" max="50" value="6" /></div>
+        <div class="grp" data-tip="Pushes the red and blue channels apart. It follows the music — the harder a step lands, the further they split."><label>Bleed <b id="camBlR">30</b></label><input id="camBl" type="range" min="0" max="100" value="30" /></div>
+      </div>
+      <div class="duo">
+        <div class="grp" data-tip="Crushes the picture toward black and white. Right for hard graphic shapes, left to leave the photograph alone."><label>Contrast <b id="camCtR">40</b></label><input id="camCt" type="range" min="0" max="100" value="40" /></div>
+        <div class="grp" data-tip="How much the picture answers to the sound. At zero the camera does its own thing; turn it up and every step kicks the zoom and the colour split."><label>Reactive <b id="camRxR">60</b></label><input id="camRx" type="range" min="0" max="100" value="60" /></div>
+      </div>
     </div>
     <div class="duo" id="lavaCtls">
       <div class="grp" data-tip="How much the orbs fuse into one another in Lava. High values make one flowing pool."><label>Melt <b id="fuseR">22</b></label><input id="lavaFuse" type="range" min="4" max="60" value="22" /></div>
@@ -716,6 +745,130 @@
     if(v==='haze') g.globalCompositeOperation='source-over';
   }
   // Grain tile for Aura — built once, stamped with a random offset each frame so it lives.
+  /* ---------- camera ----------
+     A video frame folded back into itself is the oldest trick in the book and still the
+     best one: each pass is drawn slightly larger and slightly turned, so anything that
+     moves leaves a tunnel behind it. The music is wired into the zoom and the colour split,
+     so the picture answers the piece rather than running alongside it.
+
+     The stream stays in this page. Nothing is uploaded, nothing is stored, and stopping the
+     camera stops the tracks rather than just hiding them. */
+  var camVideo=null, camOn=false, camAsking=false, camStream=null;
+  const camA=document.createElement('canvas'), camAx=camA.getContext('2d',{willReadFrequently:false});
+  const camB=document.createElement('canvas'), camBx=camB.getContext('2d');   // last frame, for Motion
+  let camSlitX=0, camHit=0;
+  async function camStart(){
+    if(camOn||camAsking) return;
+    camAsking=true; setStatus('asking for the camera…');
+    try{
+      camStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});
+      camVideo=document.createElement('video');
+      camVideo.playsInline=true; camVideo.muted=true; camVideo.autoplay=true;
+      camVideo.srcObject=camStream; await camVideo.play();
+      camOn=true; setTimeout(camSeed,120);
+      setStatus('camera on — nothing leaves this page');
+      setTimeout(()=>setStatus(''),3000);
+    }catch(e){
+      setStatus('no camera available'); setTimeout(()=>setStatus(''),3000);
+    }
+    camAsking=false; syncCamBtn();
+  }
+  function camStop(){
+    if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+    camVideo=null; camOn=false; syncCamBtn();
+  }
+  function syncCamBtn(){ const b=document.getElementById('camBtn'); if(!b) return;
+    b.textContent = camOn ? 'Turn camera off' : camAsking ? 'Asking…' : 'Turn camera on';
+    b.setAttribute('aria-pressed',String(camOn)); }
+
+  // Start a look from a picture rather than from black, so Slit has something to smear and
+  // Feedback has something to fold.
+  function camSeed(){
+    if(!camOn||!camVideo||camVideo.readyState<2||!camA.width) return;
+    const w=camA.width, h=camA.height;
+    const vw=camVideo.videoWidth||1280, vh=camVideo.videoHeight||720;
+    const sc=Math.max(w/vw,h/vh);
+    camAx.save(); camAx.globalAlpha=1; camAx.globalCompositeOperation='source-over';
+    camAx.fillStyle='#000'; camAx.fillRect(0,0,w,h);
+    if(state.camMirror){ camAx.translate(w,0); camAx.scale(-1,1); }
+    camAx.drawImage(camVideo,(w-vw*sc)/2,(h-vh*sc)/2,vw*sc,vh*sc);
+    camAx.restore();
+  }
+  /* Painted into the trail layer as the ground, before anything else is drawn on it. */
+  function camDraw(g,w,h,dt){
+    if(!camOn||!camVideo||camVideo.readyState<2){ g.fillStyle='#000'; g.fillRect(0,0,w,h); return; }
+    if(camA.width!==w||camA.height!==h){ camA.width=camB.width=w; camA.height=camB.height=h;
+      camAx.fillStyle='#000'; camAx.fillRect(0,0,w,h); }
+    const look=state.camLook, rx=state.camRx/100;
+    // one number for "the music just did something", from the step glows already being tracked
+    let pulse=0; for(const L of lanes){ if(L.nodePulse) for(const k in L.nodePulse) pulse=Math.max(pulse,L.nodePulse[k]); }
+    camHit = Math.max(camHit*0.90, pulse);
+    const kick = camHit*rx;
+
+    // cover-fit the video, mirrored by default because a mirror is what a camera should be
+    const vw=camVideo.videoWidth||1280, vh=camVideo.videoHeight||720;
+    const sc=Math.max(w/vw,h/vh), dw=vw*sc, dh=vh*sc, dx=(w-dw)/2, dy=(h-dh)/2;
+    const putVideo=(cx2,alpha,op)=>{
+      cx2.save(); cx2.globalAlpha=alpha; if(op) cx2.globalCompositeOperation=op;
+      if(state.camMirror){ cx2.translate(w,0); cx2.scale(-1,1); }
+      cx2.drawImage(camVideo,dx,dy,dw,dh); cx2.restore();
+    };
+
+    if(look==='slit'){
+      // one column of live video per frame, marching across — time smeared into space
+      const step=Math.max(1,Math.round(2+ (state.camZm+40)/12));
+      camAx.save();
+      if(state.camMirror){ camAx.translate(w,0); camAx.scale(-1,1); }
+      const sx = state.camMirror ? (w-camSlitX-step) : camSlitX;
+      camAx.drawImage(camVideo, (sx-dx)/sc, 0, step/sc, vh, sx, 0, step, h);
+      camAx.restore();
+      camSlitX=(camSlitX+step)%w;
+    } else if(look==='motion'){
+      // difference against the previous frame: a still room is black, movement is light
+      camAx.globalCompositeOperation='source-over'; camAx.globalAlpha=1;
+      camAx.fillStyle='#000'; camAx.fillRect(0,0,w,h);
+      putVideo(camAx,1);
+      camAx.save(); camAx.globalCompositeOperation='difference';
+      camAx.drawImage(camB,0,0); camAx.restore();
+      camBx.clearRect(0,0,w,h); putVideo(camBx,1);
+    } else {
+      // feedback: last frame, grown and turned, then the live one over the top of it
+      const fb=state.camFb/100;
+      if(look==='feedback' && fb>0.01){
+        const zoom=1+(state.camZm/100)*0.06*(1+kick*2.2);
+        const spin=(state.camSp/100)*0.05*(1+kick);
+        camAx.save();
+        camAx.globalAlpha=fb;
+        camAx.translate(w/2,h/2); camAx.rotate(spin); camAx.scale(zoom,zoom); camAx.translate(-w/2,-h/2);
+        camAx.drawImage(camA,0,0);
+        camAx.restore();
+        putVideo(camAx, Math.max(0.06,1-fb*0.94));
+      } else {
+        camAx.globalAlpha=1; camAx.globalCompositeOperation='source-over';
+        camAx.fillStyle='#000'; camAx.fillRect(0,0,w,h);
+        putVideo(camAx,1);
+      }
+    }
+    camAx.globalAlpha=1; camAx.globalCompositeOperation='source-over';
+
+    // to the ground, with contrast and a music-driven channel split
+    const ct=state.camCt/100;
+    const bleed=(state.camBl/100)*(2+kick*22);
+    g.save();
+    g.globalCompositeOperation='source-over'; g.globalAlpha=1;
+    g.fillStyle='#000'; g.fillRect(0,0,w,h);
+    g.filter=`contrast(${(1+ct*1.9).toFixed(2)}) saturate(${(1+ct*0.5).toFixed(2)})`;
+    g.globalAlpha=0.84;
+    g.drawImage(camA,0,0,w,h);
+    if(bleed>0.4){
+      g.globalCompositeOperation = isDark() ? 'lighter' : 'multiply';
+      g.globalAlpha=0.42;
+      g.drawImage(camA,-bleed,0,w,h);
+      g.drawImage(camA, bleed,0,w,h);
+    }
+    g.restore(); g.filter='none'; g.globalAlpha=1; g.globalCompositeOperation='source-over';
+  }
+
   const grain=document.createElement('canvas');
   function ensureGrain(){ if(grain.width) return; const sz=200; grain.width=grain.height=sz;
     const gx=grain.getContext('2d'), id=gx.createImageData(sz,sz), d=id.data;
@@ -757,7 +910,8 @@
 
   const state={ palette:'PRISM', scale:'MinorPenta', root:48, tempo:0.560, trail:0.0, soft:0.0, delayFb:0.0,
     exportSize:'RL', ready:false, recording:false, recAudio:false, recMic:false,
-    level:78, paused:false, orbLvl:70, orbSpd:50, orbTarget:'own', pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
+    level:78, paused:false, orbLvl:70, orbSpd:50, orbTarget:'own', pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle',
+    camLook:'feedback', camFb:72, camZm:14, camSp:6, camBl:30, camCt:40, camRx:60, camMirror:true };
   let drift=0, pianoReady=false, lastDroneT=0;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -1128,10 +1282,11 @@
     // lingers. Raise Trails and it becomes a partial wash again — the smaller the alpha, the
     // longer the fade.
     const tr=(state.trailEff!=null?state.trailEff:state.trail);
-    if(state.visual==='haze'){ plx.fillStyle = tr>0.001 ? `rgba(255,255,255,${tr})` : '#ffffff'; }
+    if(state.visual==='camera'){ camDraw(plx,W,H,dt); }
+    else if(state.visual==='haze'){ plx.fillStyle = tr>0.001 ? `rgba(255,255,255,${tr})` : '#ffffff'; }
     else if(tr>0.001){ plx.fillStyle= isDark() ? hsla(drift*0.6,18,5,tr) : `rgba(255,255,255,${tr})`; }
     else { plx.fillStyle=PAPERC(); }
-    plx.fillRect(0,0,W,H);
+    if(state.visual!=='camera') plx.fillRect(0,0,W,H);
 
     const oSpd=state.orbSpd/50;
     for(const b of orbs){ if(!state.paused && oSpd>0){ b.x+=b.dx*BASE*dt*oSpd; b.y+=b.dy*BASE*dt*oSpd; }
@@ -1142,7 +1297,8 @@
     for(let mi=0;mi<mods.length;mi++){ const el=$('mv'+mi); if(el) el.textContent=modVal(mods[mi],t/1000).toFixed(2); }
     advance(dt);
 
-    plx.globalCompositeOperation = state.visual==='ink' ? 'source-over' : BLENDC();
+    plx.globalCompositeOperation = state.visual==='ink' ? 'source-over'
+      : state.visual==='camera' ? 'lighter' : BLENDC();
     const {cx,cy}=center();
 
     // PASS A — only what should smear: the step glows and playhead lamps.
@@ -1263,12 +1419,12 @@
     // trail layer to screen, then the crisp geometry on top of it
     ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1; ctx.filter='none';
     ctx.drawImage(pl,0,0,W,H);
-    ctx.globalCompositeOperation=BLENDC();
+    ctx.globalCompositeOperation = state.visual==='camera' ? 'lighter' : BLENDC();
 
     // PASS B — ring geometry, drawn fresh every frame and never fed back, so the lines stay
     // crisp while the steps keep their bloom.
     const inkV=state.visual==='ink', lavaV=state.visual==='lava';
-    const auraV=state.visual==='aura'||lavaV||state.visual==='haze'||state.visual==='grunge';
+    const auraV=state.visual==='aura'||lavaV||state.visual==='haze'||state.visual==='grunge'||state.visual==='camera';
     // Aura is pure atmosphere — the ring scaffolding all but disappears. Ink makes it bold.
     if(!auraV){ const hb=ctx.createRadialGradient(cx,cy,0,cx,cy,46);
       hb.addColorStop(0,hsla(drift,70,IL(78),inkV?0:.16)); hb.addColorStop(1,hsla(drift,70,IL(60),0));
@@ -1276,7 +1432,8 @@
     const circle=state.shape==='circle';
     for(let i=0;i<lanes.length;i++){ const L=lanes[i], R=ringRadius(i), hue=hueOf(i), sel=(i===editLane);
       const mF = L.mute ? 0.30 : 1;                    // muted lanes recede on screen as well as in the mix
-      const rA = (auraV? (sel?.10:.05) : inkV? (sel?.95:.62) : (sel?.5:.3)) * mF;
+      const camV=state.visual==='camera';
+      const rA = (camV? (sel?.42:.20) : auraV? (sel?.10:.05) : inkV? (sel?.95:.62) : (sel?.5:.3)) * mF;
       const rW = inkV? (sel?3.2:2.2) : (sel?1.6:1);
       ctx.strokeStyle = inkV? inkColor(rA) : hsla(hue,70,IL(48),rA); ctx.lineWidth=rW;
       ctx.beginPath();
@@ -1284,7 +1441,7 @@
       else { const pts=shapePath(i,160); ctx.moveTo(cx+pts[0][0],cy+pts[0][1]);
         for(let k=1;k<pts.length;k++) ctx.lineTo(cx+pts[k][0],cy+pts[k][1]); }
       ctx.stroke();
-      const dotR = inkV?4:2, dotA = (auraV?.12 : inkV?.7 : .42) * mF;
+      const dotR = inkV?4:2, dotA = (camV?.34 : auraV?.12 : inkV?.7 : .42) * mF;
       for(let k=0;k<L.steps;k++){ if(L.pattern[k]!=null) continue; const a=stepAngle(k,L.steps),r=shapeR(i,a);
         ctx.fillStyle= inkV? inkColor(dotA) : hsla(hue,60,IL(52),dotA);
         ctx.beginPath(); ctx.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,dotR,0,6.283); ctx.fill(); }
@@ -1384,9 +1541,13 @@
     state[key]=b.dataset[attr]; [...b.parentNode.children].forEach(c=>c.setAttribute('aria-pressed',c===b)); after&&after(); }); }
   // getElementById, not the $ helper: this also runs during setup, before $ is initialised.
   function syncVisualCtls(){ const v=state.visual;
-    const g=document.getElementById('grungeCtls'), l=document.getElementById('lavaCtls');
+    const g=document.getElementById('grungeCtls'), l=document.getElementById('lavaCtls'),
+          c=document.getElementById('camCtls');
     if(g) g.style.display = v==='grunge' ? '' : 'none';
-    if(l) l.style.display = v==='lava'   ? '' : 'none'; }
+    if(l) l.style.display = v==='lava'   ? '' : 'none';
+    if(c) c.style.display = v==='camera' ? '' : 'none';
+    // Selecting Camera without a camera running would just show a black field, so ask for it.
+    if(v==='camera' && !camOn && !camAsking) camStart(); }
   seg('palSeg','palette','p',()=>{ refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v',()=>syncVisualCtls()); seg('shapeSeg','shape','h');
   const $=id=>document.getElementById(id);
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
@@ -1485,6 +1646,18 @@
   $('delFb').addEventListener('input',e=>{ $('delR').textContent = +e.target.value>0 ? e.target.value : 'off';
     state.delayFb=+e.target.value/100;
     if(audio){ audio.delay.feedback.value=state.delayFb; audio.delay.wet.value=delayWet(state.delayFb); } });
+  $('camBtn').addEventListener('click',()=>{ camOn?camStop():camStart(); });
+  $('camFlip').addEventListener('click',e=>{ state.camMirror=!state.camMirror;
+    e.currentTarget.setAttribute('aria-pressed',String(state.camMirror)); });
+  document.querySelectorAll('#camSeg button').forEach(b=>b.addEventListener('click',()=>{
+    state.camLook=b.dataset.c;
+    document.querySelectorAll('#camSeg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.c===state.camLook)));
+    camSeed(); }));
+  [['camFb','camFbR'],['camZm','camZmR'],['camSp','camSpR'],['camBl','camBlR'],
+   ['camCt','camCtR'],['camRx','camRxR']].forEach(([id,out])=>{
+    const el=$(id); if(!el) return;
+    el.addEventListener('input',e=>{ state[id]=+e.target.value; $(out).textContent=e.target.value; });
+  });
   $('orbSpd').addEventListener('input',e=>{ const v=+e.target.value; state.orbSpd=v;
     $('orbSpdR').textContent = v===0 ? 'still' : (v/50).toFixed(2)+'\u00d7'; });
   $('orbLvl').addEventListener('input',e=>{ state.orbLvl=+e.target.value; $('orbLvlR').textContent=e.target.value;
@@ -2240,7 +2413,8 @@
      modulators, and the global controls. Saved to localStorage by name, and exportable as
      JSON so a patch can leave the browser. */
   const TRACK_KEY='angel-tracks';
-  const CTRL_IDS=['tempo','pitch','smear','evolve','cutoff','revWet','delFb','orbLvl','orbSpd'];
+  const CTRL_IDS=['tempo','pitch','smear','evolve','cutoff','revWet','delFb','orbLvl','orbSpd',
+    'camFb','camZm','camSp','camBl','camCt','camRx'];
   function snapshot(){
     return { v:1, theme:THEME,
       lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,mute:!!L.mute,drone:!!L.drone,res:L.res,
@@ -2249,6 +2423,7 @@
       arr: (typeof ARR!=='undefined' && ARR.ev.length) ? {ev:ARR.ev, dur:ARR.dur, snap:ARR.snap} : null,
       palette:state.palette, scale:state.scale, exportSize:state.exportSize, visual:state.visual, shape:state.shape,
       customHues:state.customHues.slice(), sat:state.sat,
+      camLook:state.camLook, camMirror:state.camMirror,
       orbVoice:state.orbVoice, orbTarget:state.orbTarget, orbEnv:Object.assign({},state.orbEnv),
       ctrl:Object.fromEntries(CTRL_IDS.map(id=>[id, $(id)?$(id).value:null])) };
   }
@@ -2265,6 +2440,10 @@
       const rate = m.rate!=null ? m.rate : Math.round(Math.log((1/Math.max(2,m.secs||26))/0.05)/Math.log(360)*100);
       Object.assign(mods[i],m,{rate:Math.max(0,Math.min(100,rate)),lanes:m.lanes.slice()}); delete mods[i].secs; });
     state.palette=o.palette||state.palette; if(o.customHues) state.customHues=o.customHues.slice(); if(o.sat!=null) state.sat=o.sat; state.scale=o.scale||state.scale; state.visual=o.visual||state.visual; state.shape=o.shape||state.shape;
+    if(o.camLook){ state.camLook=o.camLook;
+      document.querySelectorAll('#camSeg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.c===state.camLook))); }
+    if(o.camMirror!=null){ state.camMirror=!!o.camMirror;
+      const f=$('camFlip'); if(f) f.setAttribute('aria-pressed',String(state.camMirror)); }
     state.orbVoice=o.orbVoice||'cycle'; if(o.orbEnv) state.orbEnv=Object.assign({},o.orbEnv);
     if(o.orbTarget!=null){ state.orbTarget=o.orbTarget;
       document.querySelectorAll('#orbTgt button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.o===state.orbTarget))); }
@@ -2685,6 +2864,7 @@
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
   window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, setKbd, kbSync,
+    camStart, camStop, get camOn(){return camOn;}, camDraw,
     jumpLane, jumpAll, savePNG, orbFire,
     ARR, resetPlayheads, arrSetRec, arrSetPlay, arrSeek, arrClear, arrSync,
     setDrone, droneChord, syncDroneLane, releaseDrone, refreshHoldSeg,
