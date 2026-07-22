@@ -187,6 +187,12 @@
     box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
     font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
     pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
+     underline is what the lane tabs use for that other meaning, so these fill instead. */
+  .seg.lfolanes button{ padding:7px 9px; }
+  .seg.lfolanes button[aria-pressed="true"]{ background:currentColor; box-shadow:none; }
+  .seg.lfolanes button[aria-pressed="true"] span{ color:var(--paper); font-weight:600; }
+  .seg.lfolanes button[aria-pressed="false"] span{ opacity:.5; }
   .lanepop{ position:fixed; z-index:40; padding:10px; border-radius:10px;
     background:var(--panel); border:1px solid var(--hair);
     -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
@@ -1803,8 +1809,9 @@
       <div class="duo">
         <div class="grp" data-tip="The shape it traces. Triangle rocks evenly, square jumps between two values, sample &amp; hold jumps at random.">
           <label>Wave</label><select data-k="shape">${shp(m.shape)}</select></div>
-        <div class="grp" data-tip="Which lanes the LFO is patched into. Leave one out and it stays still while the others move.">
-          <label>Lanes</label><div class="seg lanes" data-lanes="0"></div></div>
+        <div class="grp" data-tip="Which rings the LFO moves. Switch three off and it works on one ring alone — that is how you wobble a single voice while the rest hold still.">
+          <label>Lanes <b style="font-weight:400;opacity:.55">leave one on to move only that ring</b></label>
+          <div class="seg lanes lfolanes" data-lanes="0"></div></div>
       </div>
       <div class="duo">
         <div class="grp" data-tip="How fast it cycles. Under 1Hz it drifts across a passage; above about 3Hz you hear it as wobble.">
@@ -1817,9 +1824,13 @@
     host.appendChild(box);
     const lseg=box.querySelector('[data-lanes="0"]');
     lanes.forEach((L,i)=>{ const b=document.createElement('button');
-      b.textContent=i+1; b.style.color=hsla(hueOf(i),80,IL(62),1);
+      // the number sits in its own span so the button can fill with the lane colour
+      b.innerHTML=`<span>${i+1}</span>`; b.style.color=hsla(hueOf(i),80,IL(58),1);
       b.setAttribute('aria-pressed', !!m.lanes[i]);
-      b.addEventListener('click',()=>{ m.lanes[i]=!m.lanes[i]; b.setAttribute('aria-pressed',!!m.lanes[i]); });
+      b.title=`${m.lanes[i]?'Stop moving':'Move'} lane ${i+1}`;
+      b.addEventListener('click',()=>{ m.lanes[i]=!m.lanes[i];
+        b.setAttribute('aria-pressed',!!m.lanes[i]);
+        b.title=`${m.lanes[i]?'Stop moving':'Move'} lane ${i+1}`; });
       lseg.appendChild(b); });
     box.querySelectorAll('select,input').forEach(el=>{
       el.addEventListener('input',()=>{ const k=el.dataset.k;
