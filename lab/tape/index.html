@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Tape — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<script src="/assets/js/Tone.js"></script>
+<style>
+  /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
+     same knobs. What differs is everything below the chrome. */
+  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
+    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
+    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:100px; --rail:290px; }
+  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
+    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
+    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
+  /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
+     wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
+  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
+  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+
+  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
+     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
+     so the shared chrome gets carried into the theme too. The brand link sets its colour
+     inline via mountTopbar, hence !important. */
+  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
+  body.dark .opal-brand{ color:var(--ink) !important; }
+  body.dark .opal-subhead__name{ color:var(--ink); }
+  body.dark .opal-brand .opal-product,
+  body.dark .opal-subhead__desc,
+  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+
+  /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
+  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #stagewrap{ top:0; left:0; }
+  #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
+  body.fs #exitFs{ display:flex; }
+  body.fs.hint #exitFs{ opacity:1; }
+
+  @media (max-width:560px){ :root{ --top:92px; } }
+
+  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
+    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+
+  /* one hairline control strip — everything else is off until asked for */
+  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
+    background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  .icon svg{ display:block; }
+  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
+     fixed right offset kept colliding with it. Stays put in full screen so a recording
+     always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
+    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
+    background:var(--panel); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  #recDot.on{ display:flex; }
+  /* Count-in. Big enough that you are in no doubt what is about to happen. */
+
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  body.fs #recDot{ top:14px; }
+  @keyframes blink{ 50%{opacity:.2;} }
+
+  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
+     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
+     work with. */
+
+  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
+    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:var(--panel);
+    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+    display:flex; flex-direction:column; transition:transform .28s ease; }
+  .rail-l{ left:0; border-right:1px solid var(--edge); }
+  .rail-r{ right:0; border-left:1px solid var(--edge); }
+  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
+    padding:14px 0; border-bottom:1px solid var(--edge); }
+  .row:last-of-type{ border-bottom:0; }
+  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
+     past when you only want two of them. */
+  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
+    font-weight:600; opacity:.9; padding-bottom:2px;
+    display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
+    width:100%; background:none; border:0; font-family:inherit; text-align:left; }
+  .rowhead:hover{ opacity:1; }
+  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhead::before{ content:''; width:0; height:0; flex:none;
+    border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
+    transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
+  .row.folded .rowhead::before{ transform:rotate(0deg); }
+  .row.folded > *:not(.rowhead){ display:none; }
+  .row.folded{ padding-bottom:10px; }
+  .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .rail input[type=range]{ width:100%; }
+  .rail select{ width:100%; }
+  .rail .seg{ width:100%; }
+  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
+  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
+     nothing between you and the piece unless you ask for it. */
+  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
+  .rail-l{ transform:translateX(-100%); }
+  .rail-r{ transform:translateX(100%); }
+  .rail.open{ transform:none; }
+
+  /* Chrome fades out while you listen and comes back on movement. */
+  #bar{ transition:opacity .5s ease; }
+  body.idle #bar{ opacity:0; pointer-events:none; }
+  body.panels #bar{ opacity:1; pointer-events:auto; }
+
+  /* Mood — the one control that stays reachable. */
+
+  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
+    color:var(--mute); white-space:nowrap; }
+  .rail .grp > label{ white-space:normal; }
+  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
+  .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
+  .seg button:last-child{ border-right:0; }
+  .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
+  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
+  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
+     the control they describe and get out of the way on click. */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
+    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
+    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
+     underline is what the lane tabs use for that other meaning, so these fill instead. */
+
+  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
+     it's just visually replaced, so listeners and readouts are untouched. */
+  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
+  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; margin:0; pointer-events:none; }
+  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
+  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
+  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
+    transition:stroke-dasharray .04s linear; }
+  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
+  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+  .knob:focus-visible{ outline:none; }
+  .knob:focus-visible .k-hub{ stroke:var(--ink); }
+  .knob.drag .k-vl{ stroke-width:3.6; }
+  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
+  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
+    color:var(--mute); text-align:center; white-space:nowrap; }
+  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
+    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    padding:8px 12px; cursor:pointer; border-radius:2px; }
+  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  input[type=text]::placeholder{ color:var(--mute); }
+
+  /* step editor — a row of cells for the active lane; click one to set its note */
+
+  #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
+  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
+  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%;
+    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
+    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  @media (max-width:560px){ input[type=range]{ width:82px; } }
+
+  /* ---- Tape's own ---- */
+  #reels{ position:fixed; left:16px; bottom:14px; z-index:5; display:flex; gap:7px; pointer-events:none; }
+  .reel{ font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute);
+    padding:5px 9px; border-radius:999px; border:1px solid var(--hair); background:var(--panel);
+    -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
+  .reel b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  .reel.armed{ color:#ff4d5e; border-color:#ff4d5e; }
+  body.fs #reels{ display:none; }
+  .seg.arm button[aria-pressed="true"]{ background:#ff4d5e; color:#fff; box-shadow:none; }
+  .seg.frz button[aria-pressed="true"]{ background:currentColor; box-shadow:none; }
+  .seg.frz button[aria-pressed="true"] span{ color:var(--paper); font-weight:600; }
+  .seg.frz button[aria-pressed="false"] span{ opacity:.5; }
+  .seg.loops button[aria-pressed="true"]{ color:var(--ink); background:transparent;
+    box-shadow:inset 0 -2px 0 currentColor; }
+  .seg.loops button{ font-weight:600; }
+  .wearbar{ height:3px; border-radius:2px; background:var(--track); overflow:hidden; }
+  .wearbar i{ display:block; height:100%; background:var(--ink); width:0; transition:width .3s linear; }
+</style>
+</head>
+<body>
+
+<div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="status"></div>
+<div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
+<div id="reels"></div>
+<div id="bar">
+  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
+  <button class="icon" id="pauseBtn" aria-label="pause" title="Pause / play &#183; space" aria-pressed="false"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
+  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
+  <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
+</div>
+<button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
+
+<div id="rail" class="rail rail-l">
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Loops</button>
+    <p class="rowhint">Four loops of different lengths, all running at once. Arm one and whatever you play goes onto it.</p>
+    <div class="grp" data-tip="Which loop the controls below apply to. All four keep running whichever one you are looking at."><div class="seg loops" id="loopSeg"></div></div>
+    <div class="grp" data-tip="Arm a loop and everything coming in is recorded onto it, over whatever is already there. Unarm it and the loop keeps playing what it caught."><label>Arm <b style="font-weight:400;opacity:.55">record onto it</b></label>
+      <div class="seg arm" id="armSeg"></div></div>
+    <div class="grp" data-tip="Freeze holds a loop exactly as it is: nothing new gets in, nothing wears away. Use it when a pass sounds right and you want to keep it."><label>Freeze <b style="font-weight:400;opacity:.55">stop it wearing</b></label>
+      <div class="seg frz" id="frzSeg"></div></div>
+    <div class="duo">
+      <div class="grp" data-tip="How long this loop is, in seconds. Lengths that do not divide into each other drift apart and take minutes to line up again — that drift is most of the music."><label>Length <b id="lenR">4.0s</b></label><input id="len" type="range" min="5" max="240" value="40" /></div>
+      <div class="grp" data-tip="How much of each pass survives into the next. Below about 90 the loop fades out over a minute; at 100 it never does."><label>Repeat <b id="fbR">94</b></label><input id="fb" type="range" min="40" max="100" value="94" /></div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="How loud this loop sits against the other three."><label>Level <b id="lvlR">80</b></label><input id="lvl" type="range" min="0" max="100" value="80" /></div>
+      <div class="grp" data-tip="How worn this loop is so far. It climbs on its own at the rate set by Decay, and Erase puts it back to nothing."><label>Wear <b id="wearR">0%</b></label><div class="wearbar"><i id="wearBar"></i></div></div>
+    </div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="eraseBtn" style="flex:1" data-tip="Wipes this loop and resets its wear, without touching the others.">Erase</button>
+      <button class="btn" id="eraseAll" style="flex:1" data-tip="Wipes all four loops back to silence.">Erase all</button>
+    </div></div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Tape</button>
+    <p class="rowhint">What the tape does to the sound on every pass. This is where the disintegration lives.</p>
+    <div class="duo">
+      <div class="grp" data-tip="How fast the loops fall apart. Every pass loses a little more top end, and dropouts get more frequent. At the far left nothing decays; at the far right a loop is gone in under a minute."><label>Decay <b id="decR">18</b></label><input id="dec" type="range" min="0" max="100" value="18" /></div>
+      <div class="grp" data-tip="Tape saturation. Pushes the level into the tape until it thickens and starts to break up."><label>Drive <b id="drvR">22</b></label><input id="drv" type="range" min="0" max="100" value="22" /></div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="Slow speed variation — the sound of a loop that is not quite round. This is the drifting, seasick pitch."><label>Wow <b id="wowR">26</b></label><input id="wow" type="range" min="0" max="100" value="26" /></div>
+      <div class="grp" data-tip="Fast speed variation. Finer and quicker than Wow — a shimmer on the pitch rather than a drift."><label>Flutter <b id="fltR">18</b></label><input id="flt" type="range" min="0" max="100" value="18" /></div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="Tape noise. Rises with wear, so a tired loop is noisier than a fresh one."><label>Hiss <b id="hisR">24</b></label><input id="his" type="range" min="0" max="100" value="24" /></div>
+      <div class="grp" data-tip="How far the wear can take the top end down before it stops. Left leaves a loop muffled but present; right lets it disappear completely."><label>Depth <b id="dptR">70</b></label><input id="dpt" type="range" min="0" max="100" value="70" /></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Input</button>
+    <p class="rowhint">What goes onto the tape. Click the canvas to play the built-in voice — no microphone needed.</p>
+    <div class="grp" data-tip="Sources feeding the armed loops. The built-in voice plays when you click the canvas; the microphone needs permission the first time."><label>Source</label>
+      <div class="seg" id="srcSeg">
+        <button data-s="voice" aria-pressed="true">Voice</button>
+        <button data-s="mic" aria-pressed="false">Mic</button>
+        <button data-s="file" aria-pressed="false">File</button>
+      </div>
+    </div>
+    <div class="grp" id="fileRow" style="display:none"><div style="display:flex; gap:6px;">
+      <button class="btn" id="fileBtn" style="flex:1" data-tip="Plays an audio file into the armed loops. It is recorded as it plays.">Load file</button>
+      <button class="btn" id="filePlay" style="flex:1" data-tip="Plays the loaded file again from the start.">Replay</button>
+    </div></div>
+    <input id="fileInp" type="file" accept="audio/*" hidden />
+    <div class="duo">
+      <div class="grp" data-tip="How hard the input hits the tape."><label>Input <b id="inR">70</b></label><input id="inLvl" type="range" min="0" max="100" value="70" /></div>
+      <div class="grp" data-tip="How much of the live input you hear directly, before it comes back off the tape. Turn this down to zero when using a microphone through speakers, or it will howl."><label>Monitor <b id="monR">60</b></label><input id="mon" type="range" min="0" max="100" value="60" /></div>
+    </div>
+    <div class="grp" data-tip="The built-in voice: a soft struck tone. Clicking the canvas plays one, low at the bottom and high at the top."><label>Voice pitch <b id="vpR">C3</b></label><input id="vp" type="range" min="36" max="72" value="48" /></div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Out</button>
+    <p class="rowhint">Level, and a way to keep what happened.</p>
+    <div class="grp" data-tip="Output volume."><label>Master <b id="mstR">80</b></label><input id="mst" type="range" min="0" max="100" value="80" /></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="snapBtn" style="flex:1" data-tip="Saves the canvas as a still image.">PNG</button>
+      <button class="btn" id="audBtn" style="flex:1" data-tip="Records what you are hearing to an audio file. Press again to stop and save.">Audio</button>
+    </div></div>
+  </div>
+</div>
+
+<div id="veil">
+  <div class="orb"></div>
+  <h1>Tape</h1>
+  <p>Four tape loops of different lengths, running at once. Play into one and it repeats — and every pass wears a little more away, until there is nothing left but the shape of it. Tap to begin.</p>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Tape', desc: 'Disintegrating loop machine', version: 'v1' });</script>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+  const MAXLEN=30;
+
+  /* ---------- state ----------
+     Four loops, each its own length. Lengths that don't divide into one another take
+     minutes to come back round together, and that drift is most of what you hear. */
+  const loops=[
+    { len:4.0,  fb:0.94, lvl:0.80, arm:false, frz:false, wear:0, phase:0.00, hue:14  },
+    { len:6.5,  fb:0.95, lvl:0.72, arm:false, frz:false, wear:0, phase:0.31, hue:38  },
+    { len:9.0,  fb:0.96, lvl:0.64, arm:false, frz:false, wear:0, phase:0.57, hue:196 },
+    { len:13.5, fb:0.97, lvl:0.56, arm:false, frz:false, wear:0, phase:0.79, hue:268 },
+  ];
+  let editLoop=0;
+  const state={ ready:false, paused:false, dec:18, drv:22, wow:26, flt:18, his:24, dpt:70,
+    inLvl:0.70, mon:0.60, mst:0.80, src:'voice', vp:48, recAudio:false };
+
+  let THEME = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const isDark=()=>THEME==='dark';
+  const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
+  const IL=l=>isDark()? l : 100-l*0.82;                       // light theme wants darker ink
+  const PAPERC=()=>getComputedStyle(document.body).getPropertyValue('--paper').trim()||'#fff';
+
+  /* ---------- audio ----------
+     One loop is: everything coming in, plus everything that was already on the tape,
+     going round a delay the length of the loop. The wear lives inside that circuit, so
+     each pass is a generation further from the original — which is the whole idea.
+
+       in ─┐
+           ├─▶ sum ─▶ delay(len) ─▶ lowpass ─▶ highpass ─▶ drive ─▶ dropouts ─┬─▶ feedback ─┘
+           │                                                                  └─▶ out ─▶ master
+  */
+  let A=null, voice=null, mic=null, filePlayer=null, fileBuf=null;
+  function buildAudio(){
+    const limiter=new Tone.Limiter(-2).toDestination();
+    const master=new Tone.Gain(state.mst).connect(limiter);
+    const inBus=new Tone.Gain(state.inLvl);
+    const monitor=new Tone.Gain(state.mon).connect(master);
+    inBus.connect(monitor);
+
+    // Speed variation is shared by every loop, the way one motor would be: a slow drift
+    // and a fast shimmer, both nudging the delay length and so the pitch.
+    const wowLfo=new Tone.LFO({frequency:0.27, min:-1, max:1, type:'sine'}).start();
+    const fltLfo=new Tone.LFO({frequency:7.4, min:-1, max:1, type:'triangle'}).start();
+
+    const L=loops.map(lp=>{
+      const sum   = new Tone.Gain(1);
+      const dly   = new Tone.Delay({delayTime:lp.len, maxDelay:MAXLEN});
+      const lo    = new Tone.Filter({type:'lowpass',  frequency:16000, rolloff:-12, Q:0.4});
+      const hi    = new Tone.Filter({type:'highpass', frequency:22,    rolloff:-12, Q:0.4});
+      const pre   = new Tone.Gain(1);
+      // Normalised to unity slope at small signals. Un-normalised, tanh(1.6x) multiplies
+      // quiet signals by 1.6, and a 1.6x gain inside a feedback loop is an oscillator.
+      const shape = new Tone.WaveShaper(x=>Math.tanh(x*1.6)/1.6, 2048);
+      const post  = new Tone.Gain(0.8);
+      const drop  = new Tone.Gain(1);
+      const fb    = new Tone.Gain(lp.fb);
+      const out   = new Tone.Gain(lp.lvl);
+      const arm   = new Tone.Gain(0);
+      const hiss  = new Tone.Noise('pink').start();
+      const hissG = new Tone.Gain(0);
+      const hissF = new Tone.Filter({type:'bandpass', frequency:3200, Q:0.7});
+      const an    = new Tone.Analyser('waveform', 512);
+
+      inBus.connect(arm); arm.connect(sum);
+      sum.connect(dly); dly.connect(lo); lo.connect(hi); hi.connect(pre);
+      pre.connect(shape); shape.connect(post); post.connect(drop);
+      drop.connect(fb); fb.connect(sum);            // the loop itself
+      drop.connect(out);
+      // Hiss goes on after the circuit rather than into it: inside a loop running at 0.97
+      // it would compound about thirty times over and swamp everything.
+      hiss.connect(hissF); hissF.connect(hissG); hissG.connect(out);
+      out.connect(master); out.connect(an);
+
+      const wowG=new Tone.Gain(0); wowLfo.connect(wowG); wowG.connect(dly.delayTime);
+      const fltG=new Tone.Gain(0); fltLfo.connect(fltG); fltG.connect(dly.delayTime);
+
+      return {sum,dly,lo,hi,pre,shape,post,drop,fb,out,arm,hiss,hissG,an,wowG,fltG,
+              amp:new Float32Array(512), dipUntil:0};
+    });
+
+    // The built-in voice, so the tool plays without a microphone.
+    voice=new Tone.PolySynth(Tone.FMSynth); voice.maxPolyphony=8;
+    voice.set({harmonicity:1.4, modulationIndex:2.2, oscillator:{type:'sine'},
+      envelope:{attack:0.008,decay:1.9,sustain:0.06,release:2.6},
+      modulation:{type:'sine'}, modulationEnvelope:{attack:0.02,decay:1.1,sustain:0,release:1.2}});
+    voice.connect(inBus);
+
+    A={limiter,master,inBus,monitor,wowLfo,fltLfo,L};
+    applyAll();
+  }
+
+  // ---- controls -> nodes
+  function applyLoop(i){
+    if(!A) return; const lp=loops[i], n=A.L[i];
+    n.dly.delayTime.rampTo(lp.len, 0.25);           // ramping the length bends the pitch, as tape does
+    n.fb.gain.rampTo(lp.frz ? 1.0 : lp.fb, 0.1);
+    n.out.gain.rampTo(state.paused ? 0 : lp.lvl, 0.15);
+    n.arm.gain.rampTo(lp.arm ? 1 : 0, 0.08);
+  }
+  function applyWear(i){
+    if(!A) return; const lp=loops[i], n=A.L[i];
+    const depth=0.02+(1-state.dpt/100)*0.30;         // how far down the top end is allowed to go
+    n.lo.frequency.rampTo(16000*Math.pow(depth, lp.wear), 0.3);
+    n.hi.frequency.rampTo(22+240*lp.wear*lp.wear, 0.3);
+    // Measured at 0.035 this was 2% of a loop's level at full wear — inaudible, which is
+    // no use when hiss is supposed to be what a worn tape mostly is.
+    n.hissG.gain.rampTo((state.his/100)*0.14*(0.18+lp.wear), 0.3);
+  }
+  function applyAll(){
+    if(!A) return;
+    A.master.gain.rampTo(state.mst,0.1);
+    A.inBus.gain.rampTo(state.inLvl,0.1);
+    A.monitor.gain.rampTo(state.paused?0:state.mon,0.1);
+    const d=state.drv/100;
+    A.L.forEach((n,i)=>{
+      // Drive pushes into the shaper and the make-up takes exactly the same amount back
+      // out, so the round trip is unity however hard you drive it. Anything above unity
+      // and the loop grows on its own until it is nothing but saturation — which is what
+      // it did: a worn loop measured three times louder than a fresh one.
+      const push=1+d*5.5;
+      n.pre.gain.rampTo(push,0.15);
+      n.post.gain.rampTo(1/push,0.15);
+      n.wowG.gain.rampTo((state.wow/100)*0.0045,0.2);
+      n.fltG.gain.rampTo((state.flt/100)*0.0007,0.2);
+      applyLoop(i); applyWear(i);
+    });
+  }
+
+  function eraseLoop(i){
+    if(!A) return; const n=A.L[i];
+    // Drop the feedback to nothing for a beat and the circuit empties itself.
+    const keep=loops[i].frz?1.0:loops[i].fb;
+    n.fb.gain.cancelScheduledValues(Tone.now());
+    n.fb.gain.setValueAtTime(0,Tone.now());
+    n.fb.gain.setValueAtTime(0,Tone.now()+loops[i].len*1.05);
+    n.fb.gain.linearRampToValueAtTime(keep,Tone.now()+loops[i].len*1.05+0.2);
+    loops[i].wear=0; n.amp.fill(0); applyWear(i); syncLoop();
+    setStatus(`loop ${i+1} erased`); setTimeout(()=>setStatus(''),1600);
+  }
+
+  /* Dropouts. Real tape sheds oxide in flakes, so what you lose is short and abrupt rather
+     than a smooth fade. Probability climbs with wear. */
+  function maybeDrop(i,dt){
+    const lp=loops[i]; if(lp.frz || lp.wear<0.04) return;
+    const n=A.L[i], t=Tone.now();
+    if(t<n.dipUntil) return;
+    const p=lp.wear*lp.wear*1.6*dt;
+    if(Math.random()>p) return;
+    const deep=0.06+Math.random()*0.4*(1-lp.wear*0.6);
+    const dur=0.03+Math.random()*0.22;
+    n.dipUntil=t+dur+0.05;
+    n.drop.gain.cancelScheduledValues(t);
+    n.drop.gain.setValueAtTime(n.drop.gain.value,t);
+    n.drop.gain.linearRampToValueAtTime(deep,t+0.012);
+    n.drop.gain.linearRampToValueAtTime(deep,t+dur);
+    n.drop.gain.linearRampToValueAtTime(1,t+dur+0.05);
+  }
+
+  // ---- input sources
+  async function setSource(s){
+    state.src=s;
+    document.querySelectorAll('#srcSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===s)));
+    $('fileRow').style.display = s==='file' ? '' : 'none';
+    if(s==='mic'){
+      try{
+        if(!mic){ mic=new Tone.UserMedia(); }
+        await mic.open(); mic.connect(A.inBus);
+        // Monitoring a microphone through speakers is a feedback howl waiting to happen.
+        if(state.mon>0){ state.mon=0; $('mon').value='0'; $('monR').textContent='0'; applyAll();
+          setStatus('monitor off — a mic through speakers will howl'); setTimeout(()=>setStatus(''),3200); }
+      }catch(e){ setStatus('microphone unavailable'); setTimeout(()=>setStatus(''),2600); }
+    } else if(mic){ try{ mic.close(); }catch(e){} }
+  }
+  function strike(midi){
+    if(!A||!voice) return;
+    try{ voice.triggerAttackRelease(Tone.Frequency(midi,'midi').toNote(), 1.8, undefined, 0.7); }catch(e){}
+  }
+  async function loadFile(f){
+    try{
+      const ab=await f.arrayBuffer();
+      fileBuf=await Tone.getContext().rawContext.decodeAudioData(ab);
+      if(filePlayer){ try{ filePlayer.dispose(); }catch(e){} }
+      filePlayer=new Tone.Player(fileBuf).connect(A.inBus);
+      filePlayer.start();
+      setStatus(`${f.name} — ${fileBuf.duration.toFixed(1)}s`); setTimeout(()=>setStatus(''),2600);
+    }catch(e){ setStatus('could not read that file'); setTimeout(()=>setStatus(''),2600); }
+  }
+
+  // ---------- UI ----------
+  function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
+  const segBuild=(id,cls,get,set,label)=>{
+    const el=$(id); if(!el) return; el.innerHTML='';
+    loops.forEach((lp,i)=>{ const b=document.createElement('button'); b.type='button';
+      b.innerHTML = cls==='frz' ? `<span>${i+1}</span>` : String(i+1);
+      b.setAttribute('aria-pressed', String(!!get(i)));
+      b.style.color=hsla(lp.hue,72,IL(56),1);
+      b.title=`${get(i)?'Turn off':'Turn on'} ${label} for loop ${i+1}`;
+      b.addEventListener('click',()=>{ set(i,!get(i)); });
+      el.appendChild(b); });
+  };
+  function refreshSegs(){
+    segBuild('loopSeg','loops',i=>i===editLoop,(i)=>{ editLoop=i; syncLoop(); refreshSegs(); },'edit');
+    segBuild('armSeg','arm',i=>loops[i].arm,(i,v)=>{ loops[i].arm=v; applyLoop(i); refreshSegs(); refreshReels(); },'arm');
+    segBuild('frzSeg','frz',i=>loops[i].frz,(i,v)=>{ loops[i].frz=v; applyLoop(i); refreshSegs(); refreshReels(); },'freeze');
+  }
+  function refreshReels(){
+    const el=$('reels'); if(!el) return; el.innerHTML='';
+    loops.forEach((lp,i)=>{ const d=document.createElement('div');
+      d.className='reel'+(lp.arm?' armed':'');
+      d.innerHTML=`<b>${i+1}</b> ${lp.len.toFixed(1)}s${lp.frz?' &#183; held':''}`;
+      d.style.borderColor = lp.arm ? '#ff4d5e' : '';
+      el.appendChild(d); });
+  }
+  function syncLoop(){
+    const lp=loops[editLoop];
+    $('len').value=Math.round(lp.len*10); $('lenR').textContent=lp.len.toFixed(1)+'s';
+    $('fb').value=Math.round(lp.fb*100);  $('fbR').textContent=Math.round(lp.fb*100);
+    $('lvl').value=Math.round(lp.lvl*100);$('lvlR').textContent=Math.round(lp.lvl*100);
+    paintWear();
+    syncKnobs();
+  }
+  function paintWear(){
+    const lp=loops[editLoop], pc=Math.round(lp.wear*100);
+    $('wearR').textContent=pc+'%'; $('wearBar').style.width=pc+'%';
+  }
+
+  // ---------- canvas ----------
+  const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
+  let W=0,H=0,DPR=1;
+  function resize(){ const r=wrap.getBoundingClientRect();
+    DPR=Math.min(2,devicePixelRatio||1); W=r.width; H=r.height;
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0); }
+  addEventListener('resize',resize);
+
+  // Four rings have to fit inside half the short side, trace and all: 0.10 + 3x0.105
+  // reaches 0.415, which leaves room for the trace to stand off the outer ring.
+  const ringR=i=>{ const m=Math.min(W,H); return m*0.10 + m*0.105*i; };
+
+  let lastT=performance.now(), grainT=0, frameErr=false;
+  function draw(t){
+    try{ frame(t); }
+    catch(e){ if(!frameErr){ frameErr=true; console.error('tape frame',e);
+      setStatus('display error — '+e.message); setTimeout(()=>setStatus(''),5000); } }
+    requestAnimationFrame(draw);
+  }
+  function frame(t){
+    const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle=PAPERC(); ctx.fillRect(0,0,W,H);
+    const cx=W/2, cy=H/2;
+
+    if(A && state.ready){
+      const shed=Math.pow(state.dec/100,2)*0.022;
+      for(let i=0;i<loops.length;i++){
+        const lp=loops[i], n=A.L[i];
+        if(!state.paused){
+          lp.phase=(lp.phase+dt/lp.len)%1;
+          if(!lp.frz){ lp.wear=clamp(lp.wear+shed*dt*60/60,0,1); }
+          maybeDrop(i,dt);
+        }
+        // Sample what is coming off this loop and write it in at the head's position, so the
+        // ring is a picture of the tape rather than a decoration.
+        const buf=n.an.getValue();
+        let pk=0; for(let j=0;j<buf.length;j++){ const v=buf[j]<0?-buf[j]:buf[j]; if(v>pk) pk=v; }
+        const idx=Math.floor(lp.phase*n.amp.length)%n.amp.length;
+        n.amp[idx]=n.amp[idx]*0.35+Math.min(1,pk*1.8)*0.65;
+        if((t-grainT)>90){ applyWear(i); }
+      }
+      if((t-grainT)>90) grainT=t;
+    }
+
+    // rings
+    for(let i=loops.length-1;i>=0;i--){
+      const lp=loops[i], R=ringR(i), n=A?A.L[i]:null;
+      const sel=i===editLoop;
+      // the ring itself, fainter the more worn it is
+      ctx.strokeStyle=hsla(lp.hue,60,IL(52),(sel?0.5:0.28)*(1-lp.wear*0.55));
+      ctx.lineWidth=sel?1.6:1;
+      ctx.beginPath(); ctx.arc(cx,cy,R,0,6.283); ctx.stroke();
+
+      if(n){
+        const N=n.amp.length, amp=n.amp;
+        ctx.lineWidth=sel?2.2:1.6;
+        for(let k=0;k<N;k++){
+          const a=amp[k]; if(a<0.012) continue;
+          // Worn tape drops out in patches: past a threshold the trace simply is not there.
+          const gap=lp.wear>0.05 && ((Math.sin(k*12.9898+i*7.7)*43758.5453)%1+1)%1 < lp.wear*0.55;
+          if(gap) continue;
+          const th=(k/N)*6.283-Math.PI/2;
+          const h=a*Math.min(W,H)*0.042*(1-lp.wear*0.35);
+          const c=Math.cos(th), s=Math.sin(th);
+          ctx.strokeStyle=hsla(lp.hue+a*30,74,IL(46+a*16),(0.42+a*0.5)*(1-lp.wear*0.45));
+          ctx.beginPath();
+          ctx.moveTo(cx+c*(R-h),cy+s*(R-h));
+          ctx.lineTo(cx+c*(R+h),cy+s*(R+h));
+          ctx.stroke();
+        }
+        // the head
+        const th=lp.phase*6.283-Math.PI/2, hx=cx+Math.cos(th)*R, hy=cy+Math.sin(th)*R;
+        const g=ctx.createRadialGradient(hx,hy,0,hx,hy,14);
+        g.addColorStop(0,hsla(lp.hue,80,IL(60),lp.arm?0.95:0.6));
+        g.addColorStop(1,hsla(lp.hue,80,IL(60),0));
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(hx,hy,14,0,6.283); ctx.fill();
+        if(lp.arm){ ctx.fillStyle='#ff4d5e'; ctx.beginPath(); ctx.arc(hx,hy,3.2,0,6.283); ctx.fill(); }
+      }
+    }
+    paintWear();
+  }
+
+  // ---------- wiring ----------
+  const bind=(id,fn)=>{ const el=$(id); if(el) el.addEventListener('input',fn); };
+  bind('len',e=>{ loops[editLoop].len=+e.target.value/10; $('lenR').textContent=loops[editLoop].len.toFixed(1)+'s';
+    applyLoop(editLoop); refreshReels(); });
+  bind('fb', e=>{ loops[editLoop].fb=+e.target.value/100; $('fbR').textContent=e.target.value; applyLoop(editLoop); });
+  bind('lvl',e=>{ loops[editLoop].lvl=+e.target.value/100; $('lvlR').textContent=e.target.value; applyLoop(editLoop); });
+  ['dec','drv','wow','flt','his','dpt'].forEach(k=>bind(k,e=>{ state[k]=+e.target.value;
+    $(k==='dec'?'decR':k==='drv'?'drvR':k==='wow'?'wowR':k==='flt'?'fltR':k==='his'?'hisR':'dptR').textContent=e.target.value;
+    applyAll(); }));
+  bind('inLvl',e=>{ state.inLvl=+e.target.value/100; $('inR').textContent=e.target.value; applyAll(); });
+  bind('mon',  e=>{ state.mon=+e.target.value/100;   $('monR').textContent=e.target.value; applyAll(); });
+  bind('mst',  e=>{ state.mst=+e.target.value/100;   $('mstR').textContent=e.target.value; applyAll(); });
+  bind('vp',   e=>{ state.vp=+e.target.value;
+    const NN=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    $('vpR').textContent=NN[state.vp%12]+(Math.floor(state.vp/12)-1); });
+  $('eraseBtn').addEventListener('click',()=>eraseLoop(editLoop));
+  $('eraseAll').addEventListener('click',()=>{ loops.forEach((l,i)=>eraseLoop(i));
+    setStatus('all four erased'); setTimeout(()=>setStatus(''),1800); });
+  document.querySelectorAll('#srcSeg button').forEach(b=>b.addEventListener('click',()=>setSource(b.dataset.s)));
+  $('fileBtn').addEventListener('click',()=>$('fileInp').click());
+  $('fileInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadFile(f); });
+  $('filePlay').addEventListener('click',()=>{ if(filePlayer){ try{ filePlayer.stop(); filePlayer.start(); }catch(e){} } });
+
+  // click the canvas to play the built-in voice — pitch follows height
+  cv.addEventListener('pointerdown',e=>{
+    if(!state.ready || state.src!=='voice') return;
+    const r=cv.getBoundingClientRect();
+    const y=clamp((e.clientY-r.top)/r.height,0,1);
+    const SC=[0,2,3,5,7,10];                        // minor pentatonic + a fourth, hard to get wrong
+    const deg=Math.round((1-y)*11);
+    strike(state.vp + Math.floor(deg/SC.length)*12 + SC[deg%SC.length]);
+  });
+
+  // theme / full screen / pause
+  function setTheme(t){ THEME=t; document.body.classList.toggle('dark',t==='dark');
+    $('themeBtn').setAttribute('aria-pressed',String(t==='dark')); refreshSegs(); refreshReels(); }
+  $('themeBtn').addEventListener('click',()=>setTheme(isDark()?'light':'dark'));
+  function setFs(on){ document.body.classList.toggle('fs',on);
+    if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+    else if(!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+    requestAnimationFrame(resize); }
+  $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
+  $('exitFs').addEventListener('click',()=>setFs(false));
+  const PAUSE_SVG='<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>';
+  const PLAY_SVG='<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3.2 1.9 L9.6 6 L3.2 10.1 Z" fill="currentColor"/></svg>';
+  function setPaused(on){ state.paused=!!on; const b=$('pauseBtn');
+    b.innerHTML=on?PLAY_SVG:PAUSE_SVG; b.setAttribute('aria-pressed',String(on));
+    b.setAttribute('aria-label',on?'play':'pause'); applyAll(); }
+  $('pauseBtn').addEventListener('click',()=>setPaused(!state.paused));
+  $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open');
+    $('rail').classList.toggle('open',open); document.body.classList.toggle('panels',open);
+    $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
+  addEventListener('keydown',e=>{
+    if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+    if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; }
+    if(e.code==='Space'){ e.preventDefault(); setPaused(!state.paused); return; }
+    if(e.key==='f'||e.key==='F') setFs(!document.body.classList.contains('fs'));
+    const n=parseInt(e.key,10);
+    if(n>=1&&n<=4){ const i=n-1; loops[i].arm=!loops[i].arm; applyLoop(i); refreshSegs(); refreshReels(); }
+  });
+  document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && document.body.classList.contains('fs')) setFs(false); });
+
+  // ---------- export ----------
+  const dl=(blob,name)=>{ const u=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),1500); };
+  $('snapBtn').addEventListener('click',()=>{
+    const c=document.createElement('canvas'); c.width=1080; c.height=1350;
+    const g=c.getContext('2d'); const s=Math.max(1080/cv.width,1350/cv.height);
+    g.fillStyle=PAPERC(); g.fillRect(0,0,1080,1350);
+    g.drawImage(cv,(1080-cv.width*s)/2,(1350-cv.height*s)/2,cv.width*s,cv.height*s);
+    c.toBlob(b=>dl(b,`tape-${Math.round(performance.now())}.png`),'image/png'); });
+
+  let arec=null, achunks=[], recStart=0, recTimer=null;
+  const fmtClock=ms=>{ const t=Math.floor(ms/1000); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); };
+  function pickMime(){ for(const m of ['audio/webm;codecs=opus','audio/webm','audio/mp4'])
+    { try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(e){} } return ''; }
+  $('audBtn').addEventListener('click',()=>{
+    if(state.recAudio){
+      if(arec&&arec.state!=='inactive') arec.stop();
+      state.recAudio=false; clearInterval(recTimer); $('recDot').classList.remove('on');
+      $('audBtn').textContent='Audio'; $('audBtn').setAttribute('aria-pressed','false'); return;
+    }
+    if(!A) return;
+    const mime=pickMime();
+    const dest=Tone.getContext().rawContext.createMediaStreamDestination();
+    A.limiter.connect(dest);
+    achunks=[]; arec=new MediaRecorder(dest.stream, mime?{mimeType:mime}:undefined);
+    arec.ondataavailable=e=>{ if(e.data.size) achunks.push(e.data); };
+    arec.onstop=()=>dl(new Blob(achunks,{type:mime||'audio/webm'}),
+      `tape-${Math.round(performance.now())}.${(mime||'').includes('mp4')?'m4a':'webm'}`);
+    arec.start(); state.recAudio=true;
+    recStart=performance.now(); $('recLabel').textContent='AUDIO'; $('recTime').textContent='0:00';
+    $('recDot').classList.add('on');
+    recTimer=setInterval(()=>{ $('recTime').textContent=fmtClock(performance.now()-recStart); },250);
+    $('audBtn').textContent='Stop'; $('audBtn').setAttribute('aria-pressed','true');
+  });
+
+  // ---------- knobs (same behaviour as Angel's, so the two tools feel the same) ----------
+  const knobs=[];
+  function makeKnob(inp){
+    inp.dataset.knob='1';
+    const wrapEl=document.createElement('div'); wrapEl.className='knob'; wrapEl.tabIndex=0;
+    wrapEl.setAttribute('role','slider');
+    inp.parentNode.insertBefore(wrapEl,inp); wrapEl.appendChild(inp);
+    wrapEl.insertAdjacentHTML('beforeend',
+      '<svg viewBox="0 0 44 44" width="42" height="42" aria-hidden="true">'+
+      '<path class="k-tr" d="M9 35 A18 18 0 1 1 35 35"/>'+
+      '<path class="k-vl" d="M9 35 A18 18 0 1 1 35 35"/>'+
+      '<circle class="k-hub" cx="22" cy="22" r="9"/>'+
+      '<line class="k-pt" x1="22" y1="22" x2="22" y2="14"/></svg>');
+    const k={el:wrapEl,inp}; knobs.push(k);
+    const set=v=>{ inp.value=String(v); inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); };
+    let dragY=0, dragV=0;
+    wrapEl.addEventListener('pointerdown',e=>{ e.preventDefault(); wrapEl.setPointerCapture(e.pointerId);
+      wrapEl.classList.add('drag'); dragY=e.clientY; dragV=+inp.value; });
+    wrapEl.addEventListener('pointermove',e=>{ if(!wrapEl.classList.contains('drag')) return;
+      const span=(+inp.max)-(+inp.min);
+      set(clamp(Math.round(dragV+(dragY-e.clientY)/160*span), +inp.min, +inp.max)); });
+    const up=()=>wrapEl.classList.remove('drag');
+    wrapEl.addEventListener('pointerup',up); wrapEl.addEventListener('pointercancel',up);
+    wrapEl.addEventListener('keydown',e=>{ const st=+inp.step||1;
+      if(e.key==='ArrowUp'||e.key==='ArrowRight'){ e.preventDefault(); set(clamp(+inp.value+st,+inp.min,+inp.max)); }
+      if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); set(clamp(+inp.value-st,+inp.min,+inp.max)); } });
+    paintKnob(k);
+  }
+  function paintKnob(k){
+    const inp=k.inp, min=+inp.min, max=+inp.max, v=+inp.value, f=(v-min)/(max-min||1);
+    const path=k.el.querySelector('.k-vl'), len=path.getTotalLength();
+    path.style.strokeDasharray=len; path.style.strokeDashoffset=len*(1-f);
+    const a=(-135+270*f)*Math.PI/180, pt=k.el.querySelector('.k-pt');
+    pt.setAttribute('x2',(22+Math.sin(a)*8).toFixed(2)); pt.setAttribute('y2',(22-Math.cos(a)*8).toFixed(2));
+    k.el.setAttribute('aria-valuenow',String(v));
+  }
+  const knobify=root=>(root||document).querySelectorAll('.rail input[type=range]:not([data-knob])').forEach(makeKnob);
+  const syncKnobs=()=>knobs.forEach(paintKnob);
+
+  // ---------- folds + tooltips (same as Angel) ----------
+  const FOLD_KEY='tape-folded', FOLD_DEFAULT=['Out'];
+  const readFold=()=>{ try{ return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]'); }catch(e){ return []; } };
+  (function initFolds(){
+    let stored=null; try{ stored=localStorage.getItem(FOLD_KEY); }catch(e){}
+    if(stored==null){ try{ localStorage.setItem(FOLD_KEY,JSON.stringify(FOLD_DEFAULT)); }catch(e){} }
+    const saved=new Set(stored==null?FOLD_DEFAULT:readFold());
+    document.querySelectorAll('.rail .rowhead').forEach(h=>{
+      const row=h.closest('.row'); if(!row) return; const name=h.textContent.trim();
+      if(saved.has(name)){ row.classList.add('folded'); h.setAttribute('aria-expanded','false'); }
+      h.addEventListener('click',()=>{ const folded=row.classList.toggle('folded');
+        h.setAttribute('aria-expanded',String(!folded));
+        const cur=new Set(readFold()); folded?cur.add(name):cur.delete(name);
+        try{ localStorage.setItem(FOLD_KEY,JSON.stringify([...cur])); }catch(e){} });
+    });
+  })();
+  let tipEl=null,tipT=null,tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return;
+    if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0';
+    const r=host.getBoundingClientRect(), t=tipEl.getBoundingClientRect();
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8,r.bottom+8);
+    tipEl.style.left=Math.max(8,Math.min(r.left,innerWidth-t.width-8))+'px';
+    tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+  addEventListener('pointerover',e=>{ const h=e.target.closest&&e.target.closest('[data-tip]');
+    if(h===tipFor) return; clearTimeout(tipT);
+    if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown',hideTip);
+  addEventListener('scroll',hideTip,true);
+
+  // ---------- go ----------
+  setTheme(THEME);
+  resize(); refreshSegs(); refreshReels(); syncLoop(); knobify(); syncKnobs();
+  const veil=$('veil');
+  veil.addEventListener('click',async()=>{
+    await Tone.start(); buildAudio(); state.ready=true;
+    veil.style.display='none'; resize();
+    loops[0].arm=true; applyLoop(0); refreshSegs(); refreshReels();
+    setStatus('loop 1 armed — click the field to play into it'); setTimeout(()=>setStatus(''),4200);
+  });
+  requestAnimationFrame(draw);
+
+  window.tape={ loops, state, get A(){return A;}, eraseLoop, strike, setSource, setPaused, setTheme, applyAll, syncLoop };
+})();
+</script>
+</body>
+</html>
