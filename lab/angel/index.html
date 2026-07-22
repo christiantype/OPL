@@ -352,6 +352,9 @@
         <button class="btn" id="chopPlay" style="flex:1">Play</button>
         <button class="btn" id="chopReset" style="flex:1">Whole</button>
       </div>
+      <div style="display:flex; gap:6px; margin-top:6px;" data-tip="Puts the sound you are holding onto the step you have selected — so one recording can go on as many steps, and as many lanes, as you like.">
+        <button class="btn" id="chopAssign" style="flex:1" disabled>Put on step</button>
+      </div>
       <div style="display:flex; gap:6px; margin-top:6px;" data-tip="Cuts the kept part into equal pieces and drops them onto the steps that follow this one, so one take becomes a run across the lane.">
         <select id="chopN" style="flex:1">
           <option value="2">2 slices</option><option value="3">3 slices</option>
@@ -1778,6 +1781,31 @@
   function chopCv(){ return document.getElementById('chopCv'); }
   // var, not let: syncChop() is reached during setup and a dead zone here would throw.
   var chopPeaks=null, chopDur=0, chopSel=[0,1], chopDrag=null, chopPreview=null;
+  /* The take in hand. A recording used to exist only as the sample on one step, so once it
+     landed there was nowhere else to put it. Now the last thing you recorded, loaded or
+     touched stays here: pick a sampled step up, drop it on an empty one. */
+  var takeRaw=null, takeLabel='', takeT0=0, takeT1=0;
+  function chopSrc(){
+    const sp = selStep>=0 ? stepPlayer(editLane,selStep) : null;
+    if(sp && sp.raw) return {kind:'step', raw:sp.raw, t0:sp.t0, t1:sp.t1, label:sp.label};
+    if(takeRaw)      return {kind:'take', raw:takeRaw, t0:takeT0, t1:takeT1, label:takeLabel};
+    return null;
+  }
+  function holdTake(raw,label,t0,t1){ takeRaw=raw; takeLabel=(label||'sample').split(' \u00b7 ')[0];
+    takeT0=t0==null?0:t0; takeT1=t1==null?raw.duration:t1; }
+  function chopSetTrim(a,b){
+    const src=chopSrc(); if(!src) return;
+    const lo=Math.max(0,Math.min(a,b)), hi=Math.min(src.raw.duration,Math.max(a,b));
+    if(hi-lo<0.02) return;
+    if(src.kind==='step') retrimStep(editLane,selStep,lo,hi);
+    else { takeT0=lo; takeT1=hi; }
+  }
+  function assignTake(){
+    if(selStep<0 || !takeRaw) return;
+    setStepSample(editLane,selStep,sliceBuffer(takeRaw,takeT0,takeT1),
+      `${takeLabel} \u00b7 ${(takeT1-takeT0).toFixed(2)}s`, takeRaw, takeT0, takeT1);
+    setStatus(`\u2192 lane ${editLane+1} step ${selStep+1}`); setTimeout(()=>setStatus(''),1600);
+  }
   function peaksOf(buf,n){
     const d=buf.getChannelData(0), per=Math.max(1,Math.floor(d.length/n)), out=new Float32Array(n);
     for(let i=0;i<n;i++){ let mx=0; const a=i*per, b=Math.min(d.length,a+per);
@@ -1815,16 +1843,22 @@
   function DIMC(){ return getComputedStyle(document.body).getPropertyValue('--mute').trim()||'#999'; }
   function syncChop(){
     const wrap=document.getElementById('chopWrap'); if(!wrap) return;
-    const sp = selStep>=0 ? stepPlayer(editLane,selStep) : null;
-    if(!sp || !sp.raw){ wrap.classList.add('empty'); chopPeaks=null; chopDur=0;
-      document.getElementById('chopR').textContent = selStep<0 ? 'select a step' : 'nothing recorded';
+    const src=chopSrc(), lab=document.getElementById('chopR');
+    const assign=document.getElementById('chopAssign');
+    if(!src){ wrap.classList.add('empty'); chopPeaks=null; chopDur=0;
+      lab.textContent='nothing recorded yet';
+      if(assign) assign.disabled=true;
       drawChop(); return; }
+    // touching a sampled step picks it up, so it can be dropped somewhere else afterwards
+    if(src.kind==='step') holdTake(src.raw,src.label,src.t0,src.t1);
     wrap.classList.remove('empty');
-    chopDur=sp.raw.duration;
-    chopPeaks=peaksOf(sp.raw, Math.max(120, Math.round((chopCv().clientWidth||260))));
-    chopSel=[sp.t0/chopDur, sp.t1/chopDur];
-    document.getElementById('chopR').textContent =
-      `${(sp.t1-sp.t0).toFixed(2)}s of ${chopDur.toFixed(2)}s`;
+    chopDur=src.raw.duration;
+    chopPeaks=peaksOf(src.raw, Math.max(120, Math.round((chopCv().clientWidth||260))));
+    chopSel=[src.t0/chopDur, src.t1/chopDur];
+    lab.textContent = (src.kind==='take' ? 'in hand \u00b7 ' : '')+
+      `${(src.t1-src.t0).toFixed(2)}s of ${chopDur.toFixed(2)}s`;
+    if(assign){ assign.disabled = !(src.kind==='take' && selStep>=0);
+      assign.textContent = selStep>=0 ? `Put on step ${selStep+1}` : 'Put on step'; }
     drawChop();
   }
   function chopBind(){
@@ -1843,20 +1877,22 @@
       document.getElementById('chopR').textContent=`${(hi-lo).toFixed(2)}s of ${chopDur.toFixed(2)}s`;
       drawChop(); });
     const end=()=>{ if(chopDrag==null) return; chopDrag=null;
-      if(!chopPeaks || selStep<0) return;
+      if(!chopPeaks) return;
       chopSel=[Math.min(...chopSel),Math.max(...chopSel)];
-      retrimStep(editLane,selStep,chopSel[0]*chopDur,chopSel[1]*chopDur); syncChop(); };
+      chopSetTrim(chopSel[0]*chopDur, chopSel[1]*chopDur); syncChop(); };
     cvE.addEventListener('pointerup',end); cvE.addEventListener('pointercancel',end);
   }
   function chopAudition(){
-    const sp = selStep>=0 ? stepPlayer(editLane,selStep) : null; if(!sp) return;
+    const src=chopSrc(); if(!src) return;
     try{ if(chopPreview){ chopPreview.stop(); chopPreview.dispose(); }
-      chopPreview=new Tone.Player(sp.player.buffer).toDestination(); chopPreview.start();
+      chopPreview=new Tone.Player(sliceBuffer(src.raw,src.t0,src.t1)).toDestination();
+      chopPreview.start();
     }catch(e){}
   }
   function chopSpread(n){
-    const sp = selStep>=0 ? stepPlayer(editLane,selStep) : null; if(!sp||!sp.raw) return;
-    const L=lanes[editLane], lo=sp.t0, span=(sp.t1-sp.t0)/n;
+    const src=chopSrc(); if(!src) return;
+    if(selStep<0){ setStatus('select a step to spread from'); setTimeout(()=>setStatus(''),2200); return; }
+    const sp=src, L=lanes[editLane], lo=sp.t0, span=(sp.t1-sp.t0)/n;
     if(span<0.02){ setStatus('too short to spread'); setTimeout(()=>setStatus(''),2000); return; }
     const base=(sp.label||'sample').split(' \u00b7 ')[0], start=selStep;
     for(let j=0;j<n;j++){
@@ -1875,8 +1911,10 @@
       selStep=t.step;                                  // after syncLane, which clears it
       setStepSample(t.lane,t.step,buf,`${label} \u00b7 ${buf.duration.toFixed(2)}s`);
       syncNoteEd(); refreshSteps(); syncStepSample();
-      setStatus(`sample \u2192 lane ${t.lane+1} step ${t.step+1}`); setTimeout(()=>setStatus(''),1800); return; }
-    sampleBuf=buf;
+      holdTake(buf,label,0,buf.duration);
+      setStatus(`sample \u2192 lane ${t.lane+1} step ${t.step+1}`); setTimeout(()=>setStatus(''),1800);
+      syncChop(); return; }
+    sampleBuf=buf; holdTake(buf,label,0,buf.duration);
     $('sampInfo').textContent=`${label} · ${buf.duration.toFixed(2)}s`;
     // make "Sample" selectable now that there's something behind it
     [ $('instrSel'), $('orbVoice') ].forEach(sel=>{
@@ -1977,8 +2015,9 @@
     });
   });
   $('chopPlay').addEventListener('click',chopAudition);
-  $('chopReset').addEventListener('click',()=>{ const sp=selStep>=0&&stepPlayer(editLane,selStep);
-    if(sp&&sp.raw){ retrimStep(editLane,selStep,0,sp.raw.duration); syncChop(); } });
+  $('chopReset').addEventListener('click',()=>{ const src=chopSrc();
+    if(src) { chopSetTrim(0,src.raw.duration); syncChop(); } });
+  $('chopAssign').addEventListener('click',()=>{ assignTake(); });
   $('chopSlice').addEventListener('click',()=>chopSpread(+$('chopN').value));
   chopBind(); syncChop();
   addEventListener('resize',()=>{ if(!state.recMic) syncChop(); });
@@ -2255,7 +2294,7 @@
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
   window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, setKbd, kbSync,
-    chopSpread, retrimStep, sliceBuffer, syncChop, countIn, get audio(){return audio;}, setPaused, hexHue, setStepSample, clearStepSample, fireStep, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
+    chopSpread, retrimStep, sliceBuffer, syncChop, countIn, assignTake, chopSrc, get audio(){return audio;}, setPaused, hexHue, setStepSample, clearStepSample, fireStep, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
 })();
 </script>
 </body>
