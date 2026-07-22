@@ -314,8 +314,8 @@
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Steps</button>
-    <p class="rowhint">Click a cell to place a note. Click again to select it, once more to clear.</p>
-    <div class="grp" data-tip="One cell per step. Click to place a note, click again to select it for editing, once more to clear it."><div id="stepRow"></div></div>
+    <p class="rowhint">Click a cell to place a note. Click again to select it, once more to clear. A step holding a recording only clears from Clear, so a stray click cannot lose a take.</p>
+    <div class="grp" data-tip="One cell per step. Click to place a note, click again to select it for editing, once more to clear it. Steps holding a recording are kept — clear those with the Clear button."><div id="stepRow"></div></div>
     <div class="grp" data-tip="Writes a run of notes across every step at once, climbing or falling through the current scale. The fastest way to fill a lane."><label>Arpeggio <b style="font-weight:400;opacity:.55">fills this lane</b></label>
       <div style="display:flex; gap:6px;">
         <select id="arpDir">
@@ -1385,8 +1385,9 @@
       // Match the ring: clicking an empty cell PLACES a step on the lane. Clicking a filled
       // cell selects it (to set its note); clicking the already-selected one clears it.
       b.addEventListener('click',()=>{ const cur=L.pattern[k];
+        const holdsSample = !!(L.stepBuf && L.stepBuf[k]);
         if(cur==null){ L.pattern[k]='auto'; selStep=k; }
-        else if(selStep===k){ L.pattern[k]=null; clearStepSample(editLane,k); selStep=-1; }
+        else if(selStep===k && !holdsSample){ L.pattern[k]=null; selStep=-1; }
         else selStep=k;
         syncNoteEd(); refreshSteps(); syncStepSample();
         if(selStep>=0 && !kbdOpen()) setKbd(true); });
@@ -1866,11 +1867,15 @@
     setStatus(`${n} slices across lane ${editLane+1}`); setTimeout(()=>setStatus(''),2200);
   }
 
-  function useBuffer(buf,label){
-    // Into the selected step when there is one; otherwise it becomes the shared
-    // "Sample" voice as before, so loading without a selection still does something.
-    if(selStep>=0){ setStepSample(editLane,selStep,buf,`${label} \u00b7 ${buf.duration.toFixed(2)}s`);
-      setStatus(`sample \u2192 lane ${editLane+1} step ${selStep+1}`); setTimeout(()=>setStatus(''),1800); return; }
+  function useBuffer(buf,label,target){
+    // An explicit target wins: it is where the recording was aimed when it started.
+    const t = target || (selStep>=0 ? {lane:editLane, step:selStep} : null);
+    if(t && lanes[t.lane]){
+      if(t.lane!==editLane){ editLane=t.lane; syncLane(); refreshLaneSeg(); refreshMutes(); }
+      selStep=t.step;                                  // after syncLane, which clears it
+      setStepSample(t.lane,t.step,buf,`${label} \u00b7 ${buf.duration.toFixed(2)}s`);
+      syncNoteEd(); refreshSteps(); syncStepSample();
+      setStatus(`sample \u2192 lane ${t.lane+1} step ${t.step+1}`); setTimeout(()=>setStatus(''),1800); return; }
     sampleBuf=buf;
     $('sampInfo').textContent=`${label} · ${buf.duration.toFixed(2)}s`;
     // make "Sample" selectable now that there's something behind it
@@ -1879,18 +1884,20 @@
       const o=document.createElement('option'); o.value='sample'; o.textContent='Sample'; sel.appendChild(o); });
     rebuildSampleVoices();
   }
-  async function decodeBlob(blob,label){
+  async function decodeBlob(blob,label,target){
+    if(!blob || !blob.size){ setStatus('nothing was recorded'); setTimeout(()=>setStatus(''),3000); return; }
     try{ const ab=await blob.arrayBuffer();
       const ctxA=Tone.getContext().rawContext;
       const buf=await ctxA.decodeAudioData(ab);
-      useBuffer(buf,label);
-    }catch(e){ setStatus('could not decode that audio'); setTimeout(()=>setStatus(''),2500); }
+      useBuffer(buf,label,target);
+    }catch(e){ setStatus('could not decode that audio'); setTimeout(()=>setStatus(''),3500); }
   }
   $('sampClear').addEventListener('click',()=>{ if(selStep>=0) clearStepSample(editLane,selStep); });
   $('fileBtn').addEventListener('click',()=>{ ensureStepTarget(); openRow('Sample'); $('sampFile').click(); });
   $('sampFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) decodeBlob(f,f.name.replace(/\.[^.]+$/,'')); });
 
   let micRec=null, micChunks=[], micStream=null, micLive=null, micAnal=null, micRaf=0, countT=null;
+  let micTarget=null;                    // where this take is going, fixed when it starts
   /* Three seconds of warning, then the take. The count is deliberately over the canvas and
      enormous — the old behaviour started recording the instant you clicked, which meant the
      first thing on every take was the sound of you reaching for the mouse. */
@@ -1904,7 +1911,9 @@
     };
     tick();
   }
-  function cancelCount(){ if(countT){ clearTimeout(countT); countT=null; $('countin').classList.remove('on'); } }
+  function cancelCount(){ if(countT){ clearTimeout(countT); countT=null; micTarget=null;
+    $('countin').classList.remove('on');
+    if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; } } }
   // While the take runs, the waveform builds in the chop panel. You can see it hearing you.
   function micMeterStart(stream){
     const ctxA=Tone.getContext().rawContext;
@@ -1956,10 +1965,12 @@
           state.recMic=false; stopRecClock(); micMeterStop();
           micStream.getTracks().forEach(t=>t.stop()); micStream=null;
           micIdle();
-          await decodeBlob(new Blob(micChunks,{type:mime||'audio/webm'}),'mic');
+          const dest=micTarget; micTarget=null;
+          await decodeBlob(new Blob(micChunks,{type:mime||'audio/webm'}),'mic',dest);
           syncChop();
         };
         micRec.start();
+        micTarget={lane:editLane, step:selStep};   // pinned now, so the take cannot be misplaced
         state.recMic=true; startRecClock('MIC'); micMeterStart(micStream);
         $('micBtn').textContent='Stop'; $('micBtn').setAttribute('aria-pressed','true');
       }catch(e){ setStatus('could not start recording'); setTimeout(()=>setStatus(''),2500); micIdle(); }
