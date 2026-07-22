@@ -331,14 +331,24 @@
       <div class="seg" id="holdSeg"></div></div>
     <div class="grp" data-tip="The voice this ring plays. Drone and Air are built to be held. Synth voices are short and bright; sampled ones are recordings of real instruments and load on first use."><label>Instrument</label>
       <select id="instrSel">
-        <optgroup label="Synth"><option value="drone">Drone</option><option value="air">Air</option><option value="neon">Neon</option><option value="acid">Acid</option><option value="chip">Chip</option><option value="sub">Sub</option></optgroup>
-        <option value="piano">Grand Piano</option>
-        <option value="bloom">Bloom</option>
-        <option value="glass">Glass</option>
-        <option value="pluck">Pluck</option>
-        <option value="bell">Bell</option>
-        <option value="mallet">Mallet</option>
-        <optgroup label="Sampled"><option value="cello">Cello</option><option value="violin">Violin</option><option value="contrabass">Contrabass</option><option value="flute">Flute</option><option value="clarinet">Clarinet</option><option value="french-horn">French Horn</option><option value="harp">Harp</option><option value="guitar-nylon">Guitar Nylon</option><option value="xylophone">Xylophone</option><option value="saxophone">Saxophone</option></optgroup>
+        <optgroup label="Sustained">
+          <option value="drone">Drone</option><option value="air">Air</option>
+          <option value="bloom">Bloom</option><option value="glass">Glass</option>
+        </optgroup>
+        <optgroup label="Struck">
+          <option value="bell">Bell</option><option value="mallet">Mallet</option>
+          <option value="pluck">Pluck</option><option value="chip">Chip</option>
+        </optgroup>
+        <optgroup label="Bass &amp; lead">
+          <option value="sub">Sub</option><option value="acid">Acid</option><option value="neon">Neon</option>
+        </optgroup>
+        <optgroup label="Recorded &#183; downloads on first use">
+          <option value="piano">Grand Piano</option><option value="harp">Harp</option>
+          <option value="guitar-nylon">Nylon Guitar</option><option value="xylophone">Xylophone</option>
+          <option value="cello">Cello</option><option value="violin">Violin</option><option value="contrabass">Contrabass</option>
+          <option value="flute">Flute</option><option value="clarinet">Clarinet</option>
+          <option value="saxophone">Saxophone</option><option value="french-horn">French Horn</option>
+        </optgroup>
       </select>
     </div>
     <div class="duo">
@@ -354,8 +364,11 @@
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Steps</button>
-    <p class="rowhint">Click a cell to place a note. Click again to select it, once more to clear. A step holding a recording only clears from Clear, so a stray click cannot lose a take.</p>
+    <p class="rowhint">Click a cell to place a note. Click again to select it, once more to clear. Right-click a cell to send the playhead there. A step holding a recording only clears from Clear, so a stray click cannot lose a take.</p>
     <div class="grp" data-tip="One cell per step. Click to place a note, click again to select it for editing, once more to clear it. Steps holding a recording are kept — clear those with the Clear button."><div id="stepRow"></div></div>
+    <div class="grp" data-tip="Sends the playheads back to the top so the four rings line up again. They drift apart by design — this is how you put them back."><div style="display:flex; gap:6px;">
+      <button class="btn" id="jumpTop" style="flex:1">Line up at step 1</button>
+    </div></div>
     <div class="grp" data-tip="Writes a run of notes across every step at once, climbing or falling through the current scale. The fastest way to fill a lane."><label>Arpeggio <b style="font-weight:400;opacity:.55">fills this lane</b></label>
       <div style="display:flex; gap:6px;">
         <select id="arpDir">
@@ -508,17 +521,37 @@
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Orbs</button>
     <p class="rowhint">Free-floating voices. They sound when they hit an edge; tap one to remove it.</p>
-    <div class="grp" data-tip="What the free-floating orbs sound like when they strike an edge."><label>Voice</label>
+    <div class="grp" data-tip="How loud the orbs sit against the four rings."><label>Level <b id="orbLvlR">70</b></label><input id="orbLvl" type="range" min="0" max="100" value="70" /></div>
+    <div class="grp" data-tip="What an orb does when it hits an edge. On its own voice it plays a note from the scale. Pointed at a ring, each bounce fires the next note that ring is holding — samples included — so the orbs play what you have already written."><label>Strikes</label>
+      <div class="seg" id="orbTgt">
+        <button data-o="own" aria-pressed="true">Own voice</button>
+        <button data-o="0" aria-pressed="false">1</button>
+        <button data-o="1" aria-pressed="false">2</button>
+        <button data-o="2" aria-pressed="false">3</button>
+        <button data-o="3" aria-pressed="false">4</button>
+      </div>
+    </div>
+    <div class="grp" data-tip="The voice a new orb is given. Change it between taps and each orb keeps the sound it was born with, so you can build a mix of different-voiced orbs."><label>Voice</label>
       <select id="orbVoice">
         <option value="cycle">Cycle through all</option>
-        <optgroup label="Synth"><option value="drone">Drone</option><option value="air">Air</option><option value="neon">Neon</option><option value="acid">Acid</option><option value="chip">Chip</option><option value="sub">Sub</option></optgroup>
-        <option value="piano">Grand Piano</option>
-        <option value="bloom">Bloom</option>
-        <option value="glass">Glass</option>
-        <option value="pluck">Pluck</option>
-        <option value="bell">Bell</option>
-        <option value="mallet">Mallet</option>
-        <optgroup label="Sampled"><option value="cello">Cello</option><option value="violin">Violin</option><option value="contrabass">Contrabass</option><option value="flute">Flute</option><option value="clarinet">Clarinet</option><option value="french-horn">French Horn</option><option value="harp">Harp</option><option value="guitar-nylon">Guitar Nylon</option><option value="xylophone">Xylophone</option><option value="saxophone">Saxophone</option></optgroup>
+        <optgroup label="Sustained">
+          <option value="drone">Drone</option><option value="air">Air</option>
+          <option value="bloom">Bloom</option><option value="glass">Glass</option>
+        </optgroup>
+        <optgroup label="Struck">
+          <option value="bell">Bell</option><option value="mallet">Mallet</option>
+          <option value="pluck">Pluck</option><option value="chip">Chip</option>
+        </optgroup>
+        <optgroup label="Bass &amp; lead">
+          <option value="sub">Sub</option><option value="acid">Acid</option><option value="neon">Neon</option>
+        </optgroup>
+        <optgroup label="Recorded &#183; downloads on first use">
+          <option value="piano">Grand Piano</option><option value="harp">Harp</option>
+          <option value="guitar-nylon">Nylon Guitar</option><option value="xylophone">Xylophone</option>
+          <option value="cello">Cello</option><option value="violin">Violin</option><option value="contrabass">Contrabass</option>
+          <option value="flute">Flute</option><option value="clarinet">Clarinet</option>
+          <option value="saxophone">Saxophone</option><option value="french-horn">French Horn</option>
+        </optgroup>
       </select>
     </div>
     <div class="quad">
@@ -721,7 +754,7 @@
 
   const state={ palette:'PRISM', scale:'MinorPenta', root:48, tempo:0.560, trail:0.0, soft:0.0, delayFb:0.0,
     exportSize:'RL', ready:false, recording:false, recAudio:false, recMic:false,
-    level:78, paused:false, pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
+    level:78, paused:false, orbLvl:70, orbTarget:'own', pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
   let drift=0, pianoReady=false, lastDroneT=0;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -863,7 +896,9 @@
     lanes.forEach((L,i)=>laneVoice(i));
     // orbs keep a shared set straight into the master — they aren't lane-bound
     const orbSet={};   // filled lazily by orbVoiceNode() the first time a voice is needed
-    audio={filter,delay,reverb,air,comp,vol,orbSet};
+    // Orbs get their own level so they can sit under the lanes rather than over them.
+    const orbBus=new Tone.Gain(state.orbLvl/100).connect(filter);
+    audio={filter,delay,reverb,air,comp,vol,orbSet,orbBus};
     // One LFO per lane filter plus one for the master, always running and always connected.
     // Each runs at a fixed -1..1 and the swing is set by a gain stage after it, rather than
     // by rewriting the LFO's own range: a range of zero width is invalid, and rebuilding the
@@ -999,8 +1034,24 @@
       b.addEventListener('click',()=>setDrone(i,!L.drone));
       el.appendChild(b); }); }
   function triggerLane(i,midi,vel){ if(!audio||lanes[i].mute||lanes[i].drone) return; fire(laneVoice(i),lanes[i].instr,midi,vel,lanes[i].env); }
+  /* An orb can play its own voice, or it can strike a lane: each bounce takes the next
+     active step of that lane and fires it, samples and all. That makes the orbs a way of
+     playing what is already written rather than a separate instrument alongside it. */
+  function orbFire(b,vel){
+    const t=state.orbTarget;
+    if(t==='own'){ trigger(b.voice, quantPos(b.pos), vel); return; }
+    const i=+t, L=lanes[i]; if(!L || L.mute || L.drone) return;
+    const on=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]!=null) on.push(k);
+    if(!on.length) return;
+    b.step=(b.step==null?0:b.step+1)%on.length;
+    const k=on[b.step];
+    fireStep(i,k,vel);
+    L.nodePulse=L.nodePulse||{}; L.nodePulse[k]=1;
+    const a=stepAngle(k,L.steps), r=shapeR(i,a), {cx,cy}=center();
+    rings.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,r:6,life:1,hue:hueOf(i),w:1.6});
+  }
   function orbVoiceNode(name){ if(!audio) return null;
-    if(!audio.orbSet[name]){ audio.orbSet[name]=makeInstr(name,audio.filter); if(audio.orbSet[name]) applyEnv(audio.orbSet[name],name,state.orbEnv); }
+    if(!audio.orbSet[name]){ audio.orbSet[name]=makeInstr(name,audio.orbBus||audio.filter); if(audio.orbSet[name]) applyEnv(audio.orbSet[name],name,state.orbEnv); }
     return audio.orbSet[name]; }
   function trigger(instr,midi,vel){ if(!audio) return; fire(orbVoiceNode(instr),instr,midi,vel,state.orbEnv); }
   const usesPiano=()=>lanes.some(l=>l.instr==='piano');
@@ -1042,7 +1093,7 @@
       shards.push({x:b.x,y:b.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,size:b.r*Math.pow(0.72,i),hue:b.baseHue,
         appearsAt:now+(i-1)*dMs,life:0,maxLife:dMs*2.4,alpha0:Math.min(.9,Math.pow(Math.max(fb,.4),i-1))}); } }
   function hitWall(b,side,now){ if(now-b.last<90) return; b.last=now; b.pulse=1;
-    const pos=side==='x'?b.y/H:b.x/W; trigger(b.voice,quantPos(pos),.35+Math.random()*.3);
+    b.pos=side==='x'?b.y/H:b.x/W; orbFire(b,.35+Math.random()*.3);
     let nx=0,ny=0; if(side==='x') nx=b.x<W/2?1:-1; else ny=b.y<H/2?1:-1; nx+=(Math.random()-.5)*.8; ny+=(Math.random()-.5)*.8; shatter(b,nx,ny); }
 
   // ---------- per-lane playheads ----------
@@ -1266,7 +1317,7 @@
     dctx.fillStyle=PAPERC(); dctx.fillRect(0,0,dw,dh); dctx.drawImage(cv,(dw-sw)/2,(dh-sh)/2,sw,sh); }
   function dl(blob,name){ const u=URL.createObjectURL(blob), a=document.createElement('a'); a.href=u; a.download=name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
-  function snapshot(){ const [w,h]=SIZES[state.exportSize], c=document.createElement('canvas'); c.width=w; c.height=h;
+  function savePNG(){ const [w,h]=SIZES[state.exportSize], c=document.createElement('canvas'); c.width=w; c.height=h;
     coverDraw(c.getContext('2d'),w,h); c.toBlob(b=>dl(b,`angel-${Date.now()}.png`),'image/png'); }
 
   /* Container support varies by browser: Safari gives MP4/H.264, Chrome and Firefox
@@ -1430,9 +1481,15 @@
   $('delFb').addEventListener('input',e=>{ $('delR').textContent = +e.target.value>0 ? e.target.value : 'off';
     state.delayFb=+e.target.value/100;
     if(audio){ audio.delay.feedback.value=state.delayFb; audio.delay.wet.value=delayWet(state.delayFb); } });
+  $('orbLvl').addEventListener('input',e=>{ state.orbLvl=+e.target.value; $('orbLvlR').textContent=e.target.value;
+    if(audio&&audio.orbBus) audio.orbBus.gain.rampTo(state.orbLvl/100,.08); });
+  document.querySelectorAll('#orbTgt button').forEach(b=>b.addEventListener('click',()=>{
+    state.orbTarget=b.dataset.o;
+    document.querySelectorAll('#orbTgt button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.o===state.orbTarget)));
+    orbs.forEach(o=>o.step=null); }));
   $('clearOrbs').addEventListener('click',()=>{ orbs.length=0; shards.length=0; });
   $('clearSteps').addEventListener('click',()=>{ lanes.forEach(l=>l.pattern.fill(null)); selStep=-1; refreshSteps(); });
-  $('snapBtn').addEventListener('click',snapshot);
+  $('snapBtn').addEventListener('click',savePNG);
   $('recBtn').addEventListener('click',()=>{ state.recording?stopRec():startRec(); });
   $('audBtn').addEventListener('click',()=>{ state.recAudio?stopAud():startAud(); });
   if(!(typeof MediaRecorder!=='undefined' && HTMLCanvasElement.prototype.captureStream)){
@@ -1495,6 +1552,7 @@
   $('steps').addEventListener('input',e=>{ const n=+e.target.value; $('stepsR').textContent=n; const L=lanes[editLane];
     const old=L.pattern; const p=Array(n).fill(null); for(let k=0;k<Math.min(n,old.length);k++) p[k]=old[k]; L.pattern=p; L.steps=n;
     if(L.lastStep>=n) L.lastStep=-1; if(selStep>=n) selStep=-1; refreshSteps(); });
+  $('jumpTop').addEventListener('click',()=>jumpAll(0));
   $('arpFill').addEventListener('click',()=>arpFill($('arpDir').value));
   $('lres').addEventListener('input',e=>{ const v=+e.target.value/10; lanes[editLane].res=v;
     $('lresR').textContent=v.toFixed(1); });
@@ -1516,6 +1574,9 @@
       if(k===selStep) b.classList.add('sel');
       // Match the ring: clicking an empty cell PLACES a step on the lane. Clicking a filled
       // cell selects it (to set its note); clicking the already-selected one clears it.
+      // Right-click sends the playhead here. Four rings at different speeds drift apart by
+      // design, and this is how you put one back where you want it without stopping.
+      b.addEventListener('contextmenu',ev=>{ ev.preventDefault(); jumpLane(editLane,k); });
       b.addEventListener('click',()=>{ const cur=L.pattern[k];
         const holdsSample = !!(L.stepBuf && L.stepBuf[k]);
         if(cur==null){ L.pattern[k]='auto'; selStep=k; }
@@ -1583,6 +1644,18 @@
     $('lcut').value=L.cut; $('lcutR').textContent=L.cut>=100?'open':Math.round(logCut(L.cut))+'Hz';
     $('lvol').value=L.vol; $('lvolR').textContent=L.vol;
     selStep=-1; syncNoteEd(); refreshSteps(); paintEnv(LANE_IDS,L.env); syncKnobs(); }
+
+  /* Move a ring's playhead to a given step without stopping anything. lastStep is set to
+     the step before, so the one you jumped to sounds as you arrive rather than being
+     skipped over. */
+  function jumpLane(i,k){
+    const L=lanes[i]; if(!L||k<0||k>=L.steps) return;
+    L.ang=stepAngle(k,L.steps)+0.0001;
+    L.lastStep=(k-1+L.steps)%L.steps;
+    setStatus(`lane ${i+1} \u2192 step ${k+1}`); setTimeout(()=>setStatus(''),1200);
+  }
+  function jumpAll(k){ lanes.forEach((L,i)=>jumpLane(i, Math.min(k, L.steps-1)));
+    setStatus('all four \u2192 step '+(k+1)); setTimeout(()=>setStatus(''),1400); }
 
   /* ---------- arpeggiator ----------
      Writes explicit notes onto every step of the lane, walking the current scale over two
@@ -2161,7 +2234,7 @@
      modulators, and the global controls. Saved to localStorage by name, and exportable as
      JSON so a patch can leave the browser. */
   const TRACK_KEY='angel-tracks';
-  const CTRL_IDS=['tempo','pitch','smear','evolve','cutoff','revWet','delFb'];
+  const CTRL_IDS=['tempo','pitch','smear','evolve','cutoff','revWet','delFb','orbLvl'];
   function snapshot(){
     return { v:1, theme:THEME,
       lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,mute:!!L.mute,drone:!!L.drone,res:L.res,
@@ -2170,7 +2243,7 @@
       arr: (typeof ARR!=='undefined' && ARR.ev.length) ? {ev:ARR.ev, dur:ARR.dur, snap:ARR.snap} : null,
       palette:state.palette, scale:state.scale, exportSize:state.exportSize, visual:state.visual, shape:state.shape,
       customHues:state.customHues.slice(), sat:state.sat,
-      orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
+      orbVoice:state.orbVoice, orbTarget:state.orbTarget, orbEnv:Object.assign({},state.orbEnv),
       ctrl:Object.fromEntries(CTRL_IDS.map(id=>[id, $(id)?$(id).value:null])) };
   }
   function restore(o){
@@ -2187,6 +2260,8 @@
       Object.assign(mods[i],m,{rate:Math.max(0,Math.min(100,rate)),lanes:m.lanes.slice()}); delete mods[i].secs; });
     state.palette=o.palette||state.palette; if(o.customHues) state.customHues=o.customHues.slice(); if(o.sat!=null) state.sat=o.sat; state.scale=o.scale||state.scale; state.visual=o.visual||state.visual; state.shape=o.shape||state.shape;
     state.orbVoice=o.orbVoice||'cycle'; if(o.orbEnv) state.orbEnv=Object.assign({},o.orbEnv);
+    if(o.orbTarget!=null){ state.orbTarget=o.orbTarget;
+      document.querySelectorAll('#orbTgt button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.o===state.orbTarget))); }
     if(o.ctrl) CTRL_IDS.forEach(id=>{ const el=$(id); if(el&&o.ctrl[id]!=null){ el.value=o.ctrl[id];
       el.dispatchEvent(new Event('input',{bubbles:true})); } });
     // segmented controls follow the restored state
@@ -2338,7 +2413,7 @@
         const pat=Array(steps).fill(null); on.forEach(k=>{ if(k<steps) pat[k]='auto'; });
         return {instr,steps,speed,oct,cut,vol,res:res==null?0.7:res,drone:!!drone,env:Object.assign({},env),pattern:pat}; }),
       mods:M.mods.map(([shape,rate,depth,target,ln])=>({shape,rate,depth,target,lanes:ln.map(Boolean)})),
-      palette:M.pal, scale:M.scale, orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
+      palette:M.pal, scale:M.scale, orbVoice:state.orbVoice, orbTarget:state.orbTarget, orbEnv:Object.assign({},state.orbEnv),
       ctrl:{ tempo:String(M.tempo), pitch:String(M.pitch),
              smear:$('smear')?$('smear').value:'0', cutoff:String(M.cut),
              revWet:String(M.rev), delFb:String(M.del) } };
@@ -2604,6 +2679,7 @@
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
   window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, setKbd, kbSync,
+    jumpLane, jumpAll, savePNG, orbFire,
     ARR, resetPlayheads, arrSetRec, arrSetPlay, arrSeek, arrClear, arrSync,
     setDrone, droneChord, syncDroneLane, releaseDrone, refreshHoldSeg,
     chopSpread, retrimStep, sliceBuffer, syncChop, countIn, assignTake, chopSrc, get audio(){return audio;}, setPaused, hexHue, setStepSample, clearStepSample, fireStep, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
