@@ -130,20 +130,30 @@
 
   /* Playable keyboard — plays the selected lane's voice; computer keys or clicks. */
   #kbd{ position:fixed; left:50%; bottom:64px; transform:translateX(-50%); z-index:9;
-    display:flex; height:104px; padding:9px; border-radius:10px; user-select:none;
+    display:flex; flex-direction:column; gap:7px; padding:9px; border-radius:10px; user-select:none;
+    max-width:calc(100vw - 32px);
     background:var(--panel); -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
     border:1px solid var(--hair); box-shadow:0 12px 40px -20px rgba(0,0,0,.45); transition:opacity .5s ease; }
   #kbd.hidden{ display:none; }
   body.idle #kbd{ opacity:0; pointer-events:none; }
   body.fs #kbd{ display:none; }
-  .wk{ position:relative; width:30px; height:100%; border:1px solid var(--hair); border-top:0;
+  #kbdHead{ display:flex; align-items:center; gap:8px; font-size:9px; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--mute); padding:0 2px; }
+  #kbdHead b{ color:var(--ink); font-weight:600; }
+  #kbdMode{ padding:3px 7px; border-radius:2px; border:1px solid var(--hair); color:var(--ink); }
+  #kbd.assign #kbdMode{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  #kbdKeys{ position:relative; display:flex; height:88px; overflow-x:auto; overflow-y:hidden; }
+  .wk{ position:relative; width:24px; flex:none; height:100%; border:1px solid var(--hair); border-top:0;
     border-radius:0 0 4px 4px; background:var(--paper); cursor:pointer; touch-action:none; }
-  .wk:last-child{ }
-  .bk{ position:absolute; top:0; width:20px; height:62%; margin-left:-10px; z-index:2;
+  .bk{ position:absolute; top:0; width:16px; height:62%; margin-left:-8px; z-index:2;
     background:var(--ink); border-radius:0 0 4px 4px; cursor:pointer; touch-action:none; }
-  .wk.lit{ background:var(--liton); }
-  .bk.lit{ background:var(--liton); }
+  .wk.lit, .bk.lit{ background:var(--liton); }
+  /* the step's current note stays marked, so you can see what you are replacing */
+  .wk.held{ box-shadow:inset 0 -3px 0 var(--ink); }
+  .bk.held{ box-shadow:inset 0 -3px 0 var(--liton); }
   .wk .kc{ position:absolute; bottom:4px; left:0; right:0; text-align:center; font-size:8px; color:var(--mute); pointer-events:none; }
+  .wk .kn{ position:absolute; bottom:15px; left:0; right:0; text-align:center; font-size:7.5px;
+    letter-spacing:.04em; color:var(--mute); opacity:.75; pointer-events:none; }
   .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
     color:var(--mute); white-space:nowrap; }
   .rail .grp > label{ white-space:normal; }
@@ -155,6 +165,14 @@
   .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
   .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
   .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
+     the control they describe and get out of the way on click. */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
+    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
+    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
   .lanepop{ position:fixed; z-index:40; padding:10px; border-radius:10px;
     background:var(--panel); border:1px solid var(--hair);
     -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
@@ -220,9 +238,6 @@
   #stepRow button{ position:relative; }
   #stepRow button.sel{ box-shadow:0 0 0 2px var(--ink), 0 0 0 3px var(--paper); }
   #noteEd{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
-  #noteEd #noteSel{ flex:1 1 108px; min-width:104px; }
-  #noteEd #octSel{ flex:0 0 62px; width:62px; }
-  #noteEd #stepOff{ flex:0 0 auto; }
   #noteEd.off{ opacity:.55; pointer-events:none; }
 
   #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
@@ -241,7 +256,7 @@
 <div id="stagewrap"><canvas id="stage"></canvas></div>
 <div id="status"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
-<button id="mood" aria-label="change mood"><b id="moodName">Arp</b><span>mood</span></button>
+<button id="mood" aria-label="change mood" data-tip="Loads a whole patch at once — voices, notes, tuning and motion together. Tap to move somewhere else."><b id="moodName">Sunday</b><span>mood</span></button>
 <div id="kbd" class="hidden" aria-label="playable keyboard"></div>
 <div id="bar">
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
@@ -256,10 +271,10 @@
 <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Lane</button>
     <p class="rowhint">Four rings, each its own instrument and rhythm. Right-click a lane to recolour it.</p>
-    <div class="grp"><div class="seg lanes" id="laneSeg"></div></div>
-    <div class="grp"><label>Mute <b style="font-weight:400;opacity:.55">drop a lane out of the mix</b></label>
+    <div class="grp" data-tip="Which of the four rings you are editing. Everything in this section applies to it alone."><div class="seg lanes" id="laneSeg"></div></div>
+    <div class="grp" data-tip="Silences one ring without deleting it. It keeps turning, so you can hear what it was holding up."><label>Mute <b style="font-weight:400;opacity:.55">drop a lane out of the mix</b></label>
       <div class="seg mutes" id="muteSeg"></div></div>
-    <div class="grp"><label>Instrument</label>
+    <div class="grp" data-tip="The voice this ring plays. Synth voices are short and bright; sampled ones are recordings of real instruments and load on first use."><label>Instrument</label>
       <select id="instrSel">
         <optgroup label="Synth"><option value="neon">Neon</option><option value="acid">Acid</option><option value="chip">Chip</option><option value="sub">Sub</option></optgroup>
         <option value="piano">Grand Piano</option>
@@ -272,20 +287,21 @@
       </select>
     </div>
     <div class="duo">
-      <div class="grp"><label>Steps <b id="stepsR">8</b></label><input id="steps" type="range" min="2" max="32" value="8" /></div>
-      <div class="grp"><label>Speed <b id="lspeedR">6.00&#215;</b></label><input id="lspeed" type="range" min="5" max="600" value="600" /></div>
+      <div class="grp" data-tip="How many places around the ring can hold a note. More steps, finer rhythm."><label>Steps <b id="stepsR">8</b></label><input id="steps" type="range" min="2" max="32" value="8" /></div>
+      <div class="grp" data-tip="How fast this ring turns. Steps multiplied by Speed is how many notes a second you get, so rings with matching products stay locked together."><label>Speed <b id="lspeedR">6.00&#215;</b></label><input id="lspeed" type="range" min="5" max="600" value="600" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Filter <b id="lcutR">open</b></label><input id="lcut" type="range" min="0" max="100" value="100" /></div>
-      <div class="grp"><label>Level <b id="lvolR">80</b></label><input id="lvol" type="range" min="0" max="100" value="80" /></div>
+      <div class="grp" data-tip="Rolls the top off this ring alone. Left is muffled and distant, right is bright and forward."><label>Filter <b id="lcutR">open</b></label><input id="lcut" type="range" min="0" max="100" value="100" /></div>
+      <div class="grp" data-tip="Emphasis right at the filter point. Turn it up and a cutoff sweep starts to whistle and squelch instead of just getting duller."><label>Reso <b id="lresR">0.7</b></label><input id="lres" type="range" min="1" max="140" value="7" /></div>
+      <div class="grp" data-tip="How loud this ring sits against the other three."><label>Level <b id="lvolR">80</b></label><input id="lvol" type="range" min="0" max="100" value="80" /></div>
     </div>
   </div>
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Steps</button>
     <p class="rowhint">Click a cell to place a note. Click again to select it, once more to clear.</p>
-    <div class="grp"><div id="stepRow"></div></div>
-    <div class="grp"><label>Arpeggio <b style="font-weight:400;opacity:.55">fills this lane</b></label>
+    <div class="grp" data-tip="One cell per step. Click to place a note, click again to select it for editing, once more to clear it."><div id="stepRow"></div></div>
+    <div class="grp" data-tip="Writes a run of notes across every step at once, climbing or falling through the current scale. The fastest way to fill a lane."><label>Arpeggio <b style="font-weight:400;opacity:.55">fills this lane</b></label>
       <div style="display:flex; gap:6px;">
         <select id="arpDir">
           <option value="up">Up</option>
@@ -297,18 +313,9 @@
         <button class="btn" id="arpFill">Fill</button>
       </div>
     </div>
-    <div class="grp"><label>Note &#183; select a step above</label>
+    <div class="grp" data-tip="The note on the selected step. Play it in on the keyboard below. Auto lets the step follow the scale instead of a fixed note."><label>Note <b id="noteNow">select a step</b></label>
       <div id="noteEd" class="off">
-        <select id="noteSel">
-          <option value="auto">Auto (scale)</option>
-          <option value="0">C</option><option value="1">C&#9839;</option><option value="2">D</option><option value="3">D&#9839;</option>
-          <option value="4">E</option><option value="5">F</option><option value="6">F&#9839;</option><option value="7">G</option>
-          <option value="8">G&#9839;</option><option value="9">A</option><option value="10">A&#9839;</option><option value="11">B</option>
-        </select>
-        <select id="octSel">
-          <option value="2">2</option><option value="3">3</option><option value="4" selected>4</option>
-          <option value="5">5</option><option value="6">6</option>
-        </select>
+        <button class="btn" id="noteAuto">Auto</button>
         <button class="btn" id="stepOff">Clear</button>
       </div>
     </div>
@@ -317,10 +324,10 @@
     <button type="button" class="rowhead" aria-expanded="true">Envelope</button>
     <p class="rowhint">How each note swells and fades. Long attack for pads, short for plucks.</p>
     <div class="quad">
-      <div class="grp"><label>Attack <b id="eaR">—</b></label><input id="ea" type="range" min="0" max="100" value="52" /></div>
-      <div class="grp"><label>Decay <b id="edR">—</b></label><input id="ed" type="range" min="0" max="100" value="55" /></div>
-      <div class="grp"><label>Sustain <b id="esR">—</b></label><input id="es" type="range" min="0" max="100" value="50" /></div>
-      <div class="grp"><label>Release <b id="erR">—</b></label><input id="er" type="range" min="0" max="100" value="87" /></div>
+      <div class="grp" data-tip="How long a note takes to reach full volume. Instant for a pluck, slow for something that swells in."><label>Attack <b id="eaR">—</b></label><input id="ea" type="range" min="0" max="100" value="52" /></div>
+      <div class="grp" data-tip="How quickly it falls away from that first peak."><label>Decay <b id="edR">—</b></label><input id="ed" type="range" min="0" max="100" value="55" /></div>
+      <div class="grp" data-tip="The level it holds at while the note lasts. At zero every note is a short hit."><label>Sustain <b id="esR">—</b></label><input id="es" type="range" min="0" max="100" value="50" /></div>
+      <div class="grp" data-tip="How long the tail takes to disappear once the note ends."><label>Release <b id="erR">—</b></label><input id="er" type="range" min="0" max="100" value="87" /></div>
     </div>
     <div class="seg" id="envPre">
       <button data-e="pluck">Pluck</button><button data-e="key">Key</button>
@@ -331,15 +338,15 @@
 
 <div id="railR" class="rail rail-r">
 <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Modulation</button>
-    <p class="rowhint">Two slow shapes that move a parameter over time. Patch either to any lanes.</p>
+    <button type="button" class="rowhead" aria-expanded="true">LFO</button>
+    <p class="rowhint">One shape, free-running. Slow rates drift a passage; fast ones wobble the filter.</p>
     <div id="modWrap"></div>
   </div>
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Visual</button>
     <p class="rowhint">How the piece looks. Each mode is its own medium — the controls beneath follow whichever is selected.</p>
-    <div class="grp"><label>Visual</label>
+    <div class="grp" data-tip="How the piece looks. Each mode is its own medium rather than a filter over the same picture."><label>Visual</label>
       <div class="seg" id="visSeg">
         <button data-v="glow" aria-pressed="true">Glow</button>
         <button data-v="aura" aria-pressed="false">Aura</button>
@@ -349,7 +356,7 @@
         <button data-v="haze" aria-pressed="false">Haze</button>
       </div>
     </div>
-    <div class="grp"><label>Shape</label>
+    <div class="grp" data-tip="The path the rings trace. Slash is the stroke from the OP/AL wordmark, one line per lane."><label>Shape</label>
       <div class="seg" id="shapeSeg">
         <button data-h="circle" aria-pressed="true">Circle</button>
         <button data-h="flower" aria-pressed="false">Flower</button>
@@ -359,33 +366,25 @@
       </div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Saturation <b id="satR">88</b></label><input id="sat" type="range" min="0" max="140" value="88" /></div>
-    </div>
-    <div class="grp"><label>Lane colours <b style="font-weight:400;opacity:.55">or right-click a lane</b></label>
-      <div id="hueRow" style="display:flex; gap:6px;">
-        <input type="color" id="hue0" value="#2ad4a0" title="lane 1">
-        <input type="color" id="hue1" value="#2aa8d4" title="lane 2">
-        <input type="color" id="hue2" value="#6a5ae0" title="lane 3">
-        <input type="color" id="hue3" value="#d44ec8" title="lane 4">
-      </div>
+      <div class="grp" data-tip="How strong the colour is. At zero everything falls to grey."><label>Saturation <b id="satR">88</b></label><input id="sat" type="range" min="0" max="140" value="88" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Smear <b id="smearR">0</b></label><input id="smear" type="range" min="0" max="60" value="0" /></div>
+      <div class="grp" data-tip="Blurs each frame into the next, so movement leaves a soft wake behind it. At zero every frame is clean."><label>Smear <b id="smearR">0</b></label><input id="smear" type="range" min="0" max="60" value="0" /></div>
     </div>
     <div class="duo" id="grungeCtls">
-      <div class="grp"><label>Pixel <b id="pixR">7</b></label><input id="pixel" type="range" min="2" max="26" value="7" /></div>
-      <div class="grp"><label>Grit <b id="gritR">45</b></label><input id="grit" type="range" min="0" max="100" value="45" /></div>
+      <div class="grp" data-tip="Size of the grain blocks in the Grunge mode. Bigger blocks, coarser picture."><label>Pixel <b id="pixR">7</b></label><input id="pixel" type="range" min="2" max="26" value="7" /></div>
+      <div class="grp" data-tip="How hard the grain bites — how far the picture is crushed down towards flat colour."><label>Grit <b id="gritR">45</b></label><input id="grit" type="range" min="0" max="100" value="45" /></div>
     </div>
     <div class="duo" id="lavaCtls">
-      <div class="grp"><label>Melt <b id="fuseR">22</b></label><input id="lavaFuse" type="range" min="4" max="60" value="22" /></div>
-      <div class="grp"><label>Orb size <b id="lsizeR">52</b></label><input id="lavaSize" type="range" min="10" max="120" value="52" /></div>
+      <div class="grp" data-tip="How much the orbs fuse into one another in Lava. High values make one flowing pool."><label>Melt <b id="fuseR">22</b></label><input id="lavaFuse" type="range" min="4" max="60" value="22" /></div>
+      <div class="grp" data-tip="Radius of each gradient orb before it melts into its neighbours."><label>Orb size <b id="lsizeR">52</b></label><input id="lavaSize" type="range" min="10" max="120" value="52" /></div>
     </div>
   </div>
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Sound</button>
     <p class="rowhint">Key, tempo and the global feel — filter, reverb, delay and output level.</p>
-    <div class="grp"><label>Palette</label>
+    <div class="grp" data-tip="The four lane colours. Right-clicking a lane sets just that one."><label>Palette</label>
       <div class="seg" id="palSeg">
         <button data-p="AURORA" aria-pressed="true">Aurora</button>
         <button data-p="EMBER" aria-pressed="false">Ember</button>
@@ -394,7 +393,7 @@
         <button data-p="CUSTOM" aria-pressed="false">Custom</button>
       </div>
     </div>
-    <div class="grp"><label>Scale</label>
+    <div class="grp" data-tip="The set of notes everything is drawn from. Pentatonic is the forgiving one — nothing in it clashes."><label>Scale</label>
       <div class="seg" id="scaleSeg">
         <button data-s="Pentatonic" aria-pressed="true">Penta</button>
         <button data-s="MinorPenta" aria-pressed="false">Minor</button>
@@ -403,30 +402,26 @@
       </div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Tempo <b id="tempoR">40</b></label><input id="tempo" type="range" min="1" max="100" value="40" /></div>
-      <div class="grp"><label>Pitch <b id="pitchR">C3</b></label><input id="pitch" type="range" min="36" max="60" value="48" /></div>
+      <div class="grp" data-tip="How fast all four rings turn. The one control that changes the pace of the whole piece."><label>Tempo <b id="tempoR">40</b></label><input id="tempo" type="range" min="1" max="100" value="40" /></div>
+      <div class="grp" data-tip="The key. Moves every note up or down together."><label>Pitch <b id="pitchR">C3</b></label><input id="pitch" type="range" min="36" max="60" value="48" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Trails <b id="trailsR">off</b></label><input id="trails" type="range" min="0" max="55" value="0" /></div>
-      <div class="grp"><label>Evolve <b id="evoR">42</b></label><input id="evolve" type="range" min="0" max="100" value="42" /></div>
+      <div class="grp" data-tip="Lets the piece quietly rewrite itself — notes move, voices change. Off leaves it exactly as you set it."><label>Evolve <b id="evoR">42</b></label><input id="evolve" type="range" min="0" max="100" value="42" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Master <b id="cutR">&#8212;</b></label><input id="cutoff" type="range" min="0" max="100" value="72" /></div>
-      <div class="grp"><label>Level <b id="levelR">78</b></label><input id="level" type="range" min="0" max="100" value="78" /></div>
+      <div class="grp" data-tip="One filter over everything. Sweep it down and the whole piece goes muffled and far away."><label>Master <b id="cutR">&#8212;</b></label><input id="cutoff" type="range" min="0" max="100" value="72" /></div>
+      <div class="grp" data-tip="Output volume."><label>Level <b id="levelR">78</b></label><input id="level" type="range" min="0" max="100" value="78" /></div>
     </div>
     <div class="duo">
-      <div class="grp"><label>Warmth <b id="warmR">11</b></label><input id="warm" type="range" min="0" max="24" value="11" /></div>
-    </div>
-    <div class="duo">
-      <div class="grp"><label>Reverb <b id="revR">18</b></label><input id="revWet" type="range" min="0" max="100" value="18" /></div>
-      <div class="grp"><label>Delay <b id="delR">off</b></label><input id="delFb" type="range" min="0" max="72" value="0" /></div>
+      <div class="grp" data-tip="Puts the sound in a room. Right for a large, distant, washed space; left for dry and close."><label>Reverb <b id="revR">18</b></label><input id="revWet" type="range" min="0" max="100" value="18" /></div>
+      <div class="grp" data-tip="Echoes that repeat and fade. Off means none at all."><label>Delay <b id="delR">off</b></label><input id="delFb" type="range" min="0" max="72" value="0" /></div>
     </div>
   </div>
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Orbs</button>
     <p class="rowhint">Free-floating voices. They sound when they hit an edge; tap one to remove it.</p>
-    <div class="grp"><label>Voice</label>
+    <div class="grp" data-tip="What the free-floating orbs sound like when they strike an edge."><label>Voice</label>
       <select id="orbVoice">
         <option value="cycle">Cycle through all</option>
         <optgroup label="Synth"><option value="neon">Neon</option><option value="acid">Acid</option><option value="chip">Chip</option><option value="sub">Sub</option></optgroup>
@@ -440,35 +435,35 @@
       </select>
     </div>
     <div class="quad">
-      <div class="grp"><label>Attack <b id="oaR">—</b></label><input id="oa" type="range" min="0" max="100" value="5" /></div>
-      <div class="grp"><label>Decay <b id="odR">—</b></label><input id="od" type="range" min="0" max="100" value="47" /></div>
-      <div class="grp"><label>Sustain <b id="osR">—</b></label><input id="os" type="range" min="0" max="100" value="0" /></div>
-      <div class="grp"><label>Release <b id="orR">—</b></label><input id="or" type="range" min="0" max="100" value="55" /></div>
+      <div class="grp" data-tip="How long an orb note takes to reach full volume."><label>Attack <b id="oaR">—</b></label><input id="oa" type="range" min="0" max="100" value="5" /></div>
+      <div class="grp" data-tip="How quickly an orb note falls from its peak."><label>Decay <b id="odR">—</b></label><input id="od" type="range" min="0" max="100" value="47" /></div>
+      <div class="grp" data-tip="The level an orb note holds at. At zero each bounce is a short hit."><label>Sustain <b id="osR">—</b></label><input id="os" type="range" min="0" max="100" value="0" /></div>
+      <div class="grp" data-tip="How long an orb note takes to fade out."><label>Release <b id="orR">—</b></label><input id="or" type="range" min="0" max="100" value="55" /></div>
     </div>
   </div>
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Sample</button>
     <p class="rowhint">Give a single step its own recording, so one lane can hold a different sound per step.</p>
-    <div class="grp"><label>Target <b id="sampTarget">no step selected</b></label></div>
+    <div class="grp" data-tip="Which step a recording will land on. Select a step first, then record or load into it."><label>Target <b id="sampTarget">no step selected</b></label></div>
     <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="micBtn" style="flex:1">Record mic</button>
-      <button class="btn" id="fileBtn" style="flex:1">Load file</button>
+      <button class="btn" id="micBtn" style="flex:1" data-tip="Records from your microphone straight onto the selected step.">Record mic</button>
+      <button class="btn" id="fileBtn" style="flex:1" data-tip="Puts an audio file on the selected step.">Load file</button>
       <button class="btn" id="sampClear" style="flex:1">Clear</button>
     </div></div>
-    <div class="grp"><label>Step holds <b id="sampInfo">none</b></label></div>
+    <div class="grp" data-tip="What the selected step is currently holding. One lane can carry a different sound on every step."><label>Step holds <b id="sampInfo">none</b></label></div>
     <input id="sampFile" type="file" accept="audio/*" hidden />
   </div>
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Track</button>
     <p class="rowhint">Save an exploration to this browser and come back to it. Export shares it as a file.</p>
-    <div class="grp"><input id="trackName" type="text" placeholder="track name" spellcheck="false" /></div>
+    <div class="grp" data-tip="Name this exploration so you can find it again."><input id="trackName" type="text" placeholder="track name" spellcheck="false" /></div>
     <div class="grp"><div style="display:flex; gap:6px;">
       <button class="btn" id="saveTrack" style="flex:1">Save</button>
       <button class="btn" id="delTrack" style="flex:1">Delete</button>
     </div></div>
-    <div class="grp"><select id="trackList"></select></div>
+    <div class="grp" data-tip="Everything you have saved in this browser."><select id="trackList"></select></div>
     <div class="grp"><div style="display:flex; gap:6px;">
       <button class="btn" id="loadTrack" style="flex:1">Load</button>
       <button class="btn" id="expTrack" style="flex:1">Export</button>
@@ -480,7 +475,7 @@
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Export</button>
     <p class="rowhint">A still, a video of the canvas, or the audio on its own.</p>
-    <div class="grp"><label>Size</label>
+    <div class="grp" data-tip="Shape of the exported still or video — a phone story, a portrait post, or a square."><label>Size</label>
       <div class="seg" id="sizeSeg">
         <button data-z="RL" aria-pressed="true">9:16</button>
         <button data-z="PT" aria-pressed="false">4:5</button>
@@ -488,9 +483,9 @@
       </div>
     </div>
     <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="snapBtn" style="flex:1">PNG</button>
-      <button class="btn" id="recBtn" style="flex:1">Video</button>
-      <button class="btn" id="audBtn" style="flex:1">Audio</button>
+      <button class="btn" id="snapBtn" style="flex:1" data-tip="Saves the canvas as a still image.">PNG</button>
+      <button class="btn" id="recBtn" style="flex:1" data-tip="Records the canvas and the sound together as a video.">Video</button>
+      <button class="btn" id="audBtn" style="flex:1" data-tip="Records just the sound, with no picture.">Audio</button>
     </div></div>
     <div class="grp"><div style="display:flex; gap:6px;">
       <button class="btn" id="clearOrbs" style="flex:1">Clear orbs</button>
@@ -631,10 +626,10 @@
   // pattern cells: null = off, 'auto' = pitch from the scale, <number> = that exact MIDI note.
   // cut/vol are per-lane and feed each lane's own filter+gain before the master chain.
   const lanes=[
-    { instr:'acid', steps:8,  speed:6.00, oct:-1, mute:false, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:62, vol:80, env:{a:0.004,d:0.18,s:0.00,r:0.14} },
-    { instr:'neon', steps:16, speed:3.00, oct:0,  mute:false, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:78, vol:66, env:{a:0.004,d:0.20,s:0.00,r:0.16} },
-    { instr:'chip', steps:24, speed:2.00, oct:1,  mute:false, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:88, vol:44, env:{a:0.001,d:0.11,s:0.00,r:0.08} },
-    { instr:'sub',  steps:12, speed:2.00, oct:-2, mute:false, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:46, vol:72, env:{a:0.006,d:0.34,s:0.35,r:0.30} },
+    { instr:'acid', steps:8,  speed:6.00, oct:-1, mute:false, res:8.0, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:62, vol:80, env:{a:0.004,d:0.18,s:0.00,r:0.14} },
+    { instr:'neon', steps:16, speed:3.00, oct:0,  mute:false, res:4.5, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:78, vol:66, env:{a:0.004,d:0.20,s:0.00,r:0.16} },
+    { instr:'chip', steps:24, speed:2.00, oct:1,  mute:false, res:2.2, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:88, vol:44, env:{a:0.001,d:0.11,s:0.00,r:0.08} },
+    { instr:'sub',  steps:12, speed:2.00, oct:-2, mute:false, res:1.4, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:46, vol:72, env:{a:0.006,d:0.34,s:0.35,r:0.30} },
   ];
   lanes.forEach(l=>l.pattern=Array(l.steps).fill(null));
   let editLane=0, selStep=-1;
@@ -739,8 +734,14 @@
   }
   function laneVoice(i){ const L=lanes[i];
     if(L._voiceName!==L.instr){ if(L._voice){ try{L._voice.dispose();}catch(e){} }
-      L._voice=makeInstr(L.instr,L.chan.filter); L._voiceName=L.instr; }
-    applyEnv(L._voice,L.instr,L.env); return L._voice; }
+      L._voice=makeInstr(L.instr,L.chan.filter); L._voiceName=L.instr; L._pitchLinked=false; }
+    applyEnv(L._voice,L.instr,L.env);
+    // Every rebuilt voice re-inherits the pitch LFO. Pluck is a physical model with no
+    // detune to speak of, so it simply declines the connection.
+    if(audio && audio.plfoGain && L._voice && !L._pitchLinked){
+      try{ audio.plfoGain[i].connect(L._voice.detune); }catch(e){}
+      L._pitchLinked=true; }
+    return L._voice; }
   // Delay is off unless you ask for it: one control moves feedback and wet together so the
   // effect appears and disappears cleanly instead of leaving a repeat behind at zero.
   const delayWet=v=>v<=0.001 ? 0 : Math.min(0.42, 0.08+v*0.5);
@@ -760,12 +761,30 @@
     const filter=new Tone.Filter({type:'lowpass',frequency:logCut(72),Q:.9}).connect(delay);
     // per-lane channel: its own lowpass and level, feeding the master
     lanes.forEach(L=>{ const g=new Tone.Gain(L.vol/100).connect(filter);
-      const f=new Tone.Filter({type:'lowpass',frequency:logCut(L.cut),Q:.7}).connect(g);
+      const f=new Tone.Filter({type:'lowpass',frequency:logCut(L.cut),Q:L.res}).connect(g);
       L.chan={filter:f,gain:g}; L._voice=null; L._voiceName=null; });
     lanes.forEach((L,i)=>laneVoice(i));
     // orbs keep a shared set straight into the master — they aren't lane-bound
     const orbSet={};   // filled lazily by orbVoiceNode() the first time a voice is needed
     audio={filter,delay,reverb,air,comp,vol,orbSet};
+    // One LFO per lane filter plus one for the master, always running and always connected.
+    // Each runs at a fixed -1..1 and the swing is set by a gain stage after it, rather than
+    // by rewriting the LFO's own range: a range of zero width is invalid, and rebuilding the
+    // scaler on every frame is wasted work besides.
+    const wob=(dest)=>{ const lf=new Tone.LFO({frequency:lfoHz(mods[0].rate), min:-1, max:1,
+        type:LFO_WAVE[mods[0].shape]||'triangle'}).start();
+      const g=new Tone.Gain(0); lf.connect(g); if(dest) g.connect(dest); return {lf,g}; };
+    const laneWob=lanes.map(L=>wob(L.chan.filter.frequency));
+    const masterWob=wob(filter.frequency);
+    const resWob=lanes.map(L=>wob(L.chan.filter.Q));
+    // Pitch has no destination until a voice exists, so these hang unconnected here and
+    // laneVoice() patches them in as it builds each voice.
+    const pitchWob=lanes.map(()=>wob(null));
+    audio.lfo=laneWob.map(w=>w.lf); audio.lfoGain=laneWob.map(w=>w.g);
+    audio.mlfo=masterWob.lf; audio.mlfoGain=masterWob.g;
+    audio.rlfo=resWob.map(w=>w.lf); audio.rlfoGain=resWob.map(w=>w.g);
+    audio.plfo=pitchWob.map(w=>w.lf); audio.plfoGain=pitchWob.map(w=>w.g);
+    audio.lfoAmt=[0,0,0,0,0, 0,0,0,0, 0,0,0,0];   // cutoff x4, master, resonance x4, pitch x4
   }
   // Note length follows the envelope: percussive settings (no sustain) get a short note,
   // sustained ones are held. A fixed per-instrument table made every patch sound like a pad.
@@ -1132,7 +1151,6 @@
   const $=id=>document.getElementById(id);
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
-  $('trails').addEventListener('input',e=>{ state.trail=+e.target.value/100; $('trailsR').textContent = state.trail>0 ? e.target.value : 'off'; });
   const PAUSE_SVG='<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>';
   const PLAY_SVG='<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3.4 2.2v7.6a.6.6 0 0 0 .92.5l6-3.8a.6.6 0 0 0 0-1l-6-3.8a.6.6 0 0 0-.92.5Z" fill="currentColor"/></svg>';
   function setPaused(on){
@@ -1144,13 +1162,6 @@
     if(audio) audio.vol.volume.rampTo(state.paused ? -60 : dbFor(state.level), .35);
     if(!state.paused) document.body.classList.remove('idle');
   }
-  ['hue0','hue1','hue2','hue3'].forEach((id,i)=>{
-    const el=$(id); if(!el) return;
-    el.addEventListener('input',()=>{ state.customHues[i]=hexHue(el.value);
-      if(state.palette!=='CUSTOM'){ state.palette='CUSTOM';
-        document.querySelectorAll('#palSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.p==='CUSTOM'))); }
-      refreshLaneSeg(); refreshMutes(); });
-  });
   $('pixel').addEventListener('input',e=>{ state.pixel=+e.target.value; $('pixR').textContent=e.target.value; });
   $('grit').addEventListener('input',e=>{ state.grit=+e.target.value; $('gritR').textContent=e.target.value; });
   $('sat').addEventListener('input',e=>{ state.sat=+e.target.value; $('satR').textContent=e.target.value; });
@@ -1159,8 +1170,13 @@
   /* Fold / unfold rail sections, remembered between visits. */
   const FOLD_KEY='angel-folded';
   const readFold=()=>{ try{ return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]'); }catch(e){ return []; } };
+  // Everything you need to make a sound is open; the sections you go looking for start
+  // folded. Only applies on a first visit — after that your own folding is what is restored.
+  const FOLD_DEFAULT=['Envelope','Orbs','Sample','Track','Export'];
   function initFolds(){
-    const saved=new Set(readFold());
+    let stored=null; try{ stored=localStorage.getItem(FOLD_KEY); }catch(e){}
+    if(stored==null){ try{ localStorage.setItem(FOLD_KEY, JSON.stringify(FOLD_DEFAULT)); }catch(e){} }
+    const saved=new Set(stored==null ? FOLD_DEFAULT : readFold());
     document.querySelectorAll('.rail .rowhead').forEach(h=>{
       const row=h.closest('.row'); if(!row) return;
       const name=h.textContent.trim();
@@ -1175,12 +1191,37 @@
     });
   }
   initFolds();
+
+  /* ---------- tooltips ----------
+     Every control says what it is for in a sentence. Written for someone who has not used a
+     synthesiser: what it does to the sound, not what it is called on the schematic. */
+  let tipEl=null, tipT=null, tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null;
+    if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){
+    const text=host.getAttribute('data-tip'); if(!text) return;
+    if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0';
+    const r=host.getBoundingClientRect(), t=tipEl.getBoundingClientRect();
+    // above the control by default, below it when there is no room up there
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8, r.bottom+8);
+    const left=Math.max(8,Math.min(r.left, innerWidth-t.width-8));
+    tipEl.style.left=left+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1';
+  }
+  addEventListener('pointerover',e=>{
+    const host=e.target.closest && e.target.closest('[data-tip]');
+    if(host===tipFor) return;                     // moving inside the same control
+    clearTimeout(tipT);
+    if(!host){ hideTip(); return; }
+    tipFor=host; tipT=setTimeout(()=>showTip(host),240);
+  });
+  addEventListener('pointerdown',hideTip);
+  addEventListener('scroll',hideTip,true);
+
   $('pauseBtn').addEventListener('click',()=>setPaused(!state.paused));
   $('level').addEventListener('input',e=>{ state.level=+e.target.value; $('levelR').textContent=e.target.value;
     if(audio) audio.vol.volume.rampTo(dbFor(state.level),.05); });
   $('smear').addEventListener('input',e=>{ state.soft=+e.target.value/100; $('smearR').textContent=e.target.value; });
-  $('warm').addEventListener('input',e=>{ const v=+e.target.value; $('warmR').textContent=v;
-    if(audio) audio.air.gain.rampTo(-v,.1); });
   $('evolve').addEventListener('input',e=>{ state.evolve=+e.target.value; $('evoR').textContent=e.target.value;
     $('evoR').textContent = state.evolve>0 ? Math.round(150-(state.evolve/100)*120)+'s' : 'off'; });
   $('cutoff').addEventListener('input',e=>{ const v=+e.target.value; $('cutR').textContent=Math.round(logCut(v))+'Hz';
@@ -1229,15 +1270,15 @@
     if(typing()) return;
     if(kbdOpen()&&!e.repeat){
       const k=e.key.toLowerCase();
-      if(k==='z'){ kbOct=Math.max(-2,kbOct-1); buildKbd(); return; }
-      if(k==='x'){ kbOct=Math.min(3,kbOct+1); buildKbd(); return; }
-      if(KEYROW[k]!=null){ kbDown(KEYROW[k]); return; }
+      if(k==='z'){ kbOct=Math.max(0,kbOct-1); kbSync(); return; }
+      if(k==='x'){ kbOct=Math.min(KB_OCTS-2,kbOct+1); kbSync(); return; }
+      if(KEYROW[k]!=null){ kbDown(KEYROW[k]+kbRowOff()); return; }
     }
     if(e.code==='Space'){ e.preventDefault(); setPaused(!state.paused); return; }
     if(e.key==='f'||e.key==='F') setFs(!document.body.classList.contains('fs'));
   });
   addEventListener('keyup',e=>{ if(typing()) return; const k=e.key.toLowerCase();
-    if(kbdOpen()&&KEYROW[k]!=null) kbUp(KEYROW[k]); });
+    if(kbdOpen()&&KEYROW[k]!=null) kbUp(KEYROW[k]+kbRowOff()); });
   // leaving native full-screen by Esc/gesture should drop our class too
   document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && document.body.classList.contains('fs')) setFs(false); });
   // the exit affordance fades in on movement, then gets out of the way again
@@ -1254,6 +1295,8 @@
     const old=L.pattern; const p=Array(n).fill(null); for(let k=0;k<Math.min(n,old.length);k++) p[k]=old[k]; L.pattern=p; L.steps=n;
     if(L.lastStep>=n) L.lastStep=-1; if(selStep>=n) selStep=-1; refreshSteps(); });
   $('arpFill').addEventListener('click',()=>arpFill($('arpDir').value));
+  $('lres').addEventListener('input',e=>{ const v=+e.target.value/10; lanes[editLane].res=v;
+    $('lresR').textContent=v.toFixed(1); });
   $('lspeed').addEventListener('input',e=>{ const v=+e.target.value/100; lanes[editLane].speed=v; $('lspeedR').textContent=v.toFixed(2)+'×'; });
   $('lcut').addEventListener('input',e=>{ const v=+e.target.value; const L=lanes[editLane]; L.cut=v;
     $('lcutR').textContent=v>=100?'open':Math.round(logCut(v))+'Hz';
@@ -1276,21 +1319,25 @@
         if(cur==null){ L.pattern[k]='auto'; selStep=k; }
         else if(selStep===k){ L.pattern[k]=null; clearStepSample(editLane,k); selStep=-1; }
         else selStep=k;
-        syncNoteEd(); refreshSteps(); syncStepSample(); });
+        syncNoteEd(); refreshSteps(); syncStepSample();
+        if(selStep>=0 && !kbdOpen()) setKbd(true); });
       el.appendChild(b); } }
-  function syncNoteEd(){ const ed=$('noteEd'); const L=lanes[editLane];
-    if(selStep<0){ ed.classList.add('off'); return; }
+  /* Selecting a step opens the keyboard and points it at that step: whichever key you press
+     — mouse or computer — becomes the note. Two dropdowns for pitch and octave were a
+     spelling exercise; a keyboard is the instrument you already know how to read. */
+  function syncNoteEd(){ const ed=$('noteEd'), lab=$('noteNow'), L=lanes[editLane];
+    if(selStep<0){ ed.classList.add('off'); lab.textContent='select a step'; kbSync(); return; }
     ed.classList.remove('off');
     const cell=L.pattern[selStep];
-    if(typeof cell==='number'){ $('noteSel').value=String(((cell%12)+12)%12); $('octSel').value=String(Math.floor(cell/12)-1); }
-    else $('noteSel').value='auto'; }
-  function applyNote(){ if(selStep<0) return; const L=lanes[editLane], v=$('noteSel').value;
-    if(v==='auto') L.pattern[selStep]='auto';
-    else L.pattern[selStep]=(+$('octSel').value+1)*12 + (+v);
-    refreshSteps(); }
-  $('noteSel').addEventListener('change',applyNote);
-  $('octSel').addEventListener('change',applyNote);
-  $('stepOff').addEventListener('click',()=>{ if(selStep<0) return; lanes[editLane].pattern[selStep]=null; refreshSteps(); });
+    lab.textContent = cell==null ? 'empty'
+      : typeof cell==='number' ? `${midiLabel(cell)} \u00b7 step ${selStep+1}`
+      : `auto \u00b7 step ${selStep+1}`;
+    kbSync(); }
+  $('noteAuto').addEventListener('click',()=>{ if(selStep<0) return;
+    lanes[editLane].pattern[selStep]='auto'; refreshSteps(); syncNoteEd(); });
+  $('stepOff').addEventListener('click',()=>{ if(selStep<0) return;
+    lanes[editLane].pattern[selStep]=null; clearStepSample(editLane,selStep);
+    refreshSteps(); syncNoteEd(); });
 
   /* ---------- envelope wiring ----------
      Knobs are 0-100; A/D/R map through a square curve so the low end — where plucks and
@@ -1330,6 +1377,7 @@
 
   function syncLane(){ const L=lanes[editLane]; $('instrSel').value=L.instr; $('steps').value=L.steps; $('stepsR').textContent=L.steps;
     $('lspeed').value=Math.round(L.speed*100); $('lspeedR').textContent=L.speed.toFixed(2)+'×';
+    $('lres').value=Math.round((L.res==null?0.7:L.res)*10); $('lresR').textContent=(L.res==null?0.7:L.res).toFixed(1);
     $('lcut').value=L.cut; $('lcutR').textContent=L.cut>=100?'open':Math.round(logCut(L.cut))+'Hz';
     $('lvol').value=L.vol; $('lvolR').textContent=L.vol;
     selStep=-1; syncNoteEd(); refreshSteps(); paintEnv(LANE_IDS,L.env); syncKnobs(); }
@@ -1419,7 +1467,6 @@
     state.customHues[i]=h;
     if(state.palette!=='CUSTOM'){ state.palette='CUSTOM';
       document.querySelectorAll('#palSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.p==='CUSTOM'))); }
-    const inp=$('hue'+i); if(inp) inp.value=hslHex(h);
     refreshLaneSeg(); refreshMutes();
   }
   // hue -> hex, for seeding the native picker
@@ -1487,22 +1534,29 @@
   const knobify=root=>(root||document).querySelectorAll('input[type=range]:not([data-knob])').forEach(makeKnob);
   const syncKnobs=()=>knobs.forEach(paintKnob);
 
-  /* ---------- modulation ----------
-     Two free-running shapes you can patch at a parameter and arm per lane. They're slow by
-     design — cycles are measured in seconds-per-cycle, not Hz, because the point is drift
-     over a passage rather than vibrato. Bases are kept separate from the modulated value so
-     turning a mod off restores exactly what the slider says. */
+  /* ---------- LFO ----------
+     One free-running shape, laid out like the minilogue xd: wave, rate, intensity, target.
+     Rate is in Hz and reaches well past vibrato speed, because the whole point of a wobble
+     is that you hear it move rather than notice it later.
+
+     Pointed at a filter, it runs as a real Tone.LFO wired into the filter's frequency, so
+     the sweep is audio-rate. Doing it from the animation frame gave three samples a cycle
+     at 20Hz, which sounds like stepping, not wobble. Everything else stays on the frame
+     path, where per-frame resolution is plenty. Bases are kept apart from modulated values
+     so switching the LFO off restores exactly what the sliders say. */
   const MOD_TARGETS=[
-    ['none','— off —'],['speed','Lane speed'],['lcut','Lane filter'],['lvol','Lane level'],
-    ['master','Master filter'],['tempo','Tempo'],['reverb','Reverb'],['delay','Delay tail'],
-    ['pitch','Pitch'],['trail','Trails'] ];
+    ['none','— off —'],['lcut','Cutoff'],['res','Resonance'],
+    ['pitch','Pitch'],['master','Cutoff · master'] ];
   const MOD_SHAPES=[
-    ['sine','Sine'],['tri','Triangle'],['ramp','Ramp up'],['saw','Ramp down'],
-    ['sqr','Square'],['env','Envelope (AD)'],['sh','Sample &amp; hold'],
-    ['rand','Smooth random'],['drunk','Drunk walk'] ];
+    ['tri','Triangle'],['sine','Sine'],['saw','Ramp down'],['ramp','Ramp up'],
+    ['sqr','Square'],['sh','Sample &amp; hold'] ];
+  // slider 0..100 -> 0.05Hz (a 20s drift) .. 18Hz (a hard wobble), exponential so the slow
+  // half of the travel stays usable
+  const lfoHz=v=>0.05*Math.pow(360, Math.max(0,Math.min(100,v))/100);
+  const lfoHzLabel=hz=>hz<1 ? (1/hz).toFixed(1)+'s' : hz.toFixed(1)+'Hz';
+  const LFO_WAVE={ tri:'triangle', sine:'sine', saw:'sawtooth', ramp:'sawtooth', sqr:'square' };
   const mods=[
-    { shape:'sine', secs:26, depth:45, target:'speed', lanes:[true,true,false,false], ph:Math.random() },
-    { shape:'tri',  secs:41, depth:35, target:'lcut',  lanes:[false,false,true,true],  ph:Math.random() },
+    { shape:'tri', rate:34, depth:40, target:'lcut', lanes:[true,true,true,true], ph:Math.random() },
   ];
   // Deterministic noise for the random-ish shapes. Angel has no vnoise/grand of its own —
   // those live in Flux, and referencing them here threw the moment a random shape was picked.
@@ -1511,7 +1565,7 @@
     return mhash(i)*(1-u)+mhash(i+1)*u; };
   // bipolar −1..1
   function modVal(m,tSec){
-    const cyc=Math.max(1,m.secs), ph=(tSec/cyc+m.ph)%1;
+    const cyc=Math.max(0.05, 1/lfoHz(m.rate)), ph=(tSec/cyc+m.ph)%1;
     switch(m.shape){
       case 'sine': return Math.sin(ph*Math.PI*2);
       case 'tri':  return 1-4*Math.abs(ph-0.5);
@@ -1530,69 +1584,97 @@
       default: return mnoise(ph*6.0 + m.ph*17.0)*2-1;   // smooth random
     }
   }
+  // A filter sweep should feel the same at the bottom of the range as at the top, so the
+  // swing is a fraction of the current cutoff rather than a fixed number of hertz. Capped
+  // below the base so the frequency can never be driven negative.
+  const wobAmt=(baseHz,d)=>baseHz*Math.min(0.88,d);
+  function setLfoAmt(gain,slot,amt,eps){
+    if(Math.abs(audio.lfoAmt[slot]-amt) < (eps==null?0.5:eps)) return;   // ramped, so depth moves never click
+    audio.lfoAmt[slot]=amt; gain.gain.rampTo(amt,0.05);
+  }
   function applyMods(tSec){
-    // start from the slider values every frame, then let armed mods push them around
+    // start from the slider values every frame, then let the LFO push them around
     for(const L of lanes){ L.speedEff=L.speed; L.cutEff=L.cut; L.volEff=L.vol; }
     let masterEff=+$('cutoff').value, tempoEff=state.tempo, revEff=+$('revWet').value/100;
-    let delEff=state.delayFb, pitchEff=state.root, trailEff=+$('trails').value/100;
-    for(const m of mods){ if(m.target==='none'||m.depth<=0) continue;
+    let delEff=state.delayFb, pitchEff=state.root;
+    const m=mods[0], live=m.target!=='none'&&m.depth>0;
+    // Every target now has a real LFO behind it, so the frame path only steps in for
+    // sample & hold, which has no oscillator equivalent.
+    const audioWob = live && m.shape!=='sh';
+    if(live && !audioWob){
       const v=modVal(m,tSec), d=m.depth/100;
-      if(m.target==='master'){ masterEff=clamp01x(masterEff+v*d*55,0,100); continue; }
-      if(m.target==='tempo'){ tempoEff=Math.max(0,tempoEff*(1+v*d*0.85)); continue; }
-      if(m.target==='reverb'){ revEff=clamp01x(revEff+v*d*0.5,0,1); continue; }
-      if(m.target==='delay'){ delEff=clamp01x(delEff+v*d*0.45,0,0.85); continue; }
-      if(m.target==='pitch'){ pitchEff=Math.round(clamp01x(pitchEff+v*d*12,24,84)); continue; }
-      if(m.target==='trail'){ trailEff=clamp01x(trailEff+v*d*0.3,0.01,0.6); continue; }
-      lanes.forEach((L,i)=>{ if(!m.lanes[i]) return;
-        if(m.target==='speed') L.speedEff=Math.max(0.01,L.speedEff*(1+v*d*0.9));
-        else if(m.target==='lcut') L.cutEff=clamp01x(L.cutEff+v*d*55,0,100);
-        else if(m.target==='lvol') L.volEff=clamp01x(L.volEff+v*d*60,0,100); });
+      if(m.target==='master') masterEff=clamp01x(masterEff+v*d*55,0,100);
+      else if(m.target==='pitch') pitchEff=Math.round(clamp01x(pitchEff+v*d*7,24,84));
+      else lanes.forEach((L,i)=>{ if(!m.lanes[i]) return;
+        if(m.target==='lcut') L.cutEff=clamp01x(L.cutEff+v*d*55,0,100); });
     }
-    state.tempoEff=tempoEff; state.rootEff=pitchEff; state.trailEff=trailEff;
+    state.tempoEff=tempoEff; state.rootEff=pitchEff; state.trailEff=state.trail;
     if(audio){
-      lanes.forEach(L=>{ if(!L.chan) return;
-        L.chan.filter.frequency.rampTo(logCut(L.cutEff),.08);
-        L.chan.gain.gain.rampTo(L.volEff/100,.08); });
-      audio.filter.frequency.rampTo(logCut(masterEff),.08);
+      const d=m.depth/100;
+      lanes.forEach((L,i)=>{ if(!L.chan) return;
+        const base=logCut(L.cutEff), armed=live&&audioWob&&m.lanes[i];
+        L.chan.filter.frequency.rampTo(base,.08);
+        L.chan.gain.gain.rampTo(L.volEff/100,.08);
+        L.chan.filter.Q.rampTo(L.res,.08);
+        if(audio.lfoGain) setLfoAmt(audio.lfoGain[i], i,
+          armed && m.target==='lcut' ? wobAmt(base,d) : 0);
+        // Resonance swings around wherever the lane's own Q sits, without going negative.
+        if(audio.rlfoGain) setLfoAmt(audio.rlfoGain[i], 5+i,
+          armed && m.target==='res' ? Math.min(L.res*0.9, d*9) : 0, 0.02);
+        // Pitch in cents: a semitone of wobble at a quarter turn, a fifth at full.
+        if(audio.plfoGain) setLfoAmt(audio.plfoGain[i], 9+i,
+          armed && m.target==='pitch' ? d*500 : 0, 0.5);
+      });
+      const mbase=logCut(masterEff);
+      audio.filter.frequency.rampTo(mbase,.08);
+      if(audio.mlfoGain) setLfoAmt(audio.mlfoGain, 4,
+        live && audioWob && m.target==='master' ? wobAmt(mbase,d) : 0);
       audio.reverb.wet.rampTo ? audio.reverb.wet.rampTo(revEff,.1) : (audio.reverb.wet.value=revEff);
       audio.delay.feedback.rampTo ? audio.delay.feedback.rampTo(delEff,.1) : (audio.delay.feedback.value=delEff);
     }
   }
+  // rate and wave are set on change, not per frame — they are the only two the node owns
+  function syncLfoNodes(){ if(!audio||!audio.lfo) return;
+    const m=mods[0], hz=lfoHz(m.rate), ty=LFO_WAVE[m.shape]||'triangle';
+    [...audio.lfo, audio.mlfo, ...audio.rlfo, ...audio.plfo].forEach(o=>{ o.frequency.value=hz; o.type=ty; });
+  }
   const clamp01x=(v,a,b)=>v<a?a:v>b?b:v;
 
-  function buildMods(){ const host=$('modWrap'); host.innerHTML='';
-    mods.forEach((m,mi)=>{
-      const box=document.createElement('div'); box.className='grp'; box.style.gap='9px';
-      box.style.paddingBottom= mi===0?'12px':'0'; box.style.marginBottom= mi===0?'12px':'0';
-      if(mi===0) box.style.borderBottom='1px dashed var(--edge)';
-      const opts=t=>MOD_TARGETS.map(([v,l])=>`<option value="${v}"${v===t?' selected':''}>${l}</option>`).join('');
-      const shp=sv=>MOD_SHAPES.map(([v,l])=>`<option value="${v}"${v===sv?' selected':''}>${l}</option>`).join('');
-      box.innerHTML=`
-        <label>Mod ${String.fromCharCode(65+mi)} &#183; <b id="mv${mi}">0.00</b></label>
-        <select data-m="${mi}" data-k="target">${opts(m.target)}</select>
-        <div class="duo">
-          <select data-m="${mi}" data-k="shape">${shp(m.shape)}</select>
-          <div class="seg lanes" data-lanes="${mi}"></div>
-        </div>
-        <div class="duo">
-          <div class="grp"><label>Cycle <b id="ms${mi}">${m.secs}s</b></label>
-            <input type="range" data-m="${mi}" data-k="secs" min="2" max="120" value="${m.secs}"></div>
-          <div class="grp"><label>Depth <b id="md${mi}">${m.depth}</b></label>
-            <input type="range" data-m="${mi}" data-k="depth" min="0" max="100" value="${m.depth}"></div>
-        </div>`;
-      host.appendChild(box);
-      const lseg=box.querySelector(`[data-lanes="${mi}"]`);
-      lanes.forEach((L,i)=>{ const b=document.createElement('button');
-        b.textContent=i+1; b.style.color=hsla(hueOf(i),80,IL(62),1);
-        b.setAttribute('aria-pressed', !!m.lanes[i]);
-        b.addEventListener('click',()=>{ m.lanes[i]=!m.lanes[i]; b.setAttribute('aria-pressed',!!m.lanes[i]); });
-        lseg.appendChild(b); });
-    });
-    host.querySelectorAll('select,input').forEach(el=>{
-      el.addEventListener('input',e=>{ const m=mods[+el.dataset.m], k=el.dataset.k;
-        m[k] = (k==='secs'||k==='depth') ? +el.value : el.value;
-        if(k==='secs') $('ms'+el.dataset.m).textContent=m.secs+'s';
-        if(k==='depth') $('md'+el.dataset.m).textContent=m.depth; });
+  function buildMods(){ const host=$('modWrap'); host.innerHTML=''; const m=mods[0];
+    const opts=t=>MOD_TARGETS.map(([v,l])=>`<option value="${v}"${v===t?' selected':''}>${l}</option>`).join('');
+    const shp=sv=>MOD_SHAPES.map(([v,l])=>`<option value="${v}"${v===sv?' selected':''}>${l}</option>`).join('');
+    const box=document.createElement('div'); box.className='grp'; box.style.gap='9px';
+    box.innerHTML=`
+      <div class="grp" data-tip="What the LFO moves. Cutoff opens and closes the filter — that is where wobble comes from. Resonance makes the sweep whistle, Pitch gives vibrato.">
+        <label>Target <b id="mv0">0.00</b></label>
+        <select data-k="target">${opts(m.target)}</select></div>
+      <div class="duo">
+        <div class="grp" data-tip="The shape it traces. Triangle rocks evenly, square jumps between two values, sample &amp; hold jumps at random.">
+          <label>Wave</label><select data-k="shape">${shp(m.shape)}</select></div>
+        <div class="grp" data-tip="Which lanes the LFO is patched into. Leave one out and it stays still while the others move.">
+          <label>Lanes</label><div class="seg lanes" data-lanes="0"></div></div>
+      </div>
+      <div class="duo">
+        <div class="grp" data-tip="How fast it cycles. Under 1Hz it drifts across a passage; above about 3Hz you hear it as wobble.">
+          <label>Rate <b id="ms0">${lfoHzLabel(lfoHz(m.rate))}</b></label>
+          <input type="range" data-k="rate" min="0" max="100" value="${m.rate}"></div>
+        <div class="grp" data-tip="How far it swings. At zero the LFO is patched but does nothing.">
+          <label>Int <b id="md0">${m.depth}</b></label>
+          <input type="range" data-k="depth" min="0" max="100" value="${m.depth}"></div>
+      </div>`;
+    host.appendChild(box);
+    const lseg=box.querySelector('[data-lanes="0"]');
+    lanes.forEach((L,i)=>{ const b=document.createElement('button');
+      b.textContent=i+1; b.style.color=hsla(hueOf(i),80,IL(62),1);
+      b.setAttribute('aria-pressed', !!m.lanes[i]);
+      b.addEventListener('click',()=>{ m.lanes[i]=!m.lanes[i]; b.setAttribute('aria-pressed',!!m.lanes[i]); });
+      lseg.appendChild(b); });
+    box.querySelectorAll('select,input').forEach(el=>{
+      el.addEventListener('input',()=>{ const k=el.dataset.k;
+        m[k] = (k==='rate'||k==='depth') ? +el.value : el.value;
+        if(k==='rate') $('ms0').textContent=lfoHzLabel(lfoHz(m.rate));
+        if(k==='depth') $('md0').textContent=m.depth;
+        syncLfoNodes(); });
     });
     knobify(host); syncKnobs();
   }
@@ -1664,12 +1746,12 @@
      modulators, and the global controls. Saved to localStorage by name, and exportable as
      JSON so a patch can leave the browser. */
   const TRACK_KEY='angel-tracks';
-  const CTRL_IDS=['tempo','pitch','trails','smear','evolve','cutoff','warm','revWet','delFb'];
+  const CTRL_IDS=['tempo','pitch','smear','evolve','cutoff','revWet','delFb'];
   function snapshot(){
     return { v:1, theme:THEME,
-      lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,mute:!!L.mute,
+      lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,mute:!!L.mute,res:L.res,
         env:Object.assign({},L.env), pattern:L.pattern.slice()})),
-      mods:mods.map(m=>({shape:m.shape,secs:m.secs,depth:m.depth,target:m.target,lanes:m.lanes.slice()})),
+      mods:mods.map(m=>({shape:m.shape,rate:m.rate,depth:m.depth,target:m.target,lanes:m.lanes.slice()})),
       palette:state.palette, scale:state.scale, exportSize:state.exportSize, visual:state.visual, shape:state.shape,
       customHues:state.customHues.slice(), sat:state.sat,
       orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
@@ -1679,9 +1761,13 @@
     if(!o||!o.lanes) return false;
     o.lanes.forEach((L,i)=>{ if(!lanes[i]) return; const T=lanes[i];
       T.instr=L.instr; T.steps=L.steps; T.speed=L.speed; T.oct=L.oct; T.cut=L.cut; T.vol=L.vol; T.mute=!!L.mute;
+      T.res = L.res==null ? 0.7 : L.res;                 // older saves predate resonance
       T.env=Object.assign({},L.env); T.pattern=L.pattern.slice(); T.lastStep=-1;
       if(T._voice){ try{T._voice.dispose();}catch(e){} } T._voice=null; T._voiceName=null; });
-    if(o.mods) o.mods.forEach((m,i)=>{ if(mods[i]) Object.assign(mods[i],m,{lanes:m.lanes.slice()}); });
+    // older saves stored a cycle length in seconds; carry them over to the rate slider
+    if(o.mods) o.mods.forEach((m,i)=>{ if(!mods[i]) return;
+      const rate = m.rate!=null ? m.rate : Math.round(Math.log((1/Math.max(2,m.secs||26))/0.05)/Math.log(360)*100);
+      Object.assign(mods[i],m,{rate:Math.max(0,Math.min(100,rate)),lanes:m.lanes.slice()}); delete mods[i].secs; });
     state.palette=o.palette||state.palette; if(o.customHues) state.customHues=o.customHues.slice(); if(o.sat!=null) state.sat=o.sat; state.scale=o.scale||state.scale; state.visual=o.visual||state.visual; state.shape=o.shape||state.shape;
     state.orbVoice=o.orbVoice||'cycle'; if(o.orbEnv) state.orbEnv=Object.assign({},o.orbEnv);
     if(o.ctrl) CTRL_IDS.forEach(id=>{ const el=$(id); if(el&&o.ctrl[id]!=null){ el.value=o.ctrl[id];
@@ -1693,7 +1779,7 @@
     document.querySelectorAll('#scaleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===state.scale)));
     if($('orbVoice')) $('orbVoice').value=state.orbVoice;
     if(o.theme) setTheme(o.theme);
-    editLane=0; refreshLaneSeg(); refreshMutes(); syncLane(); buildMods(); knobify();
+    editLane=0; refreshLaneSeg(); refreshMutes(); syncLane(); buildMods(); knobify(); syncLfoNodes();
     paintEnv(ORB_IDS,state.orbEnv); syncKnobs();
     if(audio) lanes.forEach((L,i)=>laneVoice(i));
     return true;
@@ -1760,63 +1846,69 @@
      you want to take it apart. Compact spec expands into the same shape restore() takes.
      lane = [instrument, steps, speed, octave, envelope, active steps, filter, level] */
   const MOODS=[
+    { name:'Sunday', pal:'OCEAN', scale:'Lydian', tempo:30, pitch:48, rev:54, del:0, cut:64, trail:0,
+      lanes:[['mallet',12,2.20,0,{a:.001,d:.42,s:0,r:.70},[0,3,5,7,10],74,72,1.2],
+             ['pluck',8,3.30,1,{a:.001,d:.34,s:0,r:.55},[0,3,6],80,54,0.7],
+             ['sub',6,2.20,-2,{a:.008,d:.40,s:.42,r:.50},[0,3],44,70,1.4],
+             ['bloom',16,1.65,0,{a:1.30,d:1.60,s:.48,r:4.00},[0,6,11],58,40,0.9]],
+      mods:[['sine',52,6,'pitch',[1,1,0,0]]] },
     { name:'Arp', pal:'PRISM', scale:'MinorPenta', tempo:40, pitch:48, rev:18, del:0, cut:72, trail:0,
-      lanes:[['acid',8,6.00,-1,{a:.004,d:.18,s:0,r:.14},[0,2,3,5,6],62,80],
-             ['neon',16,3.00,0,{a:.004,d:.20,s:0,r:.16},[0,2,4,6,8,10,12,14],78,64],
-             ['chip',24,2.00,1,{a:.001,d:.11,s:0,r:.08},[0,6,12,18],88,42],
-             ['sub',12,2.00,-2,{a:.006,d:.34,s:.35,r:.30},[0,6],46,72]],
-      mods:[['sine',16,44,'lcut',[0,1,0,0]],['sh',9,38,'lcut',[1,0,0,0]]] },
+      lanes:[['acid',8,6.00,-1,{a:.004,d:.18,s:0,r:.14},[0,2,3,5,6],62,80,8.0],
+             ['neon',16,3.00,0,{a:.004,d:.20,s:0,r:.16},[0,2,4,6,8,10,12,14],78,64,4.5],
+             ['chip',24,2.00,1,{a:.001,d:.11,s:0,r:.08},[0,6,12,18],88,42,2.2],
+             ['sub',12,2.00,-2,{a:.006,d:.34,s:.35,r:.30},[0,6],46,72,1.4]],
+      mods:[['sqr',72,46,'lcut',[0,1,1,0]]] },
     { name:'Neon', pal:'AURORA', scale:'Dorian', tempo:52, pitch:50, rev:24, del:0, cut:66, trail:0,
-      lanes:[['acid',8,6.00,-1,{a:.004,d:.16,s:0,r:.12},[0,3,5],60,78],
-             ['neon',12,4.00,0,{a:.006,d:.26,s:.10,r:.22},[0,2,4,5,7,9],72,68],
-             ['chip',16,3.00,1,{a:.001,d:.10,s:0,r:.08},[0,4,8,12],86,44],
-             ['sub',24,1.00,-2,{a:.006,d:.36,s:.40,r:.34},[0,12],44,70]],
-      mods:[['tri',12,52,'lcut',[0,1,0,0]],['drunk',20,34,'speed',[0,0,1,0]]] },
+      lanes:[['acid',8,6.00,-1,{a:.004,d:.16,s:0,r:.12},[0,3,5],60,78,9.0],
+             ['neon',12,4.00,0,{a:.006,d:.26,s:.10,r:.22},[0,2,4,5,7,9],72,68,6.0],
+             ['chip',16,3.00,1,{a:.001,d:.10,s:0,r:.08},[0,4,8,12],86,44,2.6],
+             ['sub',24,1.00,-2,{a:.006,d:.36,s:.40,r:.34},[0,12],44,70,1.4]],
+      mods:[['tri',80,54,'lcut',[0,1,1,0]]] },
     { name:'Bloom', pal:'AURORA', scale:'Pentatonic', tempo:9, pitch:46, rev:72, del:44, cut:40, trail:0,
       lanes:[['bloom',5,1.9000,-1,{a:2.4,d:2.2,s:.62,r:9.0},[0,3],52,76],
              ['glass',7,1.1742,0,{a:1.6,d:2.4,s:.42,r:8.0},[0,4],64,58],
              ['bell',11,0.7258,1,{a:.02,d:2.6,s:0,r:6.5},[6],80,38],
              ['bloom',13,0.4484,1,{a:3.0,d:2.4,s:.55,r:10.0},[9],72,32]],
-      mods:[['sine',96,42,'lcut',[1,1,0,0]],['drunk',150,34,'lvol',[0,0,1,1]]] },
+      mods:[['sine',12,44,'lcut',[1,1,0,0]]] },
     { name:'Drift', pal:'OCEAN', scale:'Lydian', tempo:6, pitch:42, rev:78, del:48, cut:34, trail:0,
       lanes:[['bloom',4,1.7500,-1,{a:3.6,d:3.0,s:.72,r:12.0},[0],46,72],
              ['bloom',6,1.0815,0,{a:3.2,d:2.8,s:.68,r:11.0},[3],56,56],
              ['glass',9,0.6685,1,{a:2.2,d:3.2,s:.55,r:11.0},[5],68,42],
              ['bell',14,0.4130,2,{a:.03,d:3.2,s:0,r:9.0},[11],82,26]],
-      mods:[['drunk',180,52,'lcut',[1,1,1,1]],['sine',240,26,'pitch',[0,0,0,0]]] },
+      mods:[['sine',8,52,'lcut',[1,1,1,1]]] },
     { name:'Rain', pal:'PRISM', scale:'MinorPenta', tempo:22, pitch:50, rev:60, del:38, cut:56, trail:0,
       lanes:[['pluck',12,2.6000,0,{a:.001,d:.34,s:0,r:.55},[0,7],72,64],
              ['mallet',17,1.6068,1,{a:.001,d:.42,s:0,r:.70},[0,9],82,46],
              ['pluck',7,0.9932,-1,{a:.001,d:.40,s:0,r:.60},[3],66,52],
              ['bell',23,0.6136,2,{a:.004,d:1.3,s:0,r:2.0},[14],88,28]],
-      mods:[['sh',22,58,'lvol',[1,1,0,0]],['drunk',110,40,'speed',[0,0,1,1]]] },
+      mods:[['sh',26,50,'lcut',[1,1,0,0]]] },
     { name:'Chapel', pal:'EMBER', scale:'Dorian', tempo:7, pitch:44, rev:80, del:50, cut:36, trail:0,
       lanes:[['piano',6,2.2000,-1,{a:.006,d:1.4,s:0,r:5.0},[0],58,70],
              ['bloom',9,1.3596,0,{a:3.0,d:2.6,s:.66,r:11.0},[4],52,54],
              ['glass',13,0.8404,1,{a:1.8,d:2.6,s:.5,r:9.0},[7],70,40],
              ['piano',19,0.5192,1,{a:.006,d:1.8,s:0,r:6.0},[12],80,26]],
-      mods:[['env',130,46,'lvol',[0,0,1,1]],['sine',200,30,'master',[0,0,0,0]]] },
+      mods:[['tri',10,40,'lcut',[0,0,1,1]]] },
     { name:'Dusk', pal:'EMBER', scale:'MinorPenta', tempo:12, pitch:40, rev:70, del:44, cut:44, trail:0,
       lanes:[['bell',7,1.8500,-1,{a:.02,d:2.6,s:0,r:7.0},[0],54,68],
              ['bloom',11,1.1433,0,{a:2.2,d:2.4,s:.58,r:9.5},[5],62,54],
              ['mallet',17,0.7067,1,{a:.001,d:.9,s:0,r:1.6},[9],76,38],
              ['glass',5,0.4366,1,{a:1.8,d:2.4,s:.5,r:8.5},[2],70,30]],
-      mods:[['tri',120,44,'lcut',[1,1,0,0]],['saw',175,32,'reverb',[0,0,0,0]]] },
+      mods:[['tri',14,44,'lcut',[1,1,0,0]]] },
     { name:'Static', pal:'AURORA', scale:'Lydian', tempo:16, pitch:48, rev:64, del:40, cut:50, trail:0,
       lanes:[['glass',5,1.9500,0,{a:.7,d:1.6,s:.3,r:5.0},[0],66,62],
              ['mallet',8,1.2051,1,{a:.001,d:.7,s:0,r:1.2},[3],78,48],
              ['pluck',13,0.7449,0,{a:.001,d:.35,s:0,r:.5},[7],72,44],
              ['bell',21,0.4602,2,{a:.02,d:1.6,s:0,r:3.4},[16],86,26]],
-      mods:[['sh',40,52,'speed',[0,0,1,1]],['rand',95,38,'lcut',[1,1,0,0]]] },
+      mods:[['sh',30,46,'res',[0,0,1,1]]] },
   ];
   function moodSnapshot(M){
     return { v:1,
-      lanes:M.lanes.map(([instr,steps,speed,oct,env,on,cut,vol])=>{
+      lanes:M.lanes.map(([instr,steps,speed,oct,env,on,cut,vol,res])=>{
         const pat=Array(steps).fill(null); on.forEach(k=>{ if(k<steps) pat[k]='auto'; });
-        return {instr,steps,speed,oct,cut,vol,env:Object.assign({},env),pattern:pat}; }),
-      mods:M.mods.map(([shape,secs,depth,target,ln])=>({shape,secs,depth,target,lanes:ln.map(Boolean)})),
+        return {instr,steps,speed,oct,cut,vol,res:res==null?0.7:res,env:Object.assign({},env),pattern:pat}; }),
+      mods:M.mods.map(([shape,rate,depth,target,ln])=>({shape,rate,depth,target,lanes:ln.map(Boolean)})),
       palette:M.pal, scale:M.scale, orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
-      ctrl:{ tempo:String(M.tempo), pitch:String(M.pitch), trails:String(M.trail),
+      ctrl:{ tempo:String(M.tempo), pitch:String(M.pitch),
              smear:$('smear')?$('smear').value:'0', cutoff:String(M.cut),
              revWet:String(M.rev), delFb:String(M.del) } };
   }
@@ -1841,46 +1933,86 @@
   const WHITE=[0,2,4,5,7,9,11], BLACK={1:0,3:1,6:3,8:4,10:5};   // black offset by white index
   const KEYROW={ a:0,w:1,s:2,e:3,d:4,f:5,t:6,g:7,y:8,h:9,u:10,j:11,
                  k:12,o:13,l:14,p:15,';':16,"'":17 };
-  const KEYLABEL=Object.fromEntries(Object.entries(KEYROW).map(([k,v])=>[v,k.toUpperCase()]));
-  let kbOct=0, kbHeld={};
-  function kbBase(){ return Math.max(24,Math.min(96, state.root + kbOct*12)); }
-  function buildKbd(){ const host=$('kbd'); host.innerHTML=''; const base=kbBase();
-    const wkEls={};
-    for(let o=0;o<2;o++) for(let wi=0;wi<7;wi++){
-      const semi=o*12+WHITE[wi], w=document.createElement('div'); w.className='wk'; w.dataset.semi=semi;
-      if(KEYLABEL[semi]!=null) w.innerHTML=`<span class="kc">${KEYLABEL[semi]}</span>`;
-      host.appendChild(w); wkEls[semi]=w;
+  const KB_BASE=36, KB_OCTS=4;          // C2 up to C6, all of it on screen at once
+  let kbOct=1, kbHeld={};               // kbOct = which octave the computer row lands in
+  const kbRowOff=()=>kbOct*12;
+  const kbMidi=semi=>Math.max(21,Math.min(108, KB_BASE+semi));
+  function buildKbd(){
+    const host=$('kbd'); host.innerHTML='';
+    const head=document.createElement('div'); head.id='kbdHead';
+    head.innerHTML='<span id="kbdMode">Play</span>'+
+      '<b id="kbdTarget"></b><span style="flex:1"></span>'+
+      '<span id="kbdOctL">Z X \u00b7 typing octave <b>C3</b></span>';
+    host.appendChild(head);
+    const keys=document.createElement('div'); keys.id='kbdKeys'; host.appendChild(keys);
+    for(let o=0;o<KB_OCTS;o++) for(let wi=0;wi<7;wi++){
+      const semi=o*12+WHITE[wi], w=document.createElement('div');
+      w.className='wk'; w.dataset.semi=semi;
+      const midi=kbMidi(semi);
+      if(WHITE[wi]===0) w.innerHTML=`<span class="kn">${midiLabel(midi)}</span>`;
+      keys.appendChild(w);
     }
     // black keys sit between whites, positioned over the gaps
-    for(let o=0;o<2;o++) for(const semiStr in BLACK){ const semi=o*12+ +semiStr, afterWhite=o*7+BLACK[semiStr];
+    for(let o=0;o<KB_OCTS;o++) for(const semiStr in BLACK){
+      const semi=o*12+ +semiStr, afterWhite=o*7+BLACK[semiStr];
       const bk=document.createElement('div'); bk.className='bk'; bk.dataset.semi=semi;
-      const ref=host.children[afterWhite]; if(ref) bk.style.left=(ref.offsetLeft+ref.offsetWidth)+'px';
-      host.appendChild(bk);
+      const ref=keys.children[afterWhite]; if(ref) bk.style.left=(ref.offsetLeft+ref.offsetWidth)+'px';
+      keys.appendChild(bk);
     }
+    keys.querySelectorAll('.wk,.bk').forEach(el=>{
+      const semi=+el.dataset.semi;
+      el.addEventListener('pointerdown',ev=>{ ev.preventDefault(); kbDown(semi); });
+      el.addEventListener('pointerup',ev=>{ ev.preventDefault(); kbUp(semi); });
+      el.addEventListener('pointerleave',e=>{ if(e.buttons) kbUp(semi); });
+    });
+    kbSync();
+  }
+  /* The keyboard reports what it will do: play the lane, or write into the selected step.
+     It also marks which keys the computer row is under, and where the step's note sits. */
+  function kbSync(){
+    const host=$('kbd'); if(!host || !host.querySelector('#kbdKeys')) return;
+    const assigning = selStep>=0;
+    host.classList.toggle('assign',assigning);
+    const mode=$('kbdMode'), tgt=$('kbdTarget'), oct=$('kbdOctL');
+    if(mode) mode.textContent = assigning ? 'Set note' : 'Play';
+    if(tgt) tgt.textContent = assigning ? `lane ${editLane+1} \u00b7 step ${selStep+1}` : `lane ${editLane+1}`;
+    if(oct) oct.innerHTML=`Z X \u00b7 typing octave <b>${midiLabel(kbMidi(kbRowOff())).replace(/[#\u266f]/,'')}</b>`;
+    const cell = assigning ? lanes[editLane].pattern[selStep] : null;
+    const held = typeof cell==='number' ? cell-KB_BASE : -1;
     host.querySelectorAll('.wk,.bk').forEach(el=>{
       const semi=+el.dataset.semi;
-      const down=ev=>{ ev.preventDefault(); kbDown(semi); };
-      const up=ev=>{ ev.preventDefault(); kbUp(semi); };
-      el.addEventListener('pointerdown',down); el.addEventListener('pointerup',up);
-      el.addEventListener('pointerleave',e=>{ if(e.buttons) kbUp(semi); });
+      el.classList.toggle('held', semi===held);
+      const rk=semi-kbRowOff();
+      const letter=Object.keys(KEYROW).find(k=>KEYROW[k]===rk);
+      const tag=el.querySelector('.kc');
+      if(letter && el.classList.contains('wk')){
+        if(tag) tag.textContent=letter.toUpperCase();
+        else el.insertAdjacentHTML('beforeend',`<span class="kc">${letter.toUpperCase()}</span>`);
+      } else if(tag) tag.remove();
     });
   }
   function litEl(semi,on){ const el=$('kbd').querySelector(`[data-semi="${semi}"]`); if(el) el.classList.toggle('lit',on); }
   function kbDown(semi){ if(kbHeld[semi]) return; kbHeld[semi]=true; litEl(semi,true);
-    if(!audio) return; const midi=Math.max(21,Math.min(108, kbBase()+semi));
+    const midi=kbMidi(semi);
+    // a selected step takes the note; otherwise the keyboard just plays the lane
+    if(selStep>=0){ lanes[editLane].pattern[selStep]=midi; refreshSteps(); syncNoteEd(); }
+    if(!audio) return;
     fire(laneVoice(editLane), lanes[editLane].instr, midi, .6, lanes[editLane].env);
     // a matching flash on the canvas so playing is visible there too
-    const R=ringRadius(editLane), {cx,cy}=center(), a=(-Math.PI/2)+ (semi/12)*Math.PI*0.9;
+    const R=ringRadius(editLane), {cx,cy}=center(), a=(-Math.PI/2)+ ((semi%12)/12)*Math.PI*0.9;
     rings.push({x:cx+Math.cos(a)*R, y:cy+Math.sin(a)*R, r:6, life:1, hue:hueOf(editLane), w:2}); }
   function kbUp(semi){ if(!kbHeld[semi]) return; kbHeld[semi]=false; litEl(semi,false); }
   function kbdOpen(){ return !$('kbd').classList.contains('hidden'); }
-  $('kbdBtn').addEventListener('click',()=>{ const open=$('kbd').classList.toggle('hidden')===false;
-    document.body.classList.toggle('kbd',open); $('kbdBtn').setAttribute('aria-pressed',String(open));
-    if(open){ buildKbd(); document.body.classList.remove('idle'); } });
+  function setKbd(open){
+    $('kbd').classList.toggle('hidden',!open);
+    document.body.classList.toggle('kbd',open);
+    $('kbdBtn').setAttribute('aria-pressed',String(open));
+    if(open){ buildKbd(); document.body.classList.remove('idle'); } }
+  $('kbdBtn').addEventListener('click',()=>setKbd(!kbdOpen()));
 
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
-  window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, get audio(){return audio;}, setPaused, hexHue, setStepSample, clearStepSample, fireStep, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
+  window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, setKbd, kbSync, get audio(){return audio;}, setPaused, hexHue, setStepSample, clearStepSample, fireStep, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
 })();
 </script>
 </body>
