@@ -140,10 +140,10 @@
   body.fs #mood{ display:none; }
   #mood b{ font-weight:600; letter-spacing:.18em; }
   #mood span{ opacity:.5; font-size:9px; letter-spacing:.14em; }
-  body.kbd #mood{ bottom:150px; }
+  body.kbd #mood{ bottom:168px; }
 
   /* Playable keyboard — plays the selected lane's voice; computer keys or clicks. */
-  #kbd{ position:fixed; left:50%; bottom:64px; transform:translateX(-50%); z-index:9;
+  #kbd{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:9;
     display:flex; flex-direction:column; gap:7px; padding:9px; border-radius:10px; user-select:none;
     max-width:calc(100vw - 32px);
     background:var(--panel); -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
@@ -260,6 +260,30 @@
   #noteEd{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
   #noteEd.off{ opacity:.55; pointer-events:none; }
 
+  /* Arrangement strip. It sits above the mood button rather than in a rail, because a
+     timeline you cannot see while you play is not a timeline. */
+  #arr{ position:fixed; left:50%; bottom:76px; transform:translateX(-50%); z-index:9;
+    display:none; align-items:center; gap:9px; padding:7px 11px; border-radius:999px;
+    width:min(620px, calc(100vw - 40px));
+    background:var(--panel); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 14px 40px -24px rgba(0,0,0,.5); transition:opacity .4s ease; }
+  body.arr #arr{ display:flex; }
+  body.kbd #arr{ bottom:218px; }
+  body.idle #arr{ opacity:.25; }
+  body.fs #arr{ display:none; }
+  .arrbtn{ appearance:none; width:26px; height:26px; flex:none; border-radius:50%;
+    border:1px solid var(--hair); background:transparent; color:var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:12px; padding:0; }
+  .arrbtn:disabled{ opacity:.3; cursor:not-allowed; }
+  .arrbtn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  #arrRec i{ width:9px; height:9px; border-radius:50%; background:#ff4d5e; display:block; }
+  #arrRec[aria-pressed="true"]{ background:#ff4d5e; border-color:#ff4d5e; }
+  #arrRec[aria-pressed="true"] i{ background:#fff; border-radius:2px; width:8px; height:8px; }
+  #arr b, #arr span{ font-size:9.5px; letter-spacing:.08em; font-variant-numeric:tabular-nums;
+    flex:none; color:var(--ink); font-weight:600; }
+  #arr span{ color:var(--mute); font-weight:400; }
+  #arrCv{ flex:1 1 auto; height:26px; min-width:80px; cursor:pointer; touch-action:none; }
   #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
   #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
@@ -277,6 +301,14 @@
 <div id="status"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
 <div id="countin" aria-live="assertive"><b id="countinN">3</b><span>get ready</span></div>
+<div id="arr" aria-label="arrangement">
+  <button class="arrbtn" id="arrRec" aria-label="record a performance" title="Record what you do &#183; R" aria-pressed="false"><i></i></button>
+  <button class="arrbtn" id="arrPlay" aria-label="play the performance" title="Play it back" aria-pressed="false" disabled><svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3.4 2 L9.4 6 L3.4 10 Z" fill="currentColor"/></svg></button>
+  <button class="arrbtn" id="arrLoop" aria-label="loop the performance" title="Loop it" aria-pressed="false" disabled>&#8635;</button>
+  <b id="arrTime">0:00</b>
+  <canvas id="arrCv" title="Click anywhere to jump there"></canvas>
+  <span id="arrLen">&#8212;</span>
+</div>
 <button id="mood" aria-label="change mood" data-tip="Loads a whole patch at once — voices, notes, tuning and motion together. Tap to move somewhere else."><b id="moodName">Drone</b><span>mood</span></button>
 <div id="kbd" class="hidden" aria-label="playable keyboard"></div>
 <div id="bar">
@@ -495,6 +527,16 @@
       <div class="grp" data-tip="The level an orb note holds at. At zero each bounce is a short hit."><label>Sustain <b id="osR">—</b></label><input id="os" type="range" min="0" max="100" value="0" /></div>
       <div class="grp" data-tip="How long an orb note takes to fade out."><label>Release <b id="orR">—</b></label><input id="or" type="range" min="0" max="100" value="55" /></div>
     </div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Arrangement</button>
+    <p class="rowhint">Records what you do, not what it sounds like &#8212; every knob, tap and note with its timing, so it plays back exactly and saves with the track.</p>
+    <div class="grp" data-tip="Hit record (or press R) and everything you touch is kept with its timing. Press it again to stop, then Play to watch it happen again. The strip above the mood button is the timeline &#8212; click anywhere on it to jump there."><label>Take <b id="arrInfo">nothing recorded</b></label></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="arrRec2" style="flex:1" data-tip="Same as the round button on the timeline.">Record</button>
+      <button class="btn" id="arrClear" style="flex:1" data-tip="Throws the performance away. The patch itself is untouched.">Clear</button>
+    </div></div>
   </div>
 
   <div class="row">
@@ -989,7 +1031,8 @@
   const orbs=[], shards=[], rings=[], MAXO=14, BASE=64; let orbCount=0;
   const ORB_INSTR=['bloom','glass','pluck','bell','mallet'];
   const ALL_INSTR=['piano','bloom','glass','pluck','bell','mallet','sample'];
-  function addOrb(x,y){ if(orbs.length>=MAXO) orbs.shift();
+  function addOrb(x,y,fromArr){
+    if(!fromArr && typeof ARR!=='undefined') arrPush({k:'orb', x:x/innerWidth, y:y/innerHeight}); if(orbs.length>=MAXO) orbs.shift();
     const r=14+Math.random()*26,a=Math.random()*6.283,s=.5+Math.random()*.7, vi=orbCount++%ORB_INSTR.length;
     const voice = state.orbVoice==='cycle' ? ORB_INSTR[vi] : state.orbVoice;
     orbs.push({x,y,r,voice,dx:Math.cos(a)*s,dy:Math.sin(a)*s,baseHue:hueOf(vi)+(Math.random()*20-10),last:0,pulse:1}); }
@@ -1039,7 +1082,7 @@
     for(const b of orbs){ if(!state.paused){ b.x+=b.dx*BASE*dt; b.y+=b.dy*BASE*dt; }
       if(b.x-b.r<0){b.x=b.r;b.dx=Math.abs(b.dx);hitWall(b,'x',t);} else if(b.x+b.r>W){b.x=W-b.r;b.dx=-Math.abs(b.dx);hitWall(b,'x',t);}
       if(b.y-b.r<0){b.y=b.r;b.dy=Math.abs(b.dy);hitWall(b,'y',t);} else if(b.y+b.r>H){b.y=H-b.r;b.dy=-Math.abs(b.dy);hitWall(b,'y',t);} }
-    applyMods(t/1000); evolve(dt);
+    applyMods(t/1000); evolve(dt); arrTick();
     if(t-lastDroneT>200){ lastDroneT=t; for(let i=0;i<lanes.length;i++) syncDroneLane(i); }
     for(let mi=0;mi<mods.length;mi++){ const el=$('mv'+mi); if(el) el.textContent=modVal(mods[mi],t/1000).toFixed(2); }
     advance(dt);
@@ -1314,7 +1357,7 @@
   const readFold=()=>{ try{ return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]'); }catch(e){ return []; } };
   // Everything you need to make a sound is open; the sections you go looking for start
   // folded. Only applies on a first visit — after that your own folding is what is restored.
-  const FOLD_DEFAULT=['Envelope','Orbs','Sample','Track','Export'];
+  const FOLD_DEFAULT=['Envelope','Orbs','Sample','Arrangement','Track','Export'];
   // Some things need their section in front of you — a recording arriving in a folded
   // panel is a recording you never see.
   function openRow(title){
@@ -1432,7 +1475,8 @@
       if(KEYROW[k]!=null){ kbDown(KEYROW[k]+kbRowOff()); return; }
     }
     if(e.code==='Space'){ e.preventDefault(); setPaused(!state.paused); return; }
-    if(e.key==='f'||e.key==='F') setFs(!document.body.classList.contains('fs'));
+    if(e.key==='f'||e.key==='F'){ setFs(!document.body.classList.contains('fs')); return; }
+    if(e.key==='r'||e.key==='R'){ arrSetRec(!ARR.rec); return; }
   });
   addEventListener('keyup',e=>{ if(typing()) return; const k=e.key.toLowerCase();
     if(kbdOpen()&&KEYROW[k]!=null) kbUp(KEYROW[k]+kbRowOff()); });
@@ -2123,6 +2167,7 @@
       lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,mute:!!L.mute,drone:!!L.drone,res:L.res,
         env:Object.assign({},L.env), pattern:L.pattern.slice()})),
       mods:mods.map(m=>({shape:m.shape,rate:m.rate,depth:m.depth,target:m.target,lanes:m.lanes.slice()})),
+      arr: (typeof ARR!=='undefined' && ARR.ev.length) ? {ev:ARR.ev, dur:ARR.dur, snap:ARR.snap} : null,
       palette:state.palette, scale:state.scale, exportSize:state.exportSize, visual:state.visual, shape:state.shape,
       customHues:state.customHues.slice(), sat:state.sat,
       orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
@@ -2151,6 +2196,14 @@
     document.querySelectorAll('#scaleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===state.scale)));
     if($('orbVoice')) $('orbVoice').value=state.orbVoice;
     if(o.theme) setTheme(o.theme);
+    // A restored patch brings its performance back too — but never while one is running,
+    // or loading a track mid-playback would swap the tape out from under the head.
+    if(typeof ARR!=='undefined' && !ARR.play && !ARR.rec){
+      if(o.arr && o.arr.ev){ ARR.ev=o.arr.ev.slice(); ARR.dur=o.arr.dur||0;
+        ARR.snap=o.arr.snap||null; ARR.head=0; }
+      else if(o.arr===null){ ARR.ev=[]; ARR.dur=0; ARR.snap=null; ARR.head=0; }
+      arrSync();
+    }
     editLane=0; refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); syncLane(); buildMods(); knobify(); syncLfoNodes();
     paintEnv(ORB_IDS,state.orbEnv); syncKnobs();
     if(audio) lanes.forEach((L,i)=>laneVoice(i));
@@ -2371,6 +2424,7 @@
   }
   function litEl(semi,on){ const el=$('kbd').querySelector(`[data-semi="${semi}"]`); if(el) el.classList.toggle('lit',on); }
   function kbDown(semi){ if(kbHeld[semi]) return; kbHeld[semi]=true; litEl(semi,true);
+    if(typeof ARR!=='undefined') arrPush({k:'kb', semi});
     const midi=kbMidi(semi);
     // a selected step takes the note; otherwise the keyboard just plays the lane
     if(selStep>=0){ lanes[editLane].pattern[selStep]=midi; refreshSteps(); syncNoteEd(); }
@@ -2388,9 +2442,169 @@
     if(open){ buildKbd(); document.body.classList.remove('idle'); } }
   $('kbdBtn').addEventListener('click',()=>setKbd(!kbdOpen()));
 
+  /* ---------- arrangement ----------
+     A performance is stored as what you did, not as audio: a snapshot of the patch at the
+     moment you hit record, then every gesture after it with a timestamp. Playback replays
+     those gestures through the very same handlers, so anything you can do live plays back
+     exactly, and the file stays a few kilobytes rather than a few megabytes.
+
+     It also means seeking is honest — to reach 1:30 we restore the snapshot and re-apply
+     every event up to 1:30 at once, which lands on the state you were actually in. */
+  // var, not const: addOrb() and kbDown() reference ARR, and a dead zone here would throw
+  // rather than read as undefined — a lesson this file has already taught me twice.
+  var ARR={ rec:false, play:false, loop:false, ev:[], snap:null, dur:0, t0:0, idx:0, head:0 };
+  const arrNow=()=>performance.now()-ARR.t0;
+  function arrPush(e){ if(!ARR.rec||ARR.play) return; e.t=Math.round(arrNow()); ARR.ev.push(e); }
+  // A selector we can find again after the rail has been rebuilt. Ids where they exist,
+  // otherwise position inside the nearest identified container.
+  function arrSel(el){
+    if(el.id) return '#'+el.id;
+    const host=el.closest('[id]'); if(!host||!host.id) return null;
+    const sibs=[...host.children].filter(c=>c.tagName===el.tagName);
+    const i=sibs.indexOf(el); if(i<0) return null;
+    return '#'+host.id+' > '+el.tagName.toLowerCase()+':nth-of-type('+(i+1)+')';
+  }
+  addEventListener('input',e=>{ const el=e.target;
+    if(!el.id || !el.closest || !el.closest('.rail')) return;
+    arrPush({k:'in', id:el.id, v:el.value}); },true);
+  addEventListener('change',e=>{ const el=e.target;
+    if(!el.id || el.tagName!=='SELECT' || !el.closest || !el.closest('.rail')) return;
+    arrPush({k:'ch', id:el.id, v:el.value}); },true);
+  addEventListener('click',e=>{
+    const b=e.target.closest && e.target.closest('button'); if(!b) return;
+    if(b.closest('#arr')) return;                       // the transport is not part of the take
+    if(b.classList.contains('rowhead')) return;         // nor is folding a section away
+    const sel=arrSel(b); if(sel) arrPush({k:'cl', s:sel});
+  },true);
+
+  // restore() now brings a track's performance back with it, which is right when you load
+  // a track and wrong when we are only rewinding — the snapshot would hand its own (empty)
+  // arrangement back and wipe the take. Strip that field before rewinding.
+  function arrRestore(){ if(!ARR.snap) return;
+    const o=JSON.parse(JSON.stringify(ARR.snap)); delete o.arr; restore(o); }
+  function arrFire(e){
+    try{
+      if(e.k==='in'||e.k==='ch'){ const el=$(e.id); if(!el) return;
+        el.value=e.v; el.dispatchEvent(new Event(e.k==='in'?'input':'change',{bubbles:true}));
+        if(el.type==='range') syncKnobs(); return; }
+      if(e.k==='cl'){ const el=document.querySelector(e.s); if(el) el.click(); return; }
+      if(e.k==='orb'){ addOrb(e.x*innerWidth, e.y*innerHeight, true); return; }
+      if(e.k==='kb'){ kbDown(e.semi); setTimeout(()=>kbUp(e.semi),170); return; }
+    }catch(err){}
+  }
+  function arrSeek(ms){
+    ARR.head=Math.max(0,Math.min(ARR.dur,ms));
+    arrRestore();
+    // Back to the top means back to the top: the rings return to the step they started on,
+    // so a replay lines up with the take rather than drifting by however long you waited.
+    if(ARR.head<=1) resetPlayheads();
+    ARR.idx=0;
+    while(ARR.idx<ARR.ev.length && ARR.ev[ARR.idx].t<=ARR.head){ arrFire(ARR.ev[ARR.idx]); ARR.idx++; }
+    ARR.t0=performance.now()-ARR.head;
+    arrPaint();
+  }
+  // Every take starts from the same place, or two passes never line up: the rings go back
+  // to their first step and the count leads you in.
+  function resetPlayheads(){ lanes.forEach(L=>{ L.ang=-Math.PI/2; L.lastStep=-1; }); }
+  var arrArming=false;
+  function arrSetRec(on){
+    if(!on){
+      if(arrArming){ arrArming=false; cancelCount();
+        $('arrRec').setAttribute('aria-pressed','false'); arrSync(); return; }
+      if(!ARR.rec) return;
+      ARR.rec=false; ARR.dur=Math.max(ARR.dur, Math.round(arrNow())); ARR.head=ARR.dur;
+      setStatus(ARR.ev.length ? `${ARR.ev.length} moves over ${fmtClock(ARR.dur)}` : 'nothing was played');
+      setTimeout(()=>setStatus(''),3000);
+      $('arrRec').setAttribute('aria-pressed','false'); arrSync(); return;
+    }
+    if(ARR.rec||arrArming) return;
+    if(ARR.play) arrSetPlay(false);
+    arrArming=true;
+    document.body.classList.add('arr');
+    $('arrRec').setAttribute('aria-pressed','true');
+    arrSync();
+    countIn(3,()=>{
+      if(!arrArming) return;                       // called off during the count
+      arrArming=false;
+      resetPlayheads();
+      ARR.snap=snapshot(); ARR.ev=[]; ARR.dur=0; ARR.head=0; ARR.t0=performance.now(); ARR.rec=true;
+      setStatus('recording — everything you touch is being kept');
+      setTimeout(()=>setStatus(''),3000);
+      arrSync();
+    });
+  }
+  function arrSetPlay(on){
+    if(on){
+      if(!ARR.ev.length) return;
+      if(ARR.rec) arrSetRec(false);
+      ARR.play=true;
+      arrSeek(ARR.head>=ARR.dur-30 ? 0 : ARR.head);
+    } else { ARR.play=false; }
+    $('arrPlay').setAttribute('aria-pressed',String(ARR.play));
+    arrSync();
+  }
+  function arrClear(){ ARR.rec=false; ARR.play=false; ARR.ev=[]; ARR.dur=0; ARR.head=0; ARR.snap=null;
+    $('arrRec').setAttribute('aria-pressed','false'); $('arrPlay').setAttribute('aria-pressed','false');
+    document.body.classList.remove('arr'); arrSync(); }
+  function arrSync(){
+    const has=ARR.ev.length>0;
+    document.body.classList.toggle('arr', has||ARR.rec);
+    $('arrPlay').disabled=!has; $('arrLoop').disabled=!has;
+    $('arrLen').textContent = has ? fmtClock(ARR.dur)+' \u00b7 '+ARR.ev.length : '\u2014';
+    const info=$('arrInfo');
+    if(info) info.textContent = arrArming ? 'counting in\u2026' : ARR.rec ? 'recording\u2026'
+      : has ? `${ARR.ev.length} moves \u00b7 ${fmtClock(ARR.dur)}` : 'nothing recorded';
+    const r2=$('arrRec2'); if(r2){ r2.textContent=(ARR.rec||arrArming)?'Stop':'Record';
+      r2.setAttribute('aria-pressed',String(ARR.rec||arrArming)); }
+    arrPaint();
+  }
+  // one tick per gesture, coloured by what kind it was, so the shape of a take is readable
+  const ARR_COL={ in:0, ch:0, cl:1, orb:2, kb:3 };
+  function arrPaint(){
+    const c=$('arrCv'); if(!c) return;
+    const w=c.clientWidth||220, h=26, d=Math.max(1,Math.round(devicePixelRatio||1));
+    if(c.width!==w*d||c.height!==h*d){ c.width=w*d; c.height=h*d; }
+    const g=c.getContext('2d'); g.setTransform(d,0,0,d,0,0); g.clearRect(0,0,w,h);
+    const dur=Math.max(1, ARR.rec ? Math.max(ARR.dur, arrNow()) : ARR.dur);
+    g.strokeStyle=hsla(0,0,IL(60),.28); g.lineWidth=1;
+    g.beginPath(); g.moveTo(0,h/2); g.lineTo(w,h/2); g.stroke();
+    for(const e of ARR.ev){
+      const x=Math.round((e.t/dur)*(w-2))+1, kind=ARR_COL[e.k]||0;
+      const hue=[205,285,45,150][kind];
+      g.strokeStyle=hsla(hue,72,IL(52),.8); g.lineWidth=1.4;
+      const a=kind===1?9:6;
+      g.beginPath(); g.moveTo(x,h/2-a); g.lineTo(x,h/2+a); g.stroke();
+    }
+    const ph=ARR.rec?arrNow():ARR.head;
+    const px=Math.round((ph/dur)*(w-2))+1;
+    g.strokeStyle=ARR.rec?'#ff4d5e':hsla(0,0,IL(20),.9); g.lineWidth=2;
+    g.beginPath(); g.moveTo(px,2); g.lineTo(px,h-2); g.stroke();
+    $('arrTime').textContent=fmtClock(ph);
+  }
+  $('arrRec').addEventListener('click',()=>arrSetRec(!ARR.rec));
+  $('arrRec2').addEventListener('click',()=>arrSetRec(!ARR.rec));
+  $('arrClear').addEventListener('click',arrClear);
+  $('arrPlay').addEventListener('click',()=>arrSetPlay(!ARR.play));
+  $('arrLoop').addEventListener('click',()=>{ ARR.loop=!ARR.loop;
+    $('arrLoop').setAttribute('aria-pressed',String(ARR.loop)); });
+  $('arrCv').addEventListener('pointerdown',e=>{
+    if(!ARR.ev.length||ARR.rec) return;
+    const r=e.currentTarget.getBoundingClientRect();
+    arrSeek(((e.clientX-r.left)/r.width)*ARR.dur);
+  });
+  // the clock and playhead have to move even when nothing is happening
+  setInterval(()=>{ if(ARR.rec||ARR.play) arrPaint(); },100);
+  function arrTick(){
+    if(!ARR.play) return;
+    const t=arrNow();
+    while(ARR.idx<ARR.ev.length && ARR.ev[ARR.idx].t<=t){ arrFire(ARR.ev[ARR.idx]); ARR.idx++; }
+    if(t>=ARR.dur){ if(ARR.loop) arrSeek(0); else { ARR.head=ARR.dur; arrSetPlay(false); } }
+  }
+
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
   window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, setKbd, kbSync,
+    ARR, resetPlayheads, arrSetRec, arrSetPlay, arrSeek, arrClear, arrSync,
     setDrone, droneChord, syncDroneLane, releaseDrone, refreshHoldSeg,
     chopSpread, retrimStep, sliceBuffer, syncChop, countIn, assignTake, chopSrc, get audio(){return audio;}, setPaused, hexHue, setStepSample, clearStepSample, fireStep, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
 })();
