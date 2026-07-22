@@ -521,7 +521,10 @@
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Orbs</button>
     <p class="rowhint">Free-floating voices. They sound when they hit an edge; tap one to remove it.</p>
-    <div class="grp" data-tip="How loud the orbs sit against the four rings."><label>Level <b id="orbLvlR">70</b></label><input id="orbLvl" type="range" min="0" max="100" value="70" /></div>
+    <div class="duo">
+      <div class="grp" data-tip="How loud the orbs sit against the four rings."><label>Level <b id="orbLvlR">70</b></label><input id="orbLvl" type="range" min="0" max="100" value="70" /></div>
+      <div class="grp" data-tip="How fast the orbs drift, and so how often they reach an edge and sound. All the way down they stop where they are and go quiet."><label>Speed <b id="orbSpdR">1.00&#215;</b></label><input id="orbSpd" type="range" min="0" max="150" value="50" /></div>
+    </div>
     <div class="grp" data-tip="What an orb does when it hits an edge. On its own voice it plays a note from the scale. Pointed at a ring, each bounce fires the next note that ring is holding — samples included — so the orbs play what you have already written."><label>Strikes</label>
       <div class="seg" id="orbTgt">
         <button data-o="own" aria-pressed="true">Own voice</button>
@@ -754,7 +757,7 @@
 
   const state={ palette:'PRISM', scale:'MinorPenta', root:48, tempo:0.560, trail:0.0, soft:0.0, delayFb:0.0,
     exportSize:'RL', ready:false, recording:false, recAudio:false, recMic:false,
-    level:78, paused:false, orbLvl:70, orbTarget:'own', pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
+    level:78, paused:false, orbLvl:70, orbSpd:50, orbTarget:'own', pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
   let drift=0, pianoReady=false, lastDroneT=0;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -1130,7 +1133,8 @@
     else { plx.fillStyle=PAPERC(); }
     plx.fillRect(0,0,W,H);
 
-    for(const b of orbs){ if(!state.paused){ b.x+=b.dx*BASE*dt; b.y+=b.dy*BASE*dt; }
+    const oSpd=state.orbSpd/50;
+    for(const b of orbs){ if(!state.paused && oSpd>0){ b.x+=b.dx*BASE*dt*oSpd; b.y+=b.dy*BASE*dt*oSpd; }
       if(b.x-b.r<0){b.x=b.r;b.dx=Math.abs(b.dx);hitWall(b,'x',t);} else if(b.x+b.r>W){b.x=W-b.r;b.dx=-Math.abs(b.dx);hitWall(b,'x',t);}
       if(b.y-b.r<0){b.y=b.r;b.dy=Math.abs(b.dy);hitWall(b,'y',t);} else if(b.y+b.r>H){b.y=H-b.r;b.dy=-Math.abs(b.dy);hitWall(b,'y',t);} }
     applyMods(t/1000); evolve(dt); arrTick();
@@ -1481,6 +1485,8 @@
   $('delFb').addEventListener('input',e=>{ $('delR').textContent = +e.target.value>0 ? e.target.value : 'off';
     state.delayFb=+e.target.value/100;
     if(audio){ audio.delay.feedback.value=state.delayFb; audio.delay.wet.value=delayWet(state.delayFb); } });
+  $('orbSpd').addEventListener('input',e=>{ const v=+e.target.value; state.orbSpd=v;
+    $('orbSpdR').textContent = v===0 ? 'still' : (v/50).toFixed(2)+'\u00d7'; });
   $('orbLvl').addEventListener('input',e=>{ state.orbLvl=+e.target.value; $('orbLvlR').textContent=e.target.value;
     if(audio&&audio.orbBus) audio.orbBus.gain.rampTo(state.orbLvl/100,.08); });
   document.querySelectorAll('#orbTgt button').forEach(b=>b.addEventListener('click',()=>{
@@ -2234,7 +2240,7 @@
      modulators, and the global controls. Saved to localStorage by name, and exportable as
      JSON so a patch can leave the browser. */
   const TRACK_KEY='angel-tracks';
-  const CTRL_IDS=['tempo','pitch','smear','evolve','cutoff','revWet','delFb','orbLvl'];
+  const CTRL_IDS=['tempo','pitch','smear','evolve','cutoff','revWet','delFb','orbLvl','orbSpd'];
   function snapshot(){
     return { v:1, theme:THEME,
       lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,mute:!!L.mute,drone:!!L.drone,res:L.res,
