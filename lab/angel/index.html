@@ -271,7 +271,7 @@
 <div id="status"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
 <div id="countin" aria-live="assertive"><b id="countinN">3</b><span>get ready</span></div>
-<button id="mood" aria-label="change mood" data-tip="Loads a whole patch at once — voices, notes, tuning and motion together. Tap to move somewhere else."><b id="moodName">Sunday</b><span>mood</span></button>
+<button id="mood" aria-label="change mood" data-tip="Loads a whole patch at once — voices, notes, tuning and motion together. Tap to move somewhere else."><b id="moodName">Drone</b><span>mood</span></button>
 <div id="kbd" class="hidden" aria-label="playable keyboard"></div>
 <div id="bar">
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
@@ -289,9 +289,11 @@
     <div class="grp" data-tip="Which of the four rings you are editing. Everything in this section applies to it alone."><div class="seg lanes" id="laneSeg"></div></div>
     <div class="grp" data-tip="Silences one ring without deleting it. It keeps turning, so you can hear what it was holding up."><label>Mute <b style="font-weight:400;opacity:.55">drop a lane out of the mix</b></label>
       <div class="seg mutes" id="muteSeg"></div></div>
-    <div class="grp" data-tip="The voice this ring plays. Synth voices are short and bright; sampled ones are recordings of real instruments and load on first use."><label>Instrument</label>
+    <div class="grp" data-tip="Hold turns the ring from a rhythm into a chord: it stops striking notes and sustains every step you have placed, all at once and continuously. This is how you make a drone."><label>Hold <b style="font-weight:400;opacity:.55">sustain instead of strike</b></label>
+      <div class="seg" id="holdSeg"></div></div>
+    <div class="grp" data-tip="The voice this ring plays. Drone and Air are built to be held. Synth voices are short and bright; sampled ones are recordings of real instruments and load on first use."><label>Instrument</label>
       <select id="instrSel">
-        <optgroup label="Synth"><option value="neon">Neon</option><option value="acid">Acid</option><option value="chip">Chip</option><option value="sub">Sub</option></optgroup>
+        <optgroup label="Synth"><option value="drone">Drone</option><option value="air">Air</option><option value="neon">Neon</option><option value="acid">Acid</option><option value="chip">Chip</option><option value="sub">Sub</option></optgroup>
         <option value="piano">Grand Piano</option>
         <option value="bloom">Bloom</option>
         <option value="glass">Glass</option>
@@ -471,7 +473,7 @@
     <div class="grp" data-tip="What the free-floating orbs sound like when they strike an edge."><label>Voice</label>
       <select id="orbVoice">
         <option value="cycle">Cycle through all</option>
-        <optgroup label="Synth"><option value="neon">Neon</option><option value="acid">Acid</option><option value="chip">Chip</option><option value="sub">Sub</option></optgroup>
+        <optgroup label="Synth"><option value="drone">Drone</option><option value="air">Air</option><option value="neon">Neon</option><option value="acid">Acid</option><option value="chip">Chip</option><option value="sub">Sub</option></optgroup>
         <option value="piano">Grand Piano</option>
         <option value="bloom">Bloom</option>
         <option value="glass">Glass</option>
@@ -653,6 +655,7 @@
     return (x*60+360)%360; };
   const SCALES={ Pentatonic:[0,2,4,7,9], MinorPenta:[0,3,5,7,10], Dorian:[0,2,3,5,7,9,10], Lydian:[0,2,4,6,7,9,11] };
   const INSTR_NAMES={ piano:'Grand Piano', neon:'Neon', acid:'Acid', chip:'Chip', sub:'Sub',
+    drone:'Drone', air:'Air',
     bloom:'Bloom', glass:'Glass', pluck:'Pluck', bell:'Bell', mallet:'Mallet' };
   const SIZES={ RL:[1080,1920], PT:[1080,1350], SQ:[1080,1080] };
 
@@ -660,10 +663,10 @@
   // pattern cells: null = off, 'auto' = pitch from the scale, <number> = that exact MIDI note.
   // cut/vol are per-lane and feed each lane's own filter+gain before the master chain.
   const lanes=[
-    { instr:'acid', steps:8,  speed:6.00, oct:-1, mute:false, res:8.0, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:62, vol:80, env:{a:0.004,d:0.18,s:0.00,r:0.14} },
-    { instr:'neon', steps:16, speed:3.00, oct:0,  mute:false, res:4.5, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:78, vol:66, env:{a:0.004,d:0.20,s:0.00,r:0.16} },
-    { instr:'chip', steps:24, speed:2.00, oct:1,  mute:false, res:2.2, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:88, vol:44, env:{a:0.001,d:0.11,s:0.00,r:0.08} },
-    { instr:'sub',  steps:12, speed:2.00, oct:-2, mute:false, res:1.4, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:46, vol:72, env:{a:0.006,d:0.34,s:0.35,r:0.30} },
+    { instr:'acid', steps:8,  speed:6.00, oct:-1, mute:false, drone:false, res:8.0, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:62, vol:80, env:{a:0.004,d:0.18,s:0.00,r:0.14} },
+    { instr:'neon', steps:16, speed:3.00, oct:0,  mute:false, drone:false, res:4.5, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:78, vol:66, env:{a:0.004,d:0.20,s:0.00,r:0.16} },
+    { instr:'chip', steps:24, speed:2.00, oct:1,  mute:false, drone:false, res:2.2, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:88, vol:44, env:{a:0.001,d:0.11,s:0.00,r:0.08} },
+    { instr:'sub',  steps:12, speed:2.00, oct:-2, mute:false, drone:false, res:1.4, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:46, vol:72, env:{a:0.006,d:0.34,s:0.35,r:0.30} },
   ];
   lanes.forEach(l=>l.pattern=Array(l.steps).fill(null));
   let editLane=0, selStep=-1;
@@ -671,7 +674,7 @@
   const state={ palette:'PRISM', scale:'MinorPenta', root:48, tempo:0.560, trail:0.0, soft:0.0, delayFb:0.0,
     exportSize:'RL', ready:false, recording:false, recAudio:false, recMic:false,
     level:78, paused:false, pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
-  let drift=0, pianoReady=false;
+  let drift=0, pianoReady=false, lastDroneT=0;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
   const midiToNote=m=>Tone.Frequency(m,'midi').toNote();
@@ -718,6 +721,18 @@
       filter:{type:'lowpass',Q:7,rolloff:-24},
       envelope:{attack:.004,decay:.20,sustain:.02,release:.16},
       filterEnvelope:{attack:.003,decay:.16,sustain:.08,release:.20,baseFrequency:190,octaves:3.4} }); }
+    else if(name==='drone'){ n=new Tone.PolySynth(Tone.Synth); n.maxPolyphony=8;
+      // Four saws spread wide: the beating between them is the whole sound. Sustain is 1,
+      // so the note never decays on its own — it stops when you stop it.
+      n.set({oscillator:{type:'fatsawtooth',count:4,spread:52},
+        envelope:{attack:3.2,decay:2.0,sustain:1.0,release:7.0}}); }
+    else if(name==='air'){ n=new Tone.PolySynth(Tone.AMSynth); n.maxPolyphony=6;
+      // Harmonicity just off 1:1, so the two oscillators drift in and out of phase over
+      // several seconds. That slow breathing is what keeps a long tone from going dead.
+      n.set({harmonicity:1.004, oscillator:{type:'fatsine',count:3,spread:22},
+        modulation:{type:'sine'},
+        envelope:{attack:4.0,decay:3.0,sustain:1.0,release:9.0},
+        modulationEnvelope:{attack:6.0,decay:2.0,sustain:1.0,release:8.0}}); }
     else if(name==='chip'){ n=new Tone.PolySynth(Tone.Synth); n.maxPolyphony=10;
       n.set({oscillator:{type:'square'}, envelope:{attack:.001,decay:.12,sustain:0,release:.09}}); }
     else if(name==='sub'){ n=new Tone.PolySynth(Tone.Synth); n.maxPolyphony=4;
@@ -768,7 +783,7 @@
   }
   function laneVoice(i){ const L=lanes[i];
     if(L._voiceName!==L.instr){ if(L._voice){ try{L._voice.dispose();}catch(e){} }
-      L._voice=makeInstr(L.instr,L.chan.filter); L._voiceName=L.instr; L._pitchLinked=false; }
+      L._voice=makeInstr(L.instr,L.chan.filter); L._voiceName=L.instr; L._pitchLinked=false; L._held=[]; }
     applyEnv(L._voice,L.instr,L.env);
     // Every rebuilt voice re-inherits the pitch LFO. Pluck is a physical model with no
     // detune to speak of, so it simply declines the connection.
@@ -870,12 +885,72 @@
     try{ L.stepBuf[k].player.dispose(); }catch(e){}
     delete L.stepBuf[k]; refreshSteps(); syncStepSample(); }
   function fireStep(i,k,vel){
-    if(lanes[i].mute) return;
+    if(lanes[i].mute || lanes[i].drone) return;      // a held lane is already sounding
     const sp=stepPlayer(i,k);
     if(sp && sp.player.loaded){ try{ sp.player.stop(); sp.player.start(); }catch(e){} return; }
     triggerLane(i, stepMidi(i,k), vel);
   }
-  function triggerLane(i,midi,vel){ if(!audio||lanes[i].mute) return; fire(laneVoice(i),lanes[i].instr,midi,vel,lanes[i].env); }
+  /* ---------- drone ----------
+     Held, the ring stops being a sequence and becomes a chord: every step you have placed
+     sounds at once and keeps sounding. The playhead still turns, so the piece still moves —
+     it just stops striking. Chords are read from state.root rather than the modulated pitch,
+     or a pitch LFO would retrigger the whole chord several times a second. */
+  function droneChord(i){
+    const L=lanes[i]; if(!L.drone || L.mute) return [];
+    const st=SCALES[state.scale], out=[];
+    for(let k=0;k<L.steps;k++){
+      const cell=L.pattern[k]; if(cell==null) continue;
+      let m;
+      if(typeof cell==='number') m=cell;
+      else { const total=st.length*2, deg=Math.round(k/L.steps*total);
+        m=state.root + L.oct*12 + Math.floor(deg/st.length)*12 + st[deg%st.length]; }
+      out.push(Math.max(24,Math.min(96,m)));
+    }
+    return [...new Set(out)].sort((a,b)=>a-b).slice(0,5);   // five is plenty; more is mud
+  }
+  function syncDroneLane(i){
+    if(!audio) return;
+    const L=lanes[i], want=droneChord(i), have=L._held||[];
+    if(want.length===have.length && want.every((v,j)=>v===have[j])) return;
+    if(!want.length && !have.length){ L._held=[]; return; }
+    const v=laneVoice(i); if(!v){ L._held=[]; return; }
+    const nm=a=>a.map(midiToNote);
+    try{
+      if(L.instr==='acid'){                       // monophonic: it can only hold the root
+        if(!want.length) v.triggerRelease(); else v.triggerAttack(midiToNote(want[0]));
+        L._held = want.length?[want[0]]:[]; return;
+      }
+      const add=want.filter(m=>!have.includes(m)), rm=have.filter(m=>!want.includes(m));
+      if(rm.length) v.triggerRelease(nm(rm));
+      if(add.length) v.triggerAttack(nm(add));
+    }catch(e){}
+    L._held=want;
+  }
+  function releaseDrone(i){ const L=lanes[i];
+    if(!L._held || !L._held.length) return;
+    try{ const v=L._voice; if(v){ if(v.releaseAll) v.releaseAll(); else v.triggerRelease(); } }catch(e){}
+    L._held=[]; }
+  /* A lane whose envelope has no sustain cannot hold anything — pressing Hold would look
+     broken. Open it, and say so, rather than silently doing nothing. */
+  function setDrone(i,on){
+    const L=lanes[i]; L.drone=!!on;
+    if(!on) releaseDrone(i);
+    else if(L.env.s<0.05){
+      L.env={ a:Math.max(1.2,L.env.a), d:Math.max(1.5,L.env.d), s:0.85, r:Math.max(4,L.env.r) };
+      applyEnv(L._voice,L.instr,L.env);
+      if(i===editLane) paintEnv(LANE_IDS,L.env);
+      setStatus(`lane ${i+1} envelope opened so it can hold`); setTimeout(()=>setStatus(''),2600);
+    }
+    refreshHoldSeg(); syncDroneLane(i);
+  }
+  function refreshHoldSeg(){ const el=$('holdSeg'); if(!el) return; el.innerHTML='';
+    lanes.forEach((L,i)=>{ const b=document.createElement('button'); b.type='button';
+      b.textContent=String(i+1); b.setAttribute('aria-pressed',String(!!L.drone));
+      b.style.color=hsla(hueOf(i),80,IL(62),1);
+      b.title=(L.drone?'Stop holding':'Hold')+' lane '+(i+1);
+      b.addEventListener('click',()=>setDrone(i,!L.drone));
+      el.appendChild(b); }); }
+  function triggerLane(i,midi,vel){ if(!audio||lanes[i].mute||lanes[i].drone) return; fire(laneVoice(i),lanes[i].instr,midi,vel,lanes[i].env); }
   function orbVoiceNode(name){ if(!audio) return null;
     if(!audio.orbSet[name]){ audio.orbSet[name]=makeInstr(name,audio.filter); if(audio.orbSet[name]) applyEnv(audio.orbSet[name],name,state.orbEnv); }
     return audio.orbSet[name]; }
@@ -959,6 +1034,7 @@
       if(b.x-b.r<0){b.x=b.r;b.dx=Math.abs(b.dx);hitWall(b,'x',t);} else if(b.x+b.r>W){b.x=W-b.r;b.dx=-Math.abs(b.dx);hitWall(b,'x',t);}
       if(b.y-b.r<0){b.y=b.r;b.dy=Math.abs(b.dy);hitWall(b,'y',t);} else if(b.y+b.r>H){b.y=H-b.r;b.dy=-Math.abs(b.dy);hitWall(b,'y',t);} }
     applyMods(t/1000); evolve(dt);
+    if(t-lastDroneT>200){ lastDroneT=t; for(let i=0;i<lanes.length;i++) syncDroneLane(i); }
     for(let mi=0;mi<mods.length;mi++){ const el=$('mv'+mi); if(el) el.textContent=modVal(mods[mi],t/1000).toFixed(2); }
     advance(dt);
 
@@ -977,7 +1053,10 @@
       const mA = L.mute ? 0.22 : 1;
       const active=[]; for(let k=0;k<L.steps;k++) if(L.pattern[k]!=null) active.push(k);
       for(const k of active){ const a=stepAngle(k,L.steps),r=shapeR(i,a),x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;
-        let pl=L.nodePulse&&L.nodePulse[k]?L.nodePulse[k]:0; if(pl>.01){ L.nodePulse[k]*=.9; } const sz=(6+pl*16)*1.6;
+        let pl=L.nodePulse&&L.nodePulse[k]?L.nodePulse[k]:0; if(pl>.01){ L.nodePulse[k]*=.9; }
+        // A held lane never strikes, so it would sit perfectly still. Give it a slow swell.
+        if(L.drone) pl=Math.max(pl, .34+.26*Math.sin(now/1400 + k*0.9 + i));
+        const sz=(6+pl*16)*1.6;
         paintBlob(plx,x,y,sz,hue+drift,.95*mA); }
       const pr=shapeR(i,L.ang), px=cx+Math.cos(L.ang)*pr, py=cy+Math.sin(L.ang)*pr;
       paintBlob(plx,px,py,10,hue+drift,.7*mA); }
@@ -1204,7 +1283,7 @@
     const g=document.getElementById('grungeCtls'), l=document.getElementById('lavaCtls');
     if(g) g.style.display = v==='grunge' ? '' : 'none';
     if(l) l.style.display = v==='lava'   ? '' : 'none'; }
-  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); refreshMutes(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v',()=>syncVisualCtls()); seg('shapeSeg','shape','h');
+  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v',()=>syncVisualCtls()); seg('shapeSeg','shape','h');
   const $=id=>document.getElementById(id);
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
@@ -1325,7 +1404,7 @@
     plx.save(); plx.setTransform(1,0,0,1,0,0); plx.globalCompositeOperation='source-over';
     plx.fillStyle=PAPERC(); plx.fillRect(0,0,pl.width,pl.height); plx.restore();
     tfbx.clearRect(0,0,tfb.width,tfb.height);
-    refreshLaneSeg(); refreshMutes(); buildMods(); }
+    refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); buildMods(); }
   $('themeBtn').addEventListener('click',()=>setTheme(isDark()?'light':'dark'));
 
   function setFs(on){ document.body.classList.toggle('fs',on);
@@ -1480,7 +1559,7 @@
     b.innerHTML=`<i class="lane-dot" style="background:${hsla(hueOf(i),80,IL(58),1)}"></i>${i+1}`;
     b.style.color=hsla(hueOf(i),80,IL(62),1); b.setAttribute('aria-pressed', i===editLane);
     b.title='Click to edit \u00b7 right-click to recolour';
-    b.addEventListener('click',()=>{ editLane=i; syncLane(); refreshLaneSeg(); refreshMutes(); });
+    b.addEventListener('click',()=>{ editLane=i; syncLane(); refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); });
     // Colour belongs to the lane, so it is set on the lane: right-click, or long-press on touch.
     b.addEventListener('contextmenu',e=>{ e.preventDefault(); pickLaneColour(i,b); });
     let lp=null;
@@ -1494,7 +1573,7 @@
       b.textContent=String(i+1); b.setAttribute('aria-pressed', String(!!L.mute));
       b.style.color=hsla(hueOf(i),80,IL(62),1);
       b.title = (L.mute?'Unmute':'Mute')+' lane '+(i+1);
-      b.addEventListener('click',()=>{ L.mute=!L.mute; refreshMutes(); });
+      b.addEventListener('click',()=>{ L.mute=!L.mute; if(L.mute) releaseDrone(i); refreshMutes(); });
       el.appendChild(b); }); }
 
   /* Colour is chosen where the lane is, not across the room in the other rail: a small
@@ -1540,7 +1619,7 @@
     state.customHues[i]=h;
     if(state.palette!=='CUSTOM'){ state.palette='CUSTOM';
       document.querySelectorAll('#palSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.p==='CUSTOM'))); }
-    refreshLaneSeg(); refreshMutes();
+    refreshLaneSeg(); refreshMutes(); refreshHoldSeg();
   }
   // hue -> hex, for seeding the native picker
   function hslHex(h){ const f=n=>{ const k=(n+h/30)%12, a=0.55*Math.min(0.42,1-0.42);
@@ -1752,7 +1831,7 @@
     knobify(host); syncKnobs();
   }
 
-  refreshLaneSeg(); refreshMutes(); syncLane(); buildMods(); knobify();
+  refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); syncLane(); buildMods(); knobify();
   paintEnv(ORB_IDS,state.orbEnv); syncKnobs(); syncVisualCtls(); setTheme(THEME);
   $('pitchR').textContent=midiLabel(state.root);
   $('cutR').textContent=Math.round(logCut(+$('cutoff').value))+'Hz';
@@ -2030,7 +2109,7 @@
   const CTRL_IDS=['tempo','pitch','smear','evolve','cutoff','revWet','delFb'];
   function snapshot(){
     return { v:1, theme:THEME,
-      lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,mute:!!L.mute,res:L.res,
+      lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,mute:!!L.mute,drone:!!L.drone,res:L.res,
         env:Object.assign({},L.env), pattern:L.pattern.slice()})),
       mods:mods.map(m=>({shape:m.shape,rate:m.rate,depth:m.depth,target:m.target,lanes:m.lanes.slice()})),
       palette:state.palette, scale:state.scale, exportSize:state.exportSize, visual:state.visual, shape:state.shape,
@@ -2041,7 +2120,8 @@
   function restore(o){
     if(!o||!o.lanes) return false;
     o.lanes.forEach((L,i)=>{ if(!lanes[i]) return; const T=lanes[i];
-      T.instr=L.instr; T.steps=L.steps; T.speed=L.speed; T.oct=L.oct; T.cut=L.cut; T.vol=L.vol; T.mute=!!L.mute;
+      releaseDrone(i);
+      T.instr=L.instr; T.steps=L.steps; T.speed=L.speed; T.oct=L.oct; T.cut=L.cut; T.vol=L.vol; T.mute=!!L.mute; T.drone=!!L.drone;
       T.res = L.res==null ? 0.7 : L.res;                 // older saves predate resonance
       T.env=Object.assign({},L.env); T.pattern=L.pattern.slice(); T.lastStep=-1;
       if(T._voice){ try{T._voice.dispose();}catch(e){} } T._voice=null; T._voiceName=null; });
@@ -2060,7 +2140,7 @@
     document.querySelectorAll('#scaleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===state.scale)));
     if($('orbVoice')) $('orbVoice').value=state.orbVoice;
     if(o.theme) setTheme(o.theme);
-    editLane=0; refreshLaneSeg(); refreshMutes(); syncLane(); buildMods(); knobify(); syncLfoNodes();
+    editLane=0; refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); syncLane(); buildMods(); knobify(); syncLfoNodes();
     paintEnv(ORB_IDS,state.orbEnv); syncKnobs();
     if(audio) lanes.forEach((L,i)=>laneVoice(i));
     return true;
@@ -2127,6 +2207,12 @@
      you want to take it apart. Compact spec expands into the same shape restore() takes.
      lane = [instrument, steps, speed, octave, envelope, active steps, filter, level] */
   const MOODS=[
+    { name:'Drone', pal:'EMBER', scale:'Dorian', tempo:4, pitch:41, rev:64, del:0, cut:52, trail:0,
+      lanes:[['drone',5,0.60,-1,{a:4.0,d:2.5,s:1.0,r:8.0},[0,2],48,72,1.0,1],
+             ['air',7,0.42,0,{a:6.0,d:3.0,s:1.0,r:10.0},[0,3,5],56,58,0.9,1],
+             ['drone',3,0.30,1,{a:5.0,d:3.0,s:1.0,r:9.0},[1],62,40,1.6,1],
+             ['sub',4,0.24,-2,{a:3.0,d:2.0,s:0.9,r:6.0},[0],40,66,1.2,1]],
+      mods:[['sine',14,42,'lcut',[1,1,1,0]]] },
     { name:'Sunday', pal:'OCEAN', scale:'Lydian', tempo:30, pitch:48, rev:54, del:0, cut:64, trail:0,
       lanes:[['mallet',12,2.20,0,{a:.001,d:.42,s:0,r:.70},[0,3,5,7,10],74,72,1.2],
              ['pluck',8,3.30,1,{a:.001,d:.34,s:0,r:.55},[0,3,6],80,54,0.7],
@@ -2184,9 +2270,9 @@
   ];
   function moodSnapshot(M){
     return { v:1,
-      lanes:M.lanes.map(([instr,steps,speed,oct,env,on,cut,vol,res])=>{
+      lanes:M.lanes.map(([instr,steps,speed,oct,env,on,cut,vol,res,drone])=>{
         const pat=Array(steps).fill(null); on.forEach(k=>{ if(k<steps) pat[k]='auto'; });
-        return {instr,steps,speed,oct,cut,vol,res:res==null?0.7:res,env:Object.assign({},env),pattern:pat}; }),
+        return {instr,steps,speed,oct,cut,vol,res:res==null?0.7:res,drone:!!drone,env:Object.assign({},env),pattern:pat}; }),
       mods:M.mods.map(([shape,rate,depth,target,ln])=>({shape,rate,depth,target,lanes:ln.map(Boolean)})),
       palette:M.pal, scale:M.scale, orbVoice:state.orbVoice, orbEnv:Object.assign({},state.orbEnv),
       ctrl:{ tempo:String(M.tempo), pitch:String(M.pitch),
@@ -2294,6 +2380,7 @@
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
   window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, setKbd, kbSync,
+    setDrone, droneChord, syncDroneLane, releaseDrone, refreshHoldSeg,
     chopSpread, retrimStep, sliceBuffer, syncChop, countIn, assignTake, chopSrc, get audio(){return audio;}, setPaused, hexHue, setStepSample, clearStepSample, fireStep, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
 })();
 </script>
