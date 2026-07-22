@@ -63,6 +63,20 @@
     background:var(--panel); border:1px solid var(--hair);
     -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
   #recDot.on{ display:flex; }
+  /* Count-in. Big enough that you are in no doubt what is about to happen. */
+  #countin{ position:fixed; inset:0; z-index:28; display:none; flex-direction:column; align-items:center;
+    justify-content:center; gap:10px; pointer-events:none; }
+  #countin.on{ display:flex; }
+  #countin b{ font-size:118px; font-weight:200; line-height:1; letter-spacing:-.04em; color:var(--ink);
+    font-variant-numeric:tabular-nums; animation:countpop .9s ease-out; }
+  #countin span{ font-size:10px; letter-spacing:.3em; text-transform:uppercase; color:var(--mute); }
+  @keyframes countpop{ from{ opacity:0; transform:scale(1.5); } 40%{ opacity:1; } to{ opacity:.25; transform:scale(1); } }
+  /* Waveform. Kept region full strength, trimmed ends dimmed rather than hidden, so you can
+     see what you are leaving out and drag it back. */
+  #chopCv{ width:100%; height:58px; display:block; border:1px solid var(--hair); border-radius:2px;
+    background:var(--cell); cursor:ew-resize; touch-action:none; }
+  #chopWrap.empty #chopCv{ opacity:.4; cursor:default; }
+  #chopWrap.empty .btn, #chopWrap.empty select{ opacity:.4; pointer-events:none; }
   #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
   #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
   body.fs #recDot{ top:14px; }
@@ -256,6 +270,7 @@
 <div id="stagewrap"><canvas id="stage"></canvas></div>
 <div id="status"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
+<div id="countin" aria-live="assertive"><b id="countinN">3</b><span>get ready</span></div>
 <button id="mood" aria-label="change mood" data-tip="Loads a whole patch at once — voices, notes, tuning and motion together. Tap to move somewhere else."><b id="moodName">Sunday</b><span>mood</span></button>
 <div id="kbd" class="hidden" aria-label="playable keyboard"></div>
 <div id="bar">
@@ -452,6 +467,22 @@
       <button class="btn" id="sampClear" style="flex:1">Clear</button>
     </div></div>
     <div class="grp" data-tip="What the selected step is currently holding. One lane can carry a different sound on every step."><label>Step holds <b id="sampInfo">none</b></label></div>
+    <div class="grp" id="chopWrap" data-tip="The recording, drawn end to end. Drag the edges in to keep only the part you want — the rest is trimmed off, and you can always reset back to the whole take.">
+      <label>Chop <b id="chopR">nothing recorded</b></label>
+      <canvas id="chopCv" height="58"></canvas>
+      <div style="display:flex; gap:6px; margin-top:7px;">
+        <button class="btn" id="chopPlay" style="flex:1">Play</button>
+        <button class="btn" id="chopReset" style="flex:1">Whole</button>
+      </div>
+      <div style="display:flex; gap:6px; margin-top:6px;" data-tip="Cuts the kept part into equal pieces and drops them onto the steps that follow this one, so one take becomes a run across the lane.">
+        <select id="chopN" style="flex:1">
+          <option value="2">2 slices</option><option value="3">3 slices</option>
+          <option value="4" selected>4 slices</option><option value="6">6 slices</option>
+          <option value="8">8 slices</option><option value="12">12 slices</option>
+        </select>
+        <button class="btn" id="chopSlice" style="flex:1">Spread</button>
+      </div>
+    </div>
     <input id="sampFile" type="file" accept="audio/*" hidden />
   </div>
 
@@ -635,7 +666,7 @@
   let editLane=0, selStep=-1;
 
   const state={ palette:'PRISM', scale:'MinorPenta', root:48, tempo:0.560, trail:0.0, soft:0.0, delayFb:0.0,
-    exportSize:'RL', ready:false, recording:false, recAudio:false,
+    exportSize:'RL', ready:false, recording:false, recAudio:false, recMic:false,
     level:78, paused:false, pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle' };
   let drift=0, pianoReady=false;
 
@@ -800,14 +831,37 @@
      step. The buffer plays through that lane's own filter and level, so it still sits in
      the mix like the lane's voice does. Steps without a sample fall through to the voice. */
   function stepPlayer(i,k){ const L=lanes[i]; return L.stepBuf && L.stepBuf[k]; }
-  function setStepSample(i,k,buf,label){
+  /* Trimming is non-destructive: the step keeps the take it was given and remembers two
+     marks into it, so pulling the edges back out returns the parts you cut. */
+  function sliceBuffer(buf,t0,t1){
+    const ctxA=Tone.getContext().rawContext, sr=buf.sampleRate;
+    const a=Math.max(0,Math.floor(t0*sr)), b=Math.min(buf.length,Math.ceil(t1*sr));
+    const len=Math.max(128, Number.isFinite(b-a) ? b-a : 128);
+    const out=ctxA.createBuffer(buf.numberOfChannels,len,sr);
+    for(let c=0;c<buf.numberOfChannels;c++){
+      const src=buf.getChannelData(c).subarray(a,a+len);
+      out.copyToChannel(src.length===len?src:new Float32Array(len).fill(0),c);
+    }
+    return out;
+  }
+  function setStepSample(i,k,buf,label,raw,t0,t1){
     const L=lanes[i]; L.stepBuf=L.stepBuf||{};
     if(L.stepBuf[k]){ try{ L.stepBuf[k].player.dispose(); }catch(e){} }
     const dest = L.chan ? L.chan.filter : undefined;
     const pl=new Tone.Player(buf); if(dest) pl.connect(dest);
-    L.stepBuf[k]={player:pl,label:label||'sample'};
+    L.stepBuf[k]={ player:pl, label:label||'sample',
+      raw: raw||buf, t0: t0==null?0:t0, t1: t1==null?(raw||buf).duration:t1 };
     if(L.pattern[k]==null) L.pattern[k]='auto';       // owning a sample implies the step is on
+    if(typeof openRow==='function') openRow('Sample');
     refreshSteps(); syncStepSample();
+  }
+  // re-cut a step from the take it already holds
+  function retrimStep(i,k,t0,t1){
+    const sp=stepPlayer(i,k); if(!sp||!sp.raw) return;
+    const lo=Math.max(0,Math.min(t0,t1)), hi=Math.min(sp.raw.duration,Math.max(t0,t1));
+    if(hi-lo < 0.02) return;
+    const base=(sp.label||'sample').split(' \u00b7 ')[0];
+    setStepSample(i,k,sliceBuffer(sp.raw,lo,hi),`${base} \u00b7 ${(hi-lo).toFixed(2)}s`,sp.raw,lo,hi);
   }
   function clearStepSample(i,k){ const L=lanes[i]; if(!L.stepBuf||!L.stepBuf[k]) return;
     try{ L.stepBuf[k].player.dispose(); }catch(e){}
@@ -1076,7 +1130,7 @@
     $('recLabel').textContent=label; $('recTime').textContent='0:00'; $('recDot').classList.add('on');
     clearInterval(recTimer); recTimer=setInterval(()=>{ $('recTime').textContent=fmtClock(performance.now()-recStart); },250); }
   function stopRecClock(){ clearInterval(recTimer); recTimer=null;
-    if(!state.recording && !state.recAudio) $('recDot').classList.remove('on'); }
+    if(!state.recording && !state.recAudio && !state.recMic) $('recDot').classList.remove('on'); }
   function coverDraw(dctx,dw,dh){ const s=Math.max(dw/cv.width,dh/cv.height), sw=cv.width*s, sh=cv.height*s;
     dctx.fillStyle=PAPERC(); dctx.fillRect(0,0,dw,dh); dctx.drawImage(cv,(dw-sw)/2,(dh-sh)/2,sw,sh); }
   function dl(blob,name){ const u=URL.createObjectURL(blob), a=document.createElement('a'); a.href=u; a.download=name;
@@ -1173,6 +1227,17 @@
   // Everything you need to make a sound is open; the sections you go looking for start
   // folded. Only applies on a first visit — after that your own folding is what is restored.
   const FOLD_DEFAULT=['Envelope','Orbs','Sample','Track','Export'];
+  // Some things need their section in front of you — a recording arriving in a folded
+  // panel is a recording you never see.
+  function openRow(title){
+    document.querySelectorAll('.rail .rowhead').forEach(h=>{
+      if(h.textContent.trim()!==title) return;
+      const row=h.closest('.row'); if(!row||!row.classList.contains('folded')) return;
+      row.classList.remove('folded'); h.setAttribute('aria-expanded','true');
+      const cur=new Set(readFold()); cur.delete(title);
+      try{ localStorage.setItem(FOLD_KEY, JSON.stringify([...cur])); }catch(e){}
+    });
+  }
   function initFolds(){
     let stored=null; try{ stored=localStorage.getItem(FOLD_KEY); }catch(e){}
     if(stored==null){ try{ localStorage.setItem(FOLD_KEY, JSON.stringify(FOLD_DEFAULT)); }catch(e){} }
@@ -1699,7 +1764,104 @@
     t.textContent=`lane ${editLane+1} \u00b7 step ${selStep+1}`;
     const sp=stepPlayer(editLane,selStep);
     info.textContent = sp ? sp.label : 'none';
+    syncChop();
   }
+  /* ---------- chop ----------
+     A recording you cannot see is a recording you cannot edit. The take is drawn as peaks,
+     the kept region is bright, and the two edges are draggable. Spread cuts the kept part
+     into equal pieces and lays them across the following steps. */
+  function chopCv(){ return document.getElementById('chopCv'); }
+  // var, not let: syncChop() is reached during setup and a dead zone here would throw.
+  var chopPeaks=null, chopDur=0, chopSel=[0,1], chopDrag=null, chopPreview=null;
+  function peaksOf(buf,n){
+    const d=buf.getChannelData(0), per=Math.max(1,Math.floor(d.length/n)), out=new Float32Array(n);
+    for(let i=0;i<n;i++){ let mx=0; const a=i*per, b=Math.min(d.length,a+per);
+      for(let j=a;j<b;j++){ const v=d[j]<0?-d[j]:d[j]; if(v>mx) mx=v; }
+      out[i]=mx; }
+    return out;
+  }
+  function drawChop(live){
+    const cvE=chopCv(); if(!cvE) return;
+    const w=cvE.clientWidth||260, h=58, d=Math.max(1,Math.round(devicePixelRatio||1));
+    if(cvE.width!==w*d||cvE.height!==h*d){ cvE.width=w*d; cvE.height=h*d; }
+    const g=cvE.getContext('2d'); g.setTransform(d,0,0,d,0,0);
+    g.clearRect(0,0,w,h);
+    if(!chopPeaks||!chopPeaks.length) return;
+    const mid=h/2, n=chopPeaks.length;
+    const s0=Math.min(...chopSel), s1=Math.max(...chopSel);
+    const bar=(x,col)=>{ const v=chopPeaks[Math.min(n-1,Math.floor(x/w*n))];
+      const a=Math.max(1,v*(h*0.44)); g.fillStyle=col; g.fillRect(x,mid-a,1,a*2); };
+    // whole take, faint
+    for(let x=0;x<w;x++) bar(x,DIMC());
+    if(live) return;
+    // lay a scrim over what is being cut, then redraw the kept part at full strength, so the
+    // two read as different material rather than as two similar greys
+    g.fillStyle=PAPERC(); g.globalAlpha=.62;
+    g.fillRect(0,0,Math.max(0,s0*w),h); g.fillRect(s1*w,0,Math.max(0,w-s1*w),h);
+    g.globalAlpha=1;
+    const a0=Math.floor(s0*w), a1=Math.ceil(s1*w);
+    for(let x=a0;x<a1;x++) if(x>=0&&x<w) bar(x,ACCENT());
+    // and the handles, with a grab tab at each end
+    g.fillStyle=ACCENT();
+    [s0,s1].forEach(t=>{ const x=Math.max(1,Math.min(w-1,t*w));
+      g.fillRect(x-1,0,2,h); g.fillRect(x-5,0,10,4); g.fillRect(x-5,h-4,10,4); });
+  }
+  function ACCENT(){ return getComputedStyle(document.body).getPropertyValue('--ink').trim()||'#111'; }
+  function DIMC(){ return getComputedStyle(document.body).getPropertyValue('--mute').trim()||'#999'; }
+  function syncChop(){
+    const wrap=document.getElementById('chopWrap'); if(!wrap) return;
+    const sp = selStep>=0 ? stepPlayer(editLane,selStep) : null;
+    if(!sp || !sp.raw){ wrap.classList.add('empty'); chopPeaks=null; chopDur=0;
+      document.getElementById('chopR').textContent = selStep<0 ? 'select a step' : 'nothing recorded';
+      drawChop(); return; }
+    wrap.classList.remove('empty');
+    chopDur=sp.raw.duration;
+    chopPeaks=peaksOf(sp.raw, Math.max(120, Math.round((chopCv().clientWidth||260))));
+    chopSel=[sp.t0/chopDur, sp.t1/chopDur];
+    document.getElementById('chopR').textContent =
+      `${(sp.t1-sp.t0).toFixed(2)}s of ${chopDur.toFixed(2)}s`;
+    drawChop();
+  }
+  function chopBind(){
+    const cvE=chopCv(); if(!cvE||cvE.dataset.bound) return; cvE.dataset.bound='1';
+    const at=e=>{ const r=cvE.getBoundingClientRect(); if(!(r.width>0)) return 0;
+      return Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)); };
+    cvE.addEventListener('pointerdown',e=>{
+      if(!chopPeaks) return; e.preventDefault(); cvE.setPointerCapture(e.pointerId);
+      const t=at(e);
+      chopDrag = Math.abs(t-chopSel[0])<Math.abs(t-chopSel[1]) ? 0 : 1;
+      chopSel[chopDrag]=t; drawChop();
+    });
+    cvE.addEventListener('pointermove',e=>{ if(chopDrag==null||!chopPeaks) return;
+      chopSel[chopDrag]=at(e);
+      const lo=Math.min(...chopSel)*chopDur, hi=Math.max(...chopSel)*chopDur;
+      document.getElementById('chopR').textContent=`${(hi-lo).toFixed(2)}s of ${chopDur.toFixed(2)}s`;
+      drawChop(); });
+    const end=()=>{ if(chopDrag==null) return; chopDrag=null;
+      if(!chopPeaks || selStep<0) return;
+      chopSel=[Math.min(...chopSel),Math.max(...chopSel)];
+      retrimStep(editLane,selStep,chopSel[0]*chopDur,chopSel[1]*chopDur); syncChop(); };
+    cvE.addEventListener('pointerup',end); cvE.addEventListener('pointercancel',end);
+  }
+  function chopAudition(){
+    const sp = selStep>=0 ? stepPlayer(editLane,selStep) : null; if(!sp) return;
+    try{ if(chopPreview){ chopPreview.stop(); chopPreview.dispose(); }
+      chopPreview=new Tone.Player(sp.player.buffer).toDestination(); chopPreview.start();
+    }catch(e){}
+  }
+  function chopSpread(n){
+    const sp = selStep>=0 ? stepPlayer(editLane,selStep) : null; if(!sp||!sp.raw) return;
+    const L=lanes[editLane], lo=sp.t0, span=(sp.t1-sp.t0)/n;
+    if(span<0.02){ setStatus('too short to spread'); setTimeout(()=>setStatus(''),2000); return; }
+    const base=(sp.label||'sample').split(' \u00b7 ')[0], start=selStep;
+    for(let j=0;j<n;j++){
+      const k=(start+j)%L.steps, a=lo+j*span, b=a+span;
+      setStepSample(editLane,k,sliceBuffer(sp.raw,a,b),`${base} ${j+1}/${n}`,sp.raw,a,b);
+    }
+    selStep=start; syncNoteEd(); refreshSteps(); syncStepSample();
+    setStatus(`${n} slices across lane ${editLane+1}`); setTimeout(()=>setStatus(''),2200);
+  }
+
   function useBuffer(buf,label){
     // Into the selected step when there is one; otherwise it becomes the shared
     // "Sample" voice as before, so loading without a selection still does something.
@@ -1721,25 +1883,77 @@
     }catch(e){ setStatus('could not decode that audio'); setTimeout(()=>setStatus(''),2500); }
   }
   $('sampClear').addEventListener('click',()=>{ if(selStep>=0) clearStepSample(editLane,selStep); });
-  $('fileBtn').addEventListener('click',()=>$('sampFile').click());
+  $('fileBtn').addEventListener('click',()=>{ openRow('Sample'); $('sampFile').click(); });
   $('sampFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) decodeBlob(f,f.name.replace(/\.[^.]+$/,'')); });
 
-  let micRec=null, micChunks=[], micStream=null;
+  let micRec=null, micChunks=[], micStream=null, micLive=null, micAnal=null, micRaf=0, countT=null;
+  /* Three seconds of warning, then the take. The count is deliberately over the canvas and
+     enormous — the old behaviour started recording the instant you clicked, which meant the
+     first thing on every take was the sound of you reaching for the mouse. */
+  function countIn(n,done){
+    const box=$('countin'), num=$('countinN');
+    box.classList.add('on');
+    const tick=()=>{
+      if(n<=0){ box.classList.remove('on'); countT=null; done(); return; }
+      num.textContent=String(n); num.style.animation='none'; void num.offsetWidth; num.style.animation='';
+      n--; countT=setTimeout(tick,850);
+    };
+    tick();
+  }
+  function cancelCount(){ if(countT){ clearTimeout(countT); countT=null; $('countin').classList.remove('on'); } }
+  // While the take runs, the waveform builds in the chop panel. You can see it hearing you.
+  function micMeterStart(stream){
+    const ctxA=Tone.getContext().rawContext;
+    micLive=ctxA.createMediaStreamSource(stream);
+    micAnal=ctxA.createAnalyser(); micAnal.fftSize=1024; micLive.connect(micAnal);
+    const buf=new Float32Array(micAnal.fftSize), peaks=[];
+    document.getElementById('chopWrap').classList.remove('empty');
+    const loop=()=>{
+      micAnal.getFloatTimeDomainData(buf);
+      let mx=0; for(let i=0;i<buf.length;i++){ const v=buf[i]<0?-buf[i]:buf[i]; if(v>mx) mx=v; }
+      peaks.push(mx); if(peaks.length>420) peaks.shift();
+      chopPeaks=Float32Array.from(peaks); chopSel=[0,1];
+      document.getElementById('chopR').textContent='recording \u2026 '+fmtClock(performance.now()-recStart);
+      drawChop(true);
+      micRaf=requestAnimationFrame(loop);
+    };
+    loop();
+  }
+  function micMeterStop(){ cancelAnimationFrame(micRaf); micRaf=0;
+    try{ micLive&&micLive.disconnect(); }catch(e){} micLive=null; micAnal=null; }
+  function micIdle(){ $('micBtn').textContent='Record mic'; $('micBtn').setAttribute('aria-pressed','false'); }
   $('micBtn').addEventListener('click',async()=>{
+    if(countT){ cancelCount(); micIdle(); return; }                       // click again to call it off
     if(micRec && micRec.state!=='inactive'){ micRec.stop(); return; }
     try{
       micStream=await navigator.mediaDevices.getUserMedia({audio:true});
-      const mime=pickMime('audio'); micChunks=[];
-      micRec=new MediaRecorder(micStream, mime?{mimeType:mime}:undefined);
-      micRec.ondataavailable=e=>{ if(e.data.size) micChunks.push(e.data); };
-      micRec.onstop=async()=>{
-        micStream.getTracks().forEach(t=>t.stop()); micStream=null;
-        $('micBtn').textContent='Record mic'; $('micBtn').setAttribute('aria-pressed','false');
-        await decodeBlob(new Blob(micChunks,{type:mime||'audio/webm'}),'mic');
-      };
-      micRec.start(); $('micBtn').textContent='Stop'; $('micBtn').setAttribute('aria-pressed','true');
-    }catch(e){ setStatus('microphone unavailable'); setTimeout(()=>setStatus(''),2500); }
+    }catch(e){ setStatus('microphone unavailable'); setTimeout(()=>setStatus(''),2500); return; }
+    openRow('Sample');                       // so the waveform is on screen before the take starts
+    $('micBtn').textContent='Cancel'; $('micBtn').setAttribute('aria-pressed','true');
+    countIn(3,()=>{
+      try{
+        const mime=pickMime('audio'); micChunks=[];
+        micRec=new MediaRecorder(micStream, mime?{mimeType:mime}:undefined);
+        micRec.ondataavailable=e=>{ if(e.data.size) micChunks.push(e.data); };
+        micRec.onstop=async()=>{
+          state.recMic=false; stopRecClock(); micMeterStop();
+          micStream.getTracks().forEach(t=>t.stop()); micStream=null;
+          micIdle();
+          await decodeBlob(new Blob(micChunks,{type:mime||'audio/webm'}),'mic');
+          syncChop();
+        };
+        micRec.start();
+        state.recMic=true; startRecClock('MIC'); micMeterStart(micStream);
+        $('micBtn').textContent='Stop'; $('micBtn').setAttribute('aria-pressed','true');
+      }catch(e){ setStatus('could not start recording'); setTimeout(()=>setStatus(''),2500); micIdle(); }
+    });
   });
+  $('chopPlay').addEventListener('click',chopAudition);
+  $('chopReset').addEventListener('click',()=>{ const sp=selStep>=0&&stepPlayer(editLane,selStep);
+    if(sp&&sp.raw){ retrimStep(editLane,selStep,0,sp.raw.duration); syncChop(); } });
+  $('chopSlice').addEventListener('click',()=>chopSpread(+$('chopN').value));
+  chopBind(); syncChop();
+  addEventListener('resize',()=>{ if(!state.recMic) syncChop(); });
 
   /* ---------- tracks ----------
      A track is the whole patch: every lane with its pattern, envelope and routing, both
@@ -2012,7 +2226,8 @@
 
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
-  window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, setKbd, kbSync, get audio(){return audio;}, setPaused, hexHue, setStepSample, clearStepSample, fireStep, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
+  window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, setKbd, kbSync,
+    chopSpread, retrimStep, sliceBuffer, syncChop, countIn, get audio(){return audio;}, setPaused, hexHue, setStepSample, clearStepSample, fireStep, setTheme, setFs, addOrb, snapshot, restore, useBuffer, setMood, MOODS, __modVal:modVal };
 })();
 </script>
 </body>
