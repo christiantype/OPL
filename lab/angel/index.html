@@ -450,9 +450,6 @@
     <div class="grp" data-tip="How the piece looks. Each mode is its own medium rather than a filter over the same picture."><label>Visual</label>
       <div class="seg" id="visSeg">
         <button data-v="glow" aria-pressed="true">Glow</button>
-        <button data-v="aura" aria-pressed="false">Aura</button>
-        <button data-v="ink" aria-pressed="false">Ink</button>
-        <button data-v="lava" aria-pressed="false">Lava</button>
         <button data-v="grunge" aria-pressed="false">Grunge</button>
         <button data-v="haze" aria-pressed="false">Haze</button>
         <button data-v="camera" aria-pressed="false">Camera</button>
@@ -524,10 +521,6 @@
         <div class="grp" data-tip="Crushes the picture toward black and white. Right for hard graphic shapes, left to leave the photograph alone."><label>Contrast <b id="camCtR">40</b></label><input id="camCt" type="range" min="0" max="100" value="40" /></div>
         <div class="grp" data-tip="How much the picture answers to the sound. At zero the camera does its own thing; turn it up and every step kicks the zoom and the colour split."><label>Reactive <b id="camRxR">60</b></label><input id="camRx" type="range" min="0" max="100" value="60" /></div>
       </div>
-    </div>
-    <div class="duo" id="lavaCtls">
-      <div class="grp" data-tip="How much the orbs fuse into one another in Lava. High values make one flowing pool."><label>Melt <b id="fuseR">22</b></label><input id="lavaFuse" type="range" min="4" max="60" value="22" /></div>
-      <div class="grp" data-tip="Radius of each gradient orb before it melts into its neighbours."><label>Orb size <b id="lsizeR">52</b></label><input id="lavaSize" type="range" min="10" max="120" value="52" /></div>
     </div>
   </div>
 
@@ -1690,10 +1683,8 @@
     state[key]=b.dataset[attr]; [...b.parentNode.children].forEach(c=>c.setAttribute('aria-pressed',c===b)); after&&after(); }); }
   // getElementById, not the $ helper: this also runs during setup, before $ is initialised.
   function syncVisualCtls(){ const v=state.visual;
-    const g=document.getElementById('grungeCtls'), l=document.getElementById('lavaCtls'),
-          c=document.getElementById('camCtls');
+    const g=document.getElementById('grungeCtls'), c=document.getElementById('camCtls');
     if(g) g.style.display = v==='grunge' ? '' : 'none';
-    if(l) l.style.display = v==='lava'   ? '' : 'none';
     if(c) c.style.display = v==='camera' ? '' : 'none';
     syncCamLook();
     // Selecting Camera without a camera running would just show a black field, so ask for it.
@@ -1718,8 +1709,6 @@
   $('pixel').addEventListener('input',e=>{ state.pixel=+e.target.value; $('pixR').textContent=e.target.value; });
   $('grit').addEventListener('input',e=>{ state.grit=+e.target.value; $('gritR').textContent=e.target.value; });
   $('sat').addEventListener('input',e=>{ state.sat=+e.target.value; $('satR').textContent=e.target.value; });
-  $('lavaFuse').addEventListener('input',e=>{ state.lavaFuse=+e.target.value; $('fuseR').textContent=e.target.value; });
-  $('lavaSize').addEventListener('input',e=>{ state.lavaSize=+e.target.value; $('lsizeR').textContent=e.target.value; });
   /* Fold / unfold rail sections, remembered between visits. */
   const FOLD_KEY='angel-folded';
   const readFold=()=>{ try{ return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]'); }catch(e){ return []; } };
