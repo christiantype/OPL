@@ -262,6 +262,18 @@
   </div>
 
   <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Photo</button>
+    <p class="rowhint">Optional. Drop a picture into the signal &#8212; the static rides over it and the glitch tears through both. It never leaves this page.</p>
+    <div class="grp" id="photoWrap" class="empty"><div style="display:flex; gap:6px;">
+      <button class="btn" id="photoBtn" style="flex:1" data-tip="Loads a picture and sets it into the field. Nothing is uploaded.">Load photo</button>
+      <button class="btn" id="photoClear" style="flex:1" data-tip="Removes the photo and goes back to pure static.">Clear</button>
+    </div></div>
+    <input id="photoInp" type="file" accept="image/*" hidden />
+    <div class="grp" data-tip="How present the photo is under the static. At zero it is hidden and you are back to pure static; up full it is the subject and the static is a texture over it."><label>Photo <b id="photoMixR">0</b></label><input id="photoMix" type="range" min="0" max="100" value="0" /></div>
+    <div class="grp"><label>Loaded <b id="photoName">none</b></label></div>
+  </div>
+
+  <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Export</button>
     <p class="rowhint">SVG stays sharp at any scale; PNG bakes it to pixels.</p>
     <div class="grp" data-tip="The shape and size of the exported file. The canvas shows a crop of this shape."><label>Size</label>
@@ -295,7 +307,7 @@
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
   const state={ mode:'waves', dens:340, amp:62, freq:30, warp:45, flow:55, wt:10,
-    chroma:0, ctr:50, grain:0, coarse:40, glitch:30, invert:0,
+    chroma:0, ctr:50, grain:0, coarse:40, glitch:30, invert:0, photoMix:0,
     size:'1920x1080', res:2048, seed:1337, animate:false, ready:false };
   let THEME = 'dark';   // this tool is about signal — it opens dark, the frosted rail floating on the field
   const isDark=()=>THEME==='dark';
@@ -407,6 +419,20 @@
       drawBars(g,W,H,t);
     }
 
+    // Photo under the field: copy the static we just drew, lay the photo down as the ground,
+    // then screen the static back over it. Both then go through glitch below, so the photo
+    // tears with the same slices and channel splits as the static.
+    if(photo && state.photoMix>0){
+      if(fieldCv.width!==W||fieldCv.height!==H){ fieldCv.width=W; fieldCv.height=H; }
+      fieldCx.setTransform(1,0,0,1,0,0); fieldCx.globalCompositeOperation='source-over'; fieldCx.globalAlpha=1;
+      fieldCx.clearRect(0,0,W,H); fieldCx.drawImage(g.canvas,0,0,W,H);
+      g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1;
+      g.fillStyle=bg(); g.fillRect(0,0,W,H);
+      drawCover(g, photo, W, H, state.photoMix/100);
+      g.globalCompositeOperation = state.invert ? 'multiply' : 'screen';
+      g.drawImage(fieldCv,0,0);
+      g.globalCompositeOperation='source-over';
+    }
     // tear it apart, then dust it — glitch first so the grain lands on the broken picture
     const gl=state.glitch/100;
     if(gl>0.004) applyGlitch(g,W,H,gl,t);
@@ -514,6 +540,30 @@
     g.putImageData(img,0,0);
   }
 
+  /* An optional photo lives inside the field: drawn as the ground, with the static screened
+     back over it and the same glitch tearing through both. Off until you load one. */
+  let photo=null, photoName='';
+  const fieldCv=document.createElement('canvas'), fieldCx=fieldCv.getContext('2d');
+  function drawCover(g,im,W,H,alpha){
+    const iw=im.naturalWidth||im.width, ih=im.naturalHeight||im.height; if(!iw||!ih) return;
+    const s=Math.max(W/iw,H/ih); g.save(); g.globalAlpha=alpha;
+    g.drawImage(im,(W-iw*s)/2,(H-ih*s)/2,iw*s,ih*s); g.restore(); g.globalAlpha=1;
+  }
+  function loadPhoto(file){
+    const url=URL.createObjectURL(file), im=new Image();
+    im.onload=()=>{ photo=im; photoName=file.name;
+      if(state.photoMix<=0){ state.photoMix=72; const el=$('photoMix'); if(el){ el.value='72'; el.dispatchEvent(new Event('input',{bubbles:true})); } }
+      URL.revokeObjectURL(url); syncPhoto(); markDirty();
+      setStatus(file.name+' loaded'); setTimeout(()=>setStatus(''),1800); };
+    im.onerror=()=>{ setStatus('could not read that image'); setTimeout(()=>setStatus(''),2600); URL.revokeObjectURL(url); };
+    im.src=url;
+  }
+  function clearPhoto(){ photo=null; photoName=''; state.photoMix=0;
+    const el=$('photoMix'); if(el){ el.value='0'; $('photoMixR').textContent='0'; }
+    syncPhoto(); markDirty(); }
+  function syncPhoto(){ const l=$('photoName'); if(l) l.textContent = photo ? photoName : 'none';
+    const wrap=$('photoWrap'); if(wrap) wrap.classList.toggle('empty', !photo); }
+
   const grainCv=document.createElement('canvas'), grainCx=grainCv.getContext('2d');
   function addGrain(g,W,H,amt,t){
     const sz=256;
@@ -578,7 +628,9 @@
     const svg=buildSVG(aw,ah);
     dl(new Blob([svg],{type:'image/svg+xml'}), `static-waves-${Date.now()}.svg`);
     const kb=Math.round(svg.length/1024);
-    setStatus(`saved SVG · ${kb}KB`); setTimeout(()=>setStatus(''),2200);
+    setStatus(photo&&state.photoMix>0 ? `saved SVG · ${kb}KB · lines only, use PNG for the photo`
+                                      : `saved SVG · ${kb}KB`);
+    setTimeout(()=>setStatus(''), photo&&state.photoMix>0?3200:2200);
   }
 
   // ---------- UI ----------
@@ -597,11 +649,14 @@
     seg('modeSeg','mode','m',()=>{ syncModeCtls(); });
     seg('invSeg','invert','i');
     seg('sizeSeg','size','z');
-    ['dens','amp','freq','warp','flow','wt','glitch','chroma','ctr','coarse'].forEach(id=>bind(id,id));
+    ['dens','amp','freq','warp','flow','wt','glitch','chroma','ctr','coarse','photoMix'].forEach(id=>bind(id,id));
     bind('grain','grain',v=>{ $('grainR').textContent = +v>0 ? v : 'off'; });
     bind('res','res',v=>{ $('resR').textContent=v; });
     $('svgBtn').addEventListener('click',exportSVG);
     $('pngBtn').addEventListener('click',exportPNG);
+    $('photoBtn').addEventListener('click',()=>$('photoInp').click());
+    $('photoClear').addEventListener('click',clearPhoto);
+    $('photoInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadPhoto(f); });
     $('seedBtn').addEventListener('click',()=>{ state.seed=(state.seed*1103515245+12345)>>>0 || 1;
       markDirty(); setStatus('new pattern'); setTimeout(()=>setStatus(''),1000); });
     $('themeBtn').addEventListener('click',()=>setTheme(isDark()?'light':'dark'));
@@ -695,13 +750,13 @@
   function frame(t){
     const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
     if(state.animate){ animT += dt*0.35; dirty=true; }
-    if(dirty){ renderTo(ctx, W, H, animT, false); dirty=false; }
+    if(dirty){ renderTo(ctx, cv.width, cv.height, animT, false); dirty=false; }
     requestAnimationFrame(frame);
   }
 
   wire(); resize(); setTheme(THEME);
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
-  syncModeCtls(); syncHint();
+  syncModeCtls(); syncHint(); syncPhoto();
   const veil=$('veil');
   veil.addEventListener('click',()=>{ state.ready=true; veil.style.display='none'; resize(); });
   requestAnimationFrame(frame);
