@@ -219,12 +219,14 @@
 <div id="rail" class="rail rail-l">
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Pattern</button>
-    <p class="rowhint">Snow is photographic television static. Bars are torn colour bands. Waves is drawn from lines and exports as SVG.</p>
+    <p class="rowhint">Snow, Signal and Fuzz are photographic television static. Bars are torn colour bands. Waves is drawn from lines and exports as SVG.</p>
     <div class="grp" data-tip="What the static is made of. Waves is a field of flowing lines that bend around each other. Snow is classic TV noise. Bars are torn horizontal bands with the colour channels pulled apart."><label>Kind</label>
       <div class="seg" id="modeSeg">
         <button data-m="waves" aria-pressed="false">Waves</button>
         <button data-m="snow" aria-pressed="true">Snow</button>
         <button data-m="bars" aria-pressed="false">Bars</button>
+        <button data-m="signal" aria-pressed="false" data-tip2="A bad colour broadcast — waving bands of broadcast colour under heavy static.">Signal</button>
+        <button data-m="fuzz" aria-pressed="false">Fuzz</button>
       </div>
     </div>
     <div class="duo">
@@ -443,6 +445,10 @@
       if(ctr>0.01){ applyContrast(g,W,H,ctr); }
     } else if(state.mode==='snow'){
       drawSnow(g,W,H,t);
+    } else if(state.mode==='signal'){
+      drawSignal(g,W,H,t);
+    } else if(state.mode==='fuzz'){
+      drawFuzz(g,W,H,t);
     } else {
       drawBars(g,W,H,t);
     }
@@ -558,6 +564,115 @@
     g.restore(); g.globalAlpha=1;
     if(state.invert){ g.save(); g.globalCompositeOperation='difference';
       g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.restore(); }
+  }
+
+  // A greyscale noise canvas — streaked horizontally and modulated by rolling bands — reused
+  // as the static overlay for the signal modes.
+  const noiseCv=document.createElement('canvas'), noiseCx=noiseCv.getContext('2d');
+  function noiseCanvas(W,H,t,grainPx,streak){
+    const sw=Math.max(1,Math.min(2600,Math.ceil(W/grainPx))), sh=Math.max(1,Math.ceil(H/grainPx));
+    if(noiseCv.width!==sw||noiseCv.height!==sh){ noiseCv.width=sw; noiseCv.height=sh; }
+    const rnd=mulberry((state.seed*2654435761 ^ Math.floor(t*30))>>>0);
+    const img=noiseCx.createImageData(sw,sh), d=img.data;
+    for(let y=0;y<sh;y++){ let c=rnd()*255;
+      for(let x=0;x<sw;x++){ c=c*streak+rnd()*255*(1-streak); const v=c|0, o=(y*sw+x)*4;
+        d[o]=d[o+1]=d[o+2]=v; d[o+3]=255; } }
+    noiseCx.putImageData(img,0,0);
+    return noiseCv;
+  }
+
+  /* Bad colour signal (Pond5): tall bands of broadcast colour that all wave from side to side
+     together, buried under heavy static and a torn strip along the bottom. */
+  function drawSignal(g,W,H,t){
+    const bands=Math.max(3, Math.round(state.dens/38));
+    const wob=state.amp/100, freq=state.freq/100, warp=state.warp/100;
+    const chroma=state.chroma/100, ctr=state.ctr/100, coarse=state.coarse/100, seed=state.seed;
+    const seedT=Math.floor(t*20);
+    const PAL=[[236,64,196],[150,86,232],[70,120,244],[44,206,176],[130,228,72],[234,222,46],[240,132,44],[232,58,74]];
+    const colW=W/bands;
+    // one shared horizontal wobble down the screen, so every band waves in unison
+    const off=(yn)=> wob*Math.sin(yn*(5+freq*46) + seedT*0.15)*colW*1.4
+                   + warp*(fbm(2.0, yn*9 + seedT*0.12, seed+3)-0.5)*colW*3.0;
+    g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1;
+    g.fillStyle='#000'; g.fillRect(0,0,W,H);
+    const steps=Math.max(60, Math.round(H/8));
+    for(let c=-1;c<=bands;c++){ const col=PAL[((c%PAL.length)+PAL.length)%PAL.length];
+      g.fillStyle=`rgb(${col[0]},${col[1]},${col[2]})`; g.beginPath();
+      for(let i=0;i<=steps;i++){ const yn=i/steps, y=yn*H, x=c*colW+off(yn); i===0?g.moveTo(x,y):g.lineTo(x,y); }
+      for(let i=steps;i>=0;i--){ const yn=i/steps, y=yn*H, x=(c+1)*colW+off(yn); g.lineTo(x,y); }
+      g.closePath(); g.fill();
+    }
+    // rolling brightness bands
+    for(let y=0;y<H;y+=Math.max(2,Math.round(H/300))){ const band=fbm(0.5,y/H*11+seedT*0.2,seed+11);
+      g.fillStyle=`rgba(0,0,0,${(0.5-band*0.55).toFixed(3)})`; g.fillRect(0,y,W,Math.max(2,Math.round(H/300))); }
+    // heavy static over the top
+    const nz=noiseCanvas(W,H,t,Math.max(1,Math.round(1+coarse*3)),0.25+coarse*0.35);
+    g.save(); g.imageSmoothingEnabled=false;
+    g.globalAlpha=0.35+coarse*0.4; g.globalCompositeOperation='overlay'; g.drawImage(nz,0,0,W,H);
+    g.globalAlpha=0.25+coarse*0.3; g.globalCompositeOperation='screen'; g.drawImage(nz,0,0,W,H);
+    g.restore(); g.globalAlpha=1; g.globalCompositeOperation='source-over';
+    // a torn glitch strip along the bottom, like the reference: mostly black, with sparse
+    // bright rows whose channels are pulled apart — dark, not blown out to white
+    const bh=H*0.17, rh=Math.max(2,Math.round(H/300)), rows=Math.round(bh/rh);
+    g.fillStyle='#000'; g.fillRect(0,H-bh,W,bh);
+    for(let i=0;i<rows;i++){ const y=H-bh+i*rh, r1=fbm(i*2.1,7.0,seed+90), r2=fbm(i*3.3,2.0,seed+91);
+      if(r1<0.42) continue;                                   // most rows stay black
+      const lum=Math.round(70+r1*150), sh=(r2-0.5)*W*0.05;
+      if(chroma>0.02){ g.globalCompositeOperation='lighter';
+        g.fillStyle=`rgb(${Math.round(lum*0.9)},0,0)`; g.fillRect(-sh,y,W,rh+1);
+        g.fillStyle=`rgb(0,${Math.round(lum*0.7)},${lum})`; g.fillRect(sh,y,W,rh+1);
+        g.globalCompositeOperation='source-over'; }
+      else { g.fillStyle=`rgb(${lum},${lum},${lum})`; g.fillRect(0,y,W,rh+1); }
+    }
+    g.globalCompositeOperation='source-over';
+    if(ctr>0.01) applyContrast(g,W,H,ctr*0.6);
+  }
+
+  /* Bad reception (dead channel): a dense field of streaked RGB speckle with a diagonal
+     herringbone weave, strong rolling bands, an RGB phosphor mask and a mirror down the
+     middle — the look of a set tuned to nothing. */
+  function drawFuzz(g,W,H,t){
+    const coarse=state.coarse/100, chroma=state.chroma/100, ctr=state.ctr/100, seed=state.seed;
+    const seedT=Math.floor(t*30);
+    const px=Math.max(1,Math.round(1+coarse*3));
+    // build the top half only, then mirror it, for the symmetric reception look
+    const sw=Math.max(1,Math.min(2600,Math.ceil(W/px))), sh=Math.max(1,Math.ceil((H/2)/px));
+    const rnd=mulberry((state.seed*40503 ^ seedT)>>>0);
+    const smear=0.3+coarse*0.35;
+    const img=noiseCx.createImageData ? (()=>{ const c=document.createElement('canvas'); c.width=sw; c.height=sh; return c; })() : null;
+    const tmp=document.createElement('canvas'); tmp.width=sw; tmp.height=sh;
+    const tx=tmp.getContext('2d'); const id=tx.createImageData(sw,sh), d=id.data;
+    for(let y=0;y<sh;y++){
+      const band=0.32+1.15*Math.pow(fbm(0.5, y/sh*12 + seedT*0.2, seed+11),1.2);
+      const dir=(Math.floor(y/(sh/12))%2)?1:-1;
+      let cr=rnd()*255, cg=rnd()*255, cb=rnd()*255;
+      for(let x=0;x<sw;x++){
+        cr=cr*smear+rnd()*255*(1-smear); cg=cg*smear+rnd()*255*(1-smear); cb=cb*smear+rnd()*255*(1-smear);
+        // diagonal herringbone weave
+        const herr=(Math.sin((x*dir+y)*0.9)*0.5+0.5);
+        const lum=(cr*0.33+cg*0.4+cb*0.27);
+        const base=(lum*0.6 + herr*110) * band;
+        let r=(base*(1-chroma)+cr*chroma), gg=base*(1-chroma)+cg*chroma, b=(base*(1-chroma)+cb*chroma)+22*chroma;
+        r =clamp((r -128)*(1+ctr*2.6)+128,0,255); gg=clamp((gg-128)*(1+ctr*2.6)+128,0,255); b=clamp((b-128)*(1+ctr*2.6)+128,0,255);
+        const o=(y*sw+x)*4; d[o]=r; d[o+1]=gg; d[o+2]=b; d[o+3]=255;
+      }
+    }
+    tx.putImageData(id,0,0);
+    g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1;
+    g.imageSmoothingEnabled=false;
+    g.drawImage(tmp,0,0,W,H/2);                                  // top
+    g.save(); g.translate(0,H); g.scale(1,-1); g.drawImage(tmp,0,0,W,H/2); g.restore();  // mirrored bottom
+    g.imageSmoothingEnabled=true;
+    // RGB phosphor mask — fine vertical stripes multiplied over, for the colour-dot grid
+    const stripe=Math.max(2,Math.round(W/900));
+    g.save(); g.globalAlpha=0.5*chroma; g.globalCompositeOperation='multiply';
+    for(let x=0;x<W;x+=stripe*3){ g.fillStyle='#f44'; g.fillRect(x,0,stripe,H);
+      g.fillStyle='#4f4'; g.fillRect(x+stripe,0,stripe,H); g.fillStyle='#44f'; g.fillRect(x+stripe*2,0,stripe,H); }
+    g.restore(); g.globalAlpha=1; g.globalCompositeOperation='source-over';
+    // scanlines
+    const gap=Math.max(2,Math.round(H/620));
+    g.save(); g.globalAlpha=0.18; g.fillStyle='#000'; for(let y=0;y<H;y+=gap) g.fillRect(0,y,W,1); g.restore(); g.globalAlpha=1;
+    if(state.invert){ g.save(); g.globalCompositeOperation='difference'; g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.restore(); }
   }
 
   function drawBars(g,W,H,t){
@@ -780,11 +895,14 @@
     document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && document.body.classList.contains('fs')) setFs(false); });
   }
   function syncModeCtls(){
-    const waves=state.mode==='waves';
-    ['dens','amp','freq','warp','flow','wt','angle'].forEach(id=>{ const g=$(id).closest('.grp'); if(g) g.style.opacity=waves?'':'0.4'; });
-    // Coarse drives the snow grain and the bar tear, so it stays lit when they are active
+    // which Pattern knobs each mode actually uses
+    const ACTIVE={
+      waves:['dens','amp','freq','warp','flow','wt','angle'],
+      snow:[], bars:['dens'], fuzz:[], signal:['dens','amp','freq','warp'] };
+    const on=new Set(ACTIVE[state.mode]||[]);
+    ['dens','amp','freq','warp','flow','wt','angle'].forEach(id=>{ const g=$(id).closest('.grp'); if(g) g.style.opacity=on.has(id)?'':'0.4'; });
     const cg=$('coarse').closest('.grp'); if(cg) cg.style.opacity = state.mode==='waves' ? '0.4' : '';
-    $('svgBtn').disabled = !waves;
+    $('svgBtn').disabled = state.mode!=='waves';
     syncHint();
   }
   function syncRes(){
