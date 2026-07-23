@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Static — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  /* Static shares the family chrome (tokens, rail, knobs) with Angel and Tape. */
+  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
+    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
+    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:100px; --rail:290px; }
+  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
+    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
+    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
+  /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
+     wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
+  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
+  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+
+  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
+     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
+     so the shared chrome gets carried into the theme too. The brand link sets its colour
+     inline via mountTopbar, hence !important. */
+  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
+  body.dark .opal-brand{ color:var(--ink) !important; }
+  body.dark .opal-subhead__name{ color:var(--ink); }
+  body.dark .opal-brand .opal-product,
+  body.dark .opal-subhead__desc,
+  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+
+  /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
+  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #stagewrap{ top:0; left:0; }
+  #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
+  body.fs #exitFs{ display:flex; }
+  body.fs.hint #exitFs{ opacity:1; }
+
+  @media (max-width:560px){ :root{ --top:92px; } }
+
+  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
+    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+
+  /* one hairline control strip — everything else is off until asked for */
+  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
+    background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  .icon svg{ display:block; }
+  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
+     fixed right offset kept colliding with it. Stays put in full screen so a recording
+     always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
+    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
+    background:var(--panel); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  #recDot.on{ display:flex; }
+  /* Count-in. Big enough that you are in no doubt what is about to happen. */
+
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  body.fs #recDot{ top:14px; }
+  @keyframes blink{ 50%{opacity:.2;} }
+
+  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
+     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
+     work with. */
+
+  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
+    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:var(--panel);
+    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+    display:flex; flex-direction:column; transition:transform .28s ease; }
+  .rail-l{ left:0; border-right:1px solid var(--edge); }
+  .rail-r{ right:0; border-left:1px solid var(--edge); }
+  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
+    padding:14px 0; border-bottom:1px solid var(--edge); }
+  .row:last-of-type{ border-bottom:0; }
+  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
+     past when you only want two of them. */
+  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
+    font-weight:600; opacity:.9; padding-bottom:2px;
+    display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
+    width:100%; background:none; border:0; font-family:inherit; text-align:left; }
+  .rowhead:hover{ opacity:1; }
+  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhead::before{ content:''; width:0; height:0; flex:none;
+    border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
+    transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
+  .row.folded .rowhead::before{ transform:rotate(0deg); }
+  .row.folded > *:not(.rowhead){ display:none; }
+  .row.folded{ padding-bottom:10px; }
+  .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .rail input[type=range]{ width:100%; }
+  .rail select{ width:100%; }
+  .rail .seg{ width:100%; }
+  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
+  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
+     nothing between you and the piece unless you ask for it. */
+  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
+  .rail-l{ transform:translateX(-100%); }
+  .rail-r{ transform:translateX(100%); }
+  .rail.open{ transform:none; }
+
+  /* Chrome fades out while you listen and comes back on movement. */
+  #bar{ transition:opacity .5s ease; }
+  body.idle #bar{ opacity:0; pointer-events:none; }
+  body.panels #bar{ opacity:1; pointer-events:auto; }
+
+  /* Mood — the one control that stays reachable. */
+
+  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
+    color:var(--mute); white-space:nowrap; }
+  .rail .grp > label{ white-space:normal; }
+  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
+  .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
+  .seg button:last-child{ border-right:0; }
+  .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
+  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
+  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
+     the control they describe and get out of the way on click. */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
+    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
+    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
+     underline is what the lane tabs use for that other meaning, so these fill instead. */
+
+  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
+     it's just visually replaced, so listeners and readouts are untouched. */
+  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
+  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; margin:0; pointer-events:none; }
+  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
+  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
+  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
+    transition:stroke-dasharray .04s linear; }
+  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
+  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+  .knob:focus-visible{ outline:none; }
+  .knob:focus-visible .k-hub{ stroke:var(--ink); }
+  .knob.drag .k-vl{ stroke-width:3.6; }
+  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
+  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
+    color:var(--mute); text-align:center; white-space:nowrap; }
+  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
+    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    padding:8px 12px; cursor:pointer; border-radius:2px; }
+  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  input[type=text]::placeholder{ color:var(--mute); }
+
+  /* step editor — a row of cells for the active lane; click one to set its note */
+
+  #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
+  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
+  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%;
+    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
+    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  @media (max-width:560px){ input[type=range]{ width:82px; } }
+
+  /* Static's own */
+  #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none;
+    font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); }
+  body.fs #hint{ display:none; }
+</style>
+</head>
+<body>
+
+<div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="status"></div>
+<div id="hint"></div>
+<div id="bar">
+  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
+  <button class="icon" id="animBtn" aria-label="animate" title="Animate / still &#183; space" aria-pressed="false"><svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3.4 2 L9.4 6 L3.4 10 Z" fill="currentColor"/></svg></button>
+  <button class="icon" id="seedBtn" aria-label="new pattern" title="New pattern &#183; R">&#8635;</button>
+  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
+  <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
+</div>
+<button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
+
+<div id="rail" class="rail rail-l">
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Pattern</button>
+    <p class="rowhint">Three kinds of static. Waves is drawn from lines, so it exports as SVG; Snow and Bars are made of pixels, so they export as PNG.</p>
+    <div class="grp" data-tip="What the static is made of. Waves is a field of flowing lines that bend around each other. Snow is classic TV noise. Bars are torn horizontal bands with the colour channels pulled apart."><label>Kind</label>
+      <div class="seg" id="modeSeg">
+        <button data-m="waves" aria-pressed="true">Waves</button>
+        <button data-m="snow" aria-pressed="false">Snow</button>
+        <button data-m="bars" aria-pressed="false">Bars</button>
+      </div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="How many lines make up the field. More lines pack tighter and the bending reads as moir&#233; bands."><label>Density <b id="densR">340</b></label><input id="dens" type="range" min="40" max="900" value="340" /></div>
+      <div class="grp" data-tip="How far the lines swing from their resting height. Low is a gentle ripple; high folds them over each other into knots."><label>Sway <b id="ampR">62</b></label><input id="amp" type="range" min="0" max="200" value="62" /></div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="How tight the waves are along their length. Left is long slow rolls; right is a fast chop."><label>Detail <b id="freqR">30</b></label><input id="freq" type="range" min="4" max="120" value="30" /></div>
+      <div class="grp" data-tip="Bends the whole field sideways before the waves are drawn, so the flow curves and swirls instead of running straight across."><label>Warp <b id="warpR">45</b></label><input id="warp" type="range" min="0" max="100" value="45" /></div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="How much each line leans on the one above it. At zero every line is independent; turn it up and they comb into one flowing surface."><label>Flow <b id="flowR">55</b></label><input id="flow" type="range" min="0" max="100" value="55" /></div>
+      <div class="grp" data-tip="Thickness of the lines. Hair-thin for a fine engraving, heavy to fill the field with light."><label>Weight <b id="wtR">10</b></label><input id="wt" type="range" min="2" max="60" value="10" /></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Signal</button>
+    <p class="rowhint">The condition of the picture &#8212; how broken and how coloured.</p>
+    <div class="duo">
+      <div class="grp" data-tip="Pulls the red and blue channels apart, the way a mistuned signal fringes everything in colour. At zero it stays black and white."><label>Chroma <b id="chromaR">0</b></label><input id="chroma" type="range" min="0" max="100" value="0" /></div>
+      <div class="grp" data-tip="Crushes the greys toward pure black and white. Right for hard graphic contrast, left for a soft, filmic field."><label>Contrast <b id="ctrR">50</b></label><input id="ctr" type="range" min="0" max="100" value="50" /></div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="Sprinkles fine noise over the whole frame, in any mode &#8212; the tape grain on top of the picture."><label>Grain <b id="grainR">off</b></label><input id="grain" type="range" min="0" max="100" value="0" /></div>
+      <div class="grp" data-tip="Roughness of the snow and the tear in the bars. Higher is a coarser, blockier break-up."><label>Coarse <b id="coarseR">40</b></label><input id="coarse" type="range" min="0" max="100" value="40" /></div>
+    </div>
+    <div class="grp" data-tip="Swaps black for white. The references are white lines on black; flip it for ink on paper."><label>Invert</label>
+      <div class="seg" id="invSeg">
+        <button data-i="0" aria-pressed="true">Light on dark</button>
+        <button data-i="1" aria-pressed="false">Dark on light</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Export</button>
+    <p class="rowhint">The picture on screen, at whatever size you need. SVG stays razor-sharp at any scale; PNG bakes it to pixels.</p>
+    <div class="grp" data-tip="The shape and size of the exported file. The canvas shows a crop of this shape."><label>Size</label>
+      <div class="seg" id="sizeSeg">
+        <button data-z="1920x1080" aria-pressed="true">16:9</button>
+        <button data-z="1080x1350" aria-pressed="false">4:5</button>
+        <button data-z="1080x1080" aria-pressed="false">1:1</button>
+        <button data-z="2160x2700" aria-pressed="false">Print</button>
+      </div>
+    </div>
+    <div class="grp" data-tip="How many pixels across the long edge of the exported PNG. 4096 is print quality; SVG ignores this and stays sharp at any size."><label>Pixels <b id="resR">2048</b></label><input id="res" type="range" min="1024" max="8192" step="256" value="2048" /></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="svgBtn" style="flex:1" data-tip="Saves the Waves field as an SVG &#8212; real lines, sharp at any size, editable in Illustrator. Only Waves exports this way.">SVG</button>
+      <button class="btn" id="pngBtn" style="flex:1" data-tip="Saves the picture as a high-resolution PNG at the pixel size above.">PNG</button>
+    </div></div>
+  </div>
+</div>
+
+<div id="veil">
+  <div class="orb"></div>
+  <h1>Static</h1>
+  <p>A generator for broken signal &#8212; flowing interference lines, television snow, torn colour bars. Shape it, then export it razor-sharp as SVG or at any resolution as PNG. Tap to begin.</p>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Static', desc: 'Broken-signal generator', version: 'v1' });</script>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+
+  const state={ mode:'waves', dens:340, amp:62, freq:30, warp:45, flow:55, wt:10,
+    chroma:0, ctr:50, grain:0, coarse:40, invert:0,
+    size:'1920x1080', res:2048, seed:1337, animate:false, ready:false };
+  let THEME = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const isDark=()=>THEME==='dark';
+
+  /* ---------- seeded noise ----------
+     Everything is drawn from one seed, so the SVG export lands on exactly the pattern on
+     screen and a "new pattern" is repeatable. Value noise with smoothstep, plus fbm. */
+  function hash2(ix,iy,seed){
+    let h=ix*374761393 + iy*668265263 + seed*2246822519;
+    h=(h^(h>>>13))*1274126177; h=h^(h>>>16);
+    return ((h>>>0)/4294967296);
+  }
+  const smooth=t=>t*t*(3-2*t);
+  function vnoise(x,y,seed){
+    const ix=Math.floor(x), iy=Math.floor(y), fx=x-ix, fy=y-iy;
+    const a=hash2(ix,iy,seed), b=hash2(ix+1,iy,seed),
+          c=hash2(ix,iy+1,seed), d=hash2(ix+1,iy+1,seed);
+    const u=smooth(fx), v=smooth(fy);
+    return (a*(1-u)+b*u)*(1-v) + (c*(1-u)+d*u)*v;
+  }
+  function fbm(x,y,seed){
+    let s=0, a=0.5, f=1;
+    for(let o=0;o<4;o++){ s+=a*vnoise(x*f,y*f,seed+o*101); f*=2; a*=0.5; }
+    return s;                      // ~0..1
+  }
+  function mulberry(seed){ let a=seed>>>0; return ()=>{ a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+  /* ---------- the field ----------
+     One line per row; each line's height is displaced by fbm, and Flow makes a line inherit
+     most of the one above it so the whole field combs into a surface. Warp bends the domain
+     sideways first, which is what turns straight rolls into swirls. Returns the polylines so
+     the same geometry feeds both the canvas and the SVG. */
+  function buildWaves(W,H,t){
+    const N=Math.round(state.dens);
+    const sp=H/N;
+    const amp=(state.amp/100)*sp*7.0;
+    const freq=state.freq/100*0.9 + 0.03;
+    const warp=state.warp/100*0.9;
+    const flow=state.flow/100;
+    const seed=state.seed;
+    const samples=Math.min(1400, Math.max(200, Math.round(W/3)));
+    const dx=W/samples;
+    const lines=[];
+    let prev=null;
+    for(let i=0;i<N;i++){
+      const y0=(i+0.5)*sp, ny=i/N;
+      const pts=new Float32Array((samples+1)*2);
+      for(let s=0;s<=samples;s++){
+        const x=s*dx, nx=x/W;
+        // domain warp: shove the sample sideways by a low-frequency field
+        const wx = nx + warp*(fbm(nx*1.6, ny*2.2+t*0.05, seed+900)-0.5)*2.2;
+        let d = fbm(wx*freq*W*0.012 + t, ny*freq*W*0.012*1.4 + t*0.3, seed) - 0.5;
+        // Flow: bend toward the line above, so neighbours share a shape
+        if(prev){ const above=prev[s*2+1]-((i-0.5)*sp); d = d*(1-flow) + (above/amp)*flow; }
+        pts[s*2]=x; pts[s*2+1]=y0 + d*amp;
+      }
+      lines.push(pts); prev=pts;
+    }
+    return lines;
+  }
+
+  // ---------- canvas ----------
+  const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
+  let W=0,H=0,DPR=1;
+  function sizeWH(){ return state.size.split('x').map(Number); }
+  function resize(){ const r=wrap.getBoundingClientRect();
+    DPR=Math.min(2,devicePixelRatio||1); W=r.width; H=r.height;
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0); }
+  addEventListener('resize',resize);
+
+  const bg=()=> state.invert ? '#ffffff' : '#000000';
+  const fg=()=> state.invert ? '#000000' : '#ffffff';
+
+  function renderTo(g, W, H, t, forExport){
+    const ctr=state.ctr/100;
+    g.setTransform(1,0,0,1,0,0);
+    g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
+    g.fillStyle=bg(); g.fillRect(0,0,W,H);
+
+    if(state.mode==='waves'){
+      const lines=buildWaves(W,H,t);
+      const lw=Math.max(0.4, state.wt/10 * (H/1080));
+      const drawSet=(color,ox,alpha)=>{
+        g.save(); g.strokeStyle=color; g.globalAlpha=alpha; g.lineWidth=lw;
+        g.lineJoin='round'; g.lineCap='round';
+        for(const pts of lines){ g.beginPath();
+          for(let s=0;s<pts.length;s+=2){ const x=pts[s]+ox, y=pts[s+1];
+            s===0?g.moveTo(x,y):g.lineTo(x,y); }
+          g.stroke(); }
+        g.restore();
+      };
+      const chroma=state.chroma/100;
+      if(chroma>0.01){
+        const sh=chroma*W*0.014;
+        g.globalCompositeOperation = state.invert ? 'multiply' : 'lighter';
+        drawSet(state.invert?'#00ffff':'#ff2b2b', -sh, 0.9);
+        drawSet(state.invert?'#ff00ff':'#2bffdd',  sh, 0.9);
+        drawSet(fg(), 0, 1);
+        g.globalCompositeOperation='source-over';
+      } else {
+        drawSet(fg(), 0, 1);
+      }
+      if(ctr>0.01){ applyContrast(g,W,H,ctr); }
+    } else if(state.mode==='snow'){
+      drawSnow(g,W,H,t);
+    } else {
+      drawBars(g,W,H,t);
+    }
+
+    // grain over everything
+    const ga=state.grain/100;
+    if(ga>0.004) addGrain(g,W,H,ga,t);
+  }
+
+  // contrast without ctx.filter (so it works identically off-screen for export)
+  function applyContrast(g,W,H,amt){
+    const img=g.getImageData(0,0,W,H), d=img.data, c=1+amt*3.2;
+    for(let i=0;i<d.length;i+=4){
+      d[i]  =clamp((d[i]  -128)*c+128,0,255);
+      d[i+1]=clamp((d[i+1]-128)*c+128,0,255);
+      d[i+2]=clamp((d[i+2]-128)*c+128,0,255);
+    }
+    g.putImageData(img,0,0);
+  }
+
+  function drawSnow(g,W,H,t){
+    // TV snow: blocky value noise, coarseness sets the block size
+    const coarse=state.coarse/100;
+    const px=Math.max(1, Math.round(1 + coarse*5));
+    const sw=Math.max(1,Math.ceil(W/px)), sh=Math.max(1,Math.ceil(H/px));
+    const img=g.createImageData(sw,sh), d=img.data;
+    const rnd=mulberry((state.seed*2654435761 ^ Math.floor(t*30)) >>> 0);
+    const chroma=state.chroma/100, ctr=state.ctr/100;
+    for(let i=0;i<sw*sh;i++){
+      let v=rnd()*255;
+      // contrast
+      v=clamp((v-128)*(1+ctr*3.2)+128,0,255);
+      let r=v,gg=v,b=v;
+      if(chroma>0.01){ r=clamp(v+(rnd()-0.5)*chroma*300,0,255); b=clamp(v+(rnd()-0.5)*chroma*300,0,255); }
+      const o=i*4; d[o]=r; d[o+1]=gg; d[o+2]=b; d[o+3]=255;
+    }
+    // paint the small buffer up, no smoothing so blocks stay crisp
+    const tmp=document.createElement('canvas'); tmp.width=sw; tmp.height=sh;
+    tmp.getContext('2d').putImageData(img,0,0);
+    g.imageSmoothingEnabled=false; g.drawImage(tmp,0,0,W,H); g.imageSmoothingEnabled=true;
+    if(state.invert){ g.save(); g.globalCompositeOperation='difference';
+      g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.restore(); }
+  }
+
+  function drawBars(g,W,H,t){
+    // torn horizontal bands: each band shifts left/right and splits its channels
+    const coarse=state.coarse/100, chroma=state.chroma/100, ctr=state.ctr/100;
+    const rows=Math.round(state.dens*0.5);
+    const bh=H/rows;
+    const rnd=mulberry((state.seed ^ Math.floor(t*20)*2654435761)>>>0);
+    g.fillStyle=bg(); g.fillRect(0,0,W,H);
+    for(let i=0;i<rows;i++){
+      const y=i*bh;
+      const on = rnd() < (0.4+coarse*0.5);
+      if(!on) continue;
+      let v=rnd(); v=clamp((v-0.5)*(1+ctr*3)+0.5,0,1);
+      const shift=(rnd()-0.5)*chroma*W*0.06;
+      const lum=Math.round(v*255);
+      if(chroma>0.01){
+        g.globalCompositeOperation = state.invert ? 'multiply':'lighter';
+        g.fillStyle=`rgb(${lum},0,0)`;    g.fillRect(-shift,y, W, bh*(0.5+rnd()));
+        g.fillStyle=`rgb(0,${lum},${lum})`;g.fillRect( shift,y, W, bh*(0.5+rnd()));
+        g.globalCompositeOperation='source-over';
+      } else {
+        g.fillStyle=`rgb(${lum},${lum},${lum})`; g.fillRect(0,y,W,bh*(0.6+rnd()*0.8));
+      }
+    }
+  }
+
+  const grainCv=document.createElement('canvas'), grainCx=grainCv.getContext('2d');
+  function addGrain(g,W,H,amt,t){
+    const sz=256;
+    if(grainCv.width!==sz){ grainCv.width=grainCv.height=sz; }
+    const rnd=mulberry((state.seed*77 ^ Math.floor(t*24))>>>0);
+    const img=grainCx.createImageData(sz,sz), d=img.data;
+    for(let i=0;i<sz*sz;i++){ const v=rnd()*255|0; const o=i*4; d[o]=d[o+1]=d[o+2]=v; d[o+3]=255; }
+    grainCx.putImageData(img,0,0);
+    g.save(); g.globalAlpha=amt*0.6; g.globalCompositeOperation = state.invert?'multiply':'screen';
+    for(let y=0;y<H;y+=sz) for(let x=0;x<W;x+=sz) g.drawImage(grainCv,x,y);
+    g.restore();
+  }
+
+  // ---------- SVG export (Waves only) ----------
+  function buildSVG(W,H){
+    const lines=buildWaves(W,H,animT);
+    const lw=Math.max(0.4, state.wt/10 * (H/1080));
+    const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
+    parts.push(`<rect width="${W}" height="${H}" fill="${bg()}"/>`);
+    parts.push(`<g fill="none" stroke="${fg()}" stroke-width="${lw.toFixed(2)}" stroke-linejoin="round" stroke-linecap="round">`);
+    // Chroma as two tinted layers under the white, matching the canvas
+    const chroma=state.chroma/100;
+    const layer=(color,ox,op)=>{
+      parts.push(`<g stroke="${color}"${op<1?` stroke-opacity="${op}"`:''}>`);
+      for(const pts of lines){
+        let d='M'; for(let s=0;s<pts.length;s+=2){ d+=(s?'L':'')+(pts[s]+ox).toFixed(1)+' '+pts[s+1].toFixed(1)+' '; }
+        parts.push(`<path d="${d.trim()}"/>`);
+      }
+      parts.push('</g>');
+    };
+    if(chroma>0.01){ const sh=chroma*W*0.014;
+      layer(state.invert?'#00ffff':'#ff2b2b',-sh,0.9);
+      layer(state.invert?'#ff00ff':'#2bffdd', sh,0.9);
+    }
+    layer(fg(),0,1);
+    parts.push('</g></svg>');
+    return parts.join('\n');
+  }
+
+  // ---------- exporting ----------
+  const dl=(blob,name)=>{ const u=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),1500); };
+  function exportDims(){
+    const [aw,ah]=sizeWH(); const long=Math.max(aw,ah), s=state.res/long;
+    return [Math.round(aw*s), Math.round(ah*s)];
+  }
+  function exportPNG(){
+    const [w,h]=exportDims();
+    setStatus(`rendering ${w}×${h}…`);
+    setTimeout(()=>{
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      renderTo(c.getContext('2d'), w, h, animT, true);
+      c.toBlob(b=>{ dl(b,`static-${state.mode}-${Date.now()}.png`);
+        setStatus(`saved ${w}×${h}`); setTimeout(()=>setStatus(''),1800); },'image/png');
+    },30);
+  }
+  function exportSVG(){
+    if(state.mode!=='waves'){ setStatus('SVG is only for Waves — Snow and Bars save as PNG');
+      setTimeout(()=>setStatus(''),3200); return; }
+    const [aw,ah]=sizeWH();
+    const svg=buildSVG(aw,ah);
+    dl(new Blob([svg],{type:'image/svg+xml'}), `static-waves-${Date.now()}.svg`);
+    const kb=Math.round(svg.length/1024);
+    setStatus(`saved SVG · ${kb}KB`); setTimeout(()=>setStatus(''),2200);
+  }
+
+  // ---------- UI ----------
+  function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
+  function seg(id, key, attr, after){
+    document.querySelectorAll(`#${id} button`).forEach(b=>b.addEventListener('click',()=>{
+      state[key]=isNaN(+b.dataset[attr])?b.dataset[attr]:+b.dataset[attr];
+      document.querySelectorAll(`#${id} button`).forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+      if(after) after(); syncHint();
+    }));
+  }
+  const bind=(id,key,fn)=>{ const el=$(id); el.addEventListener('input',e=>{ state[key]=+e.target.value;
+    if(fn) fn(e.target.value); else $(id+'R').textContent=e.target.value; syncHint(); }); };
+
+  function wire(){
+    seg('modeSeg','mode','m',()=>{ syncModeCtls(); });
+    seg('invSeg','invert','i');
+    seg('sizeSeg','size','z');
+    ['dens','amp','freq','warp','flow','wt','chroma','ctr','coarse'].forEach(id=>bind(id,id));
+    bind('grain','grain',v=>{ $('grainR').textContent = +v>0 ? v : 'off'; });
+    bind('res','res',v=>{ $('resR').textContent=v; });
+    $('svgBtn').addEventListener('click',exportSVG);
+    $('pngBtn').addEventListener('click',exportPNG);
+    $('seedBtn').addEventListener('click',()=>{ state.seed=(state.seed*1103515245+12345)>>>0 || 1;
+      setStatus('new pattern'); setTimeout(()=>setStatus(''),1000); });
+    $('themeBtn').addEventListener('click',()=>setTheme(isDark()?'light':'dark'));
+    $('animBtn').addEventListener('click',()=>setAnim(!state.animate));
+    $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
+    $('exitFs').addEventListener('click',()=>setFs(false));
+    $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open');
+      $('rail').classList.toggle('open',open); document.body.classList.toggle('panels',open);
+      $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
+    addEventListener('keydown',e=>{
+      if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+      if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; }
+      if(e.code==='Space'){ e.preventDefault(); setAnim(!state.animate); return; }
+      if(e.key==='r'||e.key==='R'){ $('seedBtn').click(); return; }
+      if(e.key==='f'||e.key==='F') setFs(!document.body.classList.contains('fs'));
+    });
+    document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && document.body.classList.contains('fs')) setFs(false); });
+  }
+  function syncModeCtls(){
+    const waves=state.mode==='waves';
+    ['warp','flow','wt'].forEach(id=>{ const g=$(id).closest('.grp'); if(g) g.style.opacity=waves?'':'0.4'; });
+    $('svgBtn').disabled = !waves;
+    syncHint();
+  }
+  function syncHint(){
+    const [aw,ah]=sizeWH(), [ew,eh]=exportDims();
+    $('hint').textContent = `${state.mode} · ${aw}:${ah} · png ${ew}×${eh}` + (state.mode==='waves'?' · svg vector':'');
+  }
+  function setTheme(t){ THEME=t; document.body.classList.toggle('dark',t==='dark');
+    $('themeBtn').setAttribute('aria-pressed',String(t==='dark')); }
+  function setAnim(on){ state.animate=on; const b=$('animBtn');
+    b.setAttribute('aria-pressed',String(on)); b.title = on?'Still':'Animate';
+    if(!on) document.body.classList.remove('idle'); }
+  function setFs(on){ document.body.classList.toggle('fs',on);
+    if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+    else if(!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+    requestAnimationFrame(resize); }
+
+  // ---------- knobs (shared with the other tools) ----------
+  const knobs=[];
+  function makeKnob(inp){ inp.dataset.knob='1';
+    const w=document.createElement('div'); w.className='knob'; w.tabIndex=0; w.setAttribute('role','slider');
+    inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
+    w.insertAdjacentHTML('beforeend','<svg viewBox="0 0 44 44" width="42" height="42" aria-hidden="true">'+
+      '<path class="k-tr" d="M9 35 A18 18 0 1 1 35 35"/><path class="k-vl" d="M9 35 A18 18 0 1 1 35 35"/>'+
+      '<circle class="k-hub" cx="22" cy="22" r="9"/><line class="k-pt" x1="22" y1="22" x2="22" y2="14"/></svg>');
+    const k={el:w,inp}; knobs.push(k);
+    const set=v=>{ inp.value=String(v); inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); };
+    let dy=0,dv=0;
+    w.addEventListener('pointerdown',e=>{ e.preventDefault(); w.setPointerCapture(e.pointerId);
+      w.classList.add('drag'); dy=e.clientY; dv=+inp.value; });
+    w.addEventListener('pointermove',e=>{ if(!w.classList.contains('drag')) return;
+      const span=(+inp.max)-(+inp.min), st=+inp.step||1;
+      let nv=dv+(dy-e.clientY)/150*span; nv=Math.round(nv/st)*st; set(clamp(nv,+inp.min,+inp.max)); });
+    const up=()=>w.classList.remove('drag');
+    w.addEventListener('pointerup',up); w.addEventListener('pointercancel',up);
+    w.addEventListener('keydown',e=>{ const st=+inp.step||1;
+      if(e.key==='ArrowUp'||e.key==='ArrowRight'){ e.preventDefault(); set(clamp(+inp.value+st,+inp.min,+inp.max)); }
+      if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); set(clamp(+inp.value-st,+inp.min,+inp.max)); } });
+    paintKnob(k);
+  }
+  function paintKnob(k){ const inp=k.inp, mn=+inp.min, mx=+inp.max, v=+inp.value, f=(v-mn)/(mx-mn||1);
+    const path=k.el.querySelector('.k-vl'), len=path.getTotalLength();
+    path.style.strokeDasharray=len; path.style.strokeDashoffset=len*(1-f);
+    const a=(-135+270*f)*Math.PI/180, pt=k.el.querySelector('.k-pt');
+    pt.setAttribute('x2',(22+Math.sin(a)*8).toFixed(2)); pt.setAttribute('y2',(22-Math.cos(a)*8).toFixed(2)); }
+
+  // folds + tooltips
+  const FOLD_KEY='static-folded';
+  (function(){ const saved=new Set((()=>{try{return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]')}catch(e){return[]}})());
+    document.querySelectorAll('.rail .rowhead').forEach(h=>{ const row=h.closest('.row'); if(!row) return;
+      const name=h.textContent.trim(); if(saved.has(name)){ row.classList.add('folded'); h.setAttribute('aria-expanded','false'); }
+      h.addEventListener('click',()=>{ const f=row.classList.toggle('folded'); h.setAttribute('aria-expanded',String(!f));
+        const cur=new Set((()=>{try{return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]')}catch(e){return[]}})());
+        f?cur.add(name):cur.delete(name); try{ localStorage.setItem(FOLD_KEY,JSON.stringify([...cur])); }catch(e){} }); }); })();
+  let tipEl=null,tipT=null,tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return;
+    if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0';
+    const r=host.getBoundingClientRect(), t=tipEl.getBoundingClientRect();
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8,r.bottom+8);
+    tipEl.style.left=Math.max(8,Math.min(r.left,innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+  addEventListener('pointerover',e=>{ const h=e.target.closest&&e.target.closest('[data-tip]');
+    if(h===tipFor) return; clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true);
+
+  // ---------- loop ----------
+  let animT=0, lastT=performance.now();
+  function frame(t){
+    const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+    if(state.animate) animT += dt*0.35;
+    renderTo(ctx, W, H, animT, false);
+    requestAnimationFrame(frame);
+  }
+
+  wire(); resize(); setTheme(THEME);
+  document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
+  syncModeCtls(); syncHint();
+  const veil=$('veil');
+  veil.addEventListener('click',()=>{ state.ready=true; veil.style.display='none'; resize(); });
+  requestAnimationFrame(frame);
+
+  window.staticgen={ state, buildWaves, buildSVG, renderTo, exportDims, setTheme,
+    get animT(){return animT;} };
+})();
+</script>
+</body>
+</html>
