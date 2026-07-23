@@ -219,11 +219,11 @@
 <div id="rail" class="rail rail-l">
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Pattern</button>
-    <p class="rowhint">Waves is drawn from lines &#8212; it exports as SVG. Snow and Bars are pixels &#8212; they export as PNG.</p>
+    <p class="rowhint">Snow is photographic television static. Bars are torn colour bands. Waves is drawn from lines and exports as SVG.</p>
     <div class="grp" data-tip="What the static is made of. Waves is a field of flowing lines that bend around each other. Snow is classic TV noise. Bars are torn horizontal bands with the colour channels pulled apart."><label>Kind</label>
       <div class="seg" id="modeSeg">
-        <button data-m="waves" aria-pressed="true">Waves</button>
-        <button data-m="snow" aria-pressed="false">Snow</button>
+        <button data-m="waves" aria-pressed="false">Waves</button>
+        <button data-m="snow" aria-pressed="true">Snow</button>
         <button data-m="bars" aria-pressed="false">Bars</button>
       </div>
     </div>
@@ -246,12 +246,12 @@
     <button type="button" class="rowhead" aria-expanded="true">Signal</button>
     <p class="rowhint">How broken the signal is.</p>
     <div class="duo">
-      <div class="grp" data-tip="Tears the picture into horizontal slices, shoves them sideways and pulls the colour channels apart &#8212; the datamosh, dropped-signal look. This is the main glitch."><label>Glitch <b id="glitchR">30</b></label><input id="glitch" type="range" min="0" max="100" value="30" /></div>
-      <div class="grp" data-tip="Pulls the red and blue channels apart across the whole frame, the way a mistuned signal fringes everything in colour."><label>Chroma <b id="chromaR">0</b></label><input id="chroma" type="range" min="0" max="100" value="0" /></div>
+      <div class="grp" data-tip="Tears the picture into horizontal slices, shoves them sideways and pulls the colour channels apart &#8212; the datamosh, dropped-signal look. This is the main glitch."><label>Glitch <b id="glitchR">14</b></label><input id="glitch" type="range" min="0" max="100" value="14" /></div>
+      <div class="grp" data-tip="Pulls the red and blue channels apart across the whole frame, the way a mistuned signal fringes everything in colour."><label>Chroma <b id="chromaR">62</b></label><input id="chroma" type="range" min="0" max="100" value="62" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Crushes the greys toward pure black and white. Right for hard graphic contrast, left for a soft, filmic field."><label>Contrast <b id="ctrR">50</b></label><input id="ctr" type="range" min="0" max="100" value="50" /></div>
-      <div class="grp" data-tip="Roughness of the snow and the tear in the bars. Higher is a coarser, blockier break-up."><label>Coarse <b id="coarseR">40</b></label><input id="coarse" type="range" min="0" max="100" value="40" /></div>
+      <div class="grp" data-tip="Crushes the greys toward pure black and white. Right for hard graphic contrast, left for a soft, filmic field."><label>Contrast <b id="ctrR">44</b></label><input id="ctr" type="range" min="0" max="100" value="44" /></div>
+      <div class="grp" data-tip="Roughness of the snow and the tear in the bars. Higher is a coarser, blockier break-up."><label>Coarse <b id="coarseR">24</b></label><input id="coarse" type="range" min="0" max="100" value="24" /></div>
     </div>
     <div class="grp" data-tip="Sprinkles fine noise over the whole frame, in any mode &#8212; the tape grain on top of the picture."><label>Grain <b id="grainR">off</b></label><input id="grain" type="range" min="0" max="100" value="0" /></div>
     <div class="grp" data-tip="Swaps black for white. The references are white lines on black; flip it for ink on paper."><label>Invert</label>
@@ -285,7 +285,7 @@
         <button data-z="2160x2700" aria-pressed="false">Print</button>
       </div>
     </div>
-    <div class="grp" data-tip="How many pixels across the long edge of the exported PNG. 4096 is print quality; SVG ignores this and stays sharp at any size."><label>Pixels <b id="resR">2048</b></label><input id="res" type="range" min="1024" max="8192" step="256" value="2048" /></div>
+    <div class="grp" data-tip="Pixels across the long edge of the exported PNG. The line beneath shows the print size at 300 DPI. For anything bigger than this, use SVG on the Waves mode — it prints sharp at any size."><label>Pixels <b id="resR">6144</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></label><input id="res" type="range" min="1024" max="16384" step="512" value="6144" /></div>
     <div class="grp"><div style="display:flex; gap:6px;">
       <button class="btn" id="svgBtn" style="flex:1" data-tip="Saves the Waves field as an SVG &#8212; real lines, sharp at any size, editable in Illustrator. Only Waves exports this way.">SVG</button>
       <button class="btn" id="pngBtn" style="flex:1" data-tip="Saves the picture as a high-resolution PNG at the pixel size above.">PNG</button>
@@ -296,7 +296,7 @@
 <div id="veil">
   <div class="orb"></div>
   <h1>Static</h1>
-  <p>A generator for broken signal &#8212; flowing interference lines, television snow, torn colour bars. Shape it, then export it razor-sharp as SVG or at any resolution as PNG. Tap to begin.</p>
+  <p>A generator for broken signal &#8212; photographic television snow, torn colour bars, flowing interference lines. Shape it, then export it at any resolution as PNG, or the line waves as SVG. Tap to begin.</p>
 </div>
 
 <script src="/lab/shared/opal.js"></script>
@@ -307,9 +307,9 @@
   const $=id=>document.getElementById(id);
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
-  const state={ mode:'waves', dens:340, amp:62, freq:30, warp:45, flow:55, wt:10,
-    chroma:0, ctr:50, grain:0, coarse:40, glitch:30, invert:0, photoMix:0, angle:0,
-    size:'1920x1080', res:2048, seed:1337, animate:false, ready:false };
+  const state={ mode:'snow', dens:340, amp:62, freq:30, warp:45, flow:55, wt:10,
+    chroma:62, ctr:44, grain:0, coarse:24, glitch:14, invert:0, photoMix:0, angle:0,
+    size:'1920x1080', res:6144, seed:1337, animate:false, ready:false };
   let THEME = 'dark';   // this tool is about signal — it opens dark, the frosted rail floating on the field
   const isDark=()=>THEME==='dark';
 
@@ -489,6 +489,13 @@
     g.drawImage(lumCv,0,0,W,H); g.restore(); g.globalCompositeOperation='source-over';
   }
   function applyContrast(g,W,H,amt){
+    if(W*H > 25e6){
+      const t=document.createElement('canvas'); t.width=W; t.height=H;
+      t.getContext('2d').drawImage(g.canvas,0,0);
+      g.clearRect(0,0,W,H); g.save(); g.filter=`contrast(${(1+amt*3.2).toFixed(3)})`;
+      g.drawImage(t,0,0); g.restore(); g.filter='none';
+      return;
+    }
     const img=g.getImageData(0,0,W,H), d=img.data, c=1+amt*3.2;
     for(let i=0;i<d.length;i+=4){
       d[i]  =clamp((d[i]  -128)*c+128,0,255);
@@ -499,32 +506,56 @@
   }
 
   function drawSnow(g,W,H,t){
-    // TV snow: blocky value noise, coarseness sets the block size
-    const coarse=state.coarse/100;
-    const px=Math.max(1, Math.round(1 + coarse*5));
+    /* Photographic television snow: fine RGB colour noise that streaks horizontally, rolling
+       bands of brightness drifting down the screen, a cool blue cast, the red and blue
+       channels pulled apart into coloured fringing, and faint scanlines over the top so it
+       reads as a screen rather than a pattern. */
+    const coarse=state.coarse/100, chroma=state.chroma/100, ctr=state.ctr/100;
+    let px=Math.max(1, Math.round(1 + coarse*4));         // grain size — small is fine and photographic
+    // cap the noise buffer so a print-size export doesn't try to allocate gigabytes; the grain
+    // grows a hair coarser past ~7k which is invisible at print scale
+    const MAXBUF=7200; while(W/px>MAXBUF) px++;
     const sw=Math.max(1,Math.ceil(W/px)), sh=Math.max(1,Math.ceil(H/px));
-    const img=g.createImageData(sw,sh), d=img.data;
-    const rnd=mulberry((state.seed*2654435761 ^ Math.floor(t*30)) >>> 0);
-    const chroma=state.chroma/100, ctr=state.ctr/100;
-    // per-row brightness band and a smear that carries a little of the previous pixel
-    // along the scanline, the way a real signal's noise correlates horizontally
-    const smear=0.35+coarse*0.4;
+    const seedT=Math.floor(t*30);
+    const rnd=mulberry((state.seed*2654435761 ^ seedT) >>> 0);
+    const smear=0.30+coarse*0.4;                           // horizontal correlation of the noise
+    // build three channels of streaked colour noise, modulated by a rolling brightness band
+    const R=new Float32Array(sw*sh), G=new Float32Array(sw*sh), B=new Float32Array(sw*sh);
     for(let y=0;y<sh;y++){
-      const band = 0.6 + 0.8*fbm(0.5, y/sh*7 + Math.floor(t*3)*0.3, state.seed+11);
-      let carry=rnd()*255;
+      const band = 0.42 + 1.05*Math.pow(fbm(0.5, y/sh*9 + seedT*0.22, state.seed+11), 1.3);
+      let cr=rnd()*255, cg=rnd()*255, cb=rnd()*255;
       for(let x=0;x<sw;x++){
-        let v=rnd()*255;
-        carry = carry*smear + v*(1-smear);            // horizontal streak
-        v=clamp((carry*band-128)*(1+ctr*3.2)+128,0,255);
-        let r=v,gg=v,b=v;
-        if(chroma>0.01){ r=clamp(v+(rnd()-0.5)*chroma*300,0,255); b=clamp(v+(rnd()-0.5)*chroma*300,0,255); }
-        const o=(y*sw+x)*4; d[o]=r; d[o+1]=gg; d[o+2]=b; d[o+3]=255;
+        cr=cr*smear+rnd()*255*(1-smear);
+        cg=cg*smear+rnd()*255*(1-smear);
+        cb=cb*smear+rnd()*255*(1-smear);
+        const i=y*sw+x, lum=(cr*0.35+cg*0.4+cb*0.25);
+        // mix each pixel between grey luma and its own colour by chroma — more chroma, more
+        // coloured speckle, the way an over-driven signal splits into colour
+        R[i]=(lum*(1-chroma)+cr*chroma)*band;
+        G[i]=(lum*(1-chroma)+cg*chroma)*band;
+        B[i]=(lum*(1-chroma)+cb*chroma)*band;
       }
     }
-    // paint the small buffer up, no smoothing so blocks stay crisp
+    // composite with a horizontal channel split (red left, blue right) and a blue cast
+    const split=Math.round(chroma*sw*0.05)+(chroma>0.02?1:0);
+    const img=g.createImageData(sw,sh), d=img.data, blue=18*chroma;
+    for(let y=0;y<sh;y++) for(let x=0;x<sw;x++){
+      const i=y*sw+x;
+      const xr=Math.max(0,Math.min(sw-1,x-split)), xb=Math.max(0,Math.min(sw-1,x+split));
+      let r=R[y*sw+xr], gg=G[i], b=B[y*sw+xb]+blue;
+      r =clamp((r -128)*(1+ctr*2.8)+128,0,255);
+      gg=clamp((gg-128)*(1+ctr*2.8)+128,0,255);
+      b =clamp((b -128)*(1+ctr*2.8)+128,0,255);
+      const o=i*4; d[o]=r; d[o+1]=gg; d[o+2]=b; d[o+3]=255;
+    }
     const tmp=document.createElement('canvas'); tmp.width=sw; tmp.height=sh;
     tmp.getContext('2d').putImageData(img,0,0);
     g.imageSmoothingEnabled=false; g.drawImage(tmp,0,0,W,H); g.imageSmoothingEnabled=true;
+    // scanlines — thin dark rules, so it feels photographed off a screen
+    const gap=Math.max(2, Math.round(H/620));
+    g.save(); g.globalAlpha=0.16; g.fillStyle='#000';
+    for(let y=0;y<H;y+=gap) g.fillRect(0,y,W,1);
+    g.restore(); g.globalAlpha=1;
     if(state.invert){ g.save(); g.globalCompositeOperation='difference';
       g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.restore(); }
   }
@@ -556,6 +587,8 @@
 
   function applyGlitch(g,W,H,amt,t){
     if(amt<=0.004) return;
+    if(W*H > 40e6){ return; }   // too large to tear per-pixel safely; glitch is a screen effect
+
     const rnd=mulberry((state.seed*40503 ^ Math.floor(t*18))>>>0);
     const img=g.getImageData(0,0,W,H), d=img.data, src=new Uint8ClampedArray(d);
     let y=0;
@@ -666,18 +699,29 @@
   const dl=(blob,name)=>{ const u=URL.createObjectURL(blob), a=document.createElement('a');
     a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(u),1500); };
+  // Browsers cap canvas size — too big and toBlob quietly returns nothing. Keep each side and
+  // the total area under safe limits; if the requested size is over, scale it down to fit.
+  const MAX_SIDE=16384, MAX_AREA=100e6;
   function exportDims(){
-    const [aw,ah]=sizeWH(); const long=Math.max(aw,ah), s=state.res/long;
-    return [Math.round(aw*s), Math.round(ah*s)];
+    const [aw,ah]=sizeWH(); const long=Math.max(aw,ah);
+    let w=Math.round(aw*state.res/long), h=Math.round(ah*state.res/long);
+    let k=Math.min(1, MAX_SIDE/Math.max(w,h), Math.sqrt(MAX_AREA/(w*h)));
+    return [Math.max(1,Math.round(w*k)), Math.max(1,Math.round(h*k)), k<0.999];
   }
   function exportPNG(){
-    const [w,h]=exportDims();
-    setStatus(`rendering ${w}×${h}…`);
+    const [w,h,clamped]=exportDims();
+    setStatus(`rendering ${w}\u00d7${h}\u2026`+(clamped?' (capped to browser limit)':''));
     setTimeout(()=>{
-      const c=document.createElement('canvas'); c.width=w; c.height=h;
-      renderTo(c.getContext('2d'), w, h, animT, true);
-      c.toBlob(b=>{ dl(b,`static-${state.mode}-${Date.now()}.png`);
-        setStatus(`saved ${w}×${h}`); setTimeout(()=>setStatus(''),1800); },'image/png');
+      try{
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        renderTo(c.getContext('2d'), w, h, animT, true);
+        c.toBlob(b=>{
+          if(!b){ setStatus('that size was too large — try a smaller Pixels, or SVG'); setTimeout(()=>setStatus(''),4000); return; }
+          dl(b,`static-${state.mode}-${w}x${h}-${Date.now()}.png`);
+          const mb=(b.size/1048576).toFixed(1);
+          setStatus(`saved ${w}\u00d7${h} \u00b7 ${mb}MB`); setTimeout(()=>setStatus(''),2600);
+        },'image/png');
+      }catch(e){ setStatus('that size was too large — try a smaller Pixels, or SVG'); setTimeout(()=>setStatus(''),4000); }
     },30);
   }
   function exportSVG(){
@@ -711,7 +755,7 @@
     ['dens','amp','freq','warp','flow','wt','glitch','chroma','ctr','coarse','photoMix'].forEach(id=>bind(id,id));
     bind('angle','angle',v=>{ $('angleR').textContent=v+'\u00b0'; });
     bind('grain','grain',v=>{ $('grainR').textContent = +v>0 ? v : 'off'; });
-    bind('res','res',v=>{ $('resR').textContent=v; });
+    bind('res','res',v=>{ $('resR').textContent=v; syncRes(); });
     $('svgBtn').addEventListener('click',exportSVG);
     $('pngBtn').addEventListener('click',exportPNG);
     $('photoBtn').addEventListener('click',()=>$('photoInp').click());
@@ -737,13 +781,21 @@
   }
   function syncModeCtls(){
     const waves=state.mode==='waves';
-    ['warp','flow','wt'].forEach(id=>{ const g=$(id).closest('.grp'); if(g) g.style.opacity=waves?'':'0.4'; });
+    ['dens','amp','freq','warp','flow','wt','angle'].forEach(id=>{ const g=$(id).closest('.grp'); if(g) g.style.opacity=waves?'':'0.4'; });
+    // Coarse drives the snow grain and the bar tear, so it stays lit when they are active
+    const cg=$('coarse').closest('.grp'); if(cg) cg.style.opacity = state.mode==='waves' ? '0.4' : '';
     $('svgBtn').disabled = !waves;
     syncHint();
   }
+  function syncRes(){
+    const [ew,eh]=exportDims();
+    const inch=v=>(v/300);   // 300 DPI print
+    const el=$('resIn'); if(el) el.textContent = `${inch(ew).toFixed(1)}×${inch(eh).toFixed(1)}in @300`;
+  }
   function syncHint(){
-    const [aw,ah]=sizeWH(), [ew,eh]=exportDims();
-    $('hint').textContent = `${state.mode} · ${aw}:${ah} · png ${ew}×${eh}` + (state.mode==='waves'?' · svg vector':'');
+    const [aw,ah,clamped]=exportDims();
+    $('hint').textContent = `${state.mode} · png ${aw}×${ah}` + (clamped?' (capped)':'')
+      + ` · ${(aw/300).toFixed(1)}×${(ah/300).toFixed(1)}in@300` + (state.mode==='waves'?' · svg vector ∞':'');
   }
   function setTheme(t){ THEME=t; document.body.classList.toggle('dark',t==='dark');
     $('themeBtn').setAttribute('aria-pressed',String(t==='dark')); markDirty(); }
@@ -816,7 +868,7 @@
 
   wire(); resize(); setTheme(THEME);
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
-  syncModeCtls(); syncHint(); syncPhoto();
+  syncModeCtls(); syncHint(); syncPhoto(); syncRes();
   const veil=$('veil');
   veil.addEventListener('click',()=>{ state.ready=true; veil.style.display='none'; resize(); });
   requestAnimationFrame(frame);
