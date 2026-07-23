@@ -190,6 +190,7 @@
   /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
      underline is what the lane tabs use for that other meaning, so these fill instead. */
   .seg.lfolanes button{ padding:7px 9px; }
+  .seg.multi button[aria-pressed="true"]{ background:var(--ink); color:var(--paper); }
   .seg.lfolanes button[aria-pressed="true"]{ background:currentColor; box-shadow:none; }
   .seg.lfolanes button[aria-pressed="true"] span{ color:var(--paper); font-weight:600; }
   .seg.lfolanes button[aria-pressed="false"] span{ opacity:.5; }
@@ -497,7 +498,19 @@
           <button data-c="motion" aria-pressed="false">Motion</button>
           <button data-c="slit" aria-pressed="false">Slit</button>
           <button data-c="bloom" aria-pressed="false">Bloom</button>
+          <button data-c="face" aria-pressed="false">Face</button>
         </div>
+      </div>
+      <div class="grp" id="faceCtls" style="display:none" data-tip="Finds your face from skin tone and movement and pins the chosen effects to it. It is approximate, not exact, and the video never leaves this page. Turn on as many as you like.">
+        <label>Face filter <b style="font-weight:400;opacity:.55">tracks your face</b></label>
+        <div class="seg multi" id="camFxSeg">
+          <button data-f="glow" aria-pressed="true">Glow</button>
+          <button data-f="mosaic" aria-pressed="true">Mosaic</button>
+          <button data-f="kaleido" aria-pressed="false">Mirror</button>
+          <button data-f="trails" aria-pressed="false">Trails</button>
+        </div>
+        <label style="margin-top:9px">Face size <b id="camFaceSizeR">50</b></label>
+        <input id="camFaceSize" type="range" min="0" max="100" value="50" />
       </div>
       <div class="duo">
         <div class="grp" data-tip="How much of the last frame survives into the next. High values take a long time to settle and turn any movement into a trail."><label>Feedback <b id="camFbR">72</b></label><input id="camFb" type="range" min="0" max="98" value="72" /></div>
@@ -764,6 +777,15 @@
   var camVideo=null, camOn=false, camAsking=false, camStream=null;
   const camA=document.createElement('canvas'), camAx=camA.getContext('2d',{willReadFrequently:false});
   const camB=document.createElement('canvas'), camBx=camB.getContext('2d');   // last frame, for Motion
+  // Face tracking runs on a tiny copy of the frame — skin colour plus movement, no model,
+  // nothing uploaded. camS is that small analysis frame; camPx and camGhost are for the
+  // mosaic and trail effects.
+  const camS=document.createElement('canvas'), camSx=camS.getContext('2d',{willReadFrequently:true});
+  const camPx=document.createElement('canvas'), camPxx=camPx.getContext('2d');
+  const camGhost=document.createElement('canvas'), camGhostx=camGhost.getContext('2d');
+  let camPrev=null;
+  var camFace={x:0.5,y:0.42,r:0.16,vx:0,vy:0,conf:0};
+  const camFaceHist=[];
   let camSlitX=0, camHit=0;
   async function camStart(){
     if(camOn||camAsking) return;
@@ -803,6 +825,50 @@
     camAx.restore();
   }
   /* Painted into the trail layer as the ground, before anything else is drawn on it. */
+  /* Find the head: broadly skin-toned pixels, weighted by how much they moved, pulled toward
+     the upper-centre (where a face usually is) and toward wherever the face was last frame so
+     it doesn't jump to a passing hand. The weighted centroid is the position; the spread of
+     the weight is the size. Smoothed, so it glides rather than jitters. Approximate on
+     purpose — it needs no model and works in every browser. */
+  function faceTrack(w,h){
+    const SW=84, SH=Math.max(1,Math.round(SW*h/w));
+    if(camS.width!==SW||camS.height!==SH){ camS.width=SW; camS.height=SH; camPrev=null; }
+    const vw=camVideo.videoWidth||1280, vh=camVideo.videoHeight||720;
+    const sc=Math.max(SW/vw,SH/vh), dw=vw*sc, dh=vh*sc, dx=(SW-dw)/2, dy=(SH-dh)/2;
+    camSx.save(); camSx.globalCompositeOperation='source-over'; camSx.globalAlpha=1;
+    if(state.camMirror){ camSx.translate(SW,0); camSx.scale(-1,1); }
+    camSx.drawImage(camVideo,dx,dy,dw,dh); camSx.restore();
+    const img=camSx.getImageData(0,0,SW,SH).data, N=SW*SH;
+    if(!camPrev||camPrev.length!==N) camPrev=new Float32Array(N);
+    const lx=camFace.x*SW, ly=camFace.y*SH;
+    let sw=0,sx=0,sy=0,sxx=0,syy=0;
+    for(let y=0;y<SH;y++) for(let x=0;x<SW;x++){
+      const i=y*SW+x, o=i*4, r=img[o], gg=img[o+1], b=img[o+2];
+      const luma=0.3*r+0.59*gg+0.11*b, motion=Math.abs(luma-camPrev[i]); camPrev[i]=luma;
+      const mx=Math.max(r,gg,b), mn=Math.min(r,gg,b);
+      // deliberately loose skin test — better to include a bit of background than to miss a
+      // face under warm or cool light, since motion and the biases sort it out
+      const skin=(r>60&&gg>28&&b>12&&r>=gg-10&&r>=b&&(mx-mn)>10&&(r-Math.min(gg,b))>8)?1:0;
+      let wgt=skin+Math.min(1,motion/38)*0.5; if(wgt<=0) continue;
+      const nx=x/SW, ny=y/SH;
+      const centre=Math.exp(-((nx-0.5)*(nx-0.5))/0.16)*Math.exp(-((ny-0.4)*(ny-0.4))/0.16);
+      const dxn=nx-lx/SW, dyn=ny-ly/SH;
+      const prox=camFace.conf>0.05?Math.exp(-(dxn*dxn+dyn*dyn)/0.06):1;
+      wgt*=(0.35+centre)*(0.35+prox);
+      sw+=wgt; sx+=wgt*x; sy+=wgt*y; sxx+=wgt*x*x; syy+=wgt*y*y;
+    }
+    if(sw>4){
+      const mxp=sx/sw, myp=sy/sw;
+      const vx2=Math.max(1,sxx/sw-mxp*mxp), vy2=Math.max(1,syy/sw-myp*myp);
+      const nr=Math.min(0.42,Math.max(0.07,Math.sqrt(vx2+vy2)*1.7/SW));
+      const nx=mxp/SW, ny=myp/SH, conf=Math.min(1, sw/(N*0.05)), a=0.22;
+      camFace.vx=nx-camFace.x; camFace.vy=ny-camFace.y;
+      camFace.x+=(nx-camFace.x)*a; camFace.y+=(ny-camFace.y)*a; camFace.r+=(nr-camFace.r)*a;
+      camFace.conf+=(conf-camFace.conf)*0.2;
+    } else { camFace.conf*=0.9; }
+    camFaceHist.push({x:camFace.x,y:camFace.y,r:camFace.r}); if(camFaceHist.length>10) camFaceHist.shift();
+  }
+
   function camDraw(g,w,h,dt){
     if(!camOn||!camVideo||camVideo.readyState<2){ g.fillStyle='#000'; g.fillRect(0,0,w,h); return; }
     if(camA.width!==w||camA.height!==h){ camA.width=camB.width=w; camA.height=camB.height=h;
@@ -839,6 +905,65 @@
       camAx.save(); camAx.globalCompositeOperation='difference';
       camAx.drawImage(camB,0,0); camAx.restore();
       camBx.clearRect(0,0,w,h); putVideo(camBx,1);
+    } else if(look==='face'){
+      faceTrack(w,h);
+      const fx=camFace.x*w, fy=camFace.y*h;
+      const fr=Math.max(24, camFace.r*Math.min(w,h)*(0.55+state.camFaceSize/100));
+      const FX=state.camFx, conf=camFace.conf, seen=conf>0.08;
+      // the plain, mirrored frame first
+      camAx.globalCompositeOperation='source-over'; camAx.globalAlpha=1;
+      camAx.fillStyle='#000'; camAx.fillRect(0,0,w,h);
+      putVideo(camAx,1);
+      // Mirror: fold the frame into four-fold symmetry about the face, so a face becomes a
+      // mask. camB is the scratch the reflected copy is read from.
+      if(FX.kaleido && seen){
+        camBx.clearRect(0,0,w,h); camBx.drawImage(camA,0,0);
+        camAx.save(); camAx.beginPath(); camAx.rect(0,0,Math.max(1,fx),h); camAx.clip();
+        camAx.translate(2*fx,0); camAx.scale(-1,1); camAx.drawImage(camB,0,0); camAx.restore();
+        camBx.clearRect(0,0,w,h); camBx.drawImage(camA,0,0);
+        camAx.save(); camAx.beginPath(); camAx.rect(0,0,w,Math.max(1,fy)); camAx.clip();
+        camAx.translate(0,2*fy); camAx.scale(1,-1); camAx.drawImage(camB,0,0); camAx.restore();
+      }
+      // Mosaic: pixelate only the disc over the face, the rest of the room left alone.
+      if(FX.mosaic && seen){
+        const bx=Math.max(0,fx-fr), by=Math.max(0,fy-fr),
+              bw=Math.min(w-bx,2*fr), bh=Math.min(h-by,2*fr);
+        if(bw>4&&bh>4){
+          const n=Math.max(5,Math.round(14 - state.camFaceSize/14));
+          camPx.width=n; camPx.height=Math.max(1,Math.round(n*bh/bw));
+          camPxx.imageSmoothingEnabled=true; camPxx.clearRect(0,0,camPx.width,camPx.height);
+          camPxx.drawImage(camA,bx,by,bw,bh,0,0,camPx.width,camPx.height);
+          camAx.save(); camAx.beginPath(); camAx.arc(fx,fy,fr,0,6.283); camAx.clip();
+          camAx.imageSmoothingEnabled=false;
+          camAx.drawImage(camPx,0,0,camPx.width,camPx.height,bx,by,bw,bh);
+          camAx.imageSmoothingEnabled=true; camAx.restore();
+        }
+      }
+      // Trails: stamp a fading crop of the face at every recent position, so it echoes as it
+      // moves. Additive, so the ghosts read as light rather than smudges.
+      if(FX.trails && seen && camFaceHist.length>2){
+        const s2=Math.max(2,Math.round(2*fr));
+        camGhost.width=camGhost.height=s2;
+        camGhostx.clearRect(0,0,s2,s2);
+        camGhostx.save(); camGhostx.beginPath(); camGhostx.arc(s2/2,s2/2,s2/2,0,6.283); camGhostx.clip();
+        camGhostx.drawImage(camA,Math.max(0,fx-fr),Math.max(0,fy-fr),2*fr,2*fr,0,0,s2,s2);
+        camGhostx.restore();
+        camAx.save(); camAx.globalCompositeOperation='lighter';
+        for(let i=0;i<camFaceHist.length-1;i++){ const hp=camFaceHist[i];
+          camAx.globalAlpha=0.34*(i/camFaceHist.length);
+          camAx.drawImage(camGhost, hp.x*w-fr, hp.y*h-fr, s2, s2); }
+        camAx.restore(); camAx.globalAlpha=1; camAx.globalCompositeOperation='source-over';
+      }
+      // Glow: a halo that tracks the face, coloured by the palette and pumped by the music.
+      if(FX.glow){
+        const hue=hueOf(0)+drift, A=(0.42+kick*0.85)*Math.max(0.28,conf);
+        const gr=camAx.createRadialGradient(fx,fy,fr*0.12,fx,fy,fr*1.95);
+        gr.addColorStop(0,   hsla(hue,90,62,0.10*A));
+        gr.addColorStop(0.7, hsla(hue,96,60,0.6*A));
+        gr.addColorStop(1,   hsla(hue,96,60,0));
+        camAx.save(); camAx.globalCompositeOperation='lighter'; camAx.fillStyle=gr;
+        camAx.beginPath(); camAx.arc(fx,fy,fr*1.95,0,6.283); camAx.fill(); camAx.restore();
+      }
     } else {
       // feedback: last frame, grown and turned, then the live one over the top of it
       const fb=state.camFb/100;
@@ -919,7 +1044,8 @@
   const state={ palette:'PRISM', scale:'MinorPenta', root:48, tempo:0.560, trail:0.0, soft:0.0, delayFb:0.0,
     exportSize:'RL', ready:false, recording:false, recAudio:false, recMic:false,
     level:78, paused:false, orbLvl:70, orbSpd:50, orbTarget:'own', pixel:7, grit:45, sat:88, customHues:[155,185,265,300], lavaFuse:22, lavaSize:52, orbVoice:'cycle', orbEnv:{a:0.01,d:0.9,s:0.0,r:2.4}, evolve:42, visual:'glow', shape:'circle', bloom:100, weight:100, grainAmt:0, orbRings:2,
-    camLook:'feedback', camFb:72, camZm:14, camSp:6, camBl:30, camCt:40, camRx:60, camMirror:true };
+    camLook:'feedback', camFb:72, camZm:14, camSp:6, camBl:30, camCt:40, camRx:60, camMirror:true,
+    camFx:{glow:true,mosaic:true,kaleido:false,trails:false}, camFaceSize:50 };
   let drift=0, pianoReady=false, lastDroneT=0;
 
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
@@ -1569,8 +1695,11 @@
     if(g) g.style.display = v==='grunge' ? '' : 'none';
     if(l) l.style.display = v==='lava'   ? '' : 'none';
     if(c) c.style.display = v==='camera' ? '' : 'none';
+    syncCamLook();
     // Selecting Camera without a camera running would just show a black field, so ask for it.
     if(v==='camera' && !camOn && !camAsking) camStart(); }
+  function syncCamLook(){ const f=document.getElementById('faceCtls');
+    if(f) f.style.display = (state.visual==='camera' && state.camLook==='face') ? '' : 'none'; }
   seg('palSeg','palette','p',()=>{ refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v',()=>syncVisualCtls()); seg('shapeSeg','shape','h');
   const $=id=>document.getElementById(id);
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
@@ -1680,7 +1809,11 @@
   document.querySelectorAll('#camSeg button').forEach(b=>b.addEventListener('click',()=>{
     state.camLook=b.dataset.c;
     document.querySelectorAll('#camSeg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.c===state.camLook)));
-    camSeed(); }));
+    syncCamLook(); camSeed(); }));
+  document.querySelectorAll('#camFxSeg button').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.dataset.f; state.camFx[k]=!state.camFx[k];
+    b.setAttribute('aria-pressed',String(state.camFx[k])); }));
+  $('camFaceSize').addEventListener('input',e=>{ state.camFaceSize=+e.target.value; $('camFaceSizeR').textContent=e.target.value; });
   [['camFb','camFbR'],['camZm','camZmR'],['camSp','camSpR'],['camBl','camBlR'],
    ['camCt','camCtR'],['camRx','camRxR']].forEach(([id,out])=>{
     const el=$(id); if(!el) return;
@@ -2443,7 +2576,7 @@
   const TRACK_KEY='angel-tracks';
   const CTRL_IDS=['tempo','pitch','smear','evolve','cutoff','revWet','delFb','orbLvl','orbSpd',
     'bloom','weight','grainAmt','orbRings',
-    'camFb','camZm','camSp','camBl','camCt','camRx'];
+    'camFb','camZm','camSp','camBl','camCt','camRx','camFaceSize'];
   function snapshot(){
     return { v:1, theme:THEME,
       lanes:lanes.map(L=>({instr:L.instr,steps:L.steps,speed:L.speed,oct:L.oct,cut:L.cut,vol:L.vol,mute:!!L.mute,drone:!!L.drone,res:L.res,
@@ -2453,6 +2586,7 @@
       palette:state.palette, scale:state.scale, exportSize:state.exportSize, visual:state.visual, shape:state.shape,
       customHues:state.customHues.slice(), sat:state.sat,
       camLook:state.camLook, camMirror:state.camMirror,
+      camFx:Object.assign({},state.camFx),
       orbVoice:state.orbVoice, orbTarget:state.orbTarget, orbEnv:Object.assign({},state.orbEnv),
       ctrl:Object.fromEntries(CTRL_IDS.map(id=>[id, $(id)?$(id).value:null])) };
   }
@@ -2470,7 +2604,9 @@
       Object.assign(mods[i],m,{rate:Math.max(0,Math.min(100,rate)),lanes:m.lanes.slice()}); delete mods[i].secs; });
     state.palette=o.palette||state.palette; if(o.customHues) state.customHues=o.customHues.slice(); if(o.sat!=null) state.sat=o.sat; state.scale=o.scale||state.scale; state.visual=o.visual||state.visual; state.shape=o.shape||state.shape;
     if(o.camLook){ state.camLook=o.camLook;
-      document.querySelectorAll('#camSeg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.c===state.camLook))); }
+      document.querySelectorAll('#camSeg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.c===state.camLook))); syncCamLook(); }
+    if(o.camFx){ Object.assign(state.camFx,o.camFx);
+      document.querySelectorAll('#camFxSeg button').forEach(x=>x.setAttribute('aria-pressed',String(!!state.camFx[x.dataset.f]))); }
     if(o.camMirror!=null){ state.camMirror=!!o.camMirror;
       const f=$('camFlip'); if(f) f.setAttribute('aria-pressed',String(state.camMirror)); }
     state.orbVoice=o.orbVoice||'cycle'; if(o.orbEnv) state.orbEnv=Object.assign({},o.orbEnv);
@@ -2893,7 +3029,7 @@
   requestAnimationFrame(draw);
   // small handle for tinkering from the console (and for automated checks)
   window.angel={ lanes, mods, state, orbs, shards, evolve, arpFill, refreshMutes, setKbd, kbSync,
-    camStart, camStop, get camOn(){return camOn;}, camDraw,
+    camStart, camStop, get camOn(){return camOn;}, camDraw, faceTrack, get camFace(){return camFace;},
     jumpLane, jumpAll, savePNG, orbFire,
     ARR, resetPlayheads, arrSetRec, arrSetPlay, arrSeek, arrClear, arrSync,
     setDrone, droneChord, syncDroneLane, releaseDrone, refreshHoldSeg,
