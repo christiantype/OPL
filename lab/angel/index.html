@@ -647,6 +647,7 @@
     </div>
     <div class="grp"><div style="display:flex; gap:6px;">
       <button class="btn" id="snapBtn" style="flex:1" data-tip="Saves the canvas as a still image.">PNG</button>
+      <button class="btn" id="pdfBtn" style="flex:1" data-tip="Saves a high-resolution PDF at 300 DPI, three times the export size — a real print file.">PDF</button>
       <button class="btn" id="recBtn" style="flex:1" data-tip="Records the canvas and the sound together as a video.">Video</button>
       <button class="btn" id="audBtn" style="flex:1" data-tip="Records just the sound, with no picture.">Audio</button>
     </div></div>
@@ -1623,6 +1624,49 @@
   function savePNG(){ const [w,h]=SIZES[state.exportSize], c=document.createElement('canvas'); c.width=w; c.height=h;
     coverDraw(c.getContext('2d'),w,h); c.toBlob(b=>dl(b,`angel-${Date.now()}.png`),'image/png'); }
 
+  /* ---------- high-res PDF ----------
+     A PDF is only a container, so there's no need for a library: render the frame at print
+     resolution, embed it as a JPEG image (DCTDecode is the one filter a raw JPEG drops
+     straight into), and hand-build the few PDF objects around it. The page is sized in
+     points so the image lands at 300 DPI — a real print file. */
+  function buildPDF(jpg, iw, ih, ptW, ptH){
+    const enc=new TextEncoder(); const parts=[]; let len=0; const off=[];
+    const push=x=>{ const u=(typeof x==='string')?enc.encode(x):x; parts.push(u); len+=u.length; };
+    const mark=n=>{ off[n]=len; };
+    const content=`q ${ptW.toFixed(2)} 0 0 ${ptH.toFixed(2)} 0 0 cm /Im0 Do Q`;
+    push('%PDF-1.3\n');
+    mark(1); push('1 0 obj\n<</Type/Catalog/Pages 2 0 R>>\nendobj\n');
+    mark(2); push('2 0 obj\n<</Type/Pages/Kids[3 0 R]/Count 1>>\nendobj\n');
+    mark(3); push(`3 0 obj\n<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${ptW.toFixed(2)} ${ptH.toFixed(2)}]/Resources<</XObject<</Im0 4 0 R>>>>/Contents 5 0 R>>\nendobj\n`);
+    mark(4); push(`4 0 obj\n<</Type/XObject/Subtype/Image/Width ${iw}/Height ${ih}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${jpg.length}>>\nstream\n`);
+    push(jpg); push('\nendstream\nendobj\n');
+    mark(5); push(`5 0 obj\n<</Length ${content.length}>>\nstream\n${content}\nendstream\nendobj\n`);
+    const xrefAt=len;
+    let xref='xref\n0 6\n0000000000 65535 f \n';
+    for(let i=1;i<=5;i++) xref += String(off[i]).padStart(10,'0')+' 00000 n \n';
+    push(xref);
+    push(`trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n${xrefAt}\n%%EOF`);
+    const out=new Uint8Array(len); let p=0; for(const u of parts){ out.set(u,p); p+=u.length; }
+    return out;
+  }
+  function savePDF(){
+    // 3× the base size, so a 9:16 comes out ~3240×5760 — 10.8×19.2in at 300 DPI
+    const [bw,bh]=SIZES[state.exportSize], sc=3, w=bw*sc, h=bh*sc;
+    setStatus(`rendering PDF ${w}×${h}…`);
+    setTimeout(()=>{
+      const c=document.createElement('canvas'); c.width=w; c.height=h; coverDraw(c.getContext('2d'),w,h);
+      c.toBlob(async b=>{
+        if(!b){ setStatus('could not build the PDF'); setTimeout(()=>setStatus(''),3000); return; }
+        try{
+          const jpg=new Uint8Array(await b.arrayBuffer());
+          const dpi=300, ptW=w/dpi*72, ptH=h/dpi*72;
+          dl(new Blob([buildPDF(jpg,w,h,ptW,ptH)],{type:'application/pdf'}), `angel-${Date.now()}.pdf`);
+          setStatus(`saved PDF · ${(w/dpi).toFixed(1)}×${(h/dpi).toFixed(1)}in @300`); setTimeout(()=>setStatus(''),2800);
+        }catch(e){ setStatus('could not build the PDF'); setTimeout(()=>setStatus(''),3000); }
+      },'image/jpeg',0.95);
+    },30);
+  }
+
   /* Container support varies by browser: Safari gives MP4/H.264, Chrome and Firefox
      generally only WebM. Pick MP4 when it's genuinely supported and fall back rather
      than handing back a file whose extension lies about its contents. */
@@ -1819,6 +1863,7 @@
   $('clearOrbs').addEventListener('click',()=>{ orbs.length=0; shards.length=0; });
   $('clearSteps').addEventListener('click',()=>{ lanes.forEach(l=>l.pattern.fill(null)); selStep=-1; refreshSteps(); });
   $('snapBtn').addEventListener('click',savePNG);
+  $('pdfBtn').addEventListener('click',savePDF);
   $('recBtn').addEventListener('click',()=>{ state.recording?stopRec():startRec(); });
   $('audBtn').addEventListener('click',()=>{ state.recAudio?stopAud():startAud(); });
   if(!(typeof MediaRecorder!=='undefined' && HTMLCanvasElement.prototype.captureStream)){
