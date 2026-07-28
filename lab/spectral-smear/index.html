@@ -269,7 +269,7 @@
 </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name: 'Spectral Smear', desc: 'Flow-warped spectral smear', version: 'v1' });</script>
+<script>Opal.mountTopbar({ name: 'Spectral Smear', desc: 'Flow-warped spectral smear', about: "An image liquefied along a flow field, then integrated across a spectrum so each wavelength lands at a different offset \u2014 prismatic banding blooms only on its high-contrast edges.", version: 'v1' });</script>
 
 <script>
 (function(){
@@ -408,7 +408,7 @@
   wire(); resize(); document.body.classList.add('dark');
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
   syncRes(); syncHint(); loadShader();
-  const veil=$('veil'); veil.addEventListener('click',()=>{ veil.style.display='none'; resize(); loadTexture('./source.jpg'); });
+  { const veil=$('veil'); if(veil) veil.remove(); } resize(); loadTexture('./source.jpg');
   requestAnimationFrame(frame);
   window.spectral={ state, params, exportDims, get ready(){return !!prog;} };
 })();

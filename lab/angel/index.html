@@ -665,7 +665,7 @@
 </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name: 'Angel', desc: 'Playable colour & sound field', version: 'v1' });</script>
+<script>Opal.mountTopbar({ name: 'Angel', desc: 'Playable colour & sound field', about: "Four rings, each its own instrument, step-count and speed. Tap a ring to place steps; each ring turns at its own pace and plays what it passes. Tap the open field to add drifting orbs.", version: 'v1' });</script>
 
 <script>
 (() => {
@@ -2340,9 +2340,11 @@
 
   const veil=document.getElementById('veil');
   // Opens silent and empty: no steps, nothing sounding. You place the first note.
-  veil.addEventListener('click',async()=>{ await Tone.start(); buildAudio(); state.ready=true; veil.style.display='none';
-    refreshSteps();
-  },{once:true});
+  { const _v=document.getElementById('veil'); if(_v) _v.remove(); }
+  refreshSteps();
+  // Audio needs a user gesture, so it unlocks on the first interaction instead of a splash.
+  const _unlock=()=>{ Tone.start(); buildAudio(); state.ready=true; refreshSteps(); window.removeEventListener('pointerdown',_unlock,true); };
+  window.addEventListener('pointerdown',_unlock,true);
   /* ---------- sampling ----------
      Record the mic or drop in a file; the buffer becomes a pitched voice you can select for
      any lane or for the orbs. Playback is a one-zone Sampler rooted at C4, so the sequencer's

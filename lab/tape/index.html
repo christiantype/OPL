@@ -299,7 +299,7 @@
 </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name: 'Tape', desc: 'Disintegrating loop machine', version: 'v1' });</script>
+<script>Opal.mountTopbar({ name: 'Tape', desc: 'Disintegrating loop machine', about: "Four tape loops of different lengths, running at once. Play into one and it repeats \u2014 and every pass wears a little more away, until there is nothing left but the shape of it.", version: 'v1' });</script>
 
 <script>
 (function(){
@@ -787,12 +787,12 @@
   setTheme(THEME);
   resize(); refreshSegs(); refreshReels(); syncLoop(); knobify(); syncKnobs();
   const veil=$('veil');
-  veil.addEventListener('click',async()=>{
-    await Tone.start(); buildAudio(); state.ready=true;
-    veil.style.display='none'; resize();
-    loops[0].arm=true; applyLoop(0); refreshSegs(); refreshReels();
-    setStatus('loop 1 armed — click the field to play into it'); setTimeout(()=>setStatus(''),4200);
-  });
+  { const _v=$('veil'); if(_v) _v.remove(); } resize();
+  loops[0].arm=true; applyLoop(0); refreshSegs(); refreshReels();
+  // Audio needs a user gesture, so it unlocks on the first interaction instead of a splash.
+  const _unlock=()=>{ Tone.start(); buildAudio(); state.ready=true; window.removeEventListener('pointerdown',_unlock,true);
+    setStatus('loop 1 armed — click the field to play into it'); setTimeout(()=>setStatus(''),4200); };
+  window.addEventListener('pointerdown',_unlock,true);
   requestAnimationFrame(draw);
 
   window.tape={ loops, state, get A(){return A;}, eraseLoop, strike, setSource, setPaused, setTheme, applyAll, syncLoop };

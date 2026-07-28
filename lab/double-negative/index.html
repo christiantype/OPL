@@ -327,7 +327,7 @@
 </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name: 'Double Negative', desc: 'Layered image compositor', version: 'v1' });</script>
+<script>Opal.mountTopbar({ name: 'Double Negative', desc: 'Layered image compositor', about: "Layer your images and compose them by hand \u2014 move them, melt their edges, key out a background or keep only the contours, and set each one drifting in a slow Ken Burns loop.", version: 'v1' });</script>
 
 <script>
 (function(){
@@ -432,12 +432,17 @@
       row.appendChild(thumb(L)); const nm=document.createElement('span'); nm.className='nm'; nm.textContent=L.name; row.appendChild(nm);
       const up=document.createElement('button'); up.className='lb'; up.innerHTML='&#8593;'; up.title='bring forward';
       const dn=document.createElement('button'); dn.className='lb'; dn.innerHTML='&#8595;'; dn.title='send back';
+      const dup=document.createElement('button'); dup.className='lb'; dup.innerHTML='&#10697;'; dup.title='duplicate';
       const rm=document.createElement('button'); rm.className='lb'; rm.innerHTML='&#10005;'; rm.title='remove';
       up.onclick=e=>{ e.stopPropagation(); if(i<layers.length-1){ swap(i,i+1); } };
       dn.onclick=e=>{ e.stopPropagation(); if(i>0){ swap(i,i-1); } };
+      dup.onclick=e=>{ e.stopPropagation(); duplicate(i); };
       rm.onclick=e=>{ e.stopPropagation(); layers.splice(i,1); sel=Math.min(sel,layers.length-1); syncSel(); renderList(); markDirty(); };
       row.onclick=()=>{ sel=i; syncSel(); renderList(); };
-      row.appendChild(up); row.appendChild(dn); row.appendChild(rm); host.appendChild(row); } syncHint(); }
+      row.appendChild(up); row.appendChild(dn); row.appendChild(dup); row.appendChild(rm); host.appendChild(row); } syncHint(); }
+  function duplicate(i){ const s=layers[i]; const c={ ...s, id:uid++, name:s.name, x:s.x+28, y:s.y+28,
+    mask:{...s.mask}, kb:{...s.kb}, phase:(s.phase+1.1)%(Math.PI*2), _baked:null,_bw:0,_bh:0 };
+    bake(c); layers.splice(i+1,0,c); sel=i+1; syncSel(); renderList(); markDirty(); }
   function swap(a,b){ const t=layers[a]; layers[a]=layers[b]; layers[b]=t; if(sel===a)sel=b; else if(sel===b)sel=a; renderList(); markDirty(); }
 
   // ---------- sync selected layer -> controls ----------
@@ -544,7 +549,7 @@
   wire(); resize(); document.body.classList.add('dark');
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
   syncSel(); syncRes(); syncHint();
-  const veil=$('veil'); veil.addEventListener('click',()=>{ veil.style.display='none'; resize(); if(!layers.length) $('fileInp').click(); });
+  { const veil=$('veil'); if(veil) veil.remove(); } resize();
   requestAnimationFrame(tick);
   window.dn={ state, layers, render, exportDims, addImageFile:addImage, get sel(){return sel;} };
 })();

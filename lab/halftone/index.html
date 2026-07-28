@@ -324,7 +324,7 @@
 </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name: 'Halftone', desc: 'Print screen · your own marks', version: 'v1' });</script>
+<script>Opal.mountTopbar({ name: 'Halftone', desc: 'Print screen · your own marks', about: "A photo, broken into dots, duotone, dither or engraving \u2014 the print screen. Or rebuild it out of your own SVG marks, each its own colour. Export sharp as SVG or at any resolution as PNG.", version: 'v1' });</script>
 
 <script>
 (function(){
@@ -668,7 +668,7 @@
   wire(); resize(); document.body.classList.add('dark','nofile');
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
   syncHint(); syncRes(); syncKindCtls(); renderMarks();
-  const veil=$('veil'); veil.addEventListener('click',()=>{ state.ready=true; veil.style.display='none'; if(!img) useSample(); resize(); });
+  state.ready=true; if(!img) useSample(); { const veil=$('veil'); if(veil) veil.remove(); } resize();
   requestAnimationFrame(frame);
   window.halftone={ state, render, buildSVG, exportDims, get hasImg(){return !!img;}, useSample };
 })();
