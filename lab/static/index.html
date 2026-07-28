@@ -265,15 +265,21 @@
   </div>
 
   <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Photo</button>
-    <p class="rowhint">Optional. Drop a picture into the signal &#8212; the static rides over it and the glitch tears through both. It never leaves this page.</p>
+    <button type="button" class="rowhead" aria-expanded="true">Subject</button>
+    <p class="rowhint">Optional. Give the signal something to lose &#8212; a picture, or a word. The static rides over it and the glitch tears through both. It never leaves this page.</p>
+    <div class="grp" data-tip="Type a word and the broadcast loses it — the same tear, dropout and channel-split run right through your letters."><label>Wordmark</label>
+      <div style="display:flex; gap:6px;">
+        <input id="wordInp" type="text" placeholder="type a word" class="txtin" style="flex:1" />
+        <button class="btn" id="wordSet" data-tip="Sets the typed word as the subject the signal breaks up.">Set</button>
+      </div>
+    </div>
     <div class="grp" id="photoWrap" class="empty"><div style="display:flex; gap:6px;">
       <button class="btn" id="photoBtn" style="flex:1" data-tip="Loads a picture and sets it into the field. Nothing is uploaded.">Load photo</button>
-      <button class="btn" id="photoClear" style="flex:1" data-tip="Removes the photo and goes back to pure static.">Clear</button>
+      <button class="btn" id="photoClear" style="flex:1" data-tip="Removes the subject and goes back to pure static.">Clear</button>
     </div></div>
     <input id="photoInp" type="file" accept="image/*" hidden />
-    <div class="grp" data-tip="How present the photo is under the static. At zero it is hidden and you are back to pure static; up full it is the subject and the static is a texture over it."><label>Photo <b id="photoMixR">0</b></label><input id="photoMix" type="range" min="0" max="100" value="0" /></div>
-    <div class="grp"><label>Loaded <b id="photoName">none</b></label></div>
+    <div class="grp" data-tip="How present the subject is under the static. At zero it is hidden and you are back to pure static; up full it is the subject and the static is a texture over it."><label>Presence <b id="photoMixR">0</b></label><input id="photoMix" type="range" min="0" max="100" value="0" /></div>
+    <div class="grp"><label>Subject <b id="photoName">none</b></label></div>
   </div>
 
   <div class="row">
@@ -298,11 +304,11 @@
 <div id="veil">
   <div class="orb"></div>
   <h1>Static</h1>
-  <p>A generator for broken signal &#8212; photographic television snow, torn colour bars, flowing interference lines. Shape it, then export it at any resolution as PNG, or the line waves as SVG. Tap to begin.</p>
+  <p>A generator for broken signal &#8212; photographic television snow, torn colour bars, flowing interference lines. Give it a picture or a word and watch the broadcast lose it. Shape it, then export it at any resolution as PNG, or the line waves as SVG. Tap to begin.</p>
 </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name: 'Static', desc: 'Broken-signal generator', version: 'v1' });</script>
+<script>Opal.mountTopbar({ name: 'Static', desc: 'Broken signal · lose your subject', version: 'v1' });</script>
 
 <script>
 (function(){
@@ -751,17 +757,32 @@
     const s=Math.max(W/iw,H/ih); g.save(); g.globalAlpha=alpha;
     g.drawImage(im,(W-iw*s)/2,(H-ih*s)/2,iw*s,ih*s); g.restore(); g.globalAlpha=1;
   }
+  function bumpMix(v){ if(state.photoMix<=0){ state.photoMix=v; const el=$('photoMix'); if(el){ el.value=String(v); $('photoMixR').textContent=String(v); } } }
   function loadPhoto(file){
     const url=URL.createObjectURL(file), im=new Image();
-    im.onload=()=>{ photo=im; photoName=file.name;
-      if(state.photoMix<=0){ state.photoMix=72; const el=$('photoMix'); if(el){ el.value='72'; el.dispatchEvent(new Event('input',{bubbles:true})); } }
-      URL.revokeObjectURL(url); syncPhoto(); markDirty();
+    im.onload=()=>{ photo=im; photoName=file.name; wordText='';
+      bumpMix(72); URL.revokeObjectURL(url); syncPhoto(); markDirty();
       setStatus(file.name+' loaded'); setTimeout(()=>setStatus(''),1800); };
     im.onerror=()=>{ setStatus('could not read that image'); setTimeout(()=>setStatus(''),2600); URL.revokeObjectURL(url); };
     im.src=url;
   }
-  function clearPhoto(){ photo=null; photoName=''; state.photoMix=0;
+  // A typed wordmark becomes the subject the signal loses — rendered to a canvas that then
+  // rides the very same photo pipeline (mix, tear, dropout, channel-split) as a picture would.
+  let wordText='';
+  function setWord(str){ str=(str||'').trim(); if(!str){ setStatus('type a word first'); setTimeout(()=>setStatus(''),1600); return; }
+    const [aw,ah]=(state.size||'1920x1080').split('x').map(Number); const cW=1600, cH=Math.max(1,Math.round(cW*ah/aw));
+    const c=document.createElement('canvas'); c.width=cW; c.height=cH; const x=c.getContext('2d');
+    x.clearRect(0,0,cW,cH); x.fillStyle='#ffffff'; x.textAlign='center'; x.textBaseline='middle';
+    const fam='"Helvetica Neue",Inter,ui-sans-serif,Arial,sans-serif';
+    x.font=`800 200px ${fam}`; const w0=Math.max(1,x.measureText(str).width);
+    let fs=Math.min(200*(cW*0.86)/w0, cH*0.66); x.font=`800 ${fs}px ${fam}`;
+    x.fillText(str, cW/2, cH/2 + fs*0.02);
+    photo=c; photoName='“'+str+'”'; wordText=str; bumpMix(82); syncPhoto(); markDirty();
+    setStatus('word set into the signal'); setTimeout(()=>setStatus(''),1600);
+  }
+  function clearPhoto(){ photo=null; photoName=''; wordText=''; state.photoMix=0;
     const el=$('photoMix'); if(el){ el.value='0'; $('photoMixR').textContent='0'; }
+    const wi=$('wordInp'); if(wi) wi.value='';
     syncPhoto(); markDirty(); }
   function syncPhoto(){ const l=$('photoName'); if(l) l.textContent = photo ? photoName : 'none';
     const wrap=$('photoWrap'); if(wrap) wrap.classList.toggle('empty', !photo); }
@@ -866,7 +887,7 @@
   function wire(){
     seg('modeSeg','mode','m',()=>{ syncModeCtls(); });
     seg('invSeg','invert','i');
-    seg('sizeSeg','size','z');
+    seg('sizeSeg','size','z',()=>{ if(wordText) setWord(wordText); });
     ['dens','amp','freq','warp','flow','wt','glitch','chroma','ctr','coarse','photoMix'].forEach(id=>bind(id,id));
     bind('angle','angle',v=>{ $('angleR').textContent=v+'\u00b0'; });
     bind('grain','grain',v=>{ $('grainR').textContent = +v>0 ? v : 'off'; });
@@ -876,6 +897,8 @@
     $('photoBtn').addEventListener('click',()=>$('photoInp').click());
     $('photoClear').addEventListener('click',clearPhoto);
     $('photoInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadPhoto(f); });
+    $('wordSet').addEventListener('click',()=>setWord($('wordInp').value));
+    $('wordInp').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); setWord($('wordInp').value); } });
     $('seedBtn').addEventListener('click',()=>{ state.seed=(state.seed*1103515245+12345)>>>0 || 1;
       markDirty(); setStatus('new pattern'); setTimeout(()=>setStatus(''),1000); });
     $('themeBtn').addEventListener('click',()=>setTheme(isDark()?'light':'dark'));
