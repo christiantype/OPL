@@ -190,9 +190,12 @@
   #reels{ position:fixed; left:16px; bottom:14px; z-index:5; display:flex; gap:7px; pointer-events:none; }
   .reel{ font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute);
     padding:5px 9px; border-radius:999px; border:1px solid var(--hair); background:var(--panel);
-    -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
+    -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
+    pointer-events:auto; cursor:pointer; }
+  .reel:hover{ border-color:var(--edge); }
   .reel b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
   .reel.armed{ color:#ff4d5e; border-color:#ff4d5e; }
+  .reel-x{ opacity:.4; margin-left:2px; } .reel:hover .reel-x{ opacity:1; }
   body.fs #reels{ display:none; }
   .seg.arm button[aria-pressed="true"]{ background:#ff4d5e; color:#fff; box-shadow:none; }
   .seg.frz button[aria-pressed="true"]{ background:currentColor; box-shadow:none; }
@@ -513,8 +516,9 @@
     const el=$('reels'); if(!el) return; el.innerHTML='';
     loops.forEach((lp,i)=>{ const d=document.createElement('div');
       d.className='reel'+(lp.arm?' armed':'');
-      d.innerHTML=`<b>${i+1}</b> ${lp.len.toFixed(1)}s${lp.frz?' &#183; held':''}`;
+      d.innerHTML=`<b>${i+1}</b> ${lp.len.toFixed(1)}s${lp.frz?' &#183; held':''} <span class="reel-x">&#10005;</span>`;
       d.style.borderColor = lp.arm ? '#ff4d5e' : '';
+      d.title=`clear loop ${i+1}`; d.onclick=()=>eraseLoop(i);
       el.appendChild(d); });
   }
   function syncLoop(){
@@ -613,6 +617,14 @@
       }
     }
     paintWear();
+    // Live record scope: while a loop is armed, draw its incoming waveform across the frame,
+    // so you can see what's going onto the tape — not just the red dot.
+    if(A && state.ready){ const arm=[]; for(let i=0;i<loops.length;i++) if(loops[i].arm) arm.push(i);
+      if(arm.length){ const buf=A.L[arm[0]].an.getValue(); const yb=H*0.9, amp=H*0.075;
+        ctx.save(); ctx.globalAlpha=0.92; ctx.strokeStyle='#ff4d5e'; ctx.lineWidth=1.5; ctx.lineJoin='round'; ctx.beginPath();
+        for(let j=0;j<buf.length;j++){ const x=j/(buf.length-1)*W, y=yb-clamp(buf[j],-1,1)*amp; j?ctx.lineTo(x,y):ctx.moveTo(x,y); } ctx.stroke();
+        ctx.globalAlpha=1; ctx.fillStyle='#ff4d5e'; ctx.font=`600 ${Math.round(Math.min(W,H)*0.015)}px ui-monospace,Menlo,monospace`;
+        ctx.textBaseline='alphabetic'; ctx.fillText('● REC '+arm.map(k=>k+1).join(' '), 16, yb-amp-10); ctx.restore(); } }
   }
 
   // ---------- wiring ----------
