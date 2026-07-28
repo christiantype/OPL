@@ -329,11 +329,16 @@
   addEventListener('resize',resize);
 
   // draw one image scrolling along a rectangle [x,y,w,h]; `horiz` scrolls along x else y
-  function scrollRect(g,im,x,y,w,h,horiz,off,zoom){ if(!im) return; zoom=zoom||1;
-    if(horiz){ const dw=Math.max(1,im.naturalWidth*(h/im.naturalHeight)*zoom); let o=((off%dw)+dw)%dw;
-      g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip(); for(let px=x-o; px<x+w; px+=dw) g.drawImage(im,px,y,dw,h); g.restore(); }
-    else { const dh=Math.max(1,im.naturalHeight*(w/im.naturalWidth)*zoom); let o=((off%dh)+dh)%dh;
-      g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip(); for(let py=y-o; py<y+h; py+=dh) g.drawImage(im,x,py,w,dh); g.restore(); } }
+  // Draw a STRIP of the image (from source position srcPf, length srcLf) stretched to the band
+  // and scrolled — so the frame reads as a sliced photo, not the whole image squished.
+  function drawSlice(g,im,horiz,x,y,w,h,srcPf,srcLf,off,zoom){ if(!im) return; zoom=zoom||1;
+    const iw=im.naturalWidth, ih=im.naturalHeight;
+    g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip();
+    if(horiz){ const sh=Math.max(1,srcLf*ih), sy=clamp(srcPf,0,1-srcLf)*ih; const dw=Math.max(2, iw*(h/sh)*zoom); let o=((off%dw)+dw)%dw;
+      for(let px=x-o; px<x+w; px+=dw) g.drawImage(im,0,sy,iw,sh, px,y,dw,h); }
+    else { const sw=Math.max(1,srcLf*iw), sx=clamp(srcPf,0,1-srcLf)*iw; const dh=Math.max(2, ih*(w/sw)*zoom); let o=((off%dh)+dh)%dh;
+      for(let py=y-o; py<y+h; py+=dh) g.drawImage(im,sx,0,sw,ih, x,py,w,dh); }
+    g.restore(); }
 
   function renderComp(g,W,H,t){
     g.globalAlpha=1; g.globalCompositeOperation='source-over';
@@ -346,10 +351,10 @@
       const fc = frag>0.01 ? 1+Math.round(frag*5) : 1;   // dice the band into scattered pieces
       if(b.horiz){ const y=b.p*H, h=Math.max(1,b.thick*H), x=b.start*W, w=Math.max(1,b.len*W), cw=w/fc;
         for(let k=0;k<fc;k++){ const jx=(h01(bi,k)-0.5)*frag*W*0.28, jy=(h01(bi,k+99)-0.5)*frag*H*0.34;
-          scrollRect(g,im, x+k*cw+jx, y+jy, cw, h, true, off+k*cw, b.zoom); } }
+          drawSlice(g,im,true, x+k*cw+jx, y+jy, cw, h, b.p, b.thick, off+k*cw, b.zoom); } }
       else { const x=b.p*W, w=Math.max(1,b.thick*W), y=b.start*H, h=Math.max(1,b.len*H), ch=h/fc;
         for(let k=0;k<fc;k++){ const jy=(h01(bi,k)-0.5)*frag*H*0.28, jx=(h01(bi,k+99)-0.5)*frag*W*0.34;
-          scrollRect(g,im, x+jx, y+k*ch+jy, w, ch, false, off+k*ch, b.zoom); } } }
+          drawSlice(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch, b.zoom); } } }
     if(+state.meta) drawMeta(g,W,H,t);
   }
   // Clinical, esoteric telemetry — code fragments scattered across the frame, values live.
