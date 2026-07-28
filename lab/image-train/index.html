@@ -250,6 +250,10 @@
       <div class="grp" data-tip="How many crossing bands the Weave lays over the top."><label>Cross <b id="crossR">30</b></label><input id="cross" type="range" min="0" max="100" value="30" /></div>
       <div class="grp" data-tip="Breaks each band into scattered pieces so the images never fully assemble — sliced and dispersed across the frame."><label>Disperse <b id="fragmentR">0</b></label><input id="fragment" type="range" min="0" max="100" value="0" /></div>
     </div>
+    <div class="duo">
+      <div class="grp" data-tip="Turns bands into smudge streaks (from Lake Opeka) — a single moving column stretched sideways, keeping vertical detail. Higher smears more bands."><label>Smudge <b id="smudgeR">0</b></label><input id="smudge" type="range" min="0" max="100" value="0" /></div>
+      <div class="grp" data-tip="Links the bands with connection lines and nodes. Higher draws more connections across the frame."><label>Connect <b id="connectR">0</b></label><input id="connect" type="range" min="0" max="100" value="0" /></div>
+    </div>
     <div class="grp" data-tip="Overlay the frame with its own data — clinical telemetry, code fragments, time, location and per-band speeds scattered across the frame."><label>Metadata</label>
       <div class="seg" id="metaSeg"><button data-x="0" aria-pressed="true">Off</button><button data-x="1" aria-pressed="false">On</button></div>
     </div>
@@ -294,7 +298,7 @@
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
   let THEME='dark';
   const state={ count:18, uneven:55, axis:'rows', cross:30, speed:45, spread:60, bg:'#0a0b10',
-    size:'1080x1350', res:3200, seed:7, meta:0, fragment:0, playing:true };
+    size:'1080x1350', res:3200, seed:7, meta:0, fragment:0, connect:0, smudge:0, playing:true };
   const CW=()=>+state.size.split('x')[0], CH=()=>+state.size.split('x')[1];
   function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
   function h01(a,b){ let h=(Math.imul(a|0,73856093) ^ Math.imul(b|0,19349663) ^ Math.imul(state.seed|0,83492791))>>>0; h=Math.imul(h^h>>>15,2246822519); h^=h>>>13; return (h>>>0)/4294967296; }
@@ -319,9 +323,26 @@
       const len=clamp(1 - r()*vr*0.9, 0.26, 1);              // not always full-length
       const start=r()*(1-len)*vr;
       bands.push({ horiz, p, thick, start, len, img:imgs.length?((r()*imgs.length)|0):0,
-        dir:r()<0.5?-1:1, spd:0.3+r()*2.0, zoom:0.6+r()*1.5, phase:r() });
+        dir:r()<0.5?-1:1, spd:0.3+r()*2.0, zoom:0.6+r()*1.5, phase:r(), sr:r() });
     }
     bandsKey=key; }
+  // Smudge (from Lake Opeka): stretch a single moving source column across the band, keeping
+  // its vertical detail but smearing it sideways into a streak.
+  function drawSmudge(g,im,horiz,x,y,w,h,srcPf,srcLf,off){ if(!im) return; const iw=im.naturalWidth, ih=im.naturalHeight;
+    g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip();
+    if(horiz){ const sh=Math.max(1,srcLf*ih), sy=clamp(srcPf,0,1-srcLf)*ih; const col=Math.floor(((off*0.6%iw)+iw)%iw); g.drawImage(im, col, sy, 1, sh, x, y, w, h); }
+    else { const sw=Math.max(1,srcLf*iw), sx=clamp(srcPf,0,1-srcLf)*iw; const row=Math.floor(((off*0.6%ih)+ih)%ih); g.drawImage(im, sx, row, sw, 1, x, y, w, h); }
+    g.restore(); }
+  // Connection lines: nodes at band centres, linked in pairs; count scales with Connect.
+  let conns=null, connKey='';
+  function buildConns(){ const key=[state.seed,state.connect,state.count].join(','); if(conns&&connKey===key) return;
+    const r=mulberry((state.seed*40503+7)>>>0), N=Math.max(1,state.count), nc=Math.round(state.connect/100*N*1.3);
+    conns=[]; for(let i=0;i<nc;i++) conns.push([(r()*N)|0,(r()*N)|0]); connKey=key; }
+  function nodeAt(i,W,H){ const b=bands[i%bands.length]; return b.horiz ? [(b.start+b.len/2)*W,(b.p+b.thick/2)*H] : [(b.p+b.thick/2)*W,(b.start+b.len/2)*H]; }
+  function drawConns(g,W,H){ if(state.connect<=0||!bands) return; buildConns(); const s=Math.min(W,H);
+    g.save(); g.strokeStyle='rgba(255,255,255,0.55)'; g.lineWidth=Math.max(1,s*0.0016); g.fillStyle='rgba(255,255,255,0.85)';
+    const used=new Set(); for(const [a,c] of conns){ if(a===c) continue; const p1=nodeAt(a,W,H), p2=nodeAt(c,W,H); g.beginPath(); g.moveTo(p1[0],p1[1]); g.lineTo(p2[0],p2[1]); g.stroke(); used.add(a); used.add(c); }
+    const rr=Math.max(2,s*0.0055); used.forEach(i=>{ const p=nodeAt(i,W,H); g.beginPath(); g.arc(p[0],p[1],rr,0,6.283); g.fill(); }); g.restore(); }
 
   const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
   let W=0,H=0,DPR=1, view={fit:1,ox:0,oy:0};
@@ -349,12 +370,16 @@
     let bi=0;
     for(const b of bands){ const im=imgs[b.img%imgs.length]; const off=(t*base*b.spd)*b.dir + b.phase*500; bi++;
       const fc = frag>0.01 ? 1+Math.round(frag*5) : 1;   // dice the band into scattered pieces
+      const sm = b.sr < state.smudge/100;                 // this band renders as a smudge streak
       if(b.horiz){ const y=b.p*H, h=Math.max(1,b.thick*H), x=b.start*W, w=Math.max(1,b.len*W), cw=w/fc;
         for(let k=0;k<fc;k++){ const jx=(h01(bi,k)-0.5)*frag*W*0.28, jy=(h01(bi,k+99)-0.5)*frag*H*0.34;
-          drawSlice(g,im,true, x+k*cw+jx, y+jy, cw, h, b.p, b.thick, off+k*cw, b.zoom); } }
+          if(sm) drawSmudge(g,im,true, x+k*cw+jx, y+jy, cw, h, b.p, b.thick, off+k*cw);
+          else drawSlice(g,im,true, x+k*cw+jx, y+jy, cw, h, b.p, b.thick, off+k*cw, b.zoom); } }
       else { const x=b.p*W, w=Math.max(1,b.thick*W), y=b.start*H, h=Math.max(1,b.len*H), ch=h/fc;
         for(let k=0;k<fc;k++){ const jy=(h01(bi,k)-0.5)*frag*H*0.28, jx=(h01(bi,k+99)-0.5)*frag*W*0.34;
-          drawSlice(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch, b.zoom); } } }
+          if(sm) drawSmudge(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch);
+          else drawSlice(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch, b.zoom); } } }
+    drawConns(g,W,H);
     if(+state.meta) drawMeta(g,W,H,t);
   }
   // Clinical, esoteric telemetry — code fragments scattered across the frame, values live.
@@ -419,7 +444,7 @@
   const bind=(id,key,fn)=>{ const e=$(id); e.addEventListener('input',ev=>{ state[key]=+ev.target.value; const r=$(id+'R'); if(r)r.textContent=ev.target.value; bandsKey=''; if(fn)fn(); markDirty(); }); };
   function wire(){
     bindSeg('axisSeg','axis','a'); bindSeg('metaSeg','meta','x'); bindSeg('sizeSeg','size','z',()=>{ syncRes(); syncHint(); });
-    ['count','uneven','cross','fragment','speed','spread'].forEach(id=>bind(id,id));
+    ['count','uneven','cross','fragment','smudge','connect','speed','spread'].forEach(id=>bind(id,id));
     $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
     $('addBtn').addEventListener('click',()=>$('fileInp').click());
