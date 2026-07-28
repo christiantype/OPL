@@ -390,32 +390,28 @@
 
   // Connection lines: a proximity mesh — each band's node links to its nearest neighbours, so
   // the network reads as intentional (close things connect), not random lines. Connect = density.
-  // An organic relational web: nodes on a softly-jittered field (even but not gridded), each
-  // linked to its nearest neighbours with gently curved connectors, node size scaled by how
-  // many links it has (hubs), and a slow drift so the whole web breathes. Connect = density.
-  function drawConns(g,W,H,t){ if(state.connect<=0) return; const s=Math.min(W,H), dens=state.connect/100; t=t||0;
-    const cols=2+Math.round(dens*6), rows=Math.max(2,Math.round((2+dens*6)*H/W));
-    const mx=W*0.08, my=H*0.08, gw=W-2*mx, gh=H-2*my, r=mulberry(1337);
-    const pts=[];
-    for(let ry=0;ry<rows;ry++) for(let cx=0;cx<cols;cx++){
-      const bx=mx+gw*(cols>1?cx/(cols-1):0.5)+(r()-0.5)*gw/cols*0.85;
-      const by=my+gh*(rows>1?ry/(rows-1):0.5)+(r()-0.5)*gh/rows*0.85;
-      const ph=r()*6.283, dr=s*0.013;
-      pts.push({x:bx+Math.cos(t*0.5+ph)*dr, y:by+Math.sin(t*0.42+ph*1.4)*dr}); }
-    const N=pts.length, kk=2+Math.round(dens*2), maxLen=s*0.44;
-    const seen=new Set(), edges=[], deg=new Array(N).fill(0);
-    for(let i=0;i<N;i++){ const d=[]; for(let j=0;j<N;j++){ if(j===i) continue; const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y; d.push([dx*dx+dy*dy,j]); }
-      d.sort((a,b)=>a[0]-b[0]);
-      for(let m=0;m<Math.min(kk,d.length);m++){ const j=d[m][1], key=i<j?i+'_'+j:j+'_'+i; if(seen.has(key)) continue; seen.add(key); const dist=Math.sqrt(d[m][0]); if(dist>maxLen) continue; edges.push([i,j,dist]); deg[i]++; deg[j]++; } }
+  // Logical web: a node sits on each band (its image slice), and bands drawn from the SAME
+  // source image are linked to their nearest same-source neighbours — colour-coded per image.
+  // The connectors trace which slices belong to which picture. Connect = links per node.
+  const CONN_HUE=['255,255,255','120,190,255','255,170,110','150,235,170','225,150,255','255,215,110','120,235,225'];
+  function drawConns(g,W,H,t){ if(state.connect<=0||!bands||!imgs.length) return; const s=Math.min(W,H);
+    // node anchored on each band: cross-axis = band position; along-axis spread by the band's
+    // own seed so full-width bands don't collapse into one line.
+    const pts=bands.map(b=> b.horiz ? [(0.12+b.phase*0.76)*W,(b.p+b.thick/2)*H] : [(b.p+b.thick/2)*W,(0.12+b.phase*0.76)*H]);
+    const groups={}; bands.forEach((b,i)=>{ const k=b.img%imgs.length; (groups[k]=groups[k]||[]).push(i); });
+    const kk=1+Math.round(state.connect/100*3), seen=new Set(), edges=[], deg=new Array(pts.length).fill(0);
+    for(const key in groups){ const grp=groups[key];   // link each band to nearest bands of the same image
+      for(const i of grp){ const d=grp.filter(j=>j!==i).map(j=>{ const dx=pts[i][0]-pts[j][0],dy=pts[i][1]-pts[j][1]; return [dx*dx+dy*dy,j]; }).sort((a,b)=>a[0]-b[0]);
+        for(let m=0;m<Math.min(kk,d.length);m++){ const j=d[m][1], ek=i<j?i+'_'+j:j+'_'+i; if(seen.has(ek)) continue; seen.add(ek); edges.push([i,j,+key]); deg[i]++; deg[j]++; } } }
     g.save(); g.lineWidth=Math.max(1,s*0.0013); g.lineCap='round';
-    for(const [i,j,dist] of edges){ const a=pts[i], b=pts[j];
-      g.strokeStyle=`rgba(255,255,255,${(0.13+0.42*(1-dist/maxLen)).toFixed(2)})`;
-      const mpx=(a.x+b.x)/2, mpy=(a.y+b.y)/2, nx=-(b.y-a.y), ny=(b.x-a.x), nl=Math.hypot(nx,ny)||1;
-      const bow=((i+j)%2?1:-1)*dist*0.16;   // alternating gentle curve
-      g.beginPath(); g.moveTo(a.x,a.y); g.quadraticCurveTo(mpx+nx/nl*bow, mpy+ny/nl*bow, b.x,b.y); g.stroke(); }
-    for(let i=0;i<N;i++){ if(!deg[i]) continue; const p=pts[i], rr=Math.max(1.6,s*0.0028*(1+deg[i]*0.5));
-      g.strokeStyle='rgba(255,255,255,0.55)'; g.lineWidth=Math.max(1,s*0.0011); g.beginPath(); g.arc(p.x,p.y,rr,0,6.283); g.stroke();
-      g.fillStyle='rgba(255,255,255,0.95)'; g.beginPath(); g.arc(p.x,p.y,Math.max(1,rr*0.34),0,6.283); g.fill(); }
+    for(const [i,j,src] of edges){ const a=pts[i],b=pts[j], col=CONN_HUE[src%CONN_HUE.length];
+      g.strokeStyle=`rgba(${col},0.5)`;
+      const mpx=(a[0]+b[0])/2, mpy=(a[1]+b[1])/2, nx=-(b[1]-a[1]), ny=(b[0]-a[0]), nl=Math.hypot(nx,ny)||1;
+      const bow=((i+j)%2?1:-1)*Math.hypot(b[0]-a[0],b[1]-a[1])*0.14;   // gentle curve
+      g.beginPath(); g.moveTo(a[0],a[1]); g.quadraticCurveTo(mpx+nx/nl*bow, mpy+ny/nl*bow, b[0],b[1]); g.stroke(); }
+    for(let i=0;i<pts.length;i++){ if(!deg[i]) continue; const p=pts[i], col=CONN_HUE[(bands[i].img%imgs.length)%CONN_HUE.length], rr=Math.max(1.8,s*0.0028*(1+deg[i]*0.45));
+      g.strokeStyle=`rgba(${col},0.65)`; g.lineWidth=Math.max(1,s*0.0011); g.beginPath(); g.arc(p[0],p[1],rr,0,6.283); g.stroke();
+      g.fillStyle=`rgba(${col},0.95)`; g.beginPath(); g.arc(p[0],p[1],Math.max(1,rr*0.4),0,6.283); g.fill(); }
     g.restore(); }
 
   const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
