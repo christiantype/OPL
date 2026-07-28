@@ -3628,16 +3628,16 @@ function compositeSources(W, H, active, blur = 0) {
 // colors from the base composition rendered at export size. Transparent
 // background so the SVG can be dropped onto the PNG (or any photo) as a
 // pure vector overlay.
-function buildLayerSVG(size, active) {
+function buildLayerSVG(w, h, active) {
   const L = state.layer;
   const N   = DOT.resolution[L.resolution - 1];
   const sz  = DOT.dotSize[L.dotSize - 1];
-  const blrPx = (DOT.imageBlur[L.blur - 1] || 0) * (size / 1000);
+  const blrPx = (DOT.imageBlur[L.blur - 1] || 0) * (w / 1000);
 
   // 1) Render the BASE composition at export size to get the colors
   //    the layer should sample.
   const baseCv = document.createElement('canvas');
-  baseCv.width = size; baseCv.height = size;
+  baseCv.width = w; baseCv.height = h;
   const savedLayerEnabled = L.enabled;
   L.enabled = false;        // render base only, no recursion
   render(baseCv);
@@ -3647,20 +3647,22 @@ function buildLayerSVG(size, active) {
   let sampleSrc;
   if (blrPx > 0) {
     const off = document.createElement('canvas');
-    off.width = size; off.height = size;
+    off.width = w; off.height = h;
     const oc = off.getContext('2d');
     oc.filter = `blur(${blrPx}px)`;
     oc.drawImage(baseCv, 0, 0);
-    sampleSrc = oc.getImageData(0, 0, size, size).data;
+    sampleSrc = oc.getImageData(0, 0, w, h).data;
   } else {
-    sampleSrc = baseCv.getContext('2d').getImageData(0, 0, size, size).data;
+    sampleSrc = baseCv.getContext('2d').getImageData(0, 0, w, h).data;
   }
 
-  const step = size / N;
+  // Grid: N cells across the width, proportional rows down the height.
+  const step = w / N;
+  const cols = N, rows = Math.max(1, Math.round(h / step));
   const opacity = (L.opacity != null ? L.opacity : 1).toFixed(3);
 
   // Scale brush points up to export size + precompute mask sampler.
-  const sc = size / canvas.width;
+  const sc = w / canvas.width;
   const pts = (L.points || []).map(p => ({
     x: p.x * sc, y: p.y * sc, r: (p.radius || L.radius) * sc,
     fall: p.falloff != null ? p.falloff : L.falloff,
@@ -3685,15 +3687,15 @@ function buildLayerSVG(size, active) {
     const ch = (state.glyph.char || '✕')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const fontPx = step * sz * 1.6;
-    for (let yi = 0; yi < N; yi++) {
+    for (let yi = 0; yi < rows; yi++) {
       const cy = yi * step + step / 2;
-      const syPix = Math.max(0, Math.min(size - 1, Math.floor(cy)));
-      for (let xi = 0; xi < N; xi++) {
+      const syPix = Math.max(0, Math.min(h - 1, Math.floor(cy)));
+      for (let xi = 0; xi < cols; xi++) {
         const cx = xi * step + step / 2;
         const ma = masked ? maskAt(cx, cy) : 1;
         if (ma < 0.02) continue;
-        const sxPix = Math.max(0, Math.min(size - 1, Math.floor(cx)));
-        const i = (syPix * size + sxPix) * 4;
+        const sxPix = Math.max(0, Math.min(w - 1, Math.floor(cx)));
+        const i = (syPix * w + sxPix) * 4;
         const a = sampleSrc[i + 3];
         if (a < 4) continue;
         const r = sampleSrc[i], g = sampleSrc[i + 1], b = sampleSrc[i + 2];
@@ -3703,15 +3705,15 @@ function buildLayerSVG(size, active) {
     }
   } else {
     const radius = (step * sz) / 2;
-    for (let yi = 0; yi < N; yi++) {
+    for (let yi = 0; yi < rows; yi++) {
       const cy = yi * step + step / 2;
-      const syPix = Math.max(0, Math.min(size - 1, Math.floor(cy)));
-      for (let xi = 0; xi < N; xi++) {
+      const syPix = Math.max(0, Math.min(h - 1, Math.floor(cy)));
+      for (let xi = 0; xi < cols; xi++) {
         const cx = xi * step + step / 2;
         const ma = masked ? maskAt(cx, cy) : 1;
         if (ma < 0.02) continue;
-        const sxPix = Math.max(0, Math.min(size - 1, Math.floor(cx)));
-        const i = (syPix * size + sxPix) * 4;
+        const sxPix = Math.max(0, Math.min(w - 1, Math.floor(cx)));
+        const i = (syPix * w + sxPix) * 4;
         const a = sampleSrc[i + 3];
         if (a < 4) continue;
         const r = sampleSrc[i], g = sampleSrc[i + 1], b = sampleSrc[i + 2];
@@ -3721,8 +3723,8 @@ function buildLayerSVG(size, active) {
     }
   }
   const wrapStart = opacity === '1.000'
-    ? `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`
-    : `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><g opacity="${opacity}">`;
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`
+    : `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><g opacity="${opacity}">`;
   const wrapEnd = opacity === '1.000' ? `</svg>` : `</g></svg>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 ${wrapStart}${frags}${wrapEnd}`;
@@ -5140,8 +5142,11 @@ renderLayerPoints();
 
 $('r-export').addEventListener('input', e => {
   state.params.export = parseInt(e.target.value, 10);
-  $("v-export").value = `${state.params.export}×${state.params.export}`;
+  refreshExportLabel();
 });
+// keep the export-size readout showing the true W×H for the chosen ratio
+$('cv-ratio').addEventListener('change', () => refreshExportLabel());
+$('cv-orient').addEventListener('change', () => refreshExportLabel());
 $('r-blend').addEventListener('change', e => {
   state.params.blend = e.target.value;
   render();
@@ -5192,11 +5197,11 @@ document.querySelectorAll('#seg-pick button').forEach(btn => {
 $('btn-export-svg').addEventListener('click', () => {
   const active = state.images.filter(s => s.enabled);
   if (!active.length) { alert('Add some photos first.'); return; }
-  const size = state.params.export;
+  const { w, h } = loExportDims(state.params.export);
   let svg, name;
   if (state.layer.enabled) {
-    svg  = buildLayerSVG(size, active);
-    name = `lake-opeka-fragments-${state.layer.effect}-${state.seed}-${size}.svg`;
+    svg  = buildLayerSVG(w, h, active);
+    name = `lake-opeka-fragments-${state.layer.effect}-${state.seed}-${w}x${h}.svg`;
   } else {
     alert('SVG export needs an enabled Effect Layer.\nUse PNG for the raster modes (Slice, Smudge, etc.).');
     return;
@@ -5215,15 +5220,32 @@ $('btn-reroll').addEventListener('click', () => {
   render();
 });
 
-// Export: render at chosen size, download PNG
+// Export dimensions honour the chosen canvas ratio + orientation, with the
+// Export-size slider as the long edge — so a 16:9 canvas exports 16:9, not square.
+function loExportDims(longEdge) {
+  const rs = $('cv-ratio'), os = $('cv-orient');
+  let [aw, ah] = ((rs && rs.value) || '1:1').split(':').map(Number);
+  if (!aw || !ah) { aw = 1; ah = 1; }
+  if (os && os.value === 'portrait') { const t = aw; aw = ah; ah = t; }
+  let w, h;
+  if (aw >= ah) { w = longEdge; h = Math.round(longEdge * ah / aw); }
+  else          { h = longEdge; w = Math.round(longEdge * aw / ah); }
+  return { w: Math.max(2, w), h: Math.max(2, h) };
+}
+function refreshExportLabel() {
+  const { w, h } = loExportDims(state.params.export);
+  const v = $('v-export'); if (v && v.dataset.typing !== '1') v.value = `${w}×${h}`;
+}
+
+// Export: render at chosen size + aspect, download PNG
 $('btn-export').addEventListener('click', () => {
-  const size = state.params.export;
+  const { w, h } = loExportDims(state.params.export);
   const out = document.createElement('canvas');
-  out.width = size; out.height = size;
+  out.width = w; out.height = h;
   render(out);
   out.toBlob(blob => {
     const a = document.createElement('a');
-    a.download = `lake-opeka-${state.seed}-${size}.png`;
+    a.download = `lake-opeka-${state.seed}-${w}x${h}.png`;
     a.href = URL.createObjectURL(blob);
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -5259,12 +5281,13 @@ try {
     set('r-imageBlur',    'v-imageBlur',    state.params.imageBlur,    v => String(v));
     $('r-blend').value = state.params.blend;
     $('r-export').value = state.params.export;
-    $("v-export").value = `${state.params.export}×${state.params.export}`;
+    refreshExportLabel();
     document.querySelectorAll('#seg-bg button').forEach(b => b.classList.toggle('is-active', b.dataset.bg === state.params.bg));
     document.querySelectorAll('#seg-pick button').forEach(b => b.classList.toggle('is-active', b.dataset.pick === state.params.pick));
     applyMode();
   }
 } catch (e) {}
+refreshExportLabel();   // show the true W×H for the current ratio from first paint
 setInterval(() => {
   try { localStorage.setItem(LS, JSON.stringify({ params: state.params, mode: state.mode })); } catch (e) {}
 }, 2000);
