@@ -1,9 +1,10 @@
 (function () {
-  // Default password for the tools: sha-256("opal2026") — set 2026-06-05.
-  // A page can override per-tool by adding data-hash / data-scope to the
-  // <script src="/lab/shared/gate.js"> tag (see Lake Opeka → "happyface").
-  const DEFAULT_HASH = '1ba4dc1c0bfa792dac52ba0652964809628c667bd7cb44acc5ac254b544cfb26';
-  const DEFAULT_SCOPE = 'opal-ai-unlocked-v3';
+  // Default password for the tools: sha-256("letmeinnow") — set 2026-07-28.
+  // NOTE: this is a soft client-side gate, not real security — the hash is public in this
+  // file and the check runs in the browser, so a determined visitor can bypass it.
+  // A page can still override per-tool with data-hash / data-scope on the <script> tag.
+  const DEFAULT_HASH = '5024af2835476c1b9b43a852685c69651b680b75cd43b0b85e5c83403c72662b';
+  const DEFAULT_SCOPE = 'opal-lab-v1';
 
   const ds = (document.currentScript && document.currentScript.dataset) || {};
   const HASH = ds.hash || DEFAULT_HASH;
