@@ -211,6 +211,10 @@
   .mk-rm{ flex:none; width:22px; height:22px; border:1px solid var(--hair); background:none; color:var(--mute);
     border-radius:4px; cursor:pointer; font-size:10px; line-height:1; padding:0; }
   .mk-rm:hover{ color:var(--ink); border-color:var(--edge); }
+  .mk-pre{ aspect-ratio:1; border:1px solid var(--hair); background:var(--cell); border-radius:5px; cursor:pointer;
+    padding:5px; display:flex; align-items:center; justify-content:center; }
+  .mk-pre:hover{ border-color:var(--liton); }
+  .mk-pre svg{ width:100%; height:100%; display:block; fill:var(--ink); }
   #dropHint{ position:fixed; inset:var(--top) 0 0 0; z-index:4; display:none; align-items:center; justify-content:center;
     pointer-events:none; color:var(--mute); font-size:12px; letter-spacing:.12em; text-transform:uppercase; }
   body.nofile #dropHint{ display:flex; }
@@ -267,10 +271,11 @@
     </div>
     <div class="grp" id="markRow">
       <label data-tip="Build the picture out of your own SVG marks, each its own colour. Add several — a logo, a glyph, any shape — and the image is reconstructed from them. With no marks, the dots are plain circles in the shadow colour.">Marks</label>
-      <p class="rowhint" style="margin:2px 0 7px">Compose the image from your own SVGs, each its own colour. None = plain circles.</p>
+      <p class="rowhint" style="margin:2px 0 7px">Compose the image from built-in shapes or your own SVGs, each its own colour. None = plain circles.</p>
+      <div id="markPresets" data-tip="Click a shape to add it as a mark. Add several to build the picture from a mix." style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:2px 0 9px"></div>
       <div id="markList"></div>
       <div style="display:flex; gap:6px; margin-top:2px">
-        <button class="btn" id="markAdd" style="flex:1" data-tip="Add one or more SVGs. Each becomes a coloured mark.">Add SVG</button>
+        <button class="btn" id="markAdd" style="flex:1" data-tip="Add one or more of your own SVGs. Each becomes a coloured mark.">Add SVG</button>
         <button class="btn" id="markClear" style="flex:1" data-tip="Remove every mark and go back to plain circles.">Clear</button>
       </div>
       <input id="markInp" type="file" accept=".svg,image/svg+xml" multiple hidden />
@@ -355,9 +360,21 @@
       o.globalCompositeOperation='source-over'; m._ink=m.colour; }
     return m._cv;
   }
-  function addMark(file){ const rd=new FileReader();
-    rd.onload=()=>{ try{
-      const doc=new DOMParser().parseFromString(rd.result,'image/svg+xml');
+  // Built-in mark shapes (single-path silhouettes, viewBox 0 0 100 100). Spiral keeps a stroke.
+  const PRESETS={
+    diamond:'<polygon points="50,4 96,50 50,96 4,50"/>',
+    star:'<polygon points="50,3 61,38 98,38 68,59 79,95 50,73 21,95 32,59 2,38 39,38"/>',
+    heart:'<path d="M50 88 C6 58 6 24 30 18 C42 15 50 24 50 33 C50 24 58 15 70 18 C94 24 94 58 50 88 Z"/>',
+    triangle:'<polygon points="50,6 94,90 6,90"/>',
+    hexagon:'<polygon points="50,4 91,27 91,73 50,96 9,73 9,27"/>',
+    plus:'<path d="M40 6 h20 v34 h34 v20 h-34 v34 h-20 v-34 h-34 v-20 h34 Z"/>',
+    drop:'<path d="M50 5 C50 5 84 45 84 66 A34 34 0 1 1 16 66 C16 45 50 5 50 5 Z"/>',
+    flower:'<path d="M50 26 A13 13 0 1 1 50 26.1 M50 74 A13 13 0 1 1 50 74.1 M26 50 A13 13 0 1 1 26.1 50 M74 50 A13 13 0 1 1 74.1 50 M50 38 A12 12 0 1 1 50 62 A12 12 0 1 1 50 38Z"/>',
+    spiral:'<path d="M50 50 m0 0 C58 42 70 46 70 58 C70 74 52 80 38 74 C20 66 16 42 30 28 C46 12 76 16 90 36" fill="none" stroke="#000" stroke-width="7" stroke-linecap="round"/>',
+    ring:'<path d="M50 6 A44 44 0 1 1 49.9 6 Z M50 30 A20 20 0 1 0 50.1 30 Z" fill-rule="evenodd"/>'
+  };
+  function markFromText(text, name){ try{
+      const doc=new DOMParser().parseFromString(text,'image/svg+xml');
       const svg=doc.querySelector('svg'); if(!svg||doc.querySelector('parsererror')) throw 0;
       let vb={w:100,h:100}; const v=svg.getAttribute('viewBox');
       if(v){ const a=v.split(/[ ,]+/).map(Number); vb={w:a[2]||100,h:a[3]||100}; }
@@ -367,15 +384,18 @@
       const norm=`<svg xmlns="http://www.w3.org/2000/svg" width="${vb.w}" height="${vb.h}" viewBox="0 0 ${vb.w} ${vb.h}" fill="#fff">${stripped}</svg>`;
       const im=new Image(); im.onload=()=>{ const colour=MARK_PALETTE[MARKS.length%MARK_PALETTE.length];
         const first=MARKS.length===0;
-        MARKS.push({vb,inner,stripped,img:im,colour,name:file.name.replace(/\.svg$/i,''),_cv:null,_ink:null});
+        MARKS.push({vb,inner,stripped,img:im,colour,name,_cv:null,_ink:null});
         // marks land upright: drop the classic 45° screen tilt the first time one is added
         if(first && state.ang===45){ state.ang=0; const a=$('ang'); if(a){ a.value=0; a.dispatchEvent(new Event('input',{bubbles:true})); } }
-        renderMarks(); markDirty(); setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1400); };
-      im.onerror=()=>{ setStatus('could not read '+file.name); setTimeout(()=>setStatus(''),2400); };
+        renderMarks(); markDirty(); setStatus(name+' added'); setTimeout(()=>setStatus(''),1400); };
+      im.onerror=()=>{ setStatus('could not read '+name); setTimeout(()=>setStatus(''),2400); };
       im.src='data:image/svg+xml;utf8,'+encodeURIComponent(norm);
-    }catch(e){ setStatus('could not read that SVG'); setTimeout(()=>setStatus(''),2400); } };
-    rd.readAsText(file);
-  }
+    }catch(e){ setStatus('could not read that SVG'); setTimeout(()=>setStatus(''),2400); } }
+  function addMark(file){ const rd=new FileReader(); rd.onload=()=>markFromText(rd.result, file.name.replace(/\.svg$/i,'')); rd.readAsText(file); }
+  function addPreset(key){ markFromText(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${PRESETS[key]}</svg>`, key); }
+  function buildPresets(){ const host=$('markPresets'); if(!host) return;
+    host.innerHTML=Object.keys(PRESETS).map(k=>`<button class="mk-pre" data-k="${k}" title="${k}" aria-label="${k}"><svg viewBox="0 0 100 100">${PRESETS[k].replace(/stroke="#000"/g,'stroke="currentColor"').replace(/fill="none"/g,'fill="none"')}</svg></button>`).join('');
+    host.querySelectorAll('.mk-pre').forEach(b=>b.addEventListener('click',()=>addPreset(b.dataset.k))); }
   function clearMarks(){ MARKS.length=0; renderMarks(); markDirty(); }
   function renderMarks(){ const host=$('markList'); if(!host) return;
     if(!MARKS.length){ host.innerHTML='<p class="rowhint" style="opacity:.5;margin:0">No marks yet — dots are plain circles.</p>'; return; }
@@ -667,7 +687,7 @@
 
   wire(); resize(); document.body.classList.add('dark','nofile');
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
-  syncHint(); syncRes(); syncKindCtls(); renderMarks();
+  syncHint(); syncRes(); syncKindCtls(); renderMarks(); buildPresets();
   state.ready=true; if(!img) useSample(); { const veil=$('veil'); if(veil) veil.remove(); } resize();
   requestAnimationFrame(frame);
   window.halftone={ state, render, buildSVG, exportDims, get hasImg(){return !!img;}, useSample };
