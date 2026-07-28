@@ -224,12 +224,12 @@
 <div id="rail" class="rail rail-l">
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Images</button>
-    <p class="rowhint">Add a few pictures. They get sliced into bands and set moving. Drop images anywhere. They never leave this page.</p>
+    <p class="rowhint">Add a few pictures &#8212; or a PDF, and every page is pulled in as an image. They get sliced into bands and set moving. Drop files anywhere; nothing leaves this page.</p>
     <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="addBtn" style="flex:1" data-tip="Adds one or more images to the pool.">Add images</button>
+      <button class="btn" id="addBtn" style="flex:1" data-tip="Adds images to the pool. Drop a PDF and every page is added as an image.">Add images</button>
       <button class="btn" id="clearBtn" style="flex:1" data-tip="Removes all images.">Clear</button>
     </div></div>
-    <input id="fileInp" type="file" accept="image/*" multiple hidden />
+    <input id="fileInp" type="file" accept="image/*,application/pdf,.pdf" multiple hidden />
     <div id="thumbs"></div>
   </div>
 
@@ -307,6 +307,26 @@
   function h01(a,b){ let h=(Math.imul(a|0,73856093) ^ Math.imul(b|0,19349663) ^ Math.imul(state.seed|0,83492791))>>>0; h=Math.imul(h^h>>>15,2246822519); h^=h>>>13; return (h>>>0)/4294967296; }
 
   const imgs=[];
+  const isPDF=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
+  function addFile(f){ if(isPDF(f)) loadPDF(f); else addImage(f); }
+  // Lazy-load pdf.js (only when a PDF is dropped) and render every page to an image in the pool.
+  let pdfReady=null;
+  function ensurePDF(){ if(pdfReady) return pdfReady; pdfReady=new Promise((res,rej)=>{
+    const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+    s.onload=()=>{ try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; res(window.pdfjsLib); }catch(e){ rej(e); } };
+    s.onerror=()=>rej(new Error('pdf.js failed to load')); document.head.appendChild(s); }); return pdfReady; }
+  async function loadPDF(file){ setStatus('reading PDF…');
+    try{ const lib=await ensurePDF(); const buf=await file.arrayBuffer(); const pdf=await lib.getDocument({data:buf}).promise;
+      const n=pdf.numPages, name=file.name.replace(/\.pdf$/i,'');
+      for(let p=1;p<=n;p++){ setStatus(`PDF page ${p}/${n}…`); const page=await pdf.getPage(p);
+        const v0=page.getViewport({scale:1}), scale=Math.min(2000/Math.max(v0.width,v0.height),3), vp=page.getViewport({scale});
+        const c=document.createElement('canvas'); c.width=Math.ceil(vp.width); c.height=Math.ceil(vp.height);
+        const cx=c.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,c.width,c.height);
+        await page.render({canvasContext:cx,viewport:vp}).promise;
+        const im=new Image(); await new Promise((r,e)=>{ im.onload=r; im.onerror=e; im.src=c.toDataURL('image/jpeg',0.85); });
+        im.fname=`${name} p${p}`; imgs.push(im); bandsKey=''; renderThumbs(); markDirty(); }
+      setStatus(`added ${n} page${n>1?'s':''}`); setTimeout(()=>setStatus(''),1800);
+    }catch(e){ console.error(e); setStatus('could not read that PDF'); setTimeout(()=>setStatus(''),2800); } }
   function addImage(file){ const url=URL.createObjectURL(file), im=new Image();
     im.onload=()=>{ im.fname=file.name; imgs.push(im); bandsKey=''; renderThumbs(); markDirty();
       setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1200); };
@@ -485,7 +505,7 @@
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
     $('addBtn').addEventListener('click',()=>$('fileInp').click());
     $('clearBtn').addEventListener('click',()=>{ imgs.length=0; bandsKey=''; renderThumbs(); markDirty(); });
-    $('fileInp').addEventListener('change',e=>{ [...e.target.files].forEach(addImage); e.target.value=''; });
+    $('fileInp').addEventListener('change',e=>{ [...e.target.files].forEach(addFile); e.target.value=''; });
     $('shuffle').addEventListener('click',()=>{ state.seed=(state.seed*1103515245+12345)>>>0||1; bandsKey=''; markDirty(); });
     $('pngBtn').addEventListener('click',exportPNG); $('vidBtn').addEventListener('click',exportVid);
     $('playBtn').addEventListener('click',()=>{ state.playing=!state.playing; last=null; $('playBtn').setAttribute('aria-pressed',String(state.playing));
@@ -496,7 +516,7 @@
     $('exitFs').addEventListener('click',()=>setFs(false));
     $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open'); $('rail').classList.toggle('open',open); document.body.classList.toggle('panels',open); $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
     ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>e.preventDefault()));
-    addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(fs) [...fs].filter(f=>/^image\//.test(f.type)).forEach(addImage); });
+    addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(fs) [...fs].filter(f=>/^image\//.test(f.type)||isPDF(f)).forEach(addFile); });
     addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
       if(e.key===' '){ e.preventDefault(); $('playBtn').click(); }
       if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; }
