@@ -204,6 +204,13 @@
   .cin{ display:flex; align-items:center; gap:8px; }
   .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
   .cin label{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); }
+  .mk-row{ display:flex; align-items:center; gap:8px; padding:3px 0; }
+  .mk-ord{ width:15px; text-align:center; font-size:9px; color:var(--mute); flex:none; }
+  .mk-col{ width:26px; height:24px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; flex:none; }
+  .mk-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.72; }
+  .mk-rm{ flex:none; width:22px; height:22px; border:1px solid var(--hair); background:none; color:var(--mute);
+    border-radius:4px; cursor:pointer; font-size:10px; line-height:1; padding:0; }
+  .mk-rm:hover{ color:var(--ink); border-color:var(--edge); }
   #dropHint{ position:fixed; inset:var(--top) 0 0 0; z-index:4; display:none; align-items:center; justify-content:center;
     pointer-events:none; color:var(--mute); font-size:12px; letter-spacing:.12em; text-transform:uppercase; }
   body.nofile #dropHint{ display:flex; }
@@ -258,13 +265,20 @@
       <div class="grp" data-tip="Pushes the greys apart, so the treatment reads harder."><label>Contrast <b id="ctrR">30</b></label><input id="ctr" type="range" min="0" max="100" value="30" /></div>
       <div class="grp" data-tip="Lifts or drops the overall tone, so more or less of the image fills in."><label>Brightness <b id="briR">0</b></label><input id="bri" type="range" min="-60" max="60" value="0" /></div>
     </div>
-    <div class="grp" id="markRow" data-tip="The shape of each dot. Upload an SVG — a logo, a glyph, any mark — and it is tinted to the shadow colour and scaled by darkness, in both the preview and the exported SVG. Simple single-colour marks work best."><label>Dot shape</label>
-      <div style="display:flex; gap:6px;">
-        <button class="btn" id="markCircle" data-mk="circle" aria-pressed="true" style="flex:1">Circle</button>
-        <button class="btn" id="markUpload" data-mk="svg" aria-pressed="false" style="flex:1">Upload SVG</button>
+    <div class="grp" id="markRow">
+      <label data-tip="Build the picture out of your own SVG marks, each its own colour. Add several — a logo, a glyph, any shape — and the image is reconstructed from them. With no marks, the dots are plain circles in the shadow colour.">Marks</label>
+      <p class="rowhint" style="margin:2px 0 7px">Compose the image from your own SVGs, each its own colour. None = plain circles.</p>
+      <div id="markList"></div>
+      <div style="display:flex; gap:6px; margin-top:2px">
+        <button class="btn" id="markAdd" style="flex:1" data-tip="Add one or more SVGs. Each becomes a coloured mark.">Add SVG</button>
+        <button class="btn" id="markClear" style="flex:1" data-tip="Remove every mark and go back to plain circles.">Clear</button>
       </div>
-      <label style="margin-top:7px; opacity:.65">Mark <b id="markName">circle</b></label>
-      <input id="markInp" type="file" accept=".svg,image/svg+xml" hidden />
+      <input id="markInp" type="file" accept=".svg,image/svg+xml" multiple hidden />
+      <label style="margin-top:11px" data-tip="Tone assigns each mark to a band of the image, darkest to lightest, so the marks map the picture. Scatter mixes them at random, each cell sized by its darkness.">Assign</label>
+      <div class="seg" id="assignSeg">
+        <button data-a="tone" aria-pressed="true">By tone</button>
+        <button data-a="scatter" aria-pressed="false">Scatter</button>
+      </div>
     </div>
     <div class="grp" data-tip="Swaps the ink and the paper."><label>Invert</label>
       <div class="seg" id="invSeg">
@@ -297,61 +311,68 @@
 <div id="veil">
   <div class="orb"></div>
   <h1>Halftone</h1>
-  <p>A photo, broken into dots, duotone, dither or engraving &#8212; the print screen. Drop an image, choose a treatment, export it sharp as SVG or at any resolution as PNG. Tap to begin.</p>
+  <p>A photo, broken into dots, duotone, dither or engraving &#8212; the print screen. Or rebuild it out of your own SVG marks, each its own colour. Drop an image, choose a treatment, export it sharp as SVG or at any resolution as PNG. Tap to begin.</p>
 </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name: 'Halftone', desc: 'Print-screen image tool', version: 'v1' });</script>
+<script>Opal.mountTopbar({ name: 'Halftone', desc: 'Print screen · your own marks', version: 'v1' });</script>
 
 <script>
 (function(){
   const $=id=>document.getElementById(id);
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const state={ kind:'dots', cell:12, ang:45, ctr:30, bri:0, invert:0, fit:'cover',
-    dark:'#0a0b10', light:'#f4f4f6', res:4096, markType:'circle', markName:'circle', ready:false };
+    dark:'#0a0b10', light:'#f4f4f6', res:4096, assign:'tone', ready:false };
   let THEME='dark';
   function mulberry(seed){ let a=seed>>>0; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
   const hexRGB=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
 
-  // Custom dot mark: an uploaded SVG becomes the halftone unit, tinted to the ink and scaled
-  // by each cell's darkness. Kept as an Image (for the canvas) and as inner markup (for the
-  // vector export), so the preview and the SVG match.
-  let markImg=null, markReady=false, markVB={w:100,h:100}, markInner='', markStripped='';
-  let markCv=null;
-  function markTinted(ink){
-    if(!markReady||!markImg) return null; const S=512;
-    if(!markCv){ markCv=document.createElement('canvas'); }
-    if(markCv._ink!==ink || markCv.width!==S){ markCv.width=markCv.height=S; const o=markCv.getContext('2d');
-      o.clearRect(0,0,S,S);
-      const sc=Math.min(S/markVB.w,S/markVB.h)*0.94, dw=markVB.w*sc, dh=markVB.h*sc;
-      o.drawImage(markImg,(S-dw)/2,(S-dh)/2,dw,dh);
-      o.globalCompositeOperation='source-in'; o.fillStyle=ink; o.fillRect(0,0,S,S);
-      o.globalCompositeOperation='source-over'; markCv._ink=ink; }
-    return markCv;
+  // Custom marks: the image can be composed from a set of uploaded SVGs, each its own colour.
+  // A cell picks one mark — by tone (mapped across the shadows-to-highlights) or scattered at
+  // random — tinted to that mark's colour and sized by darkness. Kept as an Image (for the
+  // canvas) and as inner markup (for the vector export), so the preview and the SVG match.
+  const MARKS=[];                     // {vb,inner,stripped,img,colour,name,_cv,_ink}
+  const MARK_PALETTE=['#ff2d95','#3f9bff','#ffd23f','#3fe0a0','#a24bff','#ff7a3f','#00d4d4','#f4f4f6'];
+  function h01(a,b){ let h=(Math.imul(a|0,73856093) ^ Math.imul(b|0,19349663))>>>0; h=Math.imul(h^h>>>15,2246822519); h^=h>>>13; return (h>>>0)/4294967296; }
+  function pickIdx(dk,a,b){ const N=MARKS.length; if(!N) return -1;
+    if(state.assign==='scatter') return Math.floor(h01(a,b)*N)%N;
+    return clamp(Math.floor(dk*N),0,N-1); }
+  function markTinted(m){ const S=512;
+    if(!m._cv){ m._cv=document.createElement('canvas'); m._cv.width=m._cv.height=S; }
+    if(m._ink!==m.colour){ const o=m._cv.getContext('2d'); o.clearRect(0,0,S,S);
+      const sc=Math.min(S/m.vb.w,S/m.vb.h)*0.94, dw=m.vb.w*sc, dh=m.vb.h*sc;
+      o.drawImage(m.img,(S-dw)/2,(S-dh)/2,dw,dh);
+      o.globalCompositeOperation='source-in'; o.fillStyle=m.colour; o.fillRect(0,0,S,S);
+      o.globalCompositeOperation='source-over'; m._ink=m.colour; }
+    return m._cv;
   }
-  function loadMark(file){ const rd=new FileReader();
+  function addMark(file){ const rd=new FileReader();
     rd.onload=()=>{ try{
       const doc=new DOMParser().parseFromString(rd.result,'image/svg+xml');
-      const svg=doc.querySelector('svg'); if(!svg) throw 0;
-      const vb=svg.getAttribute('viewBox');
-      if(vb){ const a=vb.split(/[ ,]+/).map(Number); markVB={w:a[2]||100,h:a[3]||100}; }
-      else markVB={w:parseFloat(svg.getAttribute('width'))||100, h:parseFloat(svg.getAttribute('height'))||100};
-      markInner=svg.innerHTML;
-      // strip explicit fills (keep 'none') so the export can tint via inheritance
-      markStripped=markInner.replace(/fill\s*=\s*"(?!none)[^"]*"/g,'').replace(/fill\s*:\s*[^;"'}]+/g,'');
-      const norm=`<svg xmlns="http://www.w3.org/2000/svg" width="${markVB.w}" height="${markVB.h}" viewBox="0 0 ${markVB.w} ${markVB.h}">${markInner}</svg>`;
-      const im=new Image(); im.onload=()=>{ markImg=im; markReady=true; markCv=null; state.markType='svg'; state.markName=file.name;
-        document.querySelectorAll('#markRow .btn[data-mk]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mk==='svg')));
-        const nm=$('markName'); if(nm) nm.textContent=file.name; markDirty();
-        setStatus(file.name+' → dot shape'); setTimeout(()=>setStatus(''),1800); };
-      im.onerror=()=>{ setStatus('could not read that SVG'); setTimeout(()=>setStatus(''),2600); };
+      const svg=doc.querySelector('svg'); if(!svg||doc.querySelector('parsererror')) throw 0;
+      let vb={w:100,h:100}; const v=svg.getAttribute('viewBox');
+      if(v){ const a=v.split(/[ ,]+/).map(Number); vb={w:a[2]||100,h:a[3]||100}; }
+      else vb={w:parseFloat(svg.getAttribute('width'))||100, h:parseFloat(svg.getAttribute('height'))||100};
+      const inner=svg.innerHTML;
+      const stripped=inner.replace(/fill\s*=\s*"(?!none)[^"]*"/g,'').replace(/fill\s*:\s*[^;"'}]+/g,'');
+      const norm=`<svg xmlns="http://www.w3.org/2000/svg" width="${vb.w}" height="${vb.h}" viewBox="0 0 ${vb.w} ${vb.h}" fill="#fff">${stripped}</svg>`;
+      const im=new Image(); im.onload=()=>{ const colour=MARK_PALETTE[MARKS.length%MARK_PALETTE.length];
+        MARKS.push({vb,inner,stripped,img:im,colour,name:file.name.replace(/\.svg$/i,''),_cv:null,_ink:null});
+        renderMarks(); markDirty(); setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1400); };
+      im.onerror=()=>{ setStatus('could not read '+file.name); setTimeout(()=>setStatus(''),2400); };
       im.src='data:image/svg+xml;utf8,'+encodeURIComponent(norm);
-    }catch(e){ setStatus('could not read that SVG'); setTimeout(()=>setStatus(''),2600); } };
+    }catch(e){ setStatus('could not read that SVG'); setTimeout(()=>setStatus(''),2400); } };
     rd.readAsText(file);
   }
-  function clearMark(){ state.markType='circle'; state.markName='circle'; markReady=false;
-    document.querySelectorAll('#markRow .btn[data-mk]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mk==='circle')));
-    const nm=$('markName'); if(nm) nm.textContent='circle'; markDirty(); }
+  function clearMarks(){ MARKS.length=0; renderMarks(); markDirty(); }
+  function renderMarks(){ const host=$('markList'); if(!host) return;
+    if(!MARKS.length){ host.innerHTML='<p class="rowhint" style="opacity:.5;margin:0">No marks yet — dots are plain circles.</p>'; return; }
+    host.innerHTML=MARKS.map((m,i)=>`<div class="mk-row">`+
+      `<span class="mk-ord">${i+1}</span>`+
+      `<input type="color" class="mk-col" data-i="${i}" value="${m.colour}" aria-label="mark colour"/>`+
+      `<span class="mk-name">${m.name}</span>`+
+      `<button class="mk-rm" data-i="${i}" aria-label="remove mark">&#10005;</button></div>`).join('');
+  }
 
   let img=null;   // source Image or canvas
   function makeSample(){
@@ -414,14 +435,14 @@
       g.save(); g.translate(W/2,H/2); g.rotate(ang); g.translate(-W/2,-H/2);
       // rotated grid: iterate a grid covering the rotated bounds, sample via inverse rotate
       const diag=Math.hypot(W,H), n=Math.ceil(diag/Math.min(stepX,stepY))+2;
-      g.fillStyle=inkC; const mk=(state.markType==='svg')?markTinted(inkC):null; g.imageSmoothingEnabled=true;
+      g.fillStyle=inkC; const useM=MARKS.length>0; const tints=useM?MARKS.map(markTinted):null; g.imageSmoothingEnabled=true;
       for(let gy=-n;gy<n;gy++) for(let gx=-n;gx<n;gx++){
         const x=W/2+(gx*Math.min(stepX,stepY)) - (n? 0:0), y=H/2+(gy*Math.min(stepX,stepY));
         // map this rotated point back to image space to sample
         const rx=(x-W/2)*ca - (y-H/2)*(-sa)+W/2, ry=(x-W/2)*(-sa)+(y-H/2)*ca+H/2; // inverse
         const ci=clamp(Math.floor(rx/stepX),0,cols-1), rj=clamp(Math.floor(ry/stepY),0,rows-1);
         const dk=dark(L[rj*cols+ci]); if(dk<0.02) continue;
-        if(mk){ const sz=Math.sqrt(dk)*Math.min(stepX,stepY)*1.18; g.drawImage(mk,x-sz/2,y-sz/2,sz,sz); }
+        if(useM){ const mi=pickIdx(dk,gx,gy); const sz=(0.5+0.72*dk)*Math.min(stepX,stepY)*1.16; g.drawImage(tints[mi],x-sz/2,y-sz/2,sz,sz); }
         else { const r=Math.sqrt(dk)*Math.min(stepX,stepY)*0.62; g.beginPath(); g.arc(x,y,r,0,6.283); g.fill(); }
       }
       g.restore();
@@ -485,14 +506,15 @@
     let body='';
     if(state.kind==='dots'){
       const ang=state.ang;
-      if(state.markType==='svg' && markReady){
+      if(MARKS.length){
         const uses=[];
         for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const dk=dark(L[j*cols+i]); if(dk<0.02) continue;
-          const sz=Math.sqrt(dk)*Math.min(stepX,stepY)*1.18, sc=sz/Math.max(markVB.w,markVB.h), w2=markVB.w*sc, h2=markVB.h*sc;
+          const mi=pickIdx(dk,i,j), m=MARKS[mi];
+          const sz=(0.5+0.72*dk)*Math.min(stepX,stepY)*1.16, sc=sz/Math.max(m.vb.w,m.vb.h), w2=m.vb.w*sc, h2=m.vb.h*sc;
           const cx=i*stepX+stepX/2, cy=j*stepY+stepY/2;
-          uses.push(`<use href="#mk" x="${(cx-w2/2).toFixed(1)}" y="${(cy-h2/2).toFixed(1)}" width="${w2.toFixed(1)}" height="${h2.toFixed(1)}"/>`); }
-        body=`<defs><symbol id="mk" viewBox="0 0 ${markVB.w} ${markVB.h}" preserveAspectRatio="xMidYMid meet" fill="${ink}">${markStripped}</symbol></defs>`+
-          `<g fill="${ink}" transform="rotate(${ang} ${W/2} ${H/2})">${uses.join('')}</g>`;
+          uses.push(`<use href="#mk${mi}" x="${(cx-w2/2).toFixed(1)}" y="${(cy-h2/2).toFixed(1)}" width="${w2.toFixed(1)}" height="${h2.toFixed(1)}"/>`); }
+        const defs=MARKS.map((m,k)=>`<symbol id="mk${k}" viewBox="0 0 ${m.vb.w} ${m.vb.h}" preserveAspectRatio="xMidYMid meet" fill="${m.colour}">${m.stripped}</symbol>`).join('');
+        body=`<defs>${defs}</defs><g transform="rotate(${ang} ${W/2} ${H/2})">${uses.join('')}</g>`;
       } else {
         const parts=[];
         for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const dk=dark(L[j*cols+i]); if(dk<0.02) continue;
@@ -547,9 +569,12 @@
   const bind=(id,key,fn)=>{ const el=$(id); el.addEventListener('input',e=>{ state[key]=+e.target.value; if(fn) fn(e.target.value); else $(id+'R').textContent=e.target.value; markDirty(); syncHint(); }); };
   function wire(){
     bindSeg('kindSeg','kind','k', syncKindCtls); bindSeg('fitSeg','fit','t'); bindSeg('invSeg','invert','i');
-    $('markCircle').addEventListener('click',clearMark);
-    $('markUpload').addEventListener('click',()=>$('markInp').click());
-    $('markInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadMark(f); });
+    bindSeg('assignSeg','assign','a');
+    $('markAdd').addEventListener('click',()=>$('markInp').click());
+    $('markClear').addEventListener('click',clearMarks);
+    $('markInp').addEventListener('change',e=>{ [...e.target.files].forEach(addMark); e.target.value=''; });
+    $('markList').addEventListener('input',e=>{ const t=e.target.closest('.mk-col'); if(!t) return; const m=MARKS[+t.dataset.i]; if(m){ m.colour=t.value; m._ink=null; markDirty(); } });
+    $('markList').addEventListener('click',e=>{ const b=e.target.closest('.mk-rm'); if(!b) return; MARKS.splice(+b.dataset.i,1); renderMarks(); markDirty(); });
     ['cell','ang','ctr','bri'].forEach(id=>bind(id,id));
     bind('res','res',v=>{ $('resR').textContent=v; syncRes(); });
     $('dark').addEventListener('input',e=>{ state.dark=e.target.value; markDirty(); });
@@ -564,7 +589,10 @@
     $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open'); $('rail').classList.toggle('open',open); document.body.classList.toggle('panels',open); $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
     // drag & drop a photo
     ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>{ e.preventDefault(); }));
-    addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&/^image\//.test(f.type)) loadFile(f); });
+    addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(!fs||!fs.length) return;
+      const svgs=[...fs].filter(f=>/svg/.test(f.type||f.name)), pic=[...fs].find(f=>/^image\//.test(f.type)&&!/svg/.test(f.type||f.name));
+      if(svgs.length){ svgs.forEach(addMark); if(state.kind!=='dots'){ state.kind='dots'; document.querySelectorAll('#kindSeg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k==='dots'))); syncKindCtls(); } }
+      else if(pic) loadFile(pic); });
     addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
       if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; }
       if(e.key==='f'||e.key==='F') setFs(!document.body.classList.contains('fs')); });
@@ -609,7 +637,7 @@
 
   wire(); resize(); document.body.classList.add('dark','nofile');
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
-  syncHint(); syncRes(); syncKindCtls();
+  syncHint(); syncRes(); syncKindCtls(); renderMarks();
   const veil=$('veil'); veil.addEventListener('click',()=>{ state.ready=true; veil.style.display='none'; if(!img) useSample(); resize(); });
   requestAnimationFrame(frame);
   window.halftone={ state, render, buildSVG, exportDims, get hasImg(){return !!img;}, useSample };
