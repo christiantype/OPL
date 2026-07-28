@@ -1,10 +1,10 @@
 (function () {
-  // Default password for the tools: sha-256("letmeinnow") — set 2026-07-28.
+  // Default password for the tools: sha-256("0p4l") — set 2026-07-28.
   // NOTE: this is a soft client-side gate, not real security — the hash is public in this
   // file and the check runs in the browser, so a determined visitor can bypass it.
   // A page can still override per-tool with data-hash / data-scope on the <script> tag.
-  const DEFAULT_HASH = '5024af2835476c1b9b43a852685c69651b680b75cd43b0b85e5c83403c72662b';
-  const DEFAULT_SCOPE = 'opal-lab-v1';
+  const DEFAULT_HASH = 'd066b86c567f44e9bb705cb51bde34307d93081ef5c6e957327d5360ee37e0bf';
+  const DEFAULT_SCOPE = 'opal-lab-v2';
 
   const ds = (document.currentScript && document.currentScript.dataset) || {};
   const HASH = ds.hash || DEFAULT_HASH;
