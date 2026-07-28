@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Image Train — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  /* Pattern shares the family chrome with the other Lab tools. */
+
+  /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
+     same knobs. What differs is everything below the chrome. */
+  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
+    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
+    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:100px; --rail:290px; }
+  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
+    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
+    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
+  /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
+     wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
+  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
+  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+
+  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
+     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
+     so the shared chrome gets carried into the theme too. The brand link sets its colour
+     inline via mountTopbar, hence !important. */
+  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
+  body.dark .opal-brand{ color:var(--ink) !important; }
+  body.dark .opal-subhead__name{ color:var(--ink); }
+  body.dark .opal-brand .opal-product,
+  body.dark .opal-subhead__desc,
+  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+
+  /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
+  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #stagewrap{ top:0; left:0; }
+  #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
+  body.fs #exitFs{ display:flex; }
+  body.fs.hint #exitFs{ opacity:1; }
+
+  @media (max-width:560px){ :root{ --top:92px; } }
+
+  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
+    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+
+  /* one hairline control strip — everything else is off until asked for */
+  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
+    background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  .icon svg{ display:block; }
+  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
+     fixed right offset kept colliding with it. Stays put in full screen so a recording
+     always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
+    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
+    background:var(--panel); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  #recDot.on{ display:flex; }
+  /* Count-in. Big enough that you are in no doubt what is about to happen. */
+
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  body.fs #recDot{ top:14px; }
+  @keyframes blink{ 50%{opacity:.2;} }
+
+  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
+     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
+     work with. */
+
+  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
+    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:var(--panel);
+    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+    display:flex; flex-direction:column; transition:transform .28s ease; }
+  .rail-l{ left:0; border-right:1px solid var(--edge); }
+  .rail-r{ right:0; border-left:1px solid var(--edge); }
+  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
+    padding:14px 0; border-bottom:1px solid var(--edge); }
+  .row:last-of-type{ border-bottom:0; }
+  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
+     past when you only want two of them. */
+  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
+    font-weight:600; opacity:.9; padding-bottom:2px;
+    display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
+    width:100%; background:none; border:0; font-family:inherit; text-align:left; }
+  .rowhead:hover{ opacity:1; }
+  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhead::before{ content:''; width:0; height:0; flex:none;
+    border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
+    transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
+  .row.folded .rowhead::before{ transform:rotate(0deg); }
+  .row.folded > *:not(.rowhead){ display:none; }
+  .row.folded{ padding-bottom:10px; }
+  .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .rail input[type=range]{ width:100%; }
+  .rail select{ width:100%; }
+  .rail .seg{ width:100%; }
+  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
+  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
+     nothing between you and the piece unless you ask for it. */
+  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
+  .rail-l{ transform:translateX(-100%); }
+  .rail-r{ transform:translateX(100%); }
+  .rail.open{ transform:none; }
+
+  /* Chrome fades out while you listen and comes back on movement. */
+  #bar{ transition:opacity .5s ease; }
+  body.idle #bar{ opacity:0; pointer-events:none; }
+  body.panels #bar{ opacity:1; pointer-events:auto; }
+
+  /* Mood — the one control that stays reachable. */
+
+  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
+    color:var(--mute); white-space:nowrap; }
+  .rail .grp > label{ white-space:normal; }
+  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
+  .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
+  .seg button:last-child{ border-right:0; }
+  .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
+  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
+  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
+     the control they describe and get out of the way on click. */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
+    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
+    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
+     underline is what the lane tabs use for that other meaning, so these fill instead. */
+
+  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
+     it's just visually replaced, so listeners and readouts are untouched. */
+  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
+  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; margin:0; pointer-events:none; }
+  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
+  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
+  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
+    transition:stroke-dasharray .04s linear; }
+  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
+  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+  .knob:focus-visible{ outline:none; }
+  .knob:focus-visible .k-hub{ stroke:var(--ink); }
+  .knob.drag .k-vl{ stroke-width:3.6; }
+  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
+  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
+    color:var(--mute); text-align:center; white-space:nowrap; }
+  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
+    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    padding:8px 12px; cursor:pointer; border-radius:2px; }
+  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  input[type=text]::placeholder{ color:var(--mute); }
+
+  /* step editor — a row of cells for the active lane; click one to set its note */
+
+  #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
+  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
+  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%;
+    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
+    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  @media (max-width:560px){ input[type=range]{ width:82px; } }
+
+  /* Image Train's own */
+  #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none;
+    font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); }
+  body.fs #hint{ display:none; }
+  #stagewrap{ top:0 !important; }
+  .opal-topbar, .opal-subhead{ -webkit-backdrop-filter:blur(22px) saturate(150%);
+    backdrop-filter:blur(22px) saturate(150%); background:rgba(9,10,16,.5) !important;
+    border-bottom-color:rgba(255,255,255,.08) !important; }
+  .opal-brand{ color:#f2f4f8 !important; } .opal-subhead__name{ color:#f2f4f8; }
+  .opal-brand .opal-product, .opal-subhead__desc, .opal-subhead__ver{ color:rgba(255,255,255,.5); }
+  .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+  .rail{ top:0 !important; padding-top:calc(var(--top) + 8px); }
+  .rowhint{ opacity:.72; }
+  .cin{ display:flex; align-items:center; gap:8px; }
+  .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
+  .cin label{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); }
+  #thumbs{ display:flex; flex-wrap:wrap; gap:5px; margin:2px 0 2px; }
+  #thumbs img{ width:38px; height:38px; object-fit:cover; border-radius:4px; border:1px solid var(--hair); }
+</style>
+</head>
+<body>
+
+<div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="status"></div>
+<div id="hint"></div>
+<div id="bar">
+  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
+  <button class="icon" id="playBtn" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
+  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
+  <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
+</div>
+<button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
+
+<div id="rail" class="rail rail-l">
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Images</button>
+    <p class="rowhint">Add a few pictures. They get sliced into bands and set moving. Drop images anywhere. They never leave this page.</p>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="addBtn" style="flex:1" data-tip="Adds one or more images to the pool.">Add images</button>
+      <button class="btn" id="clearBtn" style="flex:1" data-tip="Removes all images.">Clear</button>
+    </div></div>
+    <input id="fileInp" type="file" accept="image/*" multiple hidden />
+    <div id="thumbs"></div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Bands</button>
+    <p class="rowhint">How the frame is sliced.</p>
+    <div class="duo">
+      <div class="grp" data-tip="How many bands the frame is sliced into. A few is bold; a lot is a fine weave."><label>Count <b id="countR">18</b></label><input id="count" type="range" min="2" max="80" value="18" /></div>
+      <div class="grp" data-tip="How much the band thicknesses vary. Zero is even stripes."><label>Uneven <b id="unevenR">55</b></label><input id="uneven" type="range" min="0" max="100" value="55" /></div>
+    </div>
+    <div class="grp" data-tip="Rows scroll left and right; Columns scroll up and down; Weave lays a few crossing bands over the rows for the woven look."><label>Direction</label>
+      <div class="seg" id="axisSeg">
+        <button data-a="rows" aria-pressed="true">Rows</button>
+        <button data-a="cols" aria-pressed="false">Columns</button>
+        <button data-a="weave" aria-pressed="false">Weave</button>
+      </div>
+    </div>
+    <div class="grp" data-tip="How many crossing bands the Weave lays over the top."><label>Cross <b id="crossR">30</b></label><input id="cross" type="range" min="0" max="100" value="30" /></div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Motion</button>
+    <p class="rowhint">Each band runs at its own pace and direction.</p>
+    <div class="duo">
+      <div class="grp" data-tip="Overall speed of the bands."><label>Speed <b id="speedR">45</b></label><input id="speed" type="range" min="0" max="100" value="45" /></div>
+      <div class="grp" data-tip="How much speed and direction vary band to band. High sends them every which way."><label>Spread <b id="spreadR">60</b></label><input id="spread" type="range" min="0" max="100" value="60" /></div>
+    </div>
+    <div class="grp"><button class="btn" id="shuffle" style="width:100%" data-tip="Reshuffles which image, direction and speed each band gets.">Shuffle</button></div>
+    <div class="grp" data-tip="Colour behind any gaps."><div class="cin"><input type="color" id="bg" value="#0a0b10"><label>Ground</label></div></div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Export</button>
+    <p class="rowhint">A still, or the motion as a video.</p>
+    <div class="grp" data-tip="The shape of the exported file."><label>Size</label>
+      <div class="seg" id="sizeSeg">
+        <button data-z="1080x1350" aria-pressed="true">4:5</button>
+        <button data-z="1080x1080" aria-pressed="false">1:1</button>
+        <button data-z="1080x1920" aria-pressed="false">9:16</button>
+        <button data-z="1920x1080" aria-pressed="false">16:9</button>
+      </div>
+    </div>
+    <div class="grp" data-tip="Pixels across the long edge of the PNG. The line beneath is the print size at 300 DPI."><label>Pixels <b id="resR">3200</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></label><input id="res" type="range" min="1024" max="8192" step="256" value="3200" /></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="pngBtn" style="flex:1" data-tip="Saves the current frame as a high-resolution PNG.">PNG</button>
+      <button class="btn" id="vidBtn" style="flex:1" data-tip="Records the motion as a video (MP4 where supported).">Record</button>
+    </div></div>
+  </div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Image Train', desc: 'Sliced bands in motion', version: 'v1', about: 'Add a few images and the frame slices into bands that scroll past each other — some left, some right, some up or down, at their own speeds. Set how many bands, how uneven, and let it run. Export a still or a video.' });</script>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+  let THEME='dark';
+  const state={ count:18, uneven:55, axis:'rows', cross:30, speed:45, spread:60, bg:'#0a0b10',
+    size:'1080x1350', res:3200, seed:7, playing:true };
+  const CW=()=>+state.size.split('x')[0], CH=()=>+state.size.split('x')[1];
+  function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+  const imgs=[];
+  function addImage(file){ const url=URL.createObjectURL(file), im=new Image();
+    im.onload=()=>{ imgs.push(im); bandsKey=''; renderThumbs(); markDirty();
+      setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1200); };
+    im.onerror=()=>{ setStatus('could not read '+file.name); setTimeout(()=>setStatus(''),2200); }; im.src=url; }
+  function renderThumbs(){ const h=$('thumbs'); h.innerHTML=''; imgs.forEach(im=>{ const t=document.createElement('img'); t.src=im.src; h.appendChild(t); }); }
+
+  // ---- bands: fractions of the frame, stable per seed ----
+  let bands=null, cross=null, bandsKey='';
+  function build(){ const key=[state.count,state.uneven,state.seed,state.cross,state.axis,imgs.length].join(',');
+    if(bands&&bandsKey===key) return; const r=mulberry((state.seed*2654435761)>>>0), N=state.count, vr=state.uneven/100;
+    const raw=[]; let sum=0; for(let i=0;i<N;i++){ const w=1+(r()*2-1)*vr*0.85; raw.push(w); sum+=w; }
+    bands=[]; let acc=0; for(let i=0;i<N;i++){ const f=raw[i]/sum; const dir=r()<0.5?-1:1; const spd=0.4+r()*1.6;
+      bands.push({ p:acc, f, img:imgs.length?((r()*imgs.length)|0):0, dir, spd, phase:r() }); acc+=f; }
+    // weave: perpendicular crossing bands
+    const nc=Math.round(N*state.cross/100*0.6); cross=[];
+    for(let i=0;i<nc;i++){ cross.push({ pos:r(), w:0.03+r()*0.12, img:imgs.length?((r()*imgs.length)|0):0, dir:r()<0.5?-1:1, spd:0.4+r()*1.6, phase:r() }); }
+    bandsKey=key; }
+
+  const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
+  let W=0,H=0,DPR=1, view={fit:1,ox:0,oy:0};
+  function resize(){ const r=wrap.getBoundingClientRect(); DPR=Math.min(2,devicePixelRatio||1); W=r.width; H=r.height; cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); markDirty(); }
+  addEventListener('resize',resize);
+
+  // draw one image scrolling along a rectangle [x,y,w,h]; `horiz` scrolls along x else y
+  function scrollRect(g,im,x,y,w,h,horiz,off){ if(!im) return;
+    if(horiz){ const s=h/im.naturalHeight, dw=Math.max(1,im.naturalWidth*s); let o=((off%dw)+dw)%dw;
+      g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip(); for(let px=x-o; px<x+w; px+=dw) g.drawImage(im,px,y,dw,h); g.restore(); }
+    else { const s=w/im.naturalWidth, dh=Math.max(1,im.naturalHeight*s); let o=((off%dh)+dh)%dh;
+      g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip(); for(let py=y-o; py<y+h; py+=dh) g.drawImage(im,x,py,w,dh); g.restore(); } }
+
+  function renderComp(g,W,H,t){
+    g.globalAlpha=1; g.globalCompositeOperation='source-over';
+    g.fillStyle=state.bg; g.fillRect(0,0,W,H);
+    if(!imgs.length){ return; }
+    build();
+    const base=state.speed/100*260;
+    const rows=state.axis!=='cols';   // rows or weave => primary horizontal bands; cols => vertical
+    for(const b of bands){ const im=imgs[b.img%imgs.length];
+      const off=(t*base*b.spd*(1+ (b.dir<0?-1:1)*0) )*b.dir + b.phase*400;
+      if(rows){ const y=b.p*H, h=Math.max(1,b.f*H); scrollRect(g,im,0,y,W,h,true,off); }
+      else { const x=b.p*W, w=Math.max(1,b.f*W); scrollRect(g,im,x,0,w,H,false,off); } }
+    if(state.axis==='weave'){ for(const c of cross){ const im=imgs[c.img%imgs.length];
+      const x=c.pos*W, w=Math.max(2,c.w*W), off=(t*base*c.spd)*c.dir + c.phase*400;
+      scrollRect(g,im,x,0,w,H,false,off); } }
+  }
+  function render(g,cw,ch,t,forExport){
+    g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.globalCompositeOperation='source-over';
+    if(forExport){ renderComp(g,cw,ch,t); return; }
+    const fit=Math.min(cw/CW(),ch/CH()), w=Math.round(CW()*fit), h=Math.round(CH()*fit), ox=Math.round((cw-w)/2), oy=Math.round((ch-h)/2);
+    view={fit,ox,oy};
+    g.fillStyle=THEME==='dark'?'#050609':'#c7cad0'; g.fillRect(0,0,cw,ch);
+    g.save(); g.translate(ox,oy); renderComp(g,w,h,t); g.restore();
+  }
+
+  let clock=0,last=null,dirty=true; const markDirty=()=>dirty=true;
+  function tick(ts){ if(last==null)last=ts; const dt=(ts-last)/1000; last=ts; if(state.playing&&imgs.length){ clock+=dt; dirty=true; }
+    if(dirty){ render(ctx,cv.width,cv.height,clock); dirty=false; } requestAnimationFrame(tick); }
+
+  // ---- exports ----
+  const dl=(blob,name)=>{ const u=URL.createObjectURL(blob),a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); };
+  function exportDims(){ const long=Math.max(CW(),CH()), s=state.res/long; return [Math.round(CW()*s),Math.round(CH()*s)]; }
+  function exportPNG(){ if(!imgs.length){ setStatus('add an image first'); setTimeout(()=>setStatus(''),1600); return; }
+    const [w,h]=exportDims(); setStatus(`rendering ${w}×${h}…`);
+    setTimeout(()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; renderComp(c.getContext('2d'),w,h,clock);
+      c.toBlob(b=>{ dl(b,`image-train-${w}x${h}-${Date.now()}.png`); setStatus(`saved ${w}×${h}`); setTimeout(()=>setStatus(''),2000); },'image/png'); },30); }
+  function pickMime(){ const t=['video/mp4;codecs=avc1.640028','video/mp4','video/webm;codecs=vp9','video/webm']; for(const m of t) if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)) return m; return ''; }
+  let recording=false;
+  function exportVid(){ if(recording||!imgs.length) return; const long=Math.max(CW(),CH()), s=Math.min(1440,long)/long;
+    const w=Math.round(CW()*s), h=Math.round(CH()*s), c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d');
+    const mime=pickMime(); if(!mime){ setStatus('recording not supported here'); setTimeout(()=>setStatus(''),2600); return; }
+    const rec=new MediaRecorder(c.captureStream(30),{mimeType:mime,videoBitsPerSecond:18000000}), chunks=[];
+    rec.ondataavailable=e=>{ if(e.data.size)chunks.push(e.data); };
+    rec.onstop=()=>{ const ext=mime.includes('mp4')?'mp4':'webm'; dl(new Blob(chunks,{type:mime}),`image-train-${Date.now()}.${ext}`); recording=false; setStatus('saved '+ext.toUpperCase()); setTimeout(()=>setStatus(''),2200); };
+    recording=true; const DUR=7000, t0=performance.now();
+    (function rf(now){ const el=now-t0; renderComp(g,w,h,el/1000); if(el<DUR) requestAnimationFrame(rf); else rec.stop(); })(t0);
+    rec.start(); setStatus('recording…'); }
+
+  // ---- UI ----
+  function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
+  function bindSeg(id,key,dk,after){ document.querySelectorAll(`#${id} button`).forEach(b=>b.addEventListener('click',()=>{
+    state[key]=b.dataset[dk]; document.querySelectorAll(`#${id} button`).forEach(x=>x.setAttribute('aria-pressed',String(x===b))); bandsKey=''; if(after)after(); markDirty(); })); }
+  const bind=(id,key,fn)=>{ const e=$(id); e.addEventListener('input',ev=>{ state[key]=+ev.target.value; const r=$(id+'R'); if(r)r.textContent=ev.target.value; bandsKey=''; if(fn)fn(); markDirty(); }); };
+  function wire(){
+    bindSeg('axisSeg','axis','a'); bindSeg('sizeSeg','size','z',()=>{ syncRes(); syncHint(); });
+    ['count','uneven','cross','speed','spread'].forEach(id=>bind(id,id));
+    $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
+    $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
+    $('addBtn').addEventListener('click',()=>$('fileInp').click());
+    $('clearBtn').addEventListener('click',()=>{ imgs.length=0; bandsKey=''; renderThumbs(); markDirty(); });
+    $('fileInp').addEventListener('change',e=>{ [...e.target.files].forEach(addImage); e.target.value=''; });
+    $('shuffle').addEventListener('click',()=>{ state.seed=(state.seed*1103515245+12345)>>>0||1; bandsKey=''; markDirty(); });
+    $('pngBtn').addEventListener('click',exportPNG); $('vidBtn').addEventListener('click',exportVid);
+    $('playBtn').addEventListener('click',()=>{ state.playing=!state.playing; last=null; $('playBtn').setAttribute('aria-pressed',String(state.playing));
+      $('playBtn').innerHTML=state.playing?'<svg viewBox="0 0 12 12" width="11" height="11"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>':'<svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 1.8 L10 6 L3 10.2 Z" fill="currentColor"/></svg>'; });
+    $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark'));
+      if(THEME==='light'&&state.bg==='#0a0b10'){ state.bg='#eef0f4'; $('bg').value=state.bg; } else if(THEME==='dark'&&state.bg==='#eef0f4'){ state.bg='#0a0b10'; $('bg').value=state.bg; } markDirty(); });
+    $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
+    $('exitFs').addEventListener('click',()=>setFs(false));
+    $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open'); $('rail').classList.toggle('open',open); document.body.classList.toggle('panels',open); $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
+    ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>e.preventDefault()));
+    addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(fs) [...fs].filter(f=>/^image\//.test(f.type)).forEach(addImage); });
+    addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+      if(e.key===' '){ e.preventDefault(); $('playBtn').click(); }
+      if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; }
+      if(e.key==='f'||e.key==='F') setFs(!document.body.classList.contains('fs')); });
+    document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && document.body.classList.contains('fs')) setFs(false); });
+  }
+  function syncRes(){ const [ew,eh]=exportDims(); const el=$('resIn'); if(el) el.textContent=`${(ew/300).toFixed(1)}×${(eh/300).toFixed(1)}in @300`; }
+  function syncHint(){ $('hint').textContent=`image train · ${state.count} bands · png ${exportDims().join('×')}`; }
+  function setFs(on){ document.body.classList.toggle('fs',on);
+    if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+    else if(!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{}); requestAnimationFrame(resize); }
+
+  // ---- knobs / folds / tooltips ----
+  function makeKnob(inp){ inp.dataset.knob='1'; const w=document.createElement('div'); w.className='knob'; w.tabIndex=0; w.setAttribute('role','slider');
+    inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
+    w.insertAdjacentHTML('beforeend','<svg viewBox="0 0 44 44" width="42" height="42" aria-hidden="true"><path class="k-tr" d="M9 35 A18 18 0 1 1 35 35"/><path class="k-vl" d="M9 35 A18 18 0 1 1 35 35"/><circle class="k-hub" cx="22" cy="22" r="9"/><line class="k-pt" x1="22" y1="22" x2="22" y2="14"/></svg>');
+    const k={el:w,inp}; const set=v=>{ inp.value=String(v); inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); };
+    let dy=0,dv=0; w.addEventListener('pointerdown',e=>{ e.preventDefault(); w.setPointerCapture(e.pointerId); w.classList.add('drag'); dy=e.clientY; dv=+inp.value; });
+    w.addEventListener('pointermove',e=>{ if(!w.classList.contains('drag')) return; const span=(+inp.max)-(+inp.min), st=+inp.step||1; set(clamp(Math.round((dv+(dy-e.clientY)/150*span)/st)*st,+inp.min,+inp.max)); });
+    const up=()=>w.classList.remove('drag'); w.addEventListener('pointerup',up); w.addEventListener('pointercancel',up);
+    w.addEventListener('keydown',e=>{ const st=+inp.step||1; if(e.key==='ArrowUp'||e.key==='ArrowRight'){ e.preventDefault(); set(clamp(+inp.value+st,+inp.min,+inp.max)); } if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); set(clamp(+inp.value-st,+inp.min,+inp.max)); } }); paintKnob(k); }
+  function paintKnob(k){ const inp=k.inp,mn=+inp.min,mx=+inp.max,v=+inp.value,f=(v-mn)/(mx-mn||1); const path=k.el.querySelector('.k-vl'),len=path.getTotalLength();
+    path.style.strokeDasharray=len; path.style.strokeDashoffset=len*(1-f); const a=(-135+270*f)*Math.PI/180,pt=k.el.querySelector('.k-pt'); pt.setAttribute('x2',(22+Math.sin(a)*8).toFixed(2)); pt.setAttribute('y2',(22-Math.cos(a)*8).toFixed(2)); }
+  const FOLD_KEY='imgtrain-folded';
+  (function(){ const saved=new Set((()=>{try{return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]')}catch(e){return[]}})());
+    document.querySelectorAll('.rail .rowhead').forEach(h=>{ const row=h.closest('.row'); if(!row) return; const name=h.textContent.trim();
+      if(saved.has(name)){ row.classList.add('folded'); h.setAttribute('aria-expanded','false'); }
+      h.addEventListener('click',()=>{ const f=row.classList.toggle('folded'); h.setAttribute('aria-expanded',String(!f));
+        const cur=new Set((()=>{try{return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]')}catch(e){return[]}})()); f?cur.add(name):cur.delete(name); try{ localStorage.setItem(FOLD_KEY,JSON.stringify([...cur])); }catch(e){} }); }); })();
+  let tipEl=null,tipT=null,tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return; if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0'; const r=host.getBoundingClientRect(),t=tipEl.getBoundingClientRect();
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8,r.bottom+8); tipEl.style.left=Math.max(8,Math.min(r.left,innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+  addEventListener('pointerover',e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return; clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true);
+
+  wire(); resize(); document.body.classList.add('dark');
+  document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
+  syncRes(); syncHint();
+  requestAnimationFrame(tick);
+  window.imgtrain={ state, imgs, render:renderComp, exportDims, addImageFile:addImage, get bands(){return bands;} };
+})();
+</script>
+</body>
+</html>
