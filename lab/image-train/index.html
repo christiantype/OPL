@@ -246,6 +246,7 @@
         <button data-a="rows" aria-pressed="true">Rows</button>
         <button data-a="cols" aria-pressed="false">Columns</button>
         <button data-a="weave" aria-pressed="false">Weave</button>
+        <button data-a="radial" aria-pressed="false">Radial</button>
       </div>
     </div>
     <div class="duo">
@@ -338,6 +339,23 @@
     if(horiz){ const sh=Math.max(1,srcLf*ih), sy=clamp(srcPf,0,1-srcLf)*ih; const col=Math.floor(((off*0.6%iw)+iw)%iw); g.drawImage(im, col, sy, 1, sh, x, y, w, h); }
     else { const sw=Math.max(1,srcLf*iw), sx=clamp(srcPf,0,1-srcLf)*iw; const row=Math.floor(((off*0.6%ih)+ih)%ih); g.drawImage(im, sx, row, sw, 1, x, y, w, h); }
     g.restore(); }
+  // Radial slicing: wedges converging to a centre vanishing point, each a scrolling image
+  // strip drawn along its ray — a one-point-perspective tunnel.
+  function drawRadial(g,W,H,t,base){ if(!bands||!imgs.length) return; const N=bands.length;
+    const cx=W/2, cy=H/2, R=Math.hypot(W,H)/2*1.04, hw=Math.PI/N;
+    for(let i=0;i<N;i++){ const b=bands[i], im=imgs[b.img%imgs.length]; if(!im) continue;
+      const a=(i/N)*Math.PI*2, off=(t*base*0.7*b.spd)*b.dir + b.phase*600;
+      const iw=im.naturalWidth, ih=im.naturalHeight, sh=Math.max(1,b.thick*ih), sy=clamp(b.p,0,1-b.thick)*ih;
+      const halfW=Math.tan(hw)*R, dw=Math.max(10, R*0.55*b.zoom); let o=((off%dw)+dw)%dw;
+      g.save(); g.translate(cx,cy); g.rotate(a);
+      g.beginPath(); g.moveTo(0,0); g.lineTo(R,-halfW); g.lineTo(R,halfW); g.closePath(); g.clip();
+      for(let x=-o; x<R; x+=dw) g.drawImage(im, 0,sy,iw,sh, x,-halfW, dw, halfW*2);
+      g.restore(); }
+    // thin rays along the wedge seams, converging to the vanishing point
+    g.save(); g.translate(cx,cy); g.strokeStyle='rgba(255,255,255,0.16)'; g.lineWidth=Math.max(1,Math.min(W,H)*0.0008);
+    for(let i=0;i<N;i++){ const a=(i/N+0.5/N)*Math.PI*2; g.beginPath(); g.moveTo(0,0); g.lineTo(Math.cos(a)*R,Math.sin(a)*R); g.stroke(); }
+    g.restore(); }
+
   // Connection lines: a proximity mesh — each band's node links to its nearest neighbours, so
   // the network reads as intentional (close things connect), not random lines. Connect = density.
   // A structured registration grid: evenly-spaced connection points wired in a lattice with
@@ -379,6 +397,7 @@
     if(!imgs.length){ return; }
     build();
     const base=state.speed/100*260, frag=state.fragment/100;
+    if(state.axis==='radial'){ drawRadial(g,W,H,t,base); drawConns(g,W,H); if(+state.meta) drawMeta(g,W,H,t); return; }
     let bi=0;
     for(const b of bands){ const im=imgs[b.img%imgs.length]; const off=(t*base*b.spd)*b.dir + b.phase*500; bi++;
       const fc = frag>0.01 ? 1+Math.round(frag*5) : 1;   // dice the band into scattered pieces
