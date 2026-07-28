@@ -391,28 +391,33 @@
     drawConns(g,W,H);
     if(+state.meta) drawMeta(g,W,H,t);
   }
-  // Clinical, esoteric telemetry — code fragments scattered across the frame, values live.
+  // Studio telemetry — the piece's own data, broken up and scattered across the frame.
   function drawMeta(g,W,H,t){ const s=Math.min(W,H); g.save(); g.textBaseline='top';
     const fs=Math.max(8,Math.round(s*0.0112)); g.font=`${fs}px ui-monospace,SFMono-Regular,Menlo,monospace`;
     const hz=bands.filter(b=>b.horiz).length, fast=bands.filter(b=>b.spd>1.2).length;
-    const hex=(((t*1000)|0)>>>0).toString(16).padStart(6,'0').slice(-6);
+    const hex=(((t*1000)|0)>>>0).toString(16).padStart(6,'0').slice(-6), ex=exportDims();
     const L=[
-      'OP/AL // IMAGE_TRAIN v1',
+      'OP/AL — MORE THAN DESIGN',
+      '2026 · OAK PARK, IL',
+      'loc 41.8850°N 87.7845°W',
+      'IMAGE_TRAIN v1 // canvas2d',
       `t=${t.toFixed(2)}s  fps=30  frame=0x${hex}`,
-      'loc 41.9782°N 87.9047°W',
-      `bands=${state.count} axis=${state.axis} seed=${state.seed}`,
-      `disperse=${state.fragment}%  spread=${state.spread}%`,
-      `throughput ${hz}→ ${bands.length-hz}↓  ${fast} active`,
-      'const frame = JSON.parse(stream)',
-      'if(!frame.ok) handleError(0x1a)',
-      '<slice class="band" state="run"/>',
-      'await decode(buffer, offset)',
+      `out=${ex[0]}×${ex[1]}  ${state.size}`,
+      `images=${imgs.length}  seed=${state.seed}`,
     ];
-    imgs.forEach((im,i)=>L.push(`img[${i}] ${(im.fname||'src').replace(/\.[^.]+$/,'').slice(0,18)} ${im.naturalWidth}×${im.naturalHeight}`));
-    bands.slice(0,6).forEach((b,i)=>L.push(`vel[${i}]=${(b.spd*state.speed).toFixed(0)}px/s ${b.horiz?(b.dir>0?'E':'W'):(b.dir>0?'S':'N')} z=${b.zoom.toFixed(2)}`));
+    imgs.forEach((im,i)=>L.push(`[${i}] ${(im.fname||'src').slice(0,30)}  ${im.naturalWidth}×${im.naturalHeight}`));
+    L.push(`count=${state.count}  gap=${state.gap}  uneven=${state.uneven}`);
+    L.push(`speed=${state.speed}  spread=${state.spread}`);
+    L.push(`smudge=${state.smudge}  disperse=${state.fragment}  connect=${state.connect}`);
+    L.push(`axis=${state.axis}  cross=${state.cross}`);
+    L.push(`bands=${bands.length}  ${hz}→ ${bands.length-hz}↓  ${fast} active`);
+    bands.slice(0,5).forEach((b,i)=>L.push(`vel[${i}]=${(b.spd*state.speed).toFixed(0)}px/s ${b.horiz?(b.dir>0?'E':'W'):(b.dir>0?'S':'N')} z=${b.zoom.toFixed(2)}`));
+    L.push('const frame = JSON.parse(stream)');
+    L.push('await decode(buffer, offset)');
+    L.push('<slice class="band" state="run"/>');
     const r=mulberry(90210);   // stable scatter layout; text values still update each frame
-    L.forEach((tx)=>{ const px=0.02*W + r()*0.82*W, py=0.03*H + r()*0.9*H, rot=(r()<0.2)?(r()<0.5?Math.PI/2:-Math.PI/2):0;
-      g.save(); g.translate(px,py); if(rot) g.rotate(rot); g.fillStyle=`rgba(255,255,255,${(0.24+r()*0.52).toFixed(2)})`; g.fillText(tx,0,0); g.restore(); });
+    L.forEach((tx)=>{ const px=0.02*W + r()*0.8*W, py=0.03*H + r()*0.9*H, rot=(r()<0.18)?(r()<0.5?Math.PI/2:-Math.PI/2):0;
+      g.save(); g.translate(px,py); if(rot) g.rotate(rot); g.fillStyle=`rgba(255,255,255,${(0.24+r()*0.5).toFixed(2)})`; g.fillText(tx,0,0); g.restore(); });
     g.restore(); }
   function render(g,cw,ch,t,forExport){
     g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.globalCompositeOperation='source-over';
