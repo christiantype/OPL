@@ -340,19 +340,21 @@
     g.restore(); }
   // Connection lines: a proximity mesh — each band's node links to its nearest neighbours, so
   // the network reads as intentional (close things connect), not random lines. Connect = density.
-  function drawConns(g,W,H){ if(state.connect<=0||!bands||bands.length<2) return; const s=Math.min(W,H);
-    const pts=bands.map(b=> b.horiz ? [(b.start+b.len/2)*W,(b.p+b.thick/2)*H] : [(b.p+b.thick/2)*W,(b.start+b.len/2)*H]);
-    const N=pts.length, kk=1+Math.round(state.connect/100*4), maxLen=s*0.6;
-    const seen=new Set(), edges=[];
-    for(let i=0;i<N;i++){ const d=[];
-      for(let j=0;j<N;j++){ if(j===i) continue; const dx=pts[i][0]-pts[j][0], dy=pts[i][1]-pts[j][1]; d.push([dx*dx+dy*dy,j]); }
-      d.sort((a,b)=>a[0]-b[0]);
-      for(let m=0;m<Math.min(kk,d.length);m++){ const j=d[m][1], key=i<j?i+'-'+j:j+'-'+i; if(seen.has(key)) continue; seen.add(key); edges.push([i,j,Math.sqrt(d[m][0])]); } }
-    g.save(); g.lineWidth=Math.max(1,s*0.0015); g.fillStyle='rgba(255,255,255,0.92)'; const used=new Set();
-    for(const [i,j,dist] of edges){ if(dist>maxLen) continue; const a=pts[i],b=pts[j];
-      g.strokeStyle=`rgba(255,255,255,${(0.14+0.55*(1-dist/maxLen)).toFixed(2)})`;   // fade with distance
-      g.beginPath(); g.moveTo(a[0],a[1]); g.lineTo(b[0],b[1]); g.stroke(); used.add(i); used.add(j); }
-    const rr=Math.max(1.5,s*0.0042); used.forEach(i=>{ g.beginPath(); g.arc(pts[i][0],pts[i][1],rr,0,6.283); g.fill(); }); g.restore(); }
+  // A structured registration grid: evenly-spaced connection points wired in a lattice with
+  // crosshair nodes. Reads as an intentional technical overlay; Connect sets the density.
+  function drawConns(g,W,H){ if(state.connect<=0) return; const s=Math.min(W,H), dens=state.connect/100;
+    const cols=2+Math.round(dens*6), rows=Math.max(2,Math.round((2+dens*6)*H/W));
+    const mx=W*0.075, my=H*0.075, gw=W-2*mx, gh=H-2*my;
+    const nx=c=>mx+gw*(cols>1?c/(cols-1):0.5), ny=r=>my+gh*(rows>1?r/(rows-1):0.5);
+    g.save(); g.lineWidth=Math.max(1,s*0.0011); g.strokeStyle='rgba(255,255,255,0.30)';
+    for(let r=0;r<rows;r++){ g.beginPath(); g.moveTo(nx(0),ny(r)); g.lineTo(nx(cols-1),ny(r)); g.stroke(); }
+    for(let c=0;c<cols;c++){ g.beginPath(); g.moveTo(nx(c),ny(0)); g.lineTo(nx(c),ny(rows-1)); g.stroke(); }
+    const t=Math.max(2.5,s*0.006), dot=Math.max(1,s*0.0016);
+    g.strokeStyle='rgba(255,255,255,0.8)'; g.lineWidth=Math.max(1,s*0.0013); g.fillStyle='rgba(255,255,255,0.95)';
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){ const x=nx(c),y=ny(r);
+      g.beginPath(); g.moveTo(x-t,y); g.lineTo(x+t,y); g.moveTo(x,y-t); g.lineTo(x,y+t); g.stroke();   // crosshair
+      g.beginPath(); g.arc(x,y,dot,0,6.283); g.fill(); }
+    g.restore(); }
 
   const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
   let W=0,H=0,DPR=1, view={fit:1,ox:0,oy:0};
