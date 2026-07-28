@@ -201,6 +201,16 @@
   .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
   .rail{ top:0 !important; padding-top:calc(var(--top) + 8px); }
   .rowhint{ opacity:.72; }
+  #countdown{ position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
+    pointer-events:none; font:800 clamp(90px,22vw,220px)/1 ui-sans-serif,Helvetica,Arial,sans-serif;
+    color:#fff; text-shadow:0 6px 40px rgba(0,0,0,.6); }
+  #countdown.show{ display:flex; }
+  #recTag{ position:fixed; top:calc(var(--top) + 12px); left:50%; transform:translateX(-50%); z-index:12; display:none;
+    align-items:center; gap:7px; padding:6px 13px; border-radius:999px; font:600 10px/1 ui-monospace,Menlo,monospace;
+    letter-spacing:.14em; color:#ff4d5e; background:rgba(9,10,16,.6); border:1px solid rgba(255,77,94,.5);
+    -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); }
+  #recTag.show{ display:inline-flex; } #recTag::before{ content:''; width:7px; height:7px; border-radius:50%; background:#ff4d5e; animation:recblink 1s infinite; }
+  @keyframes recblink{ 50%{ opacity:.25; } }
   .cin{ display:flex; align-items:center; gap:8px; }
   .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
   .cin label{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); }
@@ -213,6 +223,8 @@
 <div id="stagewrap"><canvas id="stage"></canvas></div>
 <div id="status"></div>
 <div id="hint"></div>
+<div id="countdown"></div>
+<div id="recTag">REC</div>
 <div id="bar">
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
   <button class="icon" id="playBtn" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
@@ -464,10 +476,11 @@
   function render(g,cw,ch,t,forExport){
     g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.globalCompositeOperation='source-over';
     if(forExport){ renderComp(g,cw,ch,t); return; }
-    const fit=Math.min(cw/CW(),ch/CH()), w=Math.round(CW()*fit), h=Math.round(CH()*fit), ox=Math.round((cw-w)/2), oy=Math.round((ch-h)/2);
+    const fit=Math.min(cw/CW(),ch/CH())*0.9, w=Math.round(CW()*fit), h=Math.round(CH()*fit), ox=Math.round((cw-w)/2), oy=Math.round((ch-h)/2);
     view={fit,ox,oy};
-    g.fillStyle=THEME==='dark'?'#050609':'#c7cad0'; g.fillRect(0,0,cw,ch);
+    g.fillStyle=THEME==='dark'?'#050609':'#c7cad0'; g.fillRect(0,0,cw,ch);   // margin backdrop
     g.save(); g.translate(ox,oy); renderComp(g,w,h,t); g.restore();
+    g.strokeStyle=THEME==='dark'?'rgba(255,255,255,0.32)':'rgba(0,0,0,0.35)'; g.lineWidth=Math.max(1,1.3*DPR); g.strokeRect(ox+0.5,oy+0.5,w-1,h-1);  // canvas edge
   }
 
   let clock=0,last=null,dirty=true; const markDirty=()=>dirty=true;
@@ -483,15 +496,26 @@
       c.toBlob(b=>{ dl(b,`image-train-${w}x${h}-${Date.now()}.png`); setStatus(`saved ${w}×${h}`); setTimeout(()=>setStatus(''),2000); },'image/png'); },30); }
   function pickMime(){ const t=['video/mp4;codecs=avc1.640028','video/mp4','video/webm;codecs=vp9','video/webm']; for(const m of t) if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)) return m; return ''; }
   let recording=false;
-  function exportVid(){ if(recording||!imgs.length) return; const long=Math.max(CW(),CH()), s=Math.min(1440,long)/long;
-    const w=Math.round(CW()*s), h=Math.round(CH()*s), c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d');
-    const mime=pickMime(); if(!mime){ setStatus('recording not supported here'); setTimeout(()=>setStatus(''),2600); return; }
-    const rec=new MediaRecorder(c.captureStream(30),{mimeType:mime,videoBitsPerSecond:18000000}), chunks=[];
-    rec.ondataavailable=e=>{ if(e.data.size)chunks.push(e.data); };
-    rec.onstop=()=>{ const ext=mime.includes('mp4')?'mp4':'webm'; dl(new Blob(chunks,{type:mime}),`image-train-${Date.now()}.${ext}`); recording=false; setStatus('saved '+ext.toUpperCase()); setTimeout(()=>setStatus(''),2200); };
-    recording=true; const DUR=7000, t0=performance.now();
-    (function rf(now){ const el=now-t0; renderComp(g,w,h,el/1000); if(el<DUR) requestAnimationFrame(rf); else rec.stop(); })(t0);
-    rec.start(); setStatus('recording…'); }
+  // Record with a 3-2-1 countdown, then run until the user clicks Stop.
+  let recState='idle', mrec=null, mchunks=[], mrecRAF=null, mrecCv=null, mrecG=null, mrecStart=0;
+  function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+  function toggleRec(){ if(recState==='recording') return stopRec(); if(recState==='idle') startCountdown(); }
+  function startCountdown(){ if(!imgs.length){ setStatus('add an image first'); setTimeout(()=>setStatus(''),1600); return; }
+    if(!pickMime()){ setStatus('recording not supported here'); setTimeout(()=>setStatus(''),2600); return; }
+    recState='counting'; const ov=$('countdown'); let n=3; ov.textContent=n; ov.classList.add('show');
+    const iv=setInterval(()=>{ if(recState!=='counting'){ clearInterval(iv); ov.classList.remove('show'); return; }
+      n--; if(n>0){ ov.textContent=n; } else { clearInterval(iv); ov.classList.remove('show'); beginRec(); } },800); }
+  function beginRec(){ const long=Math.max(CW(),CH()), s=Math.min(1440,long)/long, w=Math.round(CW()*s), h=Math.round(CH()*s);
+    mrecCv=document.createElement('canvas'); mrecCv.width=w; mrecCv.height=h; mrecG=mrecCv.getContext('2d');
+    const mime=pickMime(); mrec=new MediaRecorder(mrecCv.captureStream(30),{mimeType:mime,videoBitsPerSecond:18000000}); mchunks=[];
+    mrec.ondataavailable=e=>{ if(e.data.size) mchunks.push(e.data); };
+    mrec.onstop=()=>{ const ext=mime.includes('mp4')?'mp4':'webm'; dl(new Blob(mchunks,{type:mime}),`image-train-${Date.now()}.${ext}`);
+      recState='idle'; $('vidBtn').textContent='Record'; $('vidBtn').classList.remove('on'); $('recTag').classList.remove('show');
+      setStatus('saved '+ext.toUpperCase()); setTimeout(()=>setStatus(''),2200); };
+    mrec.start(); recState='recording'; mrecStart=performance.now(); $('vidBtn').classList.add('on'); $('recTag').classList.add('show');
+    (function rf(){ if(recState!=='recording') return; renderComp(mrecG,mrecCv.width,mrecCv.height,clock);
+      const el=(performance.now()-mrecStart)/1000; $('vidBtn').textContent='Stop · '+fmtT(el); $('recTag').textContent='REC '+fmtT(el); mrecRAF=requestAnimationFrame(rf); })(); }
+  function stopRec(){ if(recState!=='recording') return; cancelAnimationFrame(mrecRAF); try{ mrec.stop(); }catch(e){} }
 
   // ---- UI ----
   function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
@@ -507,7 +531,7 @@
     $('clearBtn').addEventListener('click',()=>{ imgs.length=0; bandsKey=''; renderThumbs(); markDirty(); });
     $('fileInp').addEventListener('change',e=>{ [...e.target.files].forEach(addFile); e.target.value=''; });
     $('shuffle').addEventListener('click',()=>{ state.seed=(state.seed*1103515245+12345)>>>0||1; bandsKey=''; markDirty(); });
-    $('pngBtn').addEventListener('click',exportPNG); $('vidBtn').addEventListener('click',exportVid);
+    $('pngBtn').addEventListener('click',exportPNG); $('vidBtn').addEventListener('click',toggleRec);
     $('playBtn').addEventListener('click',()=>{ state.playing=!state.playing; last=null; $('playBtn').setAttribute('aria-pressed',String(state.playing));
       $('playBtn').innerHTML=state.playing?'<svg viewBox="0 0 12 12" width="11" height="11"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>':'<svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 1.8 L10 6 L3 10.2 Z" fill="currentColor"/></svg>'; });
     $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark'));
