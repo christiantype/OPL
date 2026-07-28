@@ -13,6 +13,9 @@ const Opal = (() => {
     if (!document.getElementById('opal-shell-css')) {
       const st = document.createElement('style'); st.id = 'opal-shell-css';
       st.textContent = `
+        /* Lock the mark's geometry so it never shifts between tools or the gallery. */
+        .opal-topbar{ height:56px; box-sizing:border-box; }
+        .opal-brand svg{ height:26px; width:auto; display:block; }
         .opal-subhead{ position:relative; z-index:9; }
         .opal-subhead__id{ display:flex; align-items:center; gap:11px; }
         .opal-info{ appearance:none; width:15px; height:15px; border-radius:50%; border:1px solid currentColor;
