@@ -417,9 +417,13 @@
   function drawSlice(g,im,horiz,x,y,w,h,srcPf,srcLf,off,zoom){ if(!im) return; zoom=zoom||1;
     const iw=im.naturalWidth, ih=im.naturalHeight;
     g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip();
-    if(horiz){ const sh=Math.max(1,srcLf*ih), sy=clamp(srcPf,0,1-srcLf)*ih; const dw=Math.max(2, iw*(h/sh)*zoom); let o=((off%dw)+dw)%dw;
+    // Uniform scale (h/sh == dw/iw) so pixels are never stretched. Zoom picks a thinner/thicker
+    // source slice — more/less magnification — rather than distorting the width.
+    if(horiz){ const sl=Math.min(1,Math.max(0.01,srcLf/zoom)), sh=Math.max(1,sl*ih), sy=clamp(srcPf+(srcLf-sl)/2,0,1-sl)*ih;
+      const dw=Math.max(2, iw*(h/sh)); let o=((off%dw)+dw)%dw;
       for(let px=x-o; px<x+w; px+=dw) g.drawImage(im,0,sy,iw,sh, px,y,dw,h); }
-    else { const sw=Math.max(1,srcLf*iw), sx=clamp(srcPf,0,1-srcLf)*iw; const dh=Math.max(2, ih*(w/sw)*zoom); let o=((off%dh)+dh)%dh;
+    else { const sl=Math.min(1,Math.max(0.01,srcLf/zoom)), sw=Math.max(1,sl*iw), sx=clamp(srcPf+(srcLf-sl)/2,0,1-sl)*iw;
+      const dh=Math.max(2, ih*(w/sw)); let o=((off%dh)+dh)%dh;
       for(let py=y-o; py<y+h; py+=dh) g.drawImage(im,sx,0,sw,ih, x,py,w,dh); }
     g.restore(); }
 
