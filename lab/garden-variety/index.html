@@ -2,601 +2,477 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="robots" content="noindex, nofollow" />
-<title>Garden Variety</title>
-<script src="/lab/shared/gate.js" data-hash="1c8bfe8f801d79745c4631d09fff36c82aa37fc4cce4fc946683d7b336b63032" data-scope="opal-tools"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Garden Variety — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css" />
 <style>
-  :root{
-    --ink:#e8e4d8;
-    --teal:#5fc4bc;
-    --panel:rgba(14,13,11,.72);
-    --hair:rgba(232,228,216,.14);
-    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
-    --safe-top:env(safe-area-inset-top,0px);
-    --safe-bottom:env(safe-area-inset-bottom,0px);
-    --safe-left:env(safe-area-inset-left,0px);
-    --safe-right:env(safe-area-inset-right,0px);
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;background:#0a0908;overflow:hidden;overscroll-behavior:none}
-  #stage{position:fixed;inset:0;touch-action:none;cursor:crosshair;display:block}
+  /* Pattern shares the family chrome with the other Lab tools. */
 
-  /* Shared OPAL shell (topbar + subhead) over the full-bleed canvas — matches every tool */
-  .opal-topbar{position:fixed;top:0;left:0;right:0;z-index:20}
-  .opal-subhead{position:fixed;top:56px;left:0;right:0;z-index:20}
-  .mark{display:none !important}   /* replaced by the shared subhead */
+  /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
+     same knobs. What differs is everything below the chrome. */
+  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
+    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
+    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:100px; --rail:290px; }
+  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
+    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
+    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
+  /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
+     wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
+  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
+  #stage{ display:block; width:100%; height:100%; touch-action:none; }
 
-  /* Title / back to lab */
-  .mark{
-    position:fixed;left:calc(20px + var(--safe-left));top:calc(18px + var(--safe-top));z-index:5;
-    font-family:var(--mono);color:var(--ink);letter-spacing:.22em;text-decoration:none;
-    font-size:11px;text-transform:uppercase;opacity:.62;
-    transition:opacity 1.2s ease;
-  }
-  .mark:hover{opacity:.9}
-  .mark small{display:block;margin-top:5px;letter-spacing:.14em;opacity:.5;font-size:9.5px}
-  .mark small .back{color:var(--teal)}
-  .mark.dim{opacity:.16}
+  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
+     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
+     so the shared chrome gets carried into the theme too. The brand link sets its colour
+     inline via mountTopbar, hence !important. */
+  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
+  body.dark .opal-brand{ color:var(--ink) !important; }
+  body.dark .opal-subhead__name{ color:var(--ink); }
+  body.dark .opal-brand .opal-product,
+  body.dark .opal-subhead__desc,
+  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
 
-  /* Hint */
-  .hint{
-    position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;
-    font-family:var(--mono);color:var(--ink);opacity:.34;font-size:12px;
-    letter-spacing:.16em;text-transform:uppercase;pointer-events:none;
-    transition:opacity .6s ease;text-align:center;
-  }
-  .hint.gone{opacity:0}
+  /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
+  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #stagewrap{ top:0; left:0; }
+  #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
+  body.fs #exitFs{ display:flex; }
+  body.fs.hint #exitFs{ opacity:1; }
 
-  /* Control bar */
-  .bar{
-    position:fixed;left:50%;bottom:calc(22px + var(--safe-bottom));transform:translateX(-50%);z-index:6;
-    display:flex;align-items:center;gap:16px;
-    padding:11px 15px;border:1px solid var(--hair);border-radius:2px;
-    background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-    font-family:var(--mono);color:var(--ink);
-    max-width:calc(100vw - 24px);
-  }
-  .swatches{display:flex;gap:7px;align-items:center}
-  .sw{
-    width:17px;height:17px;border-radius:50%;border:1px solid rgba(0,0,0,.35);
-    cursor:pointer;padding:0;position:relative;transition:transform .12s ease;
-    outline:none;
-  }
-  .sw:hover{transform:scale(1.12)}
-  .sw.on{box-shadow:0 0 0 1.5px #0a0908,0 0 0 3px var(--ink)}
-  .sw.auto{
-    background:conic-gradient(#c9b84a,#e0a088,#e0a8b0,#8a5a3a,#e8e4d8,#c9b84a);
-  }
-  .sw.auto.on{box-shadow:0 0 0 1.5px #0a0908,0 0 0 3px var(--teal)}
+  @media (max-width:560px){ :root{ --top:92px; } }
 
-  .divide{width:1px;height:22px;background:var(--hair)}
+  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
+    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
 
-  .size{display:flex;align-items:center;gap:9px}
-  .size label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;opacity:.55}
-  input[type=range]{
-    -webkit-appearance:none;appearance:none;width:78px;height:2px;
-    background:var(--hair);border-radius:2px;outline:none;cursor:pointer;
-  }
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
-    background:var(--ink);cursor:pointer;border:none;
-  }
-  input[type=range]::-moz-range-thumb{
-    width:14px;height:14px;border-radius:50%;background:var(--ink);border:none;cursor:pointer;
-  }
+  /* one hairline control strip — everything else is off until asked for */
+  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
+    background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  .icon svg{ display:block; }
+  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
+     fixed right offset kept colliding with it. Stays put in full screen so a recording
+     always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
+    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
+    background:var(--panel); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  #recDot.on{ display:flex; }
+  /* Count-in. Big enough that you are in no doubt what is about to happen. */
 
-  .btn{
-    font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--ink);background:none;border:1px solid var(--hair);border-radius:2px;
-    padding:7px 11px;cursor:pointer;transition:border-color .15s ease,color .15s ease,background .15s ease;
-    white-space:nowrap;
-  }
-  .btn:hover{border-color:var(--teal);color:var(--teal)}
-  .btn:active{background:rgba(95,196,188,.08)}
-  .btn:focus-visible{border-color:var(--teal);color:var(--teal)}
-  .sw:focus-visible{box-shadow:0 0 0 1.5px #0a0908,0 0 0 3px var(--teal)}
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  body.fs #recDot{ top:14px; }
+  @keyframes blink{ 50%{opacity:.2;} }
 
-  .btn:disabled{opacity:.38;cursor:default;border-color:var(--hair);color:var(--ink)}
+  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
+     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
+     work with. */
 
-  /* format toggle + record */
-  .fmt{display:flex;gap:6px}
-  .fmtbtn.on{border-color:var(--teal);color:var(--teal)}
-  .rec .dot{
-    display:inline-block;width:7px;height:7px;border-radius:50%;
-    background:#e0574f;margin-right:8px;vertical-align:middle;
-  }
-  .rec.live{border-color:#e0574f;color:#e0574f}
-  .rec.live .dot{animation:pulse 1s ease-in-out infinite}
-  @keyframes pulse{50%{opacity:.22}}
-  #rectime{margin-left:8px;opacity:.72;font-variant-numeric:tabular-nums}
+  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
+    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:var(--panel);
+    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+    display:flex; flex-direction:column; transition:transform .28s ease; }
+  .rail-l{ left:0; border-right:1px solid var(--edge); }
+  .rail-r{ right:0; border-left:1px solid var(--edge); }
+  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
+    padding:14px 0; border-bottom:1px solid var(--edge); }
+  .row:last-of-type{ border-bottom:0; }
+  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
+     past when you only want two of them. */
+  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
+    font-weight:600; opacity:.9; padding-bottom:2px;
+    display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
+    width:100%; background:none; border:0; font-family:inherit; text-align:left; }
+  .rowhead:hover{ opacity:1; }
+  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhead::before{ content:''; width:0; height:0; flex:none;
+    border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
+    transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
+  .row.folded .rowhead::before{ transform:rotate(0deg); }
+  .row.folded > *:not(.rowhead){ display:none; }
+  .row.folded{ padding-bottom:10px; }
+  .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .rail input[type=range]{ width:100%; }
+  .rail select{ width:100%; }
+  .rail .seg{ width:100%; }
+  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
+  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
+     nothing between you and the piece unless you ask for it. */
+  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
+  .rail-l{ transform:translateX(-100%); }
+  .rail-r{ transform:translateX(100%); }
+  .rail.open{ transform:none; }
 
-  /* capture frame guide (DOM only — never enters the recording) */
-  .frame{
-    position:fixed;z-index:3;pointer-events:none;display:none;border-radius:1px;
-    border:1px solid rgba(232,228,216,.32);
-    box-shadow:0 0 0 9999px rgba(10,9,8,.5);
-    transition:border-color .3s ease,box-shadow .3s ease;
-  }
-  .frame.show{display:block}
-  .frame.live{border-color:var(--teal);box-shadow:0 0 0 9999px rgba(10,9,8,.62)}
+  /* Chrome fades out while you listen and comes back on movement. */
+  #bar{ transition:opacity .5s ease; }
+  body.idle #bar{ opacity:0; pointer-events:none; }
+  body.panels #bar{ opacity:1; pointer-events:auto; }
 
-  #toast{
-    position:fixed;left:50%;bottom:calc(80px + var(--safe-bottom));transform:translateX(-50%);z-index:9;
-    font-family:var(--mono);font-size:11px;letter-spacing:.03em;line-height:1.45;
-    color:var(--ink);background:var(--panel);border:1px solid var(--hair);border-radius:2px;
-    padding:10px 14px;max-width:min(90vw,430px);text-align:center;opacity:0;
-    transition:opacity .3s ease;pointer-events:none;
-    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  }
-  #toast.show{opacity:1}
+  /* Mood — the one control that stays reachable. */
 
-  @media (max-width:560px){
-    .bar{gap:10px;padding:10px 12px;flex-wrap:wrap;justify-content:center;row-gap:11px}
-    .size{display:none}
-    .mark{font-size:10px}
-    /* bigger touch targets on phones */
-    .btn{padding:10px 13px;font-size:11px}
-    .sw{width:22px;height:22px}
-    .swatches{gap:9px}
-    .divide{display:none}
-  }
+  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
+    color:var(--mute); white-space:nowrap; }
+  .rail .grp > label{ white-space:normal; }
+  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
+  .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
+  .seg button:last-child{ border-right:0; }
+  .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
+  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
+  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
+     the control they describe and get out of the way on click. */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
+    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
+    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
+     underline is what the lane tabs use for that other meaning, so these fill instead. */
+
+  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
+     it's just visually replaced, so listeners and readouts are untouched. */
+  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
+  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; margin:0; pointer-events:none; }
+  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
+  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
+  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
+    transition:stroke-dasharray .04s linear; }
+  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
+  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+  .knob:focus-visible{ outline:none; }
+  .knob:focus-visible .k-hub{ stroke:var(--ink); }
+  .knob.drag .k-vl{ stroke-width:3.6; }
+  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
+  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
+    color:var(--mute); text-align:center; white-space:nowrap; }
+  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
+    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    padding:8px 12px; cursor:pointer; border-radius:2px; }
+  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  input[type=text]::placeholder{ color:var(--mute); }
+
+  /* step editor — a row of cells for the active lane; click one to set its note */
+
+  #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
+  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
+  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%;
+    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
+    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  @media (max-width:560px){ input[type=range]{ width:82px; } }
+
+  /* Garden Variety's own */
+  #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none;
+    font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); }
+  body.fs #hint{ display:none; }
+  #stagewrap{ top:0 !important; }
+  #stage{ cursor:crosshair; }
+  .opal-topbar, .opal-subhead{ -webkit-backdrop-filter:blur(22px) saturate(150%);
+    backdrop-filter:blur(22px) saturate(150%); background:rgba(9,10,16,.5) !important;
+    border-bottom-color:rgba(255,255,255,.08) !important; }
+  .opal-brand{ color:#f2f4f8 !important; } .opal-subhead__name{ color:#f2f4f8; }
+  .opal-brand .opal-product, .opal-subhead__desc, .opal-subhead__ver{ color:rgba(255,255,255,.5); }
+  .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+  .rail{ top:0 !important; padding-top:calc(var(--top) + 8px); }
+  .rowhint{ opacity:.72; }
+  .cin{ display:flex; align-items:center; gap:8px; }
+  .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
+  .cin label{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); }
+  #cropFrame{ position:fixed; z-index:4; border:1px solid var(--liton); pointer-events:none;
+    box-shadow:0 0 0 9999px rgba(5,6,9,.45); opacity:0; transition:opacity .25s ease; }
+  #cropFrame.show{ opacity:.9; }
 </style>
 </head>
 <body>
-  <canvas id="stage"></canvas>
 
-  <a class="mark" id="mark" href="/lab/">Garden&nbsp;Variety<small>plant &middot; bleed &middot; wander &nbsp;·&nbsp; <span class="back">← lab</span></small></a>
-  <div class="hint" id="hint">Tap and drag to plant</div>
-  <div class="frame" id="frame" aria-hidden="true"></div>
+<div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="cropFrame"></div>
+<div id="status"></div>
+<div id="hint"></div>
+<div id="bar">
+  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
+  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
+  <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
+</div>
+<button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
-  <div class="bar" role="toolbar" aria-label="Garden controls">
-    <div class="swatches" id="swatches" aria-label="Color"></div>
-    <div class="divide"></div>
-    <div class="size">
-      <label for="size">Size</label>
-      <input id="size" type="range" min="18" max="120" value="52" aria-label="Bloom size" />
+<div id="rail" class="rail rail-l">
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Bloom</button>
+    <p class="rowhint">Drag on the canvas to plant blooms and trail stems. Or grow a whole garden below.</p>
+    <div class="grp" data-tip="How big each bloom is."><label>Size <b id="sizeR">52</b></label><input id="size" type="range" min="18" max="120" value="52" /></div>
+    <div class="grp" data-tip="Auto varies the colour from a warm palette as you plant. Solid uses your one chosen colour."><label>Colour</label>
+      <div class="seg" id="modeSeg"><button data-m="auto" aria-pressed="true">Auto</button><button data-m="solid" aria-pressed="false">Solid</button></div>
     </div>
-    <div class="divide"></div>
-    <button class="btn" id="grow" aria-label="Grow a garden">Grow</button>
-    <button class="btn" id="clear" aria-label="Clear canvas">Clear</button>
-    <button class="btn" id="save" aria-label="Save image">Save</button>
-    <div class="divide"></div>
-    <div class="fmt" id="fmt" role="group" aria-label="Video format">
-      <button class="btn fmtbtn on" data-fmt="9:16" aria-label="Vertical 9 by 16">9:16</button>
-      <button class="btn fmtbtn" data-fmt="1:1" aria-label="Square 1 by 1">1:1</button>
+    <div class="duo">
+      <div class="grp" data-tip="The bloom colour, used in Solid mode."><div class="cin"><input type="color" id="bloomCol" value="#e0a8b0"><label>Bloom</label></div></div>
+      <div class="grp" data-tip="Colour of the ground / paper."><div class="cin"><input type="color" id="ground" value="#0a0908"><label>Ground</label></div></div>
     </div>
-    <button class="btn rec" id="rec" aria-label="Record video">
-      <span class="dot"></span><span id="reclabel">Rec</span><span id="rectime"></span>
-    </button>
   </div>
 
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Stem</button>
+    <p class="rowhint">How the connecting stems are drawn between blooms.</p>
+    <div class="grp" data-tip="Line is a painted vine; Dotted is a trail of dots; Pixel is blocky; Beaded is a string of beads; Node draws points joined by thin links."><label>Style</label>
+      <div class="seg" id="stemSeg">
+        <button data-s="line" aria-pressed="true">Line</button>
+        <button data-s="dotted" aria-pressed="false">Dots</button>
+        <button data-s="pixel" aria-pressed="false">Pixel</button>
+        <button data-s="beaded" aria-pressed="false">Bead</button>
+        <button data-s="node" aria-pressed="false">Node</button>
+      </div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="How thick the stems are."><label>Weight <b id="stemWR">2</b></label><input id="stemW" type="range" min="1" max="12" value="2" /></div>
+      <div class="grp" data-tip="Colour of the stems."><div class="cin"><input type="color" id="stemCol" value="#5fc4bc"><label>Stem</label></div></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Garden</button>
+    <p class="rowhint">Grow a whole garden at once, or wipe the canvas.</p>
+    <div class="grp" data-tip="How many stems branch out when you grow a garden."><label>Density <b id="densR">10</b></label><input id="dens" type="range" min="3" max="24" value="10" /></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="growBtn" style="flex:1" data-tip="Grows a whole garden from a random point.">Grow</button>
+      <button class="btn" id="clearBtn" style="flex:1" data-tip="Clears the canvas.">Clear</button>
+    </div></div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Export</button>
+    <p class="rowhint">A still, or record the garden growing as a video.</p>
+    <div class="grp" data-tip="The crop of the canvas that gets saved or recorded. Full uses the whole window."><label>Canvas</label>
+      <div class="seg" id="sizeSeg">
+        <button data-z="full" aria-pressed="true">Full</button>
+        <button data-z="1080x1350" aria-pressed="false">4:5</button>
+        <button data-z="1080x1080" aria-pressed="false">1:1</button>
+        <button data-z="1080x1920" aria-pressed="false">9:16</button>
+      </div>
+    </div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="saveBtn" style="flex:1" data-tip="Saves the current canvas as a PNG.">PNG</button>
+      <button class="btn" id="recBtn" style="flex:1" data-tip="Records the garden growing as a video (MP4 where supported).">Record</button>
+    </div></div>
+  </div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Garden Variety', desc: 'Generative watercolor garden', version: 'v1', about: 'Plant soft watercolour blooms by dragging, trailed by connecting stems that bleed and wander. Choose the colours and stem style, grow a whole garden at once, and export a still or record it growing as a video.' });</script>
+
 <script>
-(() => {
+(function(){
   "use strict";
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $=id=>document.getElementById(id);
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+  const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let THEME='dark';
+  const state={ size:52, mode:'auto', bloomCol:'#e0a8b0', ground:'#0a0908',
+    stemStyle:'line', stemW:2, stemCol:'#5fc4bc', dens:10, exp:'full' };
 
-  // ---- palette drawn from the reference ----------------------------------
-  const PAL = {
-    mustard:  "#c9b84a",
-    olive:    "#9a8a2a",
-    coral:    "#e0a088",
-    salmon:   "#d98b6f",
-    pink:     "#e0a8b0",
-    rust:     "#8a5a3a",
-    bone:     "#e8e4d8",
-    teal:     "#5fc4bc",
-  };
-  // weighted picker for auto mode — yellows dominate, like the reference
-  const BLOOM_WEIGHTS = [
-    ["mustard",5],["olive",2],["coral",2],["salmon",2],
-    ["pink",1.4],["rust",1.6],["bone",1.2],
-  ];
-  const VINE_COLORS = [["teal",7],["bone",1.6],["salmon",1]];
+  const PAL={ mustard:"#c9b84a",olive:"#9a8a2a",coral:"#e0a088",salmon:"#d98b6f",pink:"#e0a8b0",rust:"#8a5a3a",bone:"#e8e4d8",teal:"#5fc4bc" };
+  const BLOOM_WEIGHTS=[["mustard",5],["olive",2],["coral",2],["salmon",2],["pink",1.4],["rust",1.6],["bone",1.2]];
 
-  const stage = document.getElementById("stage");
-  const view  = stage.getContext("2d");
-  const paint = document.createElement("canvas");   // persistent wet-paint layer
-  const pctx  = paint.getContext("2d");
-  let grainPat = null;
+  const stage=$('stage'), view=stage.getContext('2d');
+  const paint=document.createElement('canvas'), pctx=paint.getContext('2d');
+  const wrap=$('stagewrap'); let grainPat=null, W=0,H=0,DPR=1;
 
-  let W = 0, H = 0, DPR = 1;
+  const hexToRgb=h=>{h=h.replace('#','');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];};
+  const rgba=(c,a)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const weighted=list=>{let t=0;for(const [,w] of list)t+=w;let r=Math.random()*t;for(const [k,w] of list){if((r-=w)<=0)return k;}return list[0][0];};
+  const jitterCol=(rgb,f)=>rgb.map(v=>Math.max(0,Math.min(255,v*f)));
+  const angDiff=(a,b)=>{let d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d;};
 
-  function hexToRgb(h){h=h.replace('#','');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
-  function rgba(c,a){return `rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;}
-  const rnd = (a,b)=>a+Math.random()*(b-a);
-  const pick = arr => arr[(Math.random()*arr.length)|0];
-  function weighted(list){let t=0;for(const [,w] of list)t+=w;let r=Math.random()*t;for(const [k,w] of list){if((r-=w)<=0)return k;}return list[0][0];}
-  const jitterCol = (rgb,f)=>rgb.map(v=>Math.max(0,Math.min(255,v*f)));
-  function angDiff(a,b){let d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d;}
+  function makeGrain(){ const s=160,c=document.createElement('canvas');c.width=c.height=s;
+    const g=c.getContext('2d'),img=g.createImageData(s,s),d=img.data;
+    for(let i=0;i<d.length;i+=4){ const n=(Math.random()*22)|0; d[i]=d[i+1]=d[i+2]=n; d[i+3]=Math.random()*26; }
+    g.putImageData(img,0,0); return view.createPattern(c,'repeat'); }
+  function resetPaint(){ pctx.setTransform(1,0,0,1,0,0); pctx.fillStyle=state.ground; pctx.fillRect(0,0,paint.width,paint.height);
+    pctx.save(); pctx.scale(DPR,DPR); if(grainPat){ pctx.globalAlpha=1; pctx.fillStyle=grainPat; pctx.fillRect(0,0,W,H); } pctx.restore();
+    pctx.setTransform(DPR,0,0,DPR,0,0); }
+  function resize(){ DPR=Math.min(window.devicePixelRatio||1,2); const r=wrap.getBoundingClientRect(); W=r.width; H=r.height;
+    stage.width=paint.width=Math.round(W*DPR); stage.height=paint.height=Math.round(H*DPR);
+    stage.style.width=W+'px'; stage.style.height=H+'px'; view.setTransform(DPR,0,0,DPR,0,0); grainPat=makeGrain(); resetPaint(); layoutCrop(); blit(); }
+  addEventListener('resize',()=>setTimeout(resize,120));
 
-  // ---- grain: bake a subtle linen-like noise ------------------------------
-  function makeGrain(){
-    const s=160, c=document.createElement("canvas");c.width=c.height=s;
-    const g=c.getContext("2d"), img=g.createImageData(s,s), d=img.data;
-    for(let i=0;i<d.length;i+=4){
-      const n=(Math.random()*22)|0;
-      d[i]=d[i+1]=d[i+2]=n; d[i+3]=Math.random()*26;
-    }
-    g.putImageData(img,0,0);
-    return view.createPattern(c,"repeat");
-  }
-  function resetPaint(){
-    pctx.setTransform(1,0,0,1,0,0);
-    pctx.fillStyle="#0a0908";
-    pctx.fillRect(0,0,paint.width,paint.height);
-    pctx.save();
-    pctx.scale(DPR,DPR);
-    if(grainPat){pctx.globalAlpha=1;pctx.fillStyle=grainPat;pctx.fillRect(0,0,W,H);}
-    pctx.restore();
-    pctx.setTransform(DPR,0,0,DPR,0,0);
-  }
+  function stampBlob(x,y,r,rgb,a){ const g=pctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,rgba(rgb,a)); g.addColorStop(0.55,rgba(rgb,a*0.42)); g.addColorStop(1,rgba(rgb,0));
+    pctx.fillStyle=g; pctx.beginPath(); pctx.arc(x,y,r,0,7); pctx.fill(); }
+  function buildBloom(x,y,size,rgb){ const blobs=[], rings=4+((size/22)|0);
+    for(let ring=0;ring<rings;ring++){ const t=ring/rings, rr=size*(0.16+t*0.9), count=6+Math.round(t*14);
+      for(let i=0;i<count;i++){ const ang=Math.random()*Math.PI*2, spread=size*t*rnd(0.35,1.05);
+        blobs.push({x:x+Math.cos(ang)*spread+rnd(-4,4),y:y+Math.sin(ang)*spread+rnd(-4,4),r:rr*rnd(0.5,1.1),rgb:jitterCol(rgb,rnd(0.68,1.14)),a:(0.10+(1-t)*0.16)*rnd(0.7,1.1)}); } }
+    if(Math.random()<0.4){ const n=6+((Math.random()*10)|0); for(let i=0;i<n;i++){ const ang=Math.random()*Math.PI*2,d=size*rnd(0.3,1.2);
+      blobs.push({x:x+Math.cos(ang)*d,y:y+Math.sin(ang)*d,r:rnd(1.2,3.2),rgb:jitterCol(rgb,rnd(0.85,1.15)),a:rnd(0.25,0.55)}); } }
+    return blobs; }
+  function buildVine(x0,y0,tx,ty,len){ const pts=[{x:x0,y:y0}]; let x=x0,y=y0;
+    let ang=(tx!=null)?Math.atan2(ty-y0,tx-x0):Math.random()*Math.PI*2; const step=5.5, n=len||(24+((Math.random()*90)|0));
+    const curl=rnd(-0.14,0.14),freq=rnd(0.12,0.28),amp=rnd(0.05,0.13),ph=Math.random()*7;
+    for(let i=0;i<n;i++){ if(tx!=null){ const toT=Math.atan2(ty-y,tx-x); ang+=angDiff(toT,ang)*0.045; }
+      ang+=curl+Math.sin(i*freq+ph)*amp+rnd(-0.14,0.14); x+=Math.cos(ang)*step; y+=Math.sin(ang)*step; pts.push({x,y}); }
+    return pts; }
 
-  function resize(){
-    DPR = Math.min(window.devicePixelRatio||1, 2);
-    W = window.innerWidth; H = window.innerHeight;
-    stage.width = paint.width = Math.round(W*DPR);
-    stage.height= paint.height= Math.round(H*DPR);
-    stage.style.width=W+"px"; stage.style.height=H+"px";
-    view.setTransform(DPR,0,0,DPR,0,0);
-    grainPat = makeGrain();
-    resetPaint();
-  }
-
-  // ---- stamping a single soft watercolor blob -----------------------------
-  function stampBlob(x,y,r,rgb,a){
-    const g=pctx.createRadialGradient(x,y,0,x,y,r);
-    g.addColorStop(0, rgba(rgb,a));
-    g.addColorStop(0.55, rgba(rgb,a*0.42));
-    g.addColorStop(1, rgba(rgb,0));
-    pctx.fillStyle=g;
-    pctx.beginPath();pctx.arc(x,y,r,0,7);pctx.fill();
-  }
-
-  // Precompute a bloom as an ordered list of blobs (core -> ragged edge)
-  function buildBloom(x,y,size,colorKey){
-    const rgb=hexToRgb(PAL[colorKey]);
-    const blobs=[];
-    const rings=4+((size/22)|0);
-    for(let ring=0;ring<rings;ring++){
-      const t=ring/rings;                       // 0 core -> 1 edge
-      const rr=size*(0.16+t*0.9);
-      const count=6+Math.round(t*14);
-      for(let i=0;i<count;i++){
-        const ang=Math.random()*Math.PI*2;
-        const spread=size*t*rnd(0.35,1.05);
-        blobs.push({
-          x:x+Math.cos(ang)*spread+rnd(-4,4),
-          y:y+Math.sin(ang)*spread+rnd(-4,4),
-          r:rr*rnd(0.5,1.1),
-          rgb:jitterCol(rgb, rnd(0.68,1.14)),
-          a:(0.10+ (1-t)*0.16)*rnd(0.7,1.1),
-        });
-      }
-    }
-    // speckle: occasional scattered dots, like the reference clusters
-    if(Math.random()<0.4){
-      const n=6+((Math.random()*10)|0);
-      for(let i=0;i<n;i++){
-        const ang=Math.random()*Math.PI*2, d=size*rnd(0.3,1.2);
-        blobs.push({x:x+Math.cos(ang)*d,y:y+Math.sin(ang)*d,
-          r:rnd(1.2,3.2),rgb:jitterCol(rgb,rnd(0.85,1.15)),a:rnd(0.25,0.55),speck:true});
-      }
-    }
-    return blobs;
-  }
-
-  // ---- tendril path (wandering vine, optionally steering to a target) -----
-  function buildVine(x0,y0,tx,ty,len){
-    const pts=[{x:x0,y:y0}];
-    let x=x0,y=y0;
-    let ang = (tx!=null)? Math.atan2(ty-y0,tx-x0) : Math.random()*Math.PI*2;
-    const step=5.5;
-    const n = len || (24+((Math.random()*90)|0));
-    const curl=rnd(-0.14,0.14);          // overall loop bias
-    const freq=rnd(0.12,0.28), amp=rnd(0.05,0.13), ph=Math.random()*7;
-    for(let i=0;i<n;i++){
-      if(tx!=null){
-        const toT=Math.atan2(ty-y,tx-x);
-        ang += angDiff(toT,ang)*0.045;
-      }
-      ang += curl + Math.sin(i*freq+ph)*amp + rnd(-0.14,0.14);
-      x+=Math.cos(ang)*step; y+=Math.sin(ang)*step;
-      pts.push({x,y});
-    }
-    return pts;
-  }
-
-  // ---- live growth queues --------------------------------------------------
-  let bloomQ=[]; // {blobs, i, perFrame}
-  let vineQ=[];  // {pts, i, perFrame, rgb, tipColor, tipSize, beads:Set}
-  let raf=null, running=false;
-
-  function plantBloom(x,y,size,colorKey){
-    const blobs=buildBloom(x,y,size,colorKey);
+  let bloomQ=[], vineQ=[], raf=null, running=false;
+  function currentBloomRgb(){ return state.mode==='solid' ? hexToRgb(state.bloomCol) : hexToRgb(PAL[weighted(BLOOM_WEIGHTS)]); }
+  function plantBloom(x,y,size,rgb){ const blobs=buildBloom(x,y,size,rgb);
     if(reduce){ for(const b of blobs) stampBlob(b.x,b.y,b.r,b.rgb,b.a); return; }
-    bloomQ.push({blobs,i:0,perFrame:Math.max(3,(blobs.length/26)|0)});
-    ensureLoop();
-  }
-
-  function growVine(x0,y0,tx,ty,opts={}){
-    const key=weighted(VINE_COLORS);
-    const rgb=hexToRgb(PAL[key]);
-    const pts=buildVine(x0,y0,tx,ty,opts.len);
-    const v={pts,i:1,perFrame:reduce?pts.length:3,rgb,
-             w0:rnd(1.4,2.4), tip:opts.tip!==false, beads:new Set()};
-    // pre-decide beads
+    bloomQ.push({blobs,i:0,perFrame:Math.max(3,(blobs.length/26)|0)}); ensureLoop(); }
+  function growVine(x0,y0,tx,ty,opts={}){ const rgb=hexToRgb(state.stemCol), pts=buildVine(x0,y0,tx,ty,opts.len);
+    const v={pts,i:1,perFrame:reduce?pts.length:3,rgb,w0:state.stemW,tip:opts.tip!==false,beads:new Set()};
     for(let i=8;i<pts.length;i+=((Math.random()*14+8)|0)){ if(Math.random()<0.5) v.beads.add(i); }
-    if(reduce){ drawVineTo(v,pts.length); if(v.tip)plantBloom(pts[pts.length-1].x,pts[pts.length-1].y,rnd(14,30),weighted(BLOOM_WEIGHTS)); return; }
-    vineQ.push(v);
-    ensureLoop();
-  }
-
-  function drawVineSeg(v,i){
-    const a=v.pts[i-1], b=v.pts[i];
-    const t=i/v.pts.length;
-    const w=Math.max(0.5, v.w0*(1-t*0.7));
+    if(reduce){ drawVineTo(v,pts.length); if(v.tip) plantBloom(pts[pts.length-1].x,pts[pts.length-1].y,rnd(14,30),currentBloomRgb()); return; }
+    vineQ.push(v); ensureLoop(); }
+  function drawVineSeg(v,i){ const a=v.pts[i-1], b=v.pts[i], t=i/v.pts.length, w=Math.max(0.5,v.w0*(1-t*0.55)), col=v.rgb, st=state.stemStyle;
     pctx.save();
-    pctx.strokeStyle=rgba(v.rgb,0.85);
-    pctx.lineWidth=w; pctx.lineCap="round";
-    pctx.shadowColor=rgba(v.rgb,0.5); pctx.shadowBlur=5;
-    pctx.beginPath();pctx.moveTo(a.x,a.y);pctx.lineTo(b.x,b.y);pctx.stroke();
+    if(st==='pixel'){ const s=Math.max(2,w*1.7); pctx.fillStyle=rgba(col,0.92); pctx.fillRect(b.x-s/2,b.y-s/2,s,s); }
+    else if(st==='beaded'){ pctx.fillStyle=rgba(col,0.92); pctx.beginPath(); pctx.arc(b.x,b.y,Math.max(1.2,w*1.05),0,7); pctx.fill(); }
+    else if(st==='dotted'){ if(i%3===0){ pctx.fillStyle=rgba(col,0.9); pctx.beginPath(); pctx.arc(b.x,b.y,Math.max(1,w*0.85),0,7); pctx.fill(); } }
+    else if(st==='node'){ pctx.strokeStyle=rgba(col,0.55); pctx.lineWidth=Math.max(0.6,w*0.5); pctx.lineCap='round';
+      pctx.beginPath(); pctx.moveTo(a.x,a.y); pctx.lineTo(b.x,b.y); pctx.stroke();
+      if(i%6===0){ pctx.fillStyle=rgba(col,0.95); pctx.beginPath(); pctx.arc(b.x,b.y,Math.max(1.6,w*1.4),0,7); pctx.fill(); } }
+    else { pctx.strokeStyle=rgba(col,0.85); pctx.lineWidth=w; pctx.lineCap='round'; pctx.shadowColor=rgba(col,0.5); pctx.shadowBlur=5;
+      pctx.beginPath(); pctx.moveTo(a.x,a.y); pctx.lineTo(b.x,b.y); pctx.stroke(); }
     pctx.restore();
-    if(v.beads.has(i)){
-      pctx.fillStyle=rgba(jitterCol(v.rgb,rnd(0.9,1.15)),0.9);
-      pctx.beginPath();pctx.arc(b.x,b.y,rnd(1.6,3.2),0,7);pctx.fill();
-    }
-  }
+    if(v.beads.has(i) && st==='line'){ pctx.fillStyle=rgba(jitterCol(col,rnd(0.9,1.15)),0.9); pctx.beginPath(); pctx.arc(b.x,b.y,rnd(1.6,3.2),0,7); pctx.fill(); } }
   function drawVineTo(v,end){ for(let i=v.i;i<end;i++) drawVineSeg(v,i); v.i=end; }
-
   function tick(){
-    // grow blooms
-    for(let k=bloomQ.length-1;k>=0;k--){
-      const bl=bloomQ[k];
-      const end=Math.min(bl.blobs.length, bl.i+bl.perFrame);
-      for(;bl.i<end;bl.i++){const b=bl.blobs[bl.i];stampBlob(b.x,b.y,b.r,b.rgb,b.a);}
-      if(bl.i>=bl.blobs.length) bloomQ.splice(k,1);
-    }
-    // grow vines
-    for(let k=vineQ.length-1;k>=0;k--){
-      const v=vineQ[k];
-      const end=Math.min(v.pts.length, v.i+v.perFrame);
-      drawVineTo(v,end);
-      if(v.i>=v.pts.length){
-        if(v.tip){const p=v.pts[v.pts.length-1];plantBloom(p.x,p.y,rnd(14,32),weighted(BLOOM_WEIGHTS));}
-        vineQ.splice(k,1);
-      }
-    }
-    view.clearRect(0,0,W,H);
-    view.drawImage(paint,0,0,W,H);
-    if(bloomQ.length||vineQ.length){ raf=requestAnimationFrame(tick); }
-    else { running=false; raf=null; blit(); }
-  }
-  function ensureLoop(){ if(!running){running=true;raf=requestAnimationFrame(tick);} }
+    for(let k=bloomQ.length-1;k>=0;k--){ const bl=bloomQ[k], end=Math.min(bl.blobs.length,bl.i+bl.perFrame);
+      for(;bl.i<end;bl.i++){ const b=bl.blobs[bl.i]; stampBlob(b.x,b.y,b.r,b.rgb,b.a); } if(bl.i>=bl.blobs.length) bloomQ.splice(k,1); }
+    for(let k=vineQ.length-1;k>=0;k--){ const v=vineQ[k], end=Math.min(v.pts.length,v.i+v.perFrame); drawVineTo(v,end);
+      if(v.i>=v.pts.length){ if(v.tip){ const p=v.pts[v.pts.length-1]; plantBloom(p.x,p.y,rnd(14,32),currentBloomRgb()); } vineQ.splice(k,1); } }
+    view.clearRect(0,0,W,H); view.drawImage(paint,0,0,W,H);
+    if(bloomQ.length||vineQ.length){ raf=requestAnimationFrame(tick); } else { running=false; raf=null; blit(); } }
+  function ensureLoop(){ if(!running){ running=true; raf=requestAnimationFrame(tick); } }
   function blit(){ view.clearRect(0,0,W,H); view.drawImage(paint,0,0,W,H); }
 
-  // ---- input ---------------------------------------------------------------
-  let painting=false, last=null;
-  function toXY(e){
-    const r=stage.getBoundingClientRect();
-    const p=e.touches?e.touches[0]:e;
-    return {x:p.clientX-r.left, y:p.clientY-r.top};
+  // ---- input ----
+  let painting=false,last=null;
+  function toXY(e){ const r=stage.getBoundingClientRect(), p=e.touches?e.touches[0]:e; return {x:p.clientX-r.left,y:p.clientY-r.top}; }
+  function down(e){ e.preventDefault(); painting=true; const p=toXY(e); plantBloom(p.x,p.y,state.size,currentBloomRgb()); last=p; }
+  function move(e){ if(!painting) return; e.preventDefault(); const p=toXY(e), d=Math.hypot(p.x-last.x,p.y-last.y), gap=state.size*0.9;
+    if(d>gap){ growVine(last.x,last.y,p.x,p.y,{tip:false,len:Math.max(10,(d/5.5)|0)}); plantBloom(p.x,p.y,state.size*rnd(0.7,1.05),currentBloomRgb()); last=p; } }
+  function up(){ painting=false; last=null; }
+  stage.addEventListener('mousedown',down); addEventListener('mousemove',move); addEventListener('mouseup',up);
+  stage.addEventListener('touchstart',down,{passive:false}); stage.addEventListener('touchmove',move,{passive:false}); addEventListener('touchend',up);
+
+  function growGarden(){ const cx=W*rnd(0.35,0.65), cy=H*rnd(0.32,0.6); let x=cx,y=cy,delay=0;
+    plantBloom(x,y,rnd(60,110),currentBloomRgb()); const nodes=state.dens;
+    for(let i=0;i<nodes;i++){ const ang=Math.random()*Math.PI*2, reach=rnd(90,260);
+      const nx=Math.max(40,Math.min(W-40,x+Math.cos(ang)*reach)), ny=Math.max(60,Math.min(H-90,y+Math.sin(ang)*reach));
+      ((px,py,tx,ty)=>setTimeout(()=>growVine(px,py,tx,ty,{tip:true}),delay))(x,y,nx,ny);
+      delay+=reduce?0:rnd(180,420); x=(x+nx)/2; y=(y+ny)/2; } }
+
+  // ---- crop / export ----
+  const cropEl=$('cropFrame'); let cropRect={x:0,y:0,w:0,h:0}, cropHideT=null;
+  function layoutCrop(){ if(state.exp==='full'){ cropRect={x:0,y:0,w:W,h:H}; return; }
+    const [rw,rh]=state.exp.split('x').map(Number), ar=rw/rh, padTop=108,padBottom=20,padX=16;
+    const availW=W-padX*2, availH=H-padTop-padBottom; let h=availH,w=h*ar; if(w>availW){ w=availW; h=w/ar; }
+    const x=(W-w)/2, y=padTop+(availH-h)/2; cropRect={x,y,w,h};
+    cropEl.style.left=x+'px'; cropEl.style.top=y+'px'; cropEl.style.width=w+'px'; cropEl.style.height=h+'px'; }
+  function flashCrop(){ if(state.exp==='full'){ cropEl.classList.remove('show'); return; } layoutCrop(); cropEl.classList.add('show');
+    clearTimeout(cropHideT); cropHideT=setTimeout(()=>{ if(!recording) cropEl.classList.remove('show'); },2600); }
+  function savePNG(){ const c=document.createElement('canvas');
+    if(state.exp==='full'){ c.width=paint.width; c.height=paint.height; c.getContext('2d').drawImage(paint,0,0); }
+    else { const [rw,rh]=state.exp.split('x').map(Number); const sc=2; c.width=rw*sc; c.height=rh*sc;
+      c.getContext('2d').drawImage(paint, cropRect.x*DPR,cropRect.y*DPR,cropRect.w*DPR,cropRect.h*DPR, 0,0,c.width,c.height); }
+    c.toBlob(b=>{ const a=document.createElement('a'); a.download=`garden-variety-${state.exp}-${Date.now()}.png`; a.href=URL.createObjectURL(b); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); },'image/png');
+    setStatus('saved PNG'); setTimeout(()=>setStatus(''),1500); }
+
+  function pickMime(){ const l=['video/mp4;codecs=avc1.640028','video/mp4','video/webm;codecs=vp9','video/webm']; for(const m of l) if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)) return m; return ''; }
+  let recording=false, mediaRec=null, recChunks=[], recRAF=null, recCanvas=document.createElement('canvas'), rctx=recCanvas.getContext('2d');
+  function startRec(){ const mime=pickMime(); if(!mime){ setStatus('recording not supported here'); setTimeout(()=>setStatus(''),2600); return; }
+    let rw,rh; if(state.exp==='full'){ rw=Math.round(W), rh=Math.round(H); rw-=rw%2; rh-=rh%2; } else { [rw,rh]=state.exp.split('x').map(Number); }
+    recCanvas.width=rw; recCanvas.height=rh; layoutCrop(); cropEl.classList.add('show');
+    const stream=recCanvas.captureStream(30); recChunks=[];
+    try{ mediaRec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:14000000}); }catch(e){ mediaRec=new MediaRecorder(stream); }
+    mediaRec.ondataavailable=e=>{ if(e.data&&e.data.size) recChunks.push(e.data); };
+    mediaRec.onstop=()=>{ const type=(mediaRec&&mediaRec.mimeType)||mime, ext=type.includes('mp4')?'mp4':'webm';
+      const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(recChunks,{type})); a.download=`garden-variety-${state.exp}-${Date.now()}.${ext}`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+      setStatus('saved '+ext.toUpperCase()); setTimeout(()=>setStatus(''),2200); };
+    mediaRec.start(100); recording=true; $('recBtn').textContent='Stop'; $('recBtn').classList.add('on'); recLoop(); setStatus('recording…'); }
+  function recLoop(){ const sx=cropRect.x*DPR, sy=cropRect.y*DPR, sw=cropRect.w*DPR, sh=cropRect.h*DPR;
+    rctx.drawImage(paint, sx,sy,sw,sh, 0,0,recCanvas.width,recCanvas.height); if(recording) recRAF=requestAnimationFrame(recLoop); }
+  function stopRec(){ if(!recording) return; recording=false; cancelAnimationFrame(recRAF); try{ mediaRec.stop(); }catch(e){}
+    $('recBtn').textContent='Record'; $('recBtn').classList.remove('on'); setTimeout(()=>{ if(!recording&&state.exp!=='full') cropEl.classList.remove('show'); },1200); }
+
+  // ---- UI ----
+  function setStatus(t){ const s=$('status'); if(!s) return; s.textContent=t; s.style.display=t?'block':'none'; }
+  function bindSeg(id,key,dk,after){ document.querySelectorAll(`#${id} button`).forEach(b=>b.addEventListener('click',()=>{ state[key]=b.dataset[dk]; document.querySelectorAll(`#${id} button`).forEach(x=>x.setAttribute('aria-pressed',String(x===b))); if(after)after(); })); }
+  const bind=(id,key,fn)=>{ const e=$(id); e.addEventListener('input',ev=>{ state[key]=+ev.target.value; const r=$(id+'R'); if(r)r.textContent=ev.target.value; if(fn)fn(); }); };
+  function wire(){
+    bindSeg('modeSeg','mode','m'); bindSeg('stemSeg','stemStyle','s'); bindSeg('sizeSeg','exp','z',flashCrop);
+    bind('size','size'); bind('stemW','stemW'); bind('dens','dens');
+    $('bloomCol').addEventListener('input',e=>state.bloomCol=e.target.value);
+    $('stemCol').addEventListener('input',e=>state.stemCol=e.target.value);
+    $('ground').addEventListener('input',e=>{ state.ground=e.target.value; });
+    $('growBtn').addEventListener('click',growGarden);
+    $('clearBtn').addEventListener('click',()=>{ bloomQ=[]; vineQ=[]; resetPaint(); blit(); });
+    $('saveBtn').addEventListener('click',savePNG);
+    $('recBtn').addEventListener('click',()=>recording?stopRec():startRec());
+    $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark')); });
+    $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs'))); $('exitFs').addEventListener('click',()=>setFs(false));
+    $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open'); $('rail').classList.toggle('open',open); document.body.classList.toggle('panels',open); $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
+    addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+      if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; } if(e.key==='f'||e.key==='F') setFs(!document.body.classList.contains('fs')); if(e.key==='g'||e.key==='G') growGarden(); });
+    document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && document.body.classList.contains('fs')) setFs(false); });
   }
-  function currentColor(){
-    return chosen==="auto" ? weighted(BLOOM_WEIGHTS) : chosen;
-  }
-  function down(e){
-    e.preventDefault(); dismissHint();
-    painting=true;
-    const p=toXY(e);
-    plantBloom(p.x,p.y,+sizeEl.value,currentColor());
-    last=p;
-  }
-  function move(e){
-    if(!painting)return; e.preventDefault();
-    const p=toXY(e);
-    const d=Math.hypot(p.x-last.x,p.y-last.y);
-    const gap=+sizeEl.value*0.9;
-    if(d>gap){
-      growVine(last.x,last.y,p.x,p.y,{tip:false,len:Math.max(10,(d/5.5)|0)});
-      plantBloom(p.x,p.y,+sizeEl.value*rnd(0.7,1.05),currentColor());
-      last=p;
-    }
-  }
-  function up(){painting=false;last=null;}
+  function setFs(on){ document.body.classList.toggle('fs',on); if(on&&document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{}); else if(!on&&document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); requestAnimationFrame(resize); }
 
-  stage.addEventListener("mousedown",down);
-  window.addEventListener("mousemove",move);
-  window.addEventListener("mouseup",up);
-  stage.addEventListener("touchstart",down,{passive:false});
-  stage.addEventListener("touchmove",move,{passive:false});
-  window.addEventListener("touchend",up);
+  // ---- knobs / folds / tooltips ----
+  function makeKnob(inp){ inp.dataset.knob='1'; const w=document.createElement('div'); w.className='knob'; w.tabIndex=0; w.setAttribute('role','slider');
+    inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
+    w.insertAdjacentHTML('beforeend','<svg viewBox="0 0 44 44" width="42" height="42" aria-hidden="true"><path class="k-tr" d="M9 35 A18 18 0 1 1 35 35"/><path class="k-vl" d="M9 35 A18 18 0 1 1 35 35"/><circle class="k-hub" cx="22" cy="22" r="9"/><line class="k-pt" x1="22" y1="22" x2="22" y2="14"/></svg>');
+    const k={el:w,inp}; const set=v=>{ inp.value=String(v); inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); };
+    let dy=0,dv=0; w.addEventListener('pointerdown',e=>{ e.preventDefault(); w.setPointerCapture(e.pointerId); w.classList.add('drag'); dy=e.clientY; dv=+inp.value; });
+    w.addEventListener('pointermove',e=>{ if(!w.classList.contains('drag')) return; const span=(+inp.max)-(+inp.min), st=+inp.step||1; set(clamp(Math.round((dv+(dy-e.clientY)/150*span)/st)*st,+inp.min,+inp.max)); });
+    const up2=()=>w.classList.remove('drag'); w.addEventListener('pointerup',up2); w.addEventListener('pointercancel',up2);
+    w.addEventListener('keydown',e=>{ const st=+inp.step||1; if(e.key==='ArrowUp'||e.key==='ArrowRight'){ e.preventDefault(); set(clamp(+inp.value+st,+inp.min,+inp.max)); } if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); set(clamp(+inp.value-st,+inp.min,+inp.max)); } }); paintKnob(k); }
+  function paintKnob(k){ const inp=k.inp,mn=+inp.min,mx=+inp.max,v=+inp.value,f=(v-mn)/(mx-mn||1); const path=k.el.querySelector('.k-vl'),len=path.getTotalLength();
+    path.style.strokeDasharray=len; path.style.strokeDashoffset=len*(1-f); const a=(-135+270*f)*Math.PI/180,pt=k.el.querySelector('.k-pt'); pt.setAttribute('x2',(22+Math.sin(a)*8).toFixed(2)); pt.setAttribute('y2',(22-Math.cos(a)*8).toFixed(2)); }
+  const FOLD_KEY='gv-folded';
+  (function(){ const saved=new Set((()=>{try{return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]')}catch(e){return[]}})());
+    document.querySelectorAll('.rail .rowhead').forEach(h=>{ const row=h.closest('.row'); if(!row) return; const name=h.textContent.trim();
+      if(saved.has(name)){ row.classList.add('folded'); h.setAttribute('aria-expanded','false'); }
+      h.addEventListener('click',()=>{ const f=row.classList.toggle('folded'); h.setAttribute('aria-expanded',String(!f));
+        const cur=new Set((()=>{try{return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]')}catch(e){return[]}})()); f?cur.add(name):cur.delete(name); try{ localStorage.setItem(FOLD_KEY,JSON.stringify([...cur])); }catch(e){} }); }); })();
+  let tipEl=null,tipT=null,tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return; if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0'; const r=host.getBoundingClientRect(),t=tipEl.getBoundingClientRect();
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8,r.bottom+8); tipEl.style.left=Math.max(8,Math.min(r.left,innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+  addEventListener('pointerover',e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return; clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true);
 
-  // ---- auto-grow a whole garden -------------------------------------------
-  function growGarden(){
-    dismissHint();
-    const cx=W*rnd(0.35,0.65), cy=H*rnd(0.32,0.6);
-    let x=cx,y=cy, delay=0;
-    plantBloom(x,y,rnd(60,110),weighted(BLOOM_WEIGHTS));
-    const nodes=7+((Math.random()*6)|0);
-    for(let i=0;i<nodes;i++){
-      const ang=Math.random()*Math.PI*2, reach=rnd(90,260);
-      const nx=Math.max(40,Math.min(W-40,x+Math.cos(ang)*reach));
-      const ny=Math.max(60,Math.min(H-90,y+Math.sin(ang)*reach));
-      (px=>py=>tx=>ty=>{
-        setTimeout(()=>growVine(px,py,tx,ty,{tip:true}), delay);
-      })(x)(y)(nx)(ny);
-      delay+= reduce?0:rnd(180,420);
-      // wander base point loosely toward new node so garden spreads
-      x=(x+nx)/2; y=(y+ny)/2;
-    }
-  }
-
-  // ---- controls ------------------------------------------------------------
-  let chosen="auto";
-  const swWrap=document.getElementById("swatches");
-  const sizeEl=document.getElementById("size");
-  function addSwatch(key,cls){
-    const b=document.createElement("button");
-    b.className="sw "+(cls||"");
-    b.setAttribute("role","radio");
-    b.setAttribute("aria-label",key);
-    if(key!=="auto") b.style.background=PAL[key];
-    if(key===chosen) b.classList.add("on");
-    b.addEventListener("click",()=>{
-      chosen=key;
-      [...swWrap.children].forEach(c=>c.classList.remove("on"));
-      b.classList.add("on"); b.setAttribute("aria-checked","true");
-    });
-    swWrap.appendChild(b);
-  }
-  addSwatch("auto","auto");
-  ["mustard","coral","pink","rust","bone"].forEach(k=>addSwatch(k));
-
-  document.getElementById("grow").addEventListener("click",growGarden);
-  document.getElementById("clear").addEventListener("click",()=>{
-    bloomQ=[];vineQ=[];resetPaint();blit();
-  });
-  document.getElementById("save").addEventListener("click",()=>{
-    const a=document.createElement("a");
-    a.download="garden-variety.png";
-    a.href=paint.toDataURL("image/png");
-    a.click();
-  });
-
-  // ---- hint / title fade ---------------------------------------------------
-  const hintEl=document.getElementById("hint");
-  const markEl=document.getElementById("mark");
-  let hintGone=false;
-  function dismissHint(){
-    if(hintGone)return; hintGone=true;
-    hintEl.classList.add("gone");
-    setTimeout(()=>markEl.classList.add("dim"),2600);
-  }
-
-  // ---- record: capture the session at true social dimensions --------------
-  const RECDIMS = { "9:16":[1080,1920], "1:1":[1080,1080] };
-  let recFmt="9:16", recording=false, mediaRec=null, recChunks=[],
-      recStart=0, recRAF=null, recTimer=null, frameHideT=null;
-  let frameRect={x:0,y:0,w:0,h:0}; // CSS px region sampled from the paint layer
-
-  const frameEl = document.getElementById("frame");
-  const recBtn  = document.getElementById("rec");
-  const recLabel= document.getElementById("reclabel");
-  const recTimeEl=document.getElementById("rectime");
-  const fmtEl   = document.getElementById("fmt");
-  const recCanvas=document.createElement("canvas");
-  const rctx=recCanvas.getContext("2d");
-
-  function layoutFrame(){
-    const [rw,rh]=RECDIMS[recFmt], ar=rw/rh;
-    const padTop=112, padBottom=78, padX=16;   // clear the OPAL topbar + subhead
-    const availW=W-padX*2, availH=H-padTop-padBottom;
-    let h=availH, w=h*ar;
-    if(w>availW){ w=availW; h=w/ar; }
-    const x=(W-w)/2, y=padTop+(availH-h)/2;
-    frameRect={x,y,w,h};
-    frameEl.style.left=x+"px"; frameEl.style.top=y+"px";
-    frameEl.style.width=w+"px"; frameEl.style.height=h+"px";
-  }
-  const showFrame = on => frameEl.classList.toggle("show", on);
-
-  fmtEl.querySelectorAll(".fmtbtn").forEach(b=>{
-    b.addEventListener("click",()=>{
-      if(recording) return;
-      recFmt=b.dataset.fmt;
-      fmtEl.querySelectorAll(".fmtbtn").forEach(x=>x.classList.remove("on"));
-      b.classList.add("on");
-      layoutFrame(); showFrame(true);
-      clearTimeout(frameHideT);
-      frameHideT=setTimeout(()=>{ if(!recording) showFrame(false); }, 2800);
-    });
-  });
-
-  function pickMime(){
-    const list=["video/mp4;codecs=avc1.42E01E","video/mp4",
-      "video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"];
-    for(const m of list){
-      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return m;
-    }
-    return "";
-  }
-
-  function startRec(){
-    if(!window.MediaRecorder){ toast("Recording needs Safari or Chrome — open this page in a browser."); return; }
-    const mime=pickMime();
-    if(!mime){ toast("This browser can't encode video. Try Safari or Chrome."); return; }
-    const [rw,rh]=RECDIMS[recFmt];
-    recCanvas.width=rw; recCanvas.height=rh;
-    dismissHint(); layoutFrame(); showFrame(true); frameEl.classList.add("live");
-
-    const stream=recCanvas.captureStream(30);
-    recChunks=[];
-    try{ mediaRec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12000000}); }
-    catch(e){ mediaRec=new MediaRecorder(stream); }
-    mediaRec.ondataavailable=e=>{ if(e.data && e.data.size) recChunks.push(e.data); };
-    mediaRec.onstop=finishRec;
-    mediaRec.start(100);
-
-    recording=true; recStart=performance.now();
-    recBtn.classList.add("live"); recLabel.textContent="Stop";
-    fmtEl.querySelectorAll(".fmtbtn").forEach(b=>b.disabled=true);
-    recLoop(); recTimer=setInterval(updateTime,200); updateTime();
-  }
-
-  function recLoop(){
-    const sx=frameRect.x*DPR, sy=frameRect.y*DPR, sw=frameRect.w*DPR, sh=frameRect.h*DPR;
-    rctx.drawImage(paint, sx,sy,sw,sh, 0,0, recCanvas.width, recCanvas.height);
-    if(recording) recRAF=requestAnimationFrame(recLoop);
-  }
-  function updateTime(){
-    const s=(performance.now()-recStart)/1000;
-    const mm=String(Math.floor(s/60)).padStart(2,"0");
-    const ss=String(Math.floor(s%60)).padStart(2,"0");
-    recTimeEl.textContent=mm+":"+ss;
-  }
-  function stopRec(){
-    if(!recording) return;
-    recording=false;
-    cancelAnimationFrame(recRAF); clearInterval(recTimer);
-    try{ mediaRec.stop(); }catch(e){}
-    recBtn.classList.remove("live"); recLabel.textContent="Rec"; recTimeEl.textContent="";
-    frameEl.classList.remove("live");
-    fmtEl.querySelectorAll(".fmtbtn").forEach(b=>b.disabled=false);
-    setTimeout(()=>{ if(!recording) showFrame(false); }, 1400);
-  }
-  function finishRec(){
-    const type=(mediaRec && mediaRec.mimeType) || pickMime() || "video/webm";
-    const blob=new Blob(recChunks,{type});
-    const ext=type.includes("mp4")?"mp4":"webm";
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.download=`garden-variety-${recFmt.replace(":","x")}.${ext}`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),4000);
-    if(ext==="webm") toast("Saved as .webm (desktop-friendly). For posting from a phone, record in your phone's browser to get .mp4.");
-  }
-  recBtn.addEventListener("click",()=> recording ? stopRec() : startRec());
-
-  // tiny toast
-  let toastT=null;
-  function toast(msg){
-    let el=document.getElementById("toast");
-    if(!el){ el=document.createElement("div"); el.id="toast"; document.body.appendChild(el); }
-    el.textContent=msg; el.classList.add("show");
-    clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"),5000);
-  }
-
-  window.addEventListener("resize",()=>{ setTimeout(()=>{ if(frameEl.classList.contains("show")) layoutFrame(); },140); });
-
-  // ---- boot ----------------------------------------------------------------
-  window.addEventListener("resize",()=>{ setTimeout(resize,120); });
-  resize();
-  blit();
+  wire(); document.body.classList.add('dark'); resize();
+  document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
+  window.garden={ state, growGarden, get W(){return W;}, get H(){return H;} };
 })();
 </script>
-<script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name: 'Garden Variety', desc: 'Generative watercolor garden', version: 'v1' });</script>
 </body>
 </html>
