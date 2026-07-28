@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Prism — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  /* Prism shares the family chrome with the other Lab tools. */
+
+  /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
+     same knobs. What differs is everything below the chrome. */
+  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
+    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
+    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:100px; --rail:290px; }
+  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
+    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
+    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
+  /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
+     wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
+  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
+  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+
+  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
+     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
+     so the shared chrome gets carried into the theme too. The brand link sets its colour
+     inline via mountTopbar, hence !important. */
+  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
+  body.dark .opal-brand{ color:var(--ink) !important; }
+  body.dark .opal-subhead__name{ color:var(--ink); }
+  body.dark .opal-brand .opal-product,
+  body.dark .opal-subhead__desc,
+  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+
+  /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
+  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #stagewrap{ top:0; left:0; }
+  #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
+  body.fs #exitFs{ display:flex; }
+  body.fs.hint #exitFs{ opacity:1; }
+
+  @media (max-width:560px){ :root{ --top:92px; } }
+
+  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
+    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+
+  /* one hairline control strip — everything else is off until asked for */
+  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
+    background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  .icon svg{ display:block; }
+  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
+     fixed right offset kept colliding with it. Stays put in full screen so a recording
+     always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
+    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
+    background:var(--panel); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  #recDot.on{ display:flex; }
+  /* Count-in. Big enough that you are in no doubt what is about to happen. */
+
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  body.fs #recDot{ top:14px; }
+  @keyframes blink{ 50%{opacity:.2;} }
+
+  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
+     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
+     work with. */
+
+  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
+    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:var(--panel);
+    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+    display:flex; flex-direction:column; transition:transform .28s ease; }
+  .rail-l{ left:0; border-right:1px solid var(--edge); }
+  .rail-r{ right:0; border-left:1px solid var(--edge); }
+  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
+    padding:14px 0; border-bottom:1px solid var(--edge); }
+  .row:last-of-type{ border-bottom:0; }
+  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
+     past when you only want two of them. */
+  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
+    font-weight:600; opacity:.9; padding-bottom:2px;
+    display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
+    width:100%; background:none; border:0; font-family:inherit; text-align:left; }
+  .rowhead:hover{ opacity:1; }
+  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhead::before{ content:''; width:0; height:0; flex:none;
+    border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
+    transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
+  .row.folded .rowhead::before{ transform:rotate(0deg); }
+  .row.folded > *:not(.rowhead){ display:none; }
+  .row.folded{ padding-bottom:10px; }
+  .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .rail input[type=range]{ width:100%; }
+  .rail select{ width:100%; }
+  .rail .seg{ width:100%; }
+  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
+  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
+     nothing between you and the piece unless you ask for it. */
+  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
+  .rail-l{ transform:translateX(-100%); }
+  .rail-r{ transform:translateX(100%); }
+  .rail.open{ transform:none; }
+
+  /* Chrome fades out while you listen and comes back on movement. */
+  #bar{ transition:opacity .5s ease; }
+  body.idle #bar{ opacity:0; pointer-events:none; }
+  body.panels #bar{ opacity:1; pointer-events:auto; }
+
+  /* Mood — the one control that stays reachable. */
+
+  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
+    color:var(--mute); white-space:nowrap; }
+  .rail .grp > label{ white-space:normal; }
+  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
+  .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
+  .seg button:last-child{ border-right:0; }
+  .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
+  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
+  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
+     the control they describe and get out of the way on click. */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
+    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
+    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
+     underline is what the lane tabs use for that other meaning, so these fill instead. */
+
+  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
+     it's just visually replaced, so listeners and readouts are untouched. */
+  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
+  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; margin:0; pointer-events:none; }
+  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
+  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
+  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
+    transition:stroke-dasharray .04s linear; }
+  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
+  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+  .knob:focus-visible{ outline:none; }
+  .knob:focus-visible .k-hub{ stroke:var(--ink); }
+  .knob.drag .k-vl{ stroke-width:3.6; }
+  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
+  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
+    color:var(--mute); text-align:center; white-space:nowrap; }
+  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
+    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    padding:8px 12px; cursor:pointer; border-radius:2px; }
+  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  input[type=text]::placeholder{ color:var(--mute); }
+
+  /* step editor — a row of cells for the active lane; click one to set its note */
+
+  #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
+  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
+  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%;
+    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
+    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  @media (max-width:560px){ input[type=range]{ width:82px; } }
+
+  
+  /* Prism's own */
+  #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none;
+    font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); }
+  body.fs #hint{ display:none; }
+  #stagewrap{ top:0 !important; }
+  .opal-topbar, .opal-subhead{ -webkit-backdrop-filter:blur(22px) saturate(150%);
+    backdrop-filter:blur(22px) saturate(150%); background:rgba(9,10,16,.5) !important;
+    border-bottom-color:rgba(255,255,255,.08) !important; }
+  .opal-brand{ color:#f2f4f8 !important; } .opal-subhead__name{ color:#f2f4f8; }
+  .opal-brand .opal-product, .opal-subhead__desc, .opal-subhead__ver{ color:rgba(255,255,255,.5); }
+  .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+  .rail{ top:0 !important; padding-top:calc(var(--top) + 8px); }
+  .rowhint{ opacity:.72; }
+  .cin{ display:flex; align-items:center; gap:8px; }
+  .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
+  .cin label{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); }
+</style>
+</head>
+<body>
+
+<div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="status"></div>
+<div id="hint"></div>
+<div id="bar">
+  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
+  <button class="icon" id="animBtn" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
+  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
+  <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
+</div>
+<button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
+
+<div id="rail" class="rail rail-l">
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Shape</button>
+    <p class="rowhint">The SVG to light up. Drop one anywhere, or use a sample. It never leaves this page.</p>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="loadBtn" style="flex:1" data-tip="Loads an SVG to light and extrude.">Load SVG</button>
+      <button class="btn" id="sampleBtn" style="flex:1" data-tip="Cycles through a few built-in sample shapes.">Sample</button>
+    </div></div>
+    <input id="fileInp" type="file" accept=".svg,image/svg+xml" hidden />
+    <div class="duo">
+      <div class="grp" data-tip="How big the shape is set in the frame."><label>Size <b id="scaleR">62</b></label><input id="scale" type="range" min="20" max="100" value="62" /></div>
+      <div class="grp" data-tip="How much the shape is extruded into depth. Zero is flat; high is a thick solid block."><label>Depth <b id="depthR">40</b></label><input id="depth" type="range" min="0" max="100" value="40" /></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Light</button>
+    <p class="rowhint">A sheen that sweeps around the shape from every angle, and the light that moves with it.</p>
+    <div class="grp" data-tip="The finish. Chrome is polished metal; Holo is an oil-slick rainbow; Gold is warm metal; Duo uses your two colours."><label>Finish</label>
+      <div class="seg" id="finSeg">
+        <button data-f="chrome" aria-pressed="true">Chrome</button>
+        <button data-f="holo" aria-pressed="false">Holo</button>
+        <button data-f="gold" aria-pressed="false">Gold</button>
+        <button data-f="duo" aria-pressed="false">Duo</button>
+      </div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="How fast the light sweeps around. Zero holds it still at the angle below."><label>Sweep <b id="spdR">40</b></label><input id="spd" type="range" min="0" max="100" value="40" /></div>
+      <div class="grp" data-tip="Where the light sits when the sweep is still, and the starting angle when it moves."><label>Angle <b id="angR">30</b></label><input id="ang" type="range" min="0" max="360" value="30" /></div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="A bright rim of light around the near edge, for a polished, beveled lip."><label>Rim <b id="rimR">45</b></label><input id="rim" type="range" min="0" max="100" value="45" /></div>
+      <div class="grp" data-tip="How many facets the sheen breaks into — more makes a busier, jewelled reflection."><label>Facets <b id="facR">6</b></label><input id="fac" type="range" min="2" max="16" value="6" /></div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="Fine grain over the finished frame, so it feels printed."><label>Grain <b id="grainR">10</b></label><input id="grain" type="range" min="0" max="100" value="10" /></div>
+      <div class="grp" data-tip="Colour of the ground behind the shape."><div class="cin"><input type="color" id="bg" value="#0a0b10"><label>Ground</label></div></div>
+    </div>
+    <div class="duo">
+      <div class="grp" data-tip="First colour of the Duo finish."><div class="cin"><input type="color" id="c1" value="#3f9bff"><label>Duo A</label></div></div>
+      <div class="grp" data-tip="Second colour of the Duo finish."><div class="cin"><input type="color" id="c2" value="#ff2d95"><label>Duo B</label></div></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Export</button>
+    <p class="rowhint">A still, or the sweep as a video that loops.</p>
+    <div class="grp" data-tip="The shape of the exported file."><label>Size</label>
+      <div class="seg" id="sizeSeg">
+        <button data-z="1920x1080" aria-pressed="true">16:9</button>
+        <button data-z="1080x1350" aria-pressed="false">4:5</button>
+        <button data-z="1080x1080" aria-pressed="false">1:1</button>
+        <button data-z="1080x1920" aria-pressed="false">9:16</button>
+      </div>
+    </div>
+    <div class="grp" data-tip="Pixels across the long edge of the PNG. The line beneath is the print size at 300 DPI."><label>Pixels <b id="resR">4096</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></label><input id="res" type="range" min="1024" max="8192" step="256" value="4096" /></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="pngBtn" style="flex:1" data-tip="Saves the current frame as a high-resolution PNG.">PNG</button>
+      <button class="btn" id="vidBtn" style="flex:1" data-tip="Records the sweep as a looping video.">Loop</button>
+    </div></div>
+  </div>
+</div>
+
+<div id="veil">
+  <div class="orb"></div>
+  <h1>Prism</h1>
+  <p>An SVG lit from every angle &#8212; extruded into depth and swept with a sheen of chrome, holo or gold. Drop a shape, watch it turn, export a still or a loop. Tap to begin.</p>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Prism', desc: 'SVG lit in 3D', version: 'v1' });</script>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+  const state={ scale:62, depth:40, fin:'chrome', spd:40, ang:30, rim:45, fac:6, grain:10,
+    bg:'#0a0b10', c1:'#3f9bff', c2:'#ff2d95', size:'1920x1080', res:4096, animate:true, ready:false };
+  let THEME='dark';
+  function mulberry(seed){ let a=seed>>>0; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+  // ---------- shape mask (silhouette in white on transparent) ----------
+  let markImg=null, ready=false, VB={w:100,h:100};
+  const SAMPLES=[
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,2 63,37 100,37 70,59 81,96 50,74 19,96 30,59 0,37 37,37"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 4 L92 50 L50 96 L8 50 Z"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 100"><text x="0" y="82" font-family="Helvetica,Arial,sans-serif" font-weight="800" font-size="96">OPAL</text></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"/><circle cx="50" cy="50" r="20" fill="#000"/></svg>'
+  ];
+  let sampleIx=0;
+  function setSVGText(text, name){
+    try{ const doc=new DOMParser().parseFromString(text,'image/svg+xml'); const svg=doc.querySelector('svg'); if(!svg) throw 0;
+      const vb=svg.getAttribute('viewBox');
+      if(vb){ const a=vb.split(/[ ,]+/).map(Number); VB={w:a[2]||100,h:a[3]||100}; }
+      else VB={w:parseFloat(svg.getAttribute('width'))||100,h:parseFloat(svg.getAttribute('height'))||100};
+      // force white fill so the silhouette is a clean alpha mask we can tint
+      let inner=svg.innerHTML.replace(/fill\s*=\s*"(?!none)[^"]*"/g,'').replace(/fill\s*:\s*[^;"'}]+/g,'');
+      const norm=`<svg xmlns="http://www.w3.org/2000/svg" width="${VB.w}" height="${VB.h}" viewBox="0 0 ${VB.w} ${VB.h}" fill="#fff">${inner}</svg>`;
+      const im=new Image(); im.onload=()=>{ markImg=im; ready=true; whiteCache=null; markDirty(); if(name){ setStatus(name+' loaded'); setTimeout(()=>setStatus(''),1600);} };
+      im.onerror=()=>{ setStatus('could not read that SVG'); setTimeout(()=>setStatus(''),2600); };
+      im.src='data:image/svg+xml;utf8,'+encodeURIComponent(norm);
+    }catch(e){ setStatus('could not read that SVG'); setTimeout(()=>setStatus(''),2600); }
+  }
+  function loadFile(f){ const rd=new FileReader(); rd.onload=()=>setSVGText(rd.result,f.name); rd.readAsText(f); }
+  function nextSample(){ setSVGText(SAMPLES[sampleIx%SAMPLES.length]); sampleIx++; }
+
+  // white silhouette rasterised at a working resolution, cached
+  let whiteCache=null;
+  function whiteMask(targetLong){
+    if(!ready) return null;
+    const long=Math.max(VB.w,VB.h), scl=targetLong/long, w=Math.max(1,Math.round(VB.w*scl)), h=Math.max(1,Math.round(VB.h*scl));
+    if(whiteCache && whiteCache.width===w && whiteCache.height===h) return whiteCache;
+    const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(markImg,0,0,w,h);
+    whiteCache=c; return c;
+  }
+
+  // ---------- canvas ----------
+  const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
+  const slab=document.createElement('canvas'), slabx=slab.getContext('2d');
+  const face=document.createElement('canvas'), facex=face.getContext('2d');
+  const rim=document.createElement('canvas'), rimx=rim.getContext('2d');
+  const grainCv=document.createElement('canvas'), grainCx=grainCv.getContext('2d');
+  let W=0,H=0,DPR=1;
+  function sizeWH(){ return state.size.split('x').map(Number); }
+  function resize(){ const r=wrap.getBoundingClientRect(); DPR=Math.min(2,devicePixelRatio||1); W=r.width; H=r.height;
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); markDirty(); }
+  addEventListener('resize',resize);
+
+  const FINISH={
+    chrome:[[0,'#20242e'],[.14,'#e9edf5'],[.28,'#59606e'],[.42,'#ffffff'],[.55,'#2a2f3a'],[.7,'#c9d2e0'],[.85,'#454b58'],[1,'#20242e']],
+    holo:[[0,'#ff2d95'],[.18,'#ffd23f'],[.36,'#3fe0a0'],[.54,'#3f9bff'],[.72,'#a24bff'],[.9,'#ff5bd0'],[1,'#ff2d95']],
+    gold:[[0,'#4a3200'],[.16,'#ffe89a'],[.32,'#8a5a00'],[.5,'#fff6cf'],[.66,'#6d4600'],[.84,'#f7d474'],[1,'#4a3200']]
+  };
+  function faceStops(){ if(state.fin==='duo') return [[0,state.c1],[.5,state.c2],[1,state.c1]]; return FINISH[state.fin]||FINISH.chrome; }
+
+  function render(g,W,H,t){
+    g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
+    g.fillStyle=state.bg; g.fillRect(0,0,W,H);
+    const wm=whiteMask(Math.min(W,H)*0.9); if(!wm){ softGrain(g,W,H,t); return; }
+    const cx=W/2, cy=H/2;
+    const S=Math.min(W,H)*(state.scale/100);
+    const long=Math.max(VB.w,VB.h), scl=S/long, dw=VB.w*scl, dh=VB.h*scl;
+    const baseA=state.ang*Math.PI/180, A=baseA + (state.animate? t*(state.spd/100)*1.1 : 0);
+    const depthPx=(state.depth/100)*Math.min(W,H)*0.16;
+    const dirx=Math.cos(A+Math.PI), diry=Math.sin(A+Math.PI);   // extrude away from the light
+
+    // ----- extruded slab -----
+    if(depthPx>0.5){
+      if(slab.width!==Math.round(W)||slab.height!==Math.round(H)){ slab.width=Math.round(W); slab.height=Math.round(H); }
+      slabx.setTransform(1,0,0,1,0,0); slabx.clearRect(0,0,slab.width,slab.height);
+      const steps=Math.max(6,Math.round(depthPx));
+      for(let k=steps;k>=1;k--){ const o=depthPx*(k/steps);
+        slabx.drawImage(wm, cx-dw/2+dirx*o, cy-dh/2+diry*o, dw, dh); }
+      // shade the slab: dark on the far side, bright toward the light
+      slabx.globalCompositeOperation='source-atop';
+      const lg=slabx.createLinearGradient(cx+Math.cos(A)*S, cy+Math.sin(A)*S, cx-Math.cos(A)*S, cy-Math.sin(A)*S);
+      lg.addColorStop(0,'#8b93a6'); lg.addColorStop(.5,'#3a3f4b'); lg.addColorStop(1,'#0e1016');
+      slabx.fillStyle=lg; slabx.fillRect(0,0,slab.width,slab.height);
+      slabx.globalCompositeOperation='source-over';
+      g.drawImage(slab,0,0);
+    }
+
+    // ----- front face: a sheen from every angle (conic gradient) -----
+    if(face.width!==Math.round(W)||face.height!==Math.round(H)){ face.width=Math.round(W); face.height=Math.round(H); }
+    facex.setTransform(1,0,0,1,0,0); facex.clearRect(0,0,face.width,face.height);
+    facex.drawImage(wm, cx-dw/2, cy-dh/2, dw, dh);
+    facex.globalCompositeOperation='source-in';
+    let grad;
+    if(facex.createConicGradient){ grad=facex.createConicGradient(A, cx, cy);
+      const reps=Math.max(1,Math.round(state.fac/2)), st=faceStops();
+      for(let r=0;r<reps;r++) for(const [o,c] of st){ grad.addColorStop(clamp((r+o)/reps,0,1), c); }
+    } else { grad=facex.createLinearGradient(cx-S,cy-S,cx+S,cy+S); for(const [o,c] of faceStops()) grad.addColorStop(o,c); }
+    facex.fillStyle=grad; facex.fillRect(0,0,face.width,face.height);
+    // specular hot-spot travelling with the light
+    const hx=cx+Math.cos(A)*S*0.32, hy=cy+Math.sin(A)*S*0.32;
+    const spec=facex.createRadialGradient(hx,hy,0,hx,hy,S*0.5);
+    spec.addColorStop(0,'rgba(255,255,255,0.7)'); spec.addColorStop(1,'rgba(255,255,255,0)');
+    facex.globalCompositeOperation='source-atop'; facex.fillStyle=spec; facex.fillRect(0,0,face.width,face.height);
+    facex.globalCompositeOperation='source-over';
+    g.drawImage(face,0,0);
+
+    // ----- rim light: a bright sliver on the near (lit) edge, built in its own buffer so it
+    // never touches the face -----
+    if(state.rim>0.01){ const rr=state.rim/100, off=Math.max(1.5, S*0.02*(0.4+rr));
+      if(rim.width!==Math.round(W)||rim.height!==Math.round(H)){ rim.width=Math.round(W); rim.height=Math.round(H); }
+      rimx.setTransform(1,0,0,1,0,0); rimx.clearRect(0,0,rim.width,rim.height);
+      rimx.globalCompositeOperation='source-over';
+      rimx.drawImage(wm, cx-dw/2+Math.cos(A)*off, cy-dh/2+Math.sin(A)*off, dw, dh);   // mask, nudged toward the light
+      rimx.globalCompositeOperation='destination-out';
+      rimx.drawImage(wm, cx-dw/2, cy-dh/2, dw, dh);                                    // subtract the body -> lit-edge sliver
+      rimx.globalCompositeOperation='source-in';
+      rimx.fillStyle = state.fin==='gold' ? '#fff3c0' : '#ffffff'; rimx.fillRect(0,0,rim.width,rim.height);
+      rimx.globalCompositeOperation='source-over';
+      g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=rr*0.95; g.drawImage(rim,0,0); g.restore(); g.globalAlpha=1;
+    }
+    softGrain(g,W,H,t);
+  }
+  function softGrain(g,W,H,t){ const ga=state.grain/100; if(ga<0.004) return; const sz=256;
+    if(grainCv.width!==sz){ grainCv.width=grainCv.height=sz; } const rnd=mulberry((0x33 ^ Math.floor(t*24))>>>0);
+    const img=grainCx.createImageData(sz,sz), d=img.data; for(let i=0;i<sz*sz;i++){ const v=rnd()*255|0,o=i*4; d[o]=d[o+1]=d[o+2]=v; d[o+3]=255; }
+    grainCx.putImageData(img,0,0); g.save(); g.globalAlpha=ga*0.4; g.globalCompositeOperation='screen';
+    for(let y=0;y<H;y+=sz) for(let x=0;x<W;x+=sz) g.drawImage(grainCv,x,y); g.restore(); g.globalAlpha=1; g.globalCompositeOperation='source-over'; }
+
+  // ---------- exports ----------
+  const dl=(blob,name)=>{ const u=URL.createObjectURL(blob), a=document.createElement('a'); a.href=u; a.download=name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); };
+  function exportDims(){ const [aw,ah]=sizeWH(), long=Math.max(aw,ah), s=state.res/long; return [Math.round(aw*s), Math.round(ah*s)]; }
+  function exportPNG(){ const [w,h]=exportDims(); setStatus(`rendering ${w}×${h}…`);
+    setTimeout(()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; const wc=whiteCache; whiteCache=null; render(c.getContext('2d'),w,h,animT); whiteCache=wc;
+      c.toBlob(b=>{ dl(b,`prism-${w}x${h}-${Date.now()}.png`); setStatus(`saved ${w}×${h}`); setTimeout(()=>setStatus(''),2000); },'image/png'); },30); }
+  let vrec=null,vchunks=[];
+  function pickMime(){ for(const m of ['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm']){ try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(e){} } return ''; }
+  function exportLoop(){ if(vrec){ vrec.stop(); return; } const stream=cv.captureStream(30), mime=pickMime(); vchunks=[];
+    vrec=new MediaRecorder(stream, mime?{mimeType:mime,videoBitsPerSecond:16e6}:undefined); vrec.ondataavailable=e=>{ if(e.data.size) vchunks.push(e.data); };
+    vrec.onstop=()=>{ dl(new Blob(vchunks,{type:mime||'video/webm'}), `prism-${Date.now()}.${(mime||'').includes('mp4')?'mp4':'webm'}`); vrec=null; $('vidBtn').textContent='Loop'; setStatus('saved loop'); setTimeout(()=>setStatus(''),1800); };
+    if(!state.animate) setAnim(true); vrec.start(); $('vidBtn').textContent='Stop'; setStatus('recording the sweep…'); setTimeout(()=>{ if(vrec) vrec.stop(); }, 6000); }
+
+  // ---------- UI ----------
+  function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
+  function bindSeg(id,key,dk,after){ document.querySelectorAll(`#${id} button`).forEach(b=>b.addEventListener('click',()=>{
+    state[key]=b.dataset[dk]; document.querySelectorAll(`#${id} button`).forEach(x=>x.setAttribute('aria-pressed',String(x===b))); if(after) after(); markDirty(); syncHint(); })); }
+  const bind=(id,key,fn)=>{ const el=$(id); el.addEventListener('input',e=>{ state[key]=+e.target.value; if(fn) fn(e.target.value); else $(id+'R').textContent=e.target.value; markDirty(); syncHint(); }); };
+  function wire(){
+    bindSeg('finSeg','fin','f'); bindSeg('sizeSeg','size','z', syncRes);
+    ['scale','depth','spd','ang','rim','fac','grain'].forEach(id=>bind(id,id));
+    bind('res','res',v=>{ $('resR').textContent=v; syncRes(); });
+    ['bg','c1','c2'].forEach(id=>$(id).addEventListener('input',e=>{ state[id]=e.target.value; markDirty(); }));
+    $('loadBtn').addEventListener('click',()=>$('fileInp').click()); $('sampleBtn').addEventListener('click',nextSample);
+    $('fileInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadFile(f); });
+    $('pngBtn').addEventListener('click',exportPNG); $('vidBtn').addEventListener('click',exportLoop);
+    $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark'));
+      if(THEME==='light'&&state.bg==='#0a0b10'){ state.bg='#eef0f4'; $('bg').value=state.bg; } else if(THEME==='dark'&&state.bg==='#eef0f4'){ state.bg='#0a0b10'; $('bg').value=state.bg; } markDirty(); });
+    $('animBtn').addEventListener('click',()=>setAnim(!state.animate));
+    $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
+    $('exitFs').addEventListener('click',()=>setFs(false));
+    $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open'); $('rail').classList.toggle('open',open); document.body.classList.toggle('panels',open); $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
+    ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>e.preventDefault()));
+    addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&/svg/.test(f.type)) loadFile(f); });
+    addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+      if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; }
+      if(e.code==='Space'){ e.preventDefault(); setAnim(!state.animate); return; }
+      if(e.key==='f'||e.key==='F') setFs(!document.body.classList.contains('fs')); });
+    document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && document.body.classList.contains('fs')) setFs(false); });
+  }
+  function syncRes(){ const [ew,eh]=exportDims(); const el=$('resIn'); if(el) el.textContent=`${(ew/300).toFixed(1)}×${(eh/300).toFixed(1)}in @300`; }
+  function syncHint(){ const [ew,eh]=exportDims(); $('hint').textContent=`prism · ${state.fin} · png ${ew}×${eh}`; }
+  function setAnim(on){ state.animate=on; const b=$('animBtn'); b.setAttribute('aria-pressed',String(on));
+    b.innerHTML= on? '<svg viewBox="0 0 12 12" width="11" height="11"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>'
+      : '<svg viewBox="0 0 12 12" width="10" height="10"><path d="M3.4 2 L9.4 6 L3.4 10 Z" fill="currentColor"/></svg>'; if(on) markDirty(); }
+  function setFs(on){ document.body.classList.toggle('fs',on);
+    if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+    else if(!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{}); requestAnimationFrame(resize); }
+
+  // ---------- knobs / folds / tooltips ----------
+  function makeKnob(inp){ inp.dataset.knob='1'; const w=document.createElement('div'); w.className='knob'; w.tabIndex=0; w.setAttribute('role','slider');
+    inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
+    w.insertAdjacentHTML('beforeend','<svg viewBox="0 0 44 44" width="42" height="42" aria-hidden="true"><path class="k-tr" d="M9 35 A18 18 0 1 1 35 35"/><path class="k-vl" d="M9 35 A18 18 0 1 1 35 35"/><circle class="k-hub" cx="22" cy="22" r="9"/><line class="k-pt" x1="22" y1="22" x2="22" y2="14"/></svg>');
+    const k={el:w,inp}; const set=v=>{ inp.value=String(v); inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); };
+    let dy=0,dv=0; w.addEventListener('pointerdown',e=>{ e.preventDefault(); w.setPointerCapture(e.pointerId); w.classList.add('drag'); dy=e.clientY; dv=+inp.value; });
+    w.addEventListener('pointermove',e=>{ if(!w.classList.contains('drag')) return; const span=(+inp.max)-(+inp.min), st=+inp.step||1; set(clamp(Math.round((dv+(dy-e.clientY)/150*span)/st)*st,+inp.min,+inp.max)); });
+    const up=()=>w.classList.remove('drag'); w.addEventListener('pointerup',up); w.addEventListener('pointercancel',up);
+    w.addEventListener('keydown',e=>{ const st=+inp.step||1; if(e.key==='ArrowUp'||e.key==='ArrowRight'){ e.preventDefault(); set(clamp(+inp.value+st,+inp.min,+inp.max)); } if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); set(clamp(+inp.value-st,+inp.min,+inp.max)); } }); paintKnob(k); }
+  function paintKnob(k){ const inp=k.inp,mn=+inp.min,mx=+inp.max,v=+inp.value,f=(v-mn)/(mx-mn||1); const path=k.el.querySelector('.k-vl'),len=path.getTotalLength();
+    path.style.strokeDasharray=len; path.style.strokeDashoffset=len*(1-f); const a=(-135+270*f)*Math.PI/180,pt=k.el.querySelector('.k-pt'); pt.setAttribute('x2',(22+Math.sin(a)*8).toFixed(2)); pt.setAttribute('y2',(22-Math.cos(a)*8).toFixed(2)); }
+  const FOLD_KEY='prism-folded';
+  (function(){ const saved=new Set((()=>{try{return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]')}catch(e){return[]}})());
+    document.querySelectorAll('.rail .rowhead').forEach(h=>{ const row=h.closest('.row'); if(!row) return; const name=h.textContent.trim();
+      if(saved.has(name)){ row.classList.add('folded'); h.setAttribute('aria-expanded','false'); }
+      h.addEventListener('click',()=>{ const f=row.classList.toggle('folded'); h.setAttribute('aria-expanded',String(!f));
+        const cur=new Set((()=>{try{return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]')}catch(e){return[]}})()); f?cur.add(name):cur.delete(name); try{ localStorage.setItem(FOLD_KEY,JSON.stringify([...cur])); }catch(e){} }); }); })();
+  let tipEl=null,tipT=null,tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return; if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0'; const r=host.getBoundingClientRect(),t=tipEl.getBoundingClientRect();
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8,r.bottom+8); tipEl.style.left=Math.max(8,Math.min(r.left,innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+  addEventListener('pointerover',e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return; clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true);
+
+  // ---------- loop ----------
+  let animT=0, lastT=performance.now(), dirty=true;
+  function markDirty(){ dirty=true; }
+  function frame(t){ const dt=Math.min(0.05,(t-lastT)/1000); lastT=t; if(state.animate){ animT+=dt; dirty=true; } if(dirty){ render(ctx,cv.width,cv.height,animT); dirty=false; } requestAnimationFrame(frame); }
+
+  wire(); resize(); document.body.classList.add('dark');
+  document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
+  syncHint(); syncRes(); nextSample();
+  const veil=$('veil'); veil.addEventListener('click',()=>{ state.ready=true; veil.style.display='none'; if(!ready) nextSample(); resize(); });
+  requestAnimationFrame(frame);
+  window.prism={ state, render, exportDims, get ready(){return ready;}, nextSample, get animT(){return animT;} };
+})();
+</script>
+</body>
+</html>
