@@ -286,8 +286,20 @@
   </div>
 
   <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Sound</button>
+    <p class="rowhint">Add a music track and it's baked into the recording &#8212; ready to post as a reel.</p>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="musicBtn" style="flex:1" data-tip="Adds an audio track that plays and is recorded together with the video.">Add music</button>
+      <button class="btn" id="musicClear" style="flex:1" data-tip="Removes the track.">Clear</button>
+    </div></div>
+    <input id="musicInp" type="file" accept="audio/*" hidden />
+    <p class="rowhint" id="trackName" style="opacity:.55;margin:3px 0 0">no track</p>
+    <div class="grp" data-tip="How loud the music sits in the recording."><label>Volume <b id="volR">85</b></label><input id="vol" type="range" min="0" max="100" value="85" /></div>
+  </div>
+
+  <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Export</button>
-    <p class="rowhint">A still, or the motion as a video.</p>
+    <p class="rowhint">A still, or the motion (with your track) as a video.</p>
     <div class="grp" data-tip="The shape of the exported file."><label>Size</label>
       <div class="seg" id="sizeSeg">
         <button data-z="1080x1350" aria-pressed="true">4:5</button>
@@ -313,7 +325,7 @@
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
   let THEME='dark';
   const state={ count:18, uneven:55, axis:'rows', cross:30, speed:45, spread:60, bg:'#0a0b10',
-    size:'1080x1350', res:3200, seed:7, meta:0, fragment:0, connect:0, smudge:0, gap:35, playing:true };
+    size:'1080x1350', res:3200, seed:7, meta:0, fragment:0, connect:0, smudge:0, gap:35, vol:85, playing:true };
   const CW=()=>+state.size.split('x')[0], CH=()=>+state.size.split('x')[1];
   function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
   function h01(a,b){ let h=(Math.imul(a|0,73856093) ^ Math.imul(b|0,19349663) ^ Math.imul(state.seed|0,83492791))>>>0; h=Math.imul(h^h>>>15,2246822519); h^=h>>>13; return (h>>>0)/4294967296; }
@@ -510,18 +522,32 @@
   let recording=false;
   // Record with a 3-2-1 countdown, then run until the user clicks Stop.
   let recState='idle', mrec=null, mchunks=[], mrecRAF=null, mrecCv=null, mrecG=null, mrecStart=0;
+  // ---- music: an uploaded track, routed through Web Audio so it can be muxed into the recording ----
+  let audioEl=null, audioAC=null, audioSrc=null, audioDest=null, audioGain=null;
+  function loadAudio(file){ if(!audioEl){ audioEl=new Audio(); audioEl.loop=true; }
+    audioEl.src=URL.createObjectURL(file); audioEl.load(); $('trackName').textContent=file.name;
+    setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1400); }
+  function ensureAudioGraph(){ if(!audioEl) return null;
+    if(!audioAC){ audioAC=new (window.AudioContext||window.webkitAudioContext)();
+      audioSrc=audioAC.createMediaElementSource(audioEl); audioDest=audioAC.createMediaStreamDestination();
+      audioGain=audioAC.createGain(); audioSrc.connect(audioGain); audioGain.connect(audioDest); audioGain.connect(audioAC.destination); }
+    audioGain.gain.value=state.vol/100; if(audioAC.state==='suspended') audioAC.resume(); return audioDest.stream; }
+
   function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
   function toggleRec(){ if(recState==='recording') return stopRec(); if(recState==='idle') startCountdown(); }
   function startCountdown(){ if(!imgs.length){ setStatus('add an image first'); setTimeout(()=>setStatus(''),1600); return; }
     if(!pickMime()){ setStatus('recording not supported here'); setTimeout(()=>setStatus(''),2600); return; }
+    ensureAudioGraph();   // create/resume the audio context inside the click gesture
     recState='counting'; const ov=$('countdown'); let n=3; ov.textContent=n; ov.classList.add('show');
     const iv=setInterval(()=>{ if(recState!=='counting'){ clearInterval(iv); ov.classList.remove('show'); return; }
       n--; if(n>0){ ov.textContent=n; } else { clearInterval(iv); ov.classList.remove('show'); beginRec(); } },800); }
   function beginRec(){ const long=Math.max(CW(),CH()), s=Math.min(1440,long)/long, w=Math.round(CW()*s), h=Math.round(CH()*s);
     mrecCv=document.createElement('canvas'); mrecCv.width=w; mrecCv.height=h; mrecG=mrecCv.getContext('2d');
-    const mime=pickMime(); mrec=new MediaRecorder(mrecCv.captureStream(30),{mimeType:mime,videoBitsPerSecond:18000000}); mchunks=[];
+    const mime=pickMime(); let tracks=mrecCv.captureStream(30).getVideoTracks();
+    if(audioEl){ try{ const as=ensureAudioGraph(); audioEl.currentTime=0; audioEl.play().catch(()=>{}); tracks=tracks.concat(as.getAudioTracks()); }catch(e){ console.warn('audio',e); } }
+    mrec=new MediaRecorder(new MediaStream(tracks),{mimeType:mime,videoBitsPerSecond:18000000}); mchunks=[];
     mrec.ondataavailable=e=>{ if(e.data.size) mchunks.push(e.data); };
-    mrec.onstop=()=>{ const ext=mime.includes('mp4')?'mp4':'webm'; dl(new Blob(mchunks,{type:mime}),`image-train-${Date.now()}.${ext}`);
+    mrec.onstop=()=>{ if(audioEl){ try{ audioEl.pause(); }catch(e){} } const ext=mime.includes('mp4')?'mp4':'webm'; dl(new Blob(mchunks,{type:mime}),`image-train-${Date.now()}.${ext}`);
       recState='idle'; $('vidBtn').textContent='Record'; $('vidBtn').classList.remove('on'); $('recTag').classList.remove('show');
       setStatus('saved '+ext.toUpperCase()); setTimeout(()=>setStatus(''),2200); };
     mrec.start(); recState='recording'; mrecStart=performance.now(); $('vidBtn').classList.add('on'); $('recTag').classList.add('show');
@@ -544,6 +570,10 @@
     $('fileInp').addEventListener('change',e=>{ [...e.target.files].forEach(addFile); e.target.value=''; });
     $('shuffle').addEventListener('click',()=>{ state.seed=(state.seed*1103515245+12345)>>>0||1; bandsKey=''; markDirty(); });
     $('pngBtn').addEventListener('click',exportPNG); $('vidBtn').addEventListener('click',toggleRec);
+    $('musicBtn').addEventListener('click',()=>$('musicInp').click());
+    $('musicInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadAudio(f); e.target.value=''; });
+    $('musicClear').addEventListener('click',()=>{ if(audioEl){ try{ audioEl.pause(); }catch(e){} audioEl.removeAttribute('src'); } $('trackName').textContent='no track'; });
+    $('vol').addEventListener('input',e=>{ state.vol=+e.target.value; $('volR').textContent=e.target.value; if(audioGain) audioGain.gain.value=state.vol/100; });
     $('playBtn').addEventListener('click',()=>{ state.playing=!state.playing; last=null; $('playBtn').setAttribute('aria-pressed',String(state.playing));
       $('playBtn').innerHTML=state.playing?'<svg viewBox="0 0 12 12" width="11" height="11"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>':'<svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 1.8 L10 6 L3 10.2 Z" fill="currentColor"/></svg>'; });
     $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark'));
