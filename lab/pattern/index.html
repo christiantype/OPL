@@ -221,6 +221,17 @@
 
 <div id="rail" class="rail rail-l">
   <div class="row">
+    <button type="button" class="rowhead" aria-expanded="true">Shape</button>
+    <p class="rowhint">Optional. Build the pattern out of your own SVG mark instead of the built-in geometry. It never leaves this page.</p>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="loadBtn" style="flex:1" data-tip="Loads an SVG to use as the repeating mark. Switches the pattern to Your SVG.">Load SVG</button>
+      <button class="btn" id="sampleBtn" style="flex:1" data-tip="Cycles through a few built-in sample marks.">Sample</button>
+    </div></div>
+    <input id="fileInp" type="file" accept=".svg,image/svg+xml" hidden />
+    <p class="rowhint" id="markName" style="opacity:.55;margin-top:2px"></p>
+  </div>
+
+  <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Pattern</button>
     <p class="rowhint">A seeded, repeatable geometric system. New pattern re-rolls it.</p>
     <div class="grp" data-tip="Truchet lays random quarter-turns that connect into mazes. Dots is a grid of marks. Rings is concentric circles per cell. Weave is an over-and-under basket. Moiré overlaps two line grids into interference."><label>Kind</label>
@@ -234,6 +245,9 @@
       <button data-k="weave" aria-pressed="false">Weave</button>
       <button data-k="moire" aria-pressed="false">Moiré</button>
       <button data-k="cross" aria-pressed="false">Cross</button>
+    </div></div>
+    <div class="grp"><div class="seg" id="kindSeg3">
+      <button data-k="mark" aria-pressed="false" data-tip="Repeats your uploaded SVG across the grid. Variation jitters each mark's size and turn.">Your SVG</button>
     </div></div>
     <div class="duo">
       <div class="grp" data-tip="Size of the repeat cell. Small is a fine texture; large is bold and graphic."><label>Scale <b id="scaleR">64</b></label><input id="scale" type="range" min="16" max="240" value="64" /></div>
@@ -268,11 +282,11 @@
 <div id="veil">
   <div class="orb"></div>
   <h1>Pattern</h1>
-  <p>A generative geometric system &#8212; truchet, dots, rings, weave, moiré. Seeded and repeatable, exported as a tiling SVG for brand systems or a high-res still. Tap to begin.</p>
+  <p>A generative geometric system &#8212; truchet, dots, rings, weave, moiré &#8212; or build the whole field out of your own SVG mark. Seeded and repeatable, exported as a tiling SVG for brand systems or a high-res still. Tap to begin.</p>
 </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name: 'Pattern', desc: 'Generative pattern system', version: 'v1' });</script>
+<script>Opal.mountTopbar({ name: 'Pattern', desc: 'Pattern system · your own marks', version: 'v1' });</script>
 
 <script>
 (function(){
@@ -282,6 +296,34 @@
     res:4096, seed:73, ready:false };
   let THEME='dark';
   function hash2(ix,iy,seed){ let h=ix*374761393+iy*668265263+seed*2246822519; h=(h^h>>>13)*1274126177; h=h^h>>>16; return (h>>>0)/4294967296; }
+
+  // ---------- uploaded SVG mark ----------
+  let markImg=null, markReady=false, VB={w:100,h:100}, innerStripped='';
+  const SAMPLES=[
+    ['triangle','<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 8 L92 86 L8 86 Z"/></svg>'],
+    ['plus','<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M40 8 h20 v32 h32 v20 h-32 v32 h-20 v-32 h-32 v-20 h32 Z"/></svg>'],
+    ['drop','<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 6 C50 6 84 46 84 66 A34 34 0 1 1 16 66 C16 46 50 6 50 6 Z"/></svg>'],
+    ['arc','<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M12 88 A76 76 0 0 1 88 12 L88 40 A48 48 0 0 0 40 88 Z"/></svg>']
+  ];
+  let sampleIx=0;
+  function setSVGText(text,name){ try{ const doc=new DOMParser().parseFromString(text,'image/svg+xml'); const svg=doc.querySelector('svg'); if(!svg||doc.querySelector('parsererror')) throw 0;
+      const vb=svg.getAttribute('viewBox'); if(vb){ const a=vb.split(/[ ,]+/).map(Number); VB={w:a[2]||100,h:a[3]||100}; }
+      else VB={w:parseFloat(svg.getAttribute('width'))||100,h:parseFloat(svg.getAttribute('height'))||100};
+      innerStripped=svg.innerHTML.replace(/fill\s*=\s*"(?!none)[^"]*"/g,'').replace(/fill\s*:\s*[^;"'}]+/g,'');
+      const norm=`<svg xmlns="http://www.w3.org/2000/svg" width="${VB.w}" height="${VB.h}" viewBox="0 0 ${VB.w} ${VB.h}" fill="#fff">${innerStripped}</svg>`;
+      const im=new Image(); im.onload=()=>{ markImg=im; markReady=true; tintCache=null; whiteCache=null; selectKind('mark'); markDirty(); if(name){ $('markName').textContent=name; } };
+      im.onerror=()=>{ setStatus('could not read that SVG'); setTimeout(()=>setStatus(''),2400); };
+      im.src='data:image/svg+xml;utf8,'+encodeURIComponent(norm);
+    }catch(e){ setStatus('could not read that SVG'); setTimeout(()=>setStatus(''),2400); } }
+  function loadFile(f){ const rd=new FileReader(); rd.onload=()=>setSVGText(rd.result,f.name.replace(/\.svg$/i,'')); rd.readAsText(f); }
+  function nextSample(){ const [nm,txt]=SAMPLES[sampleIx%SAMPLES.length]; sampleIx++; setSVGText(txt,nm); }
+  let whiteCache=null, tintCache=null;
+  function whiteMask(px){ if(!markReady) return null; const long=Math.max(VB.w,VB.h), scl=px/long, w=Math.max(1,Math.round(VB.w*scl)), h=Math.max(1,Math.round(VB.h*scl));
+    if(whiteCache&&whiteCache.width===w&&whiteCache.height===h) return whiteCache; const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(markImg,0,0,w,h); whiteCache=c; return c; }
+  function markTinted(ink,px){ const wm=whiteMask(px); if(!wm) return null; const key=ink+'@'+wm.width+'x'+wm.height;
+    if(tintCache&&tintCache.key===key) return tintCache.c; const c=document.createElement('canvas'); c.width=wm.width; c.height=wm.height; const x=c.getContext('2d');
+    x.drawImage(wm,0,0); x.globalCompositeOperation='source-in'; x.fillStyle=ink; x.fillRect(0,0,c.width,c.height); tintCache={key,c}; return c; }
+  function selectKind(k){ state.kind=k; document.querySelectorAll('#kindSeg button, #kindSeg2 button, #kindSeg3 button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===k))); syncHint(); }
 
   const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
   let W=0,H=0,DPR=1;
@@ -320,6 +362,10 @@
         const s=(0.5 + r*vr*0.5), a=cell*0.5*s;
         P.push({t:'line',x1:x+cell/2-a,y1:y+cell/2,x2:x+cell/2+a,y2:y+cell/2,w:strokeW});
         P.push({t:'line',x1:x+cell/2,y1:y+cell/2-a,x2:x+cell/2,y2:y+cell/2+a,w:strokeW});
+      } else if(K==='mark'){
+        const s=0.72 + (hash2(i,j,seed+3)-0.5)*vr*0.8;
+        const rot=(hash2(i,j,seed+7)-0.5)*vr*Math.PI;
+        P.push({t:'mark',x:x+cell/2,y:y+cell/2,size:cell*Math.max(0.12,s),rot});
       }
     }
     if(K==='moire'){
@@ -346,12 +392,17 @@
     const {prims}=buildPrims(W+2*pad, H+2*pad, cell);
     g.translate(-pad,-pad);
     g.strokeStyle=state.ink; g.fillStyle=state.ink; g.lineCap='round';
+    const mk = state.kind==='mark' ? markTinted(state.ink, Math.max(16,Math.ceil(cell*1.4))) : null;
+    const mlong = Math.max(VB.w,VB.h);
     for(const p of prims){
       if(p.t==='arc'){ g.lineWidth=p.w; g.beginPath(); g.arc(p.x,p.y,p.r,p.a0,p.a1); g.stroke(); }
       else if(p.t==='circle'){ g.beginPath(); g.arc(p.x,p.y,Math.max(0.3,p.r),0,6.283); if(p.fill) g.fill(); else { g.lineWidth=p.w; g.stroke(); } }
       else if(p.t==='line'){ g.lineWidth=p.w; g.beginPath(); g.moveTo(p.x1,p.y1); g.lineTo(p.x2,p.y2); g.stroke(); }
       else if(p.t==='rrect'){ rr(g,p.x,p.y,p.w2,p.h2,p.rad); g.fill(); }
+      else if(p.t==='mark' && mk){ const scl=p.size/mlong, dw=VB.w*scl, dh=VB.h*scl;
+        g.save(); g.translate(p.x,p.y); if(p.rot) g.rotate(p.rot); g.drawImage(mk,-dw/2,-dh/2,dw,dh); g.restore(); }
     }
+    if(state.kind==='mark' && !markReady){ g.fillStyle=state.ink; g.globalAlpha=.5; g.font=`${14*DPR}px ui-sans-serif,sans-serif`; g.textAlign='center'; g.fillText('Load an SVG to build the pattern from it', W/2, H/2); g.globalAlpha=1; }
     g.restore();
   }
   function rr(g,x,y,w,h,r){ r=Math.min(r,w/2,h/2); g.beginPath();
@@ -363,8 +414,11 @@
     const cols=Math.round(W/cell), rows=Math.round(H/cell), w=cols*cell, h=rows*cell;
     const savedDPR=DPR; DPR=1; const {prims}=buildPrims(w,h,cell); DPR=savedDPR;
     const ink=state.ink, paper=state.paper, body=[];
+    const defs = (state.kind==='mark' && markReady) ? `<defs><g id="mk">${innerStripped}</g></defs>` : '';
     for(const p of prims){
-      if(p.t==='arc'){ const x0=p.x+Math.cos(p.a0)*p.r, y0=p.y+Math.sin(p.a0)*p.r, x1=p.x+Math.cos(p.a1)*p.r, y1=p.y+Math.sin(p.a1)*p.r;
+      if(p.t==='mark'){ if(!markReady) continue; const scl=p.size/Math.max(VB.w,VB.h), deg=(p.rot*180/Math.PI).toFixed(2);
+        body.push(`<use href="#mk" fill="${ink}" transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${deg}) scale(${scl.toFixed(4)}) translate(${(-VB.w/2).toFixed(1)} ${(-VB.h/2).toFixed(1)})"/>`); }
+      else if(p.t==='arc'){ const x0=p.x+Math.cos(p.a0)*p.r, y0=p.y+Math.sin(p.a0)*p.r, x1=p.x+Math.cos(p.a1)*p.r, y1=p.y+Math.sin(p.a1)*p.r;
         const large=(p.a1-p.a0)>Math.PI?1:0;
         body.push(`<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} A${p.r.toFixed(1)} ${p.r.toFixed(1)} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none" stroke="${ink}" stroke-width="${p.w.toFixed(1)}" stroke-linecap="round"/>`); }
       else if(p.t==='circle'){ if(p.fill) body.push(`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${Math.max(0.3,p.r).toFixed(1)}" fill="${ink}"/>`);
@@ -373,7 +427,7 @@
       else if(p.t==='rrect'){ body.push(`<rect x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" width="${p.w2.toFixed(1)}" height="${p.h2.toFixed(1)}" rx="${p.rad.toFixed(1)}" fill="${ink}"/>`); }
     }
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`+
-      `<rect width="${w}" height="${h}" fill="${paper}"/>${body.join('')}</svg>`;
+      `${defs}<rect width="${w}" height="${h}" fill="${paper}"/>${body.join('')}</svg>`;
   }
 
   // ---------- exports ----------
@@ -389,8 +443,9 @@
 
   // ---------- UI ----------
   function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
-  function segKind(){ document.querySelectorAll('#kindSeg button, #kindSeg2 button').forEach(b=>b.addEventListener('click',()=>{
-    state.kind=b.dataset.k; document.querySelectorAll('#kindSeg button, #kindSeg2 button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); markDirty(); syncHint(); })); }
+  function segKind(){ document.querySelectorAll('#kindSeg button, #kindSeg2 button, #kindSeg3 button').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.k==='mark' && !markReady){ $('fileInp').click(); return; }
+    selectKind(b.dataset.k); markDirty(); })); }
   const bind=(id,key,fn)=>{ const el=$(id); el.addEventListener('input',e=>{ state[key]=+e.target.value; if(fn) fn(e.target.value); else $((id==='varr'?'var':id==='ang'?'ang':id)+'R').textContent=e.target.value; markDirty(); syncHint(); }); };
   function wire(){
     segKind();
@@ -399,6 +454,11 @@
     $('ink').addEventListener('input',e=>{ state.ink=e.target.value; markDirty(); });
     $('paper').addEventListener('input',e=>{ state.paper=e.target.value; markDirty(); });
     $('svgBtn').addEventListener('click',exportSVG); $('pngBtn').addEventListener('click',exportPNG);
+    $('loadBtn').addEventListener('click',()=>$('fileInp').click());
+    $('sampleBtn').addEventListener('click',nextSample);
+    $('fileInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadFile(f); e.target.value=''; });
+    ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>e.preventDefault()));
+    addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f&&/svg/.test(f.type||f.name)) loadFile(f); });
     $('seedBtn').addEventListener('click',()=>{ state.seed=(state.seed*1103515245+12345)>>>0||1; markDirty(); setStatus('new pattern'); setTimeout(()=>setStatus(''),1000); });
     $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark'));
       if(THEME==='light'&&state.paper==='#0a0b10'){ state.paper='#f4f4f6'; state.ink='#0a0b10'; $('paper').value=state.paper; $('ink').value=state.ink; }
