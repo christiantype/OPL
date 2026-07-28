@@ -18,6 +18,7 @@ const TAU = Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
 // ---------------- parameters ----------------
 const P = {
   fractal:0, power:8, mbScale:-2.0, mbFold:0.5, juliaC:[-0.8,0.156], extrude:0.35, edgeBevel:0.03,
+  quatCX:-0.2, quatCY:0.6, quatCZ:0.2, quatCW:0.2,
   round:0.0, chamfer:0.0,
   metal:0.92, rough:0.14, reflBounces:1, reflSamples:1, irid:0.28,
   palA:[0.5,0.5,0.5], palB:[0.5,0.5,0.5], palC:[1.0,1.0,1.0], palD:[0.0,0.33,0.67], palPhase:0.0, palDrift:0.03,
@@ -79,7 +80,7 @@ gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
 let progScene=null, progBright=program(BRIGHT), progBlur=program(BLUR), progComp=program(COMPOSITE);
 let uni={};
 function locateScene(){ uni={}; ['u_res','u_time','u_frame','u_fractal','u_camPos','u_camTarget','u_fov',
-  'u_power','u_mbScale','u_mbFold','u_juliaC','u_extrude','u_edgeBevel','u_round','u_chamfer','u_metal','u_rough',
+  'u_power','u_mbScale','u_mbFold','u_juliaC','u_extrude','u_edgeBevel','u_quatC','u_round','u_chamfer','u_metal','u_rough',
   'u_reflBounces','u_reflSamples','u_irid','u_palA','u_palB','u_palC','u_palD','u_palPhase','u_maxSteps','u_maxDist',
   'u_aoOn','u_shadowOn'].forEach(n=>uni[n]=gl.getUniformLocation(progScene,n)); }
 
@@ -111,6 +112,9 @@ function setSceneUniforms(w,h){
   gl.uniform1f(uni.u_mbFold,P.mbFold);
   let jc=P.juliaC; if(P.fractal===3){ const a=lfo*0.5, c=Math.cos(a), s=Math.sin(a); jc=[P.juliaC[0]*c-P.juliaC[1]*s, P.juliaC[0]*s+P.juliaC[1]*c]; }
   gl.uniform2f(uni.u_juliaC,jc[0],jc[1]);
+  let qc=[P.quatCX,P.quatCY,P.quatCZ,P.quatCW];
+  if(P.fractal===4){ const a=lfo*0.5, c=Math.cos(a), s=Math.sin(a); qc=[qc[0]*c-qc[1]*s, qc[0]*s+qc[1]*c, qc[2], qc[3]]; }
+  gl.uniform4f(uni.u_quatC,qc[0],qc[1],qc[2],qc[3]);
   gl.uniform1f(uni.u_extrude,P.extrude); gl.uniform1f(uni.u_edgeBevel,P.edgeBevel);
   gl.uniform1f(uni.u_round,P.round); gl.uniform1f(uni.u_chamfer,P.chamfer);
   gl.uniform1f(uni.u_metal,P.metal); gl.uniform1f(uni.u_rough,P.rough);
@@ -196,11 +200,16 @@ function buildPanel(){
   const looks=el('div',null,''); looks.id='looks'; ['Chrome','Holo','Leaf','Ink'].forEach(n=>{ const b=el('button','btn',n); b.onclick=()=>applyLook(n); looks.appendChild(b); }); gL.appendChild(looks);
 
   const gF=grp('Fractal');
-  const dd=el('div','grp'); const sel=el('select','sel'); ['Mandelbulb','Mandelbox','Menger / KIFS','Extruded Julia'].forEach((n,i)=>{ const o=el('option',null,n); o.value=i; sel.appendChild(o); });
-  sel.value=P.fractal; sel.onchange=()=>{ P.fractal=parseInt(sel.value); }; dd.appendChild(sel); gF.appendChild(dd); panelRefs.push({key:'fractal',sel,kind:'sel'});
-  const f1=duo(gF); slider(f1,'power','Bulb power',2,12,0.05,v=>(+v).toFixed(1)); slider(f1,'mbScale','Box scale',-3.5,3.5,0.01,v=>(+v).toFixed(2));
-  const f2=duo(gF); slider(f2,'mbFold','Box fold',0.2,1.5,0.01,v=>(+v).toFixed(2)); slider(f2,'extrude','Julia depth',0.05,1.2,0.01,v=>(+v).toFixed(2));
-  slider(gF,'edgeBevel','Julia edge bevel',0.0,0.2,0.005,v=>(+v).toFixed(3));
+  const dd=el('div','grp'); const sel=el('select','sel'); ['Mandelbulb','Mandelbox','Menger / KIFS','Extruded Julia','Quaternion Julia','Sierpinski','Apollonian'].forEach((n,i)=>{ const o=el('option',null,n); o.value=i; sel.appendChild(o); });
+  sel.value=P.fractal; sel.onchange=()=>{ P.fractal=parseInt(sel.value); updateFractalControls(); }; dd.appendChild(sel); gF.appendChild(dd); panelRefs.push({key:'fractal',sel,kind:'sel'});
+  // Per-fractal parameters — each wrapper is shown only for the fractal(s) it applies to.
+  const frac=(...ids)=>{ const w=el('div'); w.dataset.frac=ids.join(','); gF.appendChild(w); return w; };
+  const wBulb=frac(0); slider(wBulb,'power','Bulb power',2,12,0.05,v=>(+v).toFixed(1));
+  const wBox=frac(1); const bx=duo(wBox); slider(bx,'mbScale','Box scale',-3.5,3.5,0.01,v=>(+v).toFixed(2)); slider(bx,'mbFold','Box fold',0.2,1.5,0.01,v=>(+v).toFixed(2));
+  const wJul=frac(3); const ju=duo(wJul); slider(ju,'extrude','Julia depth',0.05,1.2,0.01,v=>(+v).toFixed(2)); slider(ju,'edgeBevel','Edge bevel',0.0,0.2,0.005,v=>(+v).toFixed(3));
+  const wQ=frac(4); const q1=duo(wQ); slider(q1,'quatCX','Seed x',-1,1,0.005,v=>(+v).toFixed(3)); slider(q1,'quatCY','Seed y',-1,1,0.005,v=>(+v).toFixed(3));
+  const q2=duo(wQ); slider(q2,'quatCZ','Seed z',-1,1,0.005,v=>(+v).toFixed(3)); slider(q2,'quatCW','Seed w',-1,1,0.005,v=>(+v).toFixed(3));
+  const wSeedless=frac(2,5,6); wSeedless.appendChild(el('p','rowhint','No seed — the shape comes from the fold itself.'));
 
   const gB=grp('Bevel','Rounding subtracts a radius; chamfer flattens the cut.');
   const b1=duo(gB); slider(b1,'round','Rounding',0.0,0.05,0.001,v=>(+v).toFixed(3)); slider(b1,'chamfer','Chamfer',0.0,1.0,0.01,v=>(+v).toFixed(2));
@@ -236,13 +245,16 @@ function buildPanel(){
   const pb=el('div',null,''); pb.style.cssText='display:flex;gap:6px'; const bc=el('button','btn','Copy'); bc.style.flex='1'; bc.onclick=()=>{ ta.value=JSON.stringify(P); ta.select(); }; const bld=el('button','btn','Load'); bld.style.flex='1'; bld.onclick=()=>{ try{ Object.assign(P,JSON.parse(ta.value)); syncPanel(); }catch(e){ showErr('bad preset JSON'); setTimeout(()=>showErr(''),2000);} }; pb.appendChild(bc); pb.appendChild(bld); gPr.appendChild(pb);
 
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
-  setupFolds(); setupTooltips();
+  setupFolds(); setupTooltips(); updateFractalControls();
 }
+// Show only the parameter blocks that belong to the selected fractal — no dead controls.
+function updateFractalControls(){ document.querySelectorAll('#rail [data-frac]').forEach(w=>{
+  w.style.display = w.dataset.frac.split(',').includes(String(P.fractal)) ? '' : 'none'; }); }
 function syncPanel(){ panelRefs.forEach(o=>{ if(o.r){ o.r.value=P[o.key]; o.v.textContent=o.fmt?o.fmt(P[o.key]):P[o.key]; if(o.r.repaintKnob)o.r.repaintKnob(); }
   else if(o.kind==='color'){ o.inp.value=vecToHex(P[o.key]); }
   else if(o.kind==='seg'){ [...o.seg.children].forEach((c,i)=>c.setAttribute('aria-pressed',String(o.opts[i].v==P[o.key]))); }
   else if(o.kind==='sel'){ o.sel.value=P.fractal; } });
-  setPlayIcon(); }
+  updateFractalControls(); setPlayIcon(); }
 
 // ---- shared-shell scaffolding ----
 function makeKnob(inp){ if(inp.dataset.knob) return; inp.dataset.knob='1'; const w=document.createElement('div'); w.className='knob'; w.tabIndex=0; w.setAttribute('role','slider');

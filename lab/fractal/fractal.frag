@@ -19,6 +19,7 @@ uniform float u_mbFold;       // mandelbox fold radius
 uniform vec2  u_juliaC;       // julia seed
 uniform float u_extrude;      // julia slab half-depth
 uniform float u_edgeBevel;    // julia top-edge bevel
+uniform vec4  u_quatC;        // quaternion julia seed (4D)
 
 // bevel
 uniform float u_round;        // fillet radius 0..0.05
@@ -105,11 +106,45 @@ float deJulia(vec3 p){
   return solid - u_edgeBevel*0.5*smoothstep(0.0,0.15,edge);
 }
 
+// ---- Quaternion Julia (4D set sliced to 3D) ----
+float deQuat(vec3 pos){
+  vec4 z=vec4(pos,0.0), c=u_quatC; float md=1.0, trap=1e10;
+  for(int i=0;i<10;i++){
+    md*=2.0*length(z);
+    z=vec4(z.x*z.x - dot(z.yzw,z.yzw), 2.0*z.x*z.yzw)+c;   // quaternion square + c
+    float m=dot(z,z); trap=min(trap,m); if(m>16.0) break;
+  }
+  gTrap=sqrt(trap); float r=length(z); return 0.5*r*log(max(r,1e-6))/md;
+}
+// ---- Sierpinski tetrahedron (folding KIFS) ----
+float deSierpinski(vec3 z){
+  const float sc=2.0; vec3 a1=vec3(1,1,1),a2=vec3(-1,-1,1),a3=vec3(1,-1,-1),a4=vec3(-1,1,-1);
+  float trap=1e10;
+  for(int i=0;i<12;i++){
+    vec3 c=a1; float d=length(z-a1), t;
+    t=length(z-a2); if(t<d){ c=a2; d=t; } t=length(z-a3); if(t<d){ c=a3; d=t; } t=length(z-a4); if(t<d){ c=a4; d=t; }
+    z=sc*z-c*(sc-1.0); trap=min(trap,length(z));
+  }
+  gTrap=trap*0.18; return length(z)*pow(sc,-12.0);
+}
+// ---- Apollonian gasket (Kali fold) ----
+float deApollonian(vec3 p){
+  float scale=1.0, trap=1e10;
+  for(int i=0;i<8;i++){
+    p=-1.0+2.0*fract(0.5*p+0.5); float r2=dot(p,p); trap=min(trap,r2);
+    float k=1.15/max(r2,0.06); p*=k; scale*=k;
+  }
+  gTrap=sqrt(trap); return 0.25*abs(p.y)/scale;
+}
+
 float mapRaw(vec3 p){
   if(u_fractal==0) return deBulb(p);
   if(u_fractal==1) return deBox(p);
   if(u_fractal==2) return deMenger(p);
-  return deJulia(p);
+  if(u_fractal==3) return deJulia(p);
+  if(u_fractal==4) return deQuat(p);
+  if(u_fractal==5) return deSierpinski(p);
+  return deApollonian(p);
 }
 // bevel: rounding subtracts a radius (fillet). Chamfer blends toward a flatter cut by
 // mixing the rounded DE with an octahedral-offset variant that flattens convex edges.
