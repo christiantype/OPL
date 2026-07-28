@@ -239,6 +239,7 @@
       <div class="grp" data-tip="How many bands the frame is sliced into. A few is bold; a lot is a fine weave."><label>Count <b id="countR">18</b></label><input id="count" type="range" min="2" max="80" value="18" /></div>
       <div class="grp" data-tip="How much the band thicknesses vary. Zero is even stripes."><label>Uneven <b id="unevenR">55</b></label><input id="uneven" type="range" min="0" max="100" value="55" /></div>
     </div>
+    <div class="grp" data-tip="Space between bands. Low packs them tight edge-to-edge with no gaps; high scatters them apart with gaps between."><label>Gap <b id="gapR">35</b></label><input id="gap" type="range" min="0" max="100" value="35" /></div>
     <div class="grp" data-tip="Rows scroll left and right; Columns scroll up and down; Weave lays a few crossing bands over the rows for the woven look."><label>Direction</label>
       <div class="seg" id="axisSeg">
         <button data-a="rows" aria-pressed="true">Rows</button>
@@ -298,7 +299,7 @@
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
   let THEME='dark';
   const state={ count:18, uneven:55, axis:'rows', cross:30, speed:45, spread:60, bg:'#0a0b10',
-    size:'1080x1350', res:3200, seed:7, meta:0, fragment:0, connect:0, smudge:0, playing:true };
+    size:'1080x1350', res:3200, seed:7, meta:0, fragment:0, connect:0, smudge:0, gap:35, playing:true };
   const CW=()=>+state.size.split('x')[0], CH=()=>+state.size.split('x')[1];
   function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
   function h01(a,b){ let h=(Math.imul(a|0,73856093) ^ Math.imul(b|0,19349663) ^ Math.imul(state.seed|0,83492791))>>>0; h=Math.imul(h^h>>>15,2246822519); h^=h>>>13; return (h>>>0)/4294967296; }
@@ -312,16 +313,19 @@
 
   // ---- bands: fractions of the frame, stable per seed ----
   let bands=null, bandsKey='';
-  function build(){ const key=[state.count,state.uneven,state.seed,state.cross,state.axis,imgs.length].join(',');
-    if(bands&&bandsKey===key) return; const r=mulberry((state.seed*2654435761)>>>0), N=state.count, vr=state.uneven/100;
+  function build(){ const key=[state.count,state.uneven,state.seed,state.cross,state.axis,state.gap,imgs.length].join(',');
+    if(bands&&bandsKey===key) return; const r=mulberry((state.seed*2654435761)>>>0), N=state.count, vr=state.uneven/100, g=state.gap/100;
     const mainH=state.axis!=='cols'; bands=[];
+    // thickness weights (Uneven varies band sizes); normalized so at Gap=0 they pack to full coverage
+    const wts=[]; let sum=0; for(let i=0;i<N;i++){ const w=Math.max(0.25,1+(r()-0.5)*vr*1.5); wts.push(w); sum+=w; }
+    let acc=0;
     for(let i=0;i<N;i++){
-      // each band an independent slice: mixed orientation, jittered position, varied length + zoom
       let horiz=mainH; if(state.axis==='weave' && r()<state.cross/100*0.55) horiz=!mainH;
-      const thick=clamp((0.7+r()*1.5)/N*(1+vr*1.3),0.006,0.5);
-      const p=clamp((i + (r()-0.5)*vr*2.6)/N, 0, 1-thick);   // ordered-ish, jittered by Uneven
-      const len=clamp(1 - r()*vr*0.9, 0.26, 1);              // not always full-length
-      const start=r()*(1-len)*vr;
+      const fThick=wts[i]/sum, packP=acc; acc+=fThick;   // contiguous partition when Gap=0
+      const thick=clamp(fThick*(1-g*0.5), 0.004, 0.6);
+      const p=clamp(packP + (r()-0.5)*g*0.95*fThick, 0, 1-thick);   // Gap adds spacing + jitter
+      const len=clamp(1 - r()*g*0.9, 0.22, 1);                      // Gap shortens some bands
+      const start=r()*(1-len)*g;
       bands.push({ horiz, p, thick, start, len, img:imgs.length?((r()*imgs.length)|0):0,
         dir:r()<0.5?-1:1, spd:0.3+r()*2.0, zoom:0.6+r()*1.5, phase:r(), sr:r() });
     }
@@ -333,16 +337,21 @@
     if(horiz){ const sh=Math.max(1,srcLf*ih), sy=clamp(srcPf,0,1-srcLf)*ih; const col=Math.floor(((off*0.6%iw)+iw)%iw); g.drawImage(im, col, sy, 1, sh, x, y, w, h); }
     else { const sw=Math.max(1,srcLf*iw), sx=clamp(srcPf,0,1-srcLf)*iw; const row=Math.floor(((off*0.6%ih)+ih)%ih); g.drawImage(im, sx, row, sw, 1, x, y, w, h); }
     g.restore(); }
-  // Connection lines: nodes at band centres, linked in pairs; count scales with Connect.
-  let conns=null, connKey='';
-  function buildConns(){ const key=[state.seed,state.connect,state.count].join(','); if(conns&&connKey===key) return;
-    const r=mulberry((state.seed*40503+7)>>>0), N=Math.max(1,state.count), nc=Math.round(state.connect/100*N*1.3);
-    conns=[]; for(let i=0;i<nc;i++) conns.push([(r()*N)|0,(r()*N)|0]); connKey=key; }
-  function nodeAt(i,W,H){ const b=bands[i%bands.length]; return b.horiz ? [(b.start+b.len/2)*W,(b.p+b.thick/2)*H] : [(b.p+b.thick/2)*W,(b.start+b.len/2)*H]; }
-  function drawConns(g,W,H){ if(state.connect<=0||!bands) return; buildConns(); const s=Math.min(W,H);
-    g.save(); g.strokeStyle='rgba(255,255,255,0.55)'; g.lineWidth=Math.max(1,s*0.0016); g.fillStyle='rgba(255,255,255,0.85)';
-    const used=new Set(); for(const [a,c] of conns){ if(a===c) continue; const p1=nodeAt(a,W,H), p2=nodeAt(c,W,H); g.beginPath(); g.moveTo(p1[0],p1[1]); g.lineTo(p2[0],p2[1]); g.stroke(); used.add(a); used.add(c); }
-    const rr=Math.max(2,s*0.0055); used.forEach(i=>{ const p=nodeAt(i,W,H); g.beginPath(); g.arc(p[0],p[1],rr,0,6.283); g.fill(); }); g.restore(); }
+  // Connection lines: a proximity mesh — each band's node links to its nearest neighbours, so
+  // the network reads as intentional (close things connect), not random lines. Connect = density.
+  function drawConns(g,W,H){ if(state.connect<=0||!bands||bands.length<2) return; const s=Math.min(W,H);
+    const pts=bands.map(b=> b.horiz ? [(b.start+b.len/2)*W,(b.p+b.thick/2)*H] : [(b.p+b.thick/2)*W,(b.start+b.len/2)*H]);
+    const N=pts.length, kk=1+Math.round(state.connect/100*4), maxLen=s*0.6;
+    const seen=new Set(), edges=[];
+    for(let i=0;i<N;i++){ const d=[];
+      for(let j=0;j<N;j++){ if(j===i) continue; const dx=pts[i][0]-pts[j][0], dy=pts[i][1]-pts[j][1]; d.push([dx*dx+dy*dy,j]); }
+      d.sort((a,b)=>a[0]-b[0]);
+      for(let m=0;m<Math.min(kk,d.length);m++){ const j=d[m][1], key=i<j?i+'-'+j:j+'-'+i; if(seen.has(key)) continue; seen.add(key); edges.push([i,j,Math.sqrt(d[m][0])]); } }
+    g.save(); g.lineWidth=Math.max(1,s*0.0015); g.fillStyle='rgba(255,255,255,0.92)'; const used=new Set();
+    for(const [i,j,dist] of edges){ if(dist>maxLen) continue; const a=pts[i],b=pts[j];
+      g.strokeStyle=`rgba(255,255,255,${(0.14+0.55*(1-dist/maxLen)).toFixed(2)})`;   // fade with distance
+      g.beginPath(); g.moveTo(a[0],a[1]); g.lineTo(b[0],b[1]); g.stroke(); used.add(i); used.add(j); }
+    const rr=Math.max(1.5,s*0.0042); used.forEach(i=>{ g.beginPath(); g.arc(pts[i][0],pts[i][1],rr,0,6.283); g.fill(); }); g.restore(); }
 
   const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
   let W=0,H=0,DPR=1, view={fit:1,ox:0,oy:0};
@@ -444,7 +453,7 @@
   const bind=(id,key,fn)=>{ const e=$(id); e.addEventListener('input',ev=>{ state[key]=+ev.target.value; const r=$(id+'R'); if(r)r.textContent=ev.target.value; bandsKey=''; if(fn)fn(); markDirty(); }); };
   function wire(){
     bindSeg('axisSeg','axis','a'); bindSeg('metaSeg','meta','x'); bindSeg('sizeSeg','size','z',()=>{ syncRes(); syncHint(); });
-    ['count','uneven','cross','fragment','smudge','connect','speed','spread'].forEach(id=>bind(id,id));
+    ['count','uneven','gap','cross','fragment','smudge','connect','speed','spread'].forEach(id=>bind(id,id));
     $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
     $('addBtn').addEventListener('click',()=>$('fileInp').click());
