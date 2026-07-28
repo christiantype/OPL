@@ -4,7 +4,7 @@
 // draws to the canvas. The scene shader is fetched so you can edit fractal.frag and refresh.
 'use strict';
 
-const canvas = document.getElementById('gl');
+const canvas = document.getElementById('stage');
 const gl = canvas.getContext('webgl2', { antialias:false, preserveDrawingBuffer:false });
 const errBox = document.getElementById('err');
 const showErr = m => { errBox.style.display = m?'block':'none'; errBox.textContent = m||''; };
@@ -156,7 +156,7 @@ function loop(){
   frame++;
   msAccum+=performance.now()-s; msCount++;
   if(msCount>=15){ lastMs=msAccum/msCount; msAccum=0; msCount=0;
-    document.getElementById('readout').innerHTML=`<b>${lastMs.toFixed(1)}</b> ms/frame · <b>${(1000/Math.max(lastMs,0.01)).toFixed(0)}</b> fps · ${rw}×${rh}`; }
+    document.getElementById('hint').innerHTML=`<b>${lastMs.toFixed(1)}</b> ms/frame · <b>${(1000/Math.max(lastMs,0.01)).toFixed(0)}</b> fps · ${rw}×${rh}`; }
   requestAnimationFrame(loop);
 }
 
@@ -168,87 +168,115 @@ function loadShader(){ fetch('./fractal.frag?'+Date.now()).then(r=>r.text()).the
 // ---------------- control panel ----------------
 function el(tag,cls,html){ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; }
 let panelRefs=[];
+const LOOKS={
+  Chrome:{ metal:1.0, rough:0.05, irid:0.10, reflBounces:2, reflSamples:2, palA:[0.5,0.52,0.56],palB:[0.42,0.44,0.5],palC:[1,1,1],palD:[0.08,0.14,0.26], bloom:0.5, exposure:1.1 },
+  Holo:{ metal:0.85, rough:0.12, irid:0.9, reflBounces:2, reflSamples:2, palA:[0.5,0.5,0.5],palB:[0.5,0.5,0.5],palC:[1,1,1],palD:[0.0,0.33,0.67], bloom:0.9, exposure:1.0 },
+  Leaf:{ metal:0.55, rough:0.3, irid:0.2, reflBounces:1, reflSamples:1, palA:[0.16,0.34,0.24],palB:[0.22,0.46,0.32],palC:[1.0,1.15,1.0],palD:[0.35,0.5,0.42], bloom:0.4, exposure:1.1 },
+  Ink:{ metal:0.9, rough:0.16, irid:0.15, reflBounces:1, reflSamples:1, palA:[0.34,0.37,0.44],palB:[0.34,0.37,0.44],palC:[1,1,1],palD:[0.62,0.64,0.72], bloom:0.35, exposure:0.92 },
+};
+function applyLook(n){ Object.assign(P, LOOKS[n]); syncPanel(); }
+
 function buildPanel(){
-  const host=document.getElementById('panel'); host.innerHTML='';
-  const css=el('style'); css.textContent=`
-    #panel{ font:11px/1.4 ui-sans-serif,Arial,sans-serif; }
-    .fg{ background:var(--panel); border:1px solid var(--hair); border-radius:9px; margin-bottom:7px; overflow:hidden;
-      -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); }
-    .fh{ display:flex; align-items:center; justify-content:space-between; padding:8px 11px; cursor:pointer;
-      font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink); }
-    .fh span{ color:var(--mute); font-size:12px; transition:transform .15s; }
-    .fg.closed .fh span{ transform:rotate(-90deg); } .fg.closed .fb{ display:none; }
-    .fb{ padding:4px 11px 10px; }
-    .row{ margin:7px 0; } .row .top{ display:flex; justify-content:space-between; }
-    .row .k{ color:var(--ink); } .row .v{ color:var(--mute); font-variant-numeric:tabular-nums; }
-    .row input[type=range]{ width:100%; accent-color:var(--accent); height:15px; }
-    .row select,.btn{ width:100%; background:rgba(255,255,255,.05); color:var(--ink); border:1px solid var(--hair);
-      border-radius:6px; padding:6px 8px; font:inherit; }
-    .btn{ cursor:pointer; margin-top:4px; } .btn:hover{ border-color:var(--accent); }
-    .sw{ display:flex; gap:5px; } .sw .cc{ flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; }
-    .sw input[type=color]{ width:100%; height:22px; border:1px solid var(--hair); border-radius:4px; background:none; padding:0; }
-    .sw label{ color:var(--mute); font-size:8px; letter-spacing:.1em; }
-    textarea{ width:100%; height:60px; background:rgba(0,0,0,.3); color:var(--ink); border:1px solid var(--hair); border-radius:6px; font:10px ui-monospace,monospace; }
-  `; host.appendChild(css);
-  panelRefs=[];
-  const grp=(title,open)=>{ const g=el('div','fg'+(open?'':' closed')); const h=el('div','fh',`${title}<span>▾</span>`);
-    const b=el('div','fb'); h.onclick=()=>g.classList.toggle('closed'); g.appendChild(h); g.appendChild(b); host.appendChild(g); return b; };
-  const slider=(parent,key,label,min,max,step,fmt)=>{ const row=el('div','row');
-    const v=el('span','v', (fmt?fmt(P[key]):P[key])); const top=el('div','top',`<span class="k">${label}</span>`); top.appendChild(v);
+  const host=document.getElementById('rail'); host.innerHTML=''; panelRefs=[];
+  const grp=(title,hint)=>{ const g=el('div','row'); const h=el('button','rowhead',title); h.type='button'; h.setAttribute('aria-expanded','true'); g.appendChild(h); if(hint) g.appendChild(el('p','rowhint',hint)); host.appendChild(g); return g; };
+  const slider=(g,key,label,min,max,step,fmt,tip)=>{ const grpEl=el('div','grp'); if(tip) grpEl.setAttribute('data-tip',tip);
+    const v=el('b',null,(fmt?fmt(P[key]):P[key])); const lab=el('label',null,label+' '); lab.appendChild(v);
     const r=el('input'); r.type='range'; r.min=min; r.max=max; r.step=step; r.value=P[key];
-    r.oninput=()=>{ P[key]=parseFloat(r.value); v.textContent=fmt?fmt(P[key]):P[key]; };
-    row.appendChild(top); row.appendChild(r); parent.appendChild(row); panelRefs.push({key,r,v,fmt}); };
-  const toggle=(parent,key,label)=>{ const row=el('div','row'); const btn=el('button','btn', label+': '+(P[key]?'on':'off'));
-    btn.onclick=()=>{ P[key]=P[key]?0:1; btn.textContent=label+': '+(P[key]?'on':'off'); }; row.appendChild(btn); parent.appendChild(row); panelRefs.push({key,btn,label,kind:'toggle'}); };
-  const colors=(parent,keys,labels)=>{ const row=el('div','row sw');
-    keys.forEach((k,i)=>{ const cc=el('div','cc'); const inp=el('input'); inp.type='color'; inp.value=vecToHex(P[k]);
-      inp.oninput=()=>{ P[k]=hexToVec(inp.value); }; cc.appendChild(inp); cc.appendChild(el('label',null,labels[i])); row.appendChild(cc); panelRefs.push({key:k,inp,kind:'color'}); });
-    parent.appendChild(row); };
+    r.oninput=()=>{ P[key]=(String(step).indexOf('.')>=0)?parseFloat(r.value):parseInt(r.value); v.textContent=fmt?fmt(P[key]):P[key]; };
+    grpEl.appendChild(lab); grpEl.appendChild(r); g.appendChild(grpEl); panelRefs.push({key,r,v,fmt}); return grpEl; };
+  const duo=(g)=>{ const d=el('div','duo'); g.appendChild(d); return d; };
+  const seg=(g,key,label,opts,tip)=>{ const grpEl=el('div','grp'); if(tip)grpEl.setAttribute('data-tip',tip);
+    grpEl.appendChild(el('label',null,label)); const s=el('div','seg'); opts.forEach(o=>{ const btn=el('button',null,o.t); btn.setAttribute('aria-pressed',String(P[key]==o.v));
+      btn.onclick=()=>{ P[key]=o.v; [...s.children].forEach(c=>c.setAttribute('aria-pressed',String(c===btn))); }; s.appendChild(btn); }); grpEl.appendChild(s); g.appendChild(grpEl); panelRefs.push({key,seg:s,opts,kind:'seg'}); };
+  const colorRow=(g,keys,labels)=>{ const row=el('div','swatches'); keys.forEach((k,i)=>{ const cin=el('div','cin'); const inp=el('input'); inp.type='color'; inp.value=vecToHex(P[k]);
+    inp.oninput=()=>{ P[k]=hexToVec(inp.value); }; cin.appendChild(inp); cin.appendChild(el('label',null,labels[i])); row.appendChild(cin); panelRefs.push({key:k,inp,kind:'color'}); }); g.appendChild(row); };
+  const button=(g,label,fn,id)=>{ const b=el('button','btn',label); b.style.width='100%'; if(id)b.id=id; b.onclick=fn; g.appendChild(b); return b; };
 
-  const gF=grp('Fractal',true);
-  const dd=el('div','row'); const sel=el('select'); ['Mandelbulb','Mandelbox','Menger / KIFS','Extruded Julia'].forEach((n,i)=>{ const o=el('option',null,n); o.value=i; sel.appendChild(o); });
+  const gL=grp('Looks','Curated starting points. Tweak from there.');
+  const looks=el('div',null,''); looks.id='looks'; ['Chrome','Holo','Leaf','Ink'].forEach(n=>{ const b=el('button','btn',n); b.onclick=()=>applyLook(n); looks.appendChild(b); }); gL.appendChild(looks);
+
+  const gF=grp('Fractal');
+  const dd=el('div','grp'); const sel=el('select','sel'); ['Mandelbulb','Mandelbox','Menger / KIFS','Extruded Julia'].forEach((n,i)=>{ const o=el('option',null,n); o.value=i; sel.appendChild(o); });
   sel.value=P.fractal; sel.onchange=()=>{ P.fractal=parseInt(sel.value); }; dd.appendChild(sel); gF.appendChild(dd); panelRefs.push({key:'fractal',sel,kind:'sel'});
-  slider(gF,'power','Bulb power',2,12,0.05); slider(gF,'mbScale','Box scale',-3.5,3.5,0.01); slider(gF,'mbFold','Box fold r',0.2,1.5,0.01);
-  slider(gF,'extrude','Julia depth',0.05,1.2,0.01); slider(gF,'edgeBevel','Julia edge bevel',0.0,0.2,0.005);
+  const f1=duo(gF); slider(f1,'power','Bulb power',2,12,0.05,v=>(+v).toFixed(1)); slider(f1,'mbScale','Box scale',-3.5,3.5,0.01,v=>(+v).toFixed(2));
+  const f2=duo(gF); slider(f2,'mbFold','Box fold',0.2,1.5,0.01,v=>(+v).toFixed(2)); slider(f2,'extrude','Julia depth',0.05,1.2,0.01,v=>(+v).toFixed(2));
+  slider(gF,'edgeBevel','Julia edge bevel',0.0,0.2,0.005,v=>(+v).toFixed(3));
 
-  const gB=grp('Bevel',false);
-  slider(gB,'round','Rounding',0.0,0.05,0.001,v=>v.toFixed(3)); slider(gB,'chamfer','Fillet ↔ Chamfer',0.0,1.0,0.01,v=>v.toFixed(2));
+  const gB=grp('Bevel','Rounding subtracts a radius; chamfer flattens the cut.');
+  const b1=duo(gB); slider(b1,'round','Rounding',0.0,0.05,0.001,v=>(+v).toFixed(3)); slider(b1,'chamfer','Chamfer',0.0,1.0,0.01,v=>(+v).toFixed(2));
 
-  const gM=grp('Material',false);
-  slider(gM,'metal','Metalness',0,1,0.01,v=>v.toFixed(2)); slider(gM,'rough','Roughness',0,1,0.01,v=>v.toFixed(2));
-  slider(gM,'reflBounces','Reflection bounces',1,2,1); slider(gM,'reflSamples','Roughness samples',1,6,1);
-  slider(gM,'irid','Iridescence',0,1,0.01,v=>v.toFixed(2));
+  const gM=grp('Material','How it catches light.');
+  const m1=duo(gM); slider(m1,'metal','Metalness',0,1,0.01,v=>(+v).toFixed(2)); slider(m1,'rough','Roughness',0,1,0.01,v=>(+v).toFixed(2));
+  const m2=duo(gM); slider(m2,'reflBounces','Bounces',1,2,1); slider(m2,'reflSamples','Refl samples',1,6,1);
+  slider(gM,'irid','Iridescence',0,1,0.01,v=>(+v).toFixed(2));
 
-  const gP=grp('Palette',false);
-  colors(gP,['palA','palB','palC','palD'],['bias','amp','freq','phase']);
-  slider(gP,'palPhase','Phase',0,1,0.01,v=>v.toFixed(2)); slider(gP,'palDrift','Phase drift',0,0.3,0.005,v=>v.toFixed(3));
-  const rp=el('button','btn','Randomize palette (R)'); rp.onclick=randomPalette; gP.appendChild(rp);
+  const gP=grp('Palette','Colour comes from the orbit trap, through a cosine palette.');
+  colorRow(gP,['palA','palB','palC','palD'],['bias','amp','freq','phase']);
+  const p1=duo(gP); slider(p1,'palPhase','Phase',0,1,0.01,v=>(+v).toFixed(2)); slider(p1,'palDrift','Drift',0,0.3,0.005,v=>(+v).toFixed(3));
+  button(gP,'Randomize palette (R)',randomPalette);
 
-  const gMo=grp('Motion',false);
-  slider(gMo,'camRadius','Cam radius',1.5,7,0.05); slider(gMo,'camHeight','Cam height',-1.2,1.2,0.02); slider(gMo,'camSpeed','Cam speed',0,0.6,0.005);
-  slider(gMo,'lfoRate','LFO rate',0,1.5,0.01); slider(gMo,'lfoDepth','LFO depth',0,1,0.01,v=>v.toFixed(2));
-  const pp=el('button','btn', P.play?'Pause (space)':'Play (space)'); pp.onclick=()=>{ P.play=!P.play; pp.textContent=P.play?'Pause (space)':'Play (space)'; }; gMo.appendChild(pp); panelRefs.push({key:'play',btn:pp,kind:'play'});
+  const gMo=grp('Motion','Orbiting camera and an LFO on the active parameter.');
+  const mo1=duo(gMo); slider(mo1,'camRadius','Cam radius',1.5,7,0.05,v=>(+v).toFixed(2)); slider(mo1,'camHeight','Cam height',-1.2,1.2,0.02,v=>(+v).toFixed(2));
+  slider(gMo,'camSpeed','Cam speed',0,0.6,0.005,v=>(+v).toFixed(3));
+  const mo2=duo(gMo); slider(mo2,'lfoRate','LFO rate',0,1.5,0.01,v=>(+v).toFixed(2)); slider(mo2,'lfoDepth','LFO depth',0,1,0.01,v=>(+v).toFixed(2));
 
-  const gR=grp('Render',false);
-  slider(gR,'renderScale','Render scale',0.5,1.0,0.05,v=>v.toFixed(2)); slider(gR,'maxSteps','Max steps',40,400,5);
-  slider(gR,'maxDist','Max distance',5,40,1); toggle(gR,'shadowOn','Soft shadows'); toggle(gR,'aoOn','Ambient occlusion');
-  slider(gR,'exposure','Exposure',0.2,3,0.01,v=>v.toFixed(2)); slider(gR,'bloom','Bloom',0,2,0.01,v=>v.toFixed(2));
-  slider(gR,'bloomThresh','Bloom threshold',0,3,0.02,v=>v.toFixed(2)); slider(gR,'vignette','Vignette',0,1,0.01,v=>v.toFixed(2));
-  toggle(gR,'dither','Dither');
-  const bpng=el('button','btn','Save PNG · 3× (S)'); bpng.onclick=savePNG; gR.appendChild(bpng);
-  const brec=el('button','btn','Record'); brec.id='recBtn'; brec.onclick=toggleRec; gR.appendChild(brec);
+  const gR=grp('Render','Quality vs speed. Watch the ms/frame readout.');
+  const r1=duo(gR); slider(r1,'renderScale','Render scale',0.5,1.0,0.05,v=>(+v).toFixed(2)); slider(r1,'maxSteps','Max steps',40,400,5);
+  slider(gR,'maxDist','Max distance',5,40,1);
+  seg(gR,'shadowOn','Soft shadows',[{t:'On',v:1},{t:'Off',v:0}]); seg(gR,'aoOn','Ambient occlusion',[{t:'On',v:1},{t:'Off',v:0}]);
+  const r2=duo(gR); slider(r2,'exposure','Exposure',0.2,3,0.01,v=>(+v).toFixed(2)); slider(r2,'bloom','Bloom',0,2,0.01,v=>(+v).toFixed(2));
+  const r3=duo(gR); slider(r3,'bloomThresh','Bloom thr',0,3,0.02,v=>(+v).toFixed(2)); slider(r3,'vignette','Vignette',0,1,0.01,v=>(+v).toFixed(2));
+  seg(gR,'dither','Dither',[{t:'On',v:1},{t:'Off',v:0}]);
 
-  const gPr=grp('Presets',false);
-  const ta=el('textarea'); ta.id='presetBox'; ta.placeholder='preset JSON'; gPr.appendChild(ta);
-  const bs=el('button','btn','Copy current → box'); bs.onclick=()=>{ ta.value=JSON.stringify(P); ta.select(); }; gPr.appendChild(bs);
-  const bl=el('button','btn','Load from box'); bl.onclick=()=>{ try{ Object.assign(P, JSON.parse(ta.value)); syncPanel(); }catch(e){ showErr('bad preset JSON'); setTimeout(()=>showErr(''),2000); } }; gPr.appendChild(bl);
+  const gE=grp('Export','A still, or record the motion.');
+  const eb=el('div',null,''); eb.style.cssText='display:flex;gap:6px'; const bpng=el('button','btn','PNG · 3×'); bpng.style.flex='1'; bpng.onclick=savePNG; const brec=el('button','btn','Record'); brec.style.flex='1'; brec.id='recBtn'; brec.onclick=toggleRec; eb.appendChild(bpng); eb.appendChild(brec); gE.appendChild(eb);
+
+  const gPr=grp('Presets','Copy the state as JSON, or paste one back in.');
+  const ta=el('textarea'); ta.id='presetBox'; ta.placeholder='preset JSON'; ta.style.cssText='width:100%;height:56px;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid var(--hair);border-radius:6px;font:10px ui-monospace,monospace;margin-bottom:6px'; gPr.appendChild(ta);
+  const pb=el('div',null,''); pb.style.cssText='display:flex;gap:6px'; const bc=el('button','btn','Copy'); bc.style.flex='1'; bc.onclick=()=>{ ta.value=JSON.stringify(P); ta.select(); }; const bld=el('button','btn','Load'); bld.style.flex='1'; bld.onclick=()=>{ try{ Object.assign(P,JSON.parse(ta.value)); syncPanel(); }catch(e){ showErr('bad preset JSON'); setTimeout(()=>showErr(''),2000);} }; pb.appendChild(bc); pb.appendChild(bld); gPr.appendChild(pb);
+
+  document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
+  setupFolds(); setupTooltips();
 }
-function syncPanel(){ panelRefs.forEach(o=>{ if(o.r){ o.r.value=P[o.key]; o.v.textContent=o.fmt?o.fmt(P[o.key]):P[o.key]; }
-  else if(o.kind==='toggle'){ o.btn.textContent=o.label+': '+(P[o.key]?'on':'off'); }
-  else if(o.kind==='play'){ o.btn.textContent=P.play?'Pause (space)':'Play (space)'; }
+function syncPanel(){ panelRefs.forEach(o=>{ if(o.r){ o.r.value=P[o.key]; o.v.textContent=o.fmt?o.fmt(P[o.key]):P[o.key]; if(o.r.repaintKnob)o.r.repaintKnob(); }
   else if(o.kind==='color'){ o.inp.value=vecToHex(P[o.key]); }
-  else if(o.kind==='sel'){ o.sel.value=P.fractal; } }); }
+  else if(o.kind==='seg'){ [...o.seg.children].forEach((c,i)=>c.setAttribute('aria-pressed',String(o.opts[i].v==P[o.key]))); }
+  else if(o.kind==='sel'){ o.sel.value=P.fractal; } });
+  setPlayIcon(); }
 
+// ---- shared-shell scaffolding ----
+function makeKnob(inp){ if(inp.dataset.knob) return; inp.dataset.knob='1'; const w=document.createElement('div'); w.className='knob'; w.tabIndex=0; w.setAttribute('role','slider');
+  inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
+  w.insertAdjacentHTML('beforeend','<svg viewBox="0 0 44 44" width="42" height="42" aria-hidden="true"><path class="k-tr" d="M9 35 A18 18 0 1 1 35 35"/><path class="k-vl" d="M9 35 A18 18 0 1 1 35 35"/><circle class="k-hub" cx="22" cy="22" r="9"/><line class="k-pt" x1="22" y1="22" x2="22" y2="14"/></svg>');
+  const k={el:w,inp}; inp.repaintKnob=()=>paintKnob(k); const set=v=>{ inp.value=String(v); inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); };
+  let dy=0,dv=0; w.addEventListener('pointerdown',e=>{ e.preventDefault(); w.setPointerCapture(e.pointerId); w.classList.add('drag'); dy=e.clientY; dv=+inp.value; });
+  w.addEventListener('pointermove',e=>{ if(!w.classList.contains('drag')) return; const span=(+inp.max)-(+inp.min), st=+inp.step||1; set(clamp(Math.round((dv+(dy-e.clientY)/150*span)/st)*st,+inp.min,+inp.max)); });
+  const up=()=>w.classList.remove('drag'); w.addEventListener('pointerup',up); w.addEventListener('pointercancel',up);
+  w.addEventListener('keydown',e=>{ const st=+inp.step||1; if(e.key==='ArrowUp'||e.key==='ArrowRight'){ e.preventDefault(); set(clamp(+inp.value+st,+inp.min,+inp.max)); } if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); set(clamp(+inp.value-st,+inp.min,+inp.max)); } }); paintKnob(k); }
+function paintKnob(k){ const inp=k.inp,mn=+inp.min,mx=+inp.max,v=+inp.value,f=(v-mn)/(mx-mn||1); const path=k.el.querySelector('.k-vl'),len=path.getTotalLength();
+  path.style.strokeDasharray=len; path.style.strokeDashoffset=len*(1-f); const a=(-135+270*f)*Math.PI/180,pt=k.el.querySelector('.k-pt'); pt.setAttribute('x2',(22+Math.sin(a)*8).toFixed(2)); pt.setAttribute('y2',(22-Math.cos(a)*8).toFixed(2)); }
+function setupFolds(){ const KEY='fractal-folded'; const saved=new Set((()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}})());
+  document.querySelectorAll('.rail .rowhead').forEach(h=>{ const row=h.closest('.row'); const name=h.textContent.trim();
+    if(saved.has(name)){ row.classList.add('folded'); h.setAttribute('aria-expanded','false'); }
+    h.addEventListener('click',()=>{ const f=row.classList.toggle('folded'); h.setAttribute('aria-expanded',String(!f));
+      const cur=new Set((()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}})()); f?cur.add(name):cur.delete(name); try{localStorage.setItem(KEY,JSON.stringify([...cur]))}catch(e){} }); }); }
+let tipEl=null,tipT=null,tipFor=null;
+function setupTooltips(){ addEventListener('pointerover',e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return; clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true); }
+function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return; if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+  tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0'; const r=host.getBoundingClientRect(),t=tipEl.getBoundingClientRect();
+  let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8,r.bottom+8); tipEl.style.left=Math.max(8,Math.min(r.left,innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+function setPlayIcon(){ const b=document.getElementById('playBtn'); if(!b) return; b.setAttribute('aria-pressed',String(P.play));
+  b.innerHTML=P.play?'<svg viewBox="0 0 12 12" width="11" height="11"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>':'<svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 1.8 L10 6 L3 10.2 Z" fill="currentColor"/></svg>'; }
+function setFs(on){ document.body.classList.toggle('fs',on); if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{}); else if(!on&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{}); }
+function wireBar(){ document.getElementById('playBtn').onclick=()=>{ P.play=!P.play; setPlayIcon(); };
+  document.getElementById('themeBtn').onclick=()=>{ document.body.classList.toggle('dark'); };
+  document.getElementById('fsBtn').onclick=()=>setFs(!document.body.classList.contains('fs'));
+  document.getElementById('exitFs').onclick=()=>setFs(false);
+  document.getElementById('toggle').onclick=()=>{ const r=document.getElementById('rail'); const open=!r.classList.contains('open'); r.classList.toggle('open',open); document.body.classList.toggle('panels',open); document.getElementById('toggle').setAttribute('aria-pressed',String(open)); };
+  document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement&&document.body.classList.contains('fs')) setFs(false); });
+  setPlayIcon(); }
 function vecToHex(v){ const h=n=>('0'+Math.round(clamp(n,0,1)*255).toString(16)).slice(-2); return '#'+h(v[0])+h(v[1])+h(v[2]); }
 function hexToVec(h){ return [parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255]; }
 function randomPalette(){ const r=()=>Math.random(); P.palA=[0.5,0.5,0.5]; P.palB=[0.5,0.5,0.5];
@@ -279,7 +307,7 @@ function toggleRec(){ const btn=document.getElementById('recBtn');
 }
 
 // ---------------- boot ----------------
-resize(); buildPanel(); loadShader(); requestAnimationFrame(loop);
+document.body.classList.add('dark'); resize(); buildPanel(); wireBar(); loadShader(); requestAnimationFrame(loop);
 window.addEventListener("keydown",e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
   if(e.key===" "){ e.preventDefault(); P.play=!P.play; syncPanel(); }
   if(e.key==="r"||e.key==="R"){ randomPalette(); }
