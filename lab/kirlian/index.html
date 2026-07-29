@@ -247,7 +247,7 @@ const stage=document.getElementById('stage'), sctx=stage.getContext('2d');
 const comp=document.createElement('canvas'), cctx=comp.getContext('2d');
 
 const P={
-  aspect:'4:5', longEdge:1100, fit:'contain',
+  aspect:'4:5', longEdge:1100, fit:'contain', scale:1.0,
   subject:'silhouette', subjectDark:0.72,
   edgeThresh:0.16, edgeBoost:1.4,
   glowRadius:1.0, glowSpread:1.0, glowIntensity:1.1, bloom:0.55,
@@ -290,7 +290,7 @@ function buildGlow(){ if(!glowIn) return; const unit=comp.width/1000;
 function buildEdges(){
   if(!img){ return; }
   const W=CW(),H=CH(); comp.width=W; comp.height=H;
-  const s=P.fit==='cover'?Math.max(W/img.width,H/img.height):Math.min(W/img.width,H/img.height);
+  const s=(P.fit==='cover'?Math.max(W/img.width,H/img.height):Math.min(W/img.width,H/img.height))*P.scale;
   const dw=img.width*s, dh=img.height*s, ox=(W-dw)/2, oy=(H-dh)/2;
   fittedC=newC(W,H); { const x=fittedC.getContext('2d'); x.drawImage(img,ox,oy,dw,dh); }
   const sc=newC(W,H); const x=sc.getContext('2d',{willReadFrequently:true}); x.clearRect(0,0,W,H); x.drawImage(img,ox,oy,dw,dh);
@@ -417,7 +417,8 @@ function buildPanel(){
 
   const gI=grp('Image','Drop a file anywhere, or add one here. A cut-out (transparent) subject gives the cleanest corona.');
   button(gI,'Add image',()=>document.getElementById('file').click());
-  seg(gI,'fit','Fit',[{t:'Contain',v:'contain'},{t:'Cover',v:'cover'}],true);
+  slider(gI,'scale','Scale',0.15,3,0.01,v=>(+v).toFixed(2)+'×',true);
+  seg(gI,'fit','Base fit',[{t:'Fit inside',v:'contain'},{t:'Fill frame',v:'cover'}],true);
   gI.appendChild((()=>{ const r=el('div','swatches'); r.appendChild(color('bg','Plate')); return r; })());
 
   const gS=grp('Subject','How the object itself reads under the discharge.');
