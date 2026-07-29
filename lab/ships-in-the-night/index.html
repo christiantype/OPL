@@ -935,11 +935,11 @@ $('#recBtn').addEventListener('click',async()=>{
   if(recording){recorder.stop();return;}
   if(!audioLoaded){alert('Upload a track first — the recording captures the canvas + your song.');return;}
   ensureAudioGraph(); if(audioCtx.state==='suspended')await audioCtx.resume();
-  const vstream=canvas.captureStream(30);
+  const vstream=canvas.captureStream(60);
   const stream=new MediaStream([...vstream.getVideoTracks(),...recDest.stream.getAudioTracks()]);
   const types=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
   const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'video/webm';
-  recChunks=[]; recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12e6,audioBitsPerSecond:160e3});
+  recChunks=[]; recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(canvas.width*canvas.height*60*0.25))),audioBitsPerSecond:192e3});
   recorder.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};
   recorder.onstop=()=>{recording=false;$('#recBtn').textContent='Record';$('#recBtn').classList.add('rec');$('#recBtn').classList.remove('primary');
     const blob=new Blob(recChunks,{type:mime}),a=document.createElement('a');

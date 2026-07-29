@@ -310,9 +310,9 @@ function savePNG(){ const w=canvas.width*3, h=canvas.height*3;
 let rec=null, recChunks=[];
 function toggleRec(){ const btn=document.getElementById('recBtn');
   if(rec){ rec.stop(); return; }
-  const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m));
+  const mime=['video/mp4;codecs=avc1.640028','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m));
   if(!mime){ showErr('recording not supported here'); setTimeout(()=>showErr(''),2000); return; }
-  rec=new MediaRecorder(canvas.captureStream(60),{mimeType:mime,videoBitsPerSecond:24000000}); recChunks=[];
+  rec=new MediaRecorder(canvas.captureStream(60),{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(canvas.width*canvas.height*60*0.25)))}); recChunks=[];
   rec.ondataavailable=e=>{ if(e.data.size) recChunks.push(e.data); };
   rec.onstop=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(recChunks,{type:mime})); a.download='fractal_'+Date.now()+'.webm'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); rec=null; btn.textContent='Record'; btn.style.borderColor=''; };
   rec.start(); btn.textContent='Stop recording'; btn.style.borderColor='#ff5a5f';

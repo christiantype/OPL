@@ -389,7 +389,7 @@
   let recording=false;
   function exportVid(){ if(recording||!baked) return; const long=Math.max(CW(),CH()), s=Math.min(1440,long)/long, w=Math.round(CW()*s), h=Math.round(CH()*s);
     const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); const mime=pickMime(); if(!mime){ setStatus('recording not supported here'); setTimeout(()=>setStatus(''),2600); return; }
-    const rec=new MediaRecorder(c.captureStream(30),{mimeType:mime,videoBitsPerSecond:16000000}), chunks=[]; rec.ondataavailable=e=>{ if(e.data.size)chunks.push(e.data); };
+    const rec=new MediaRecorder(c.captureStream(60),{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(c.width*c.height*60*0.25)))}), chunks=[]; rec.ondataavailable=e=>{ if(e.data.size)chunks.push(e.data); };
     rec.onstop=()=>{ const ext=mime.includes('mp4')?'mp4':'webm'; dl(new Blob(chunks,{type:mime}),`aura-${Date.now()}.${ext}`); recording=false; setStatus('saved '+ext.toUpperCase()); setTimeout(()=>setStatus(''),2200); };
     recording=true; const DUR=7000, t0=performance.now(); (function rf(now){ const el=now-t0; renderComp(g,w,h,el/1000); if(el<DUR) requestAnimationFrame(rf); else rec.stop(); })(t0); rec.start(); setStatus('recording…'); }
 

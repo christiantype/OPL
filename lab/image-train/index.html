@@ -543,8 +543,8 @@
       n--; if(n>0){ ov.textContent=n; } else { clearInterval(iv); ov.classList.remove('show'); beginRec(); } },800); }
   function beginRec(){ let w=CW(), h=CH(); w-=w%2; h-=h%2;   // full comp res (e.g. 1080×1920), even for H.264
     mrecCv=document.createElement('canvas'); mrecCv.width=w; mrecCv.height=h; mrecG=mrecCv.getContext('2d');
-    const mime=pickMime(); const bitrate=Math.min(40000000, Math.max(12000000, Math.round(w*h*30*0.42)));
-    let tracks=mrecCv.captureStream(30).getVideoTracks();
+    const mime=pickMime(); const bitrate=Math.min(60000000, Math.max(24000000, Math.round(w*h*60*0.25)));
+    let tracks=mrecCv.captureStream(60).getVideoTracks();
     if(audioEl){ try{ const as=ensureAudioGraph(); audioEl.currentTime=0; audioEl.play().catch(()=>{}); tracks=tracks.concat(as.getAudioTracks()); }catch(e){ console.warn('audio',e); } }
     mrec=new MediaRecorder(new MediaStream(tracks),{mimeType:mime,videoBitsPerSecond:bitrate}); mchunks=[];
     mrec.ondataavailable=e=>{ if(e.data.size) mchunks.push(e.data); };

@@ -1682,12 +1682,12 @@
 
   function startRec(){ try{ const [w,h]=SIZES[state.exportSize];
     recCanvas=document.createElement('canvas'); recCanvas.width=w; recCanvas.height=h; recCtx=recCanvas.getContext('2d');
-    const stream=recCanvas.captureStream(30);
+    const stream=recCanvas.captureStream(60);
     // fold the live audio in so the video carries its own soundtrack
     try{ if(audio){ const dest=Tone.getContext().rawContext.createMediaStreamDestination();
       Tone.getDestination().connect(dest); dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t)); } }catch(e){}
     const mime=pickMime('video'); if(!mime) throw new Error('no encoder');
-    chunks=[]; mrec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:10000000});
+    chunks=[]; mrec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(recCanvas.width*recCanvas.height*60*0.25)))});
     mrec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     mrec.onstop=()=>{ dl(new Blob(chunks,{type:mime}),`angel-${Date.now()}.${extFor(mime)}`); };
     mrec.start(); state.recording=true; startRecClock('REC');

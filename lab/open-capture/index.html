@@ -124,8 +124,8 @@
                                                                     'video/webm';
         var ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
 
-        var stream   = cv.captureStream(30);
-        var recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: 12000000 });
+        var stream   = cv.captureStream(60);
+        var recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: Math.min(60000000,Math.max(24000000,Math.round(cv.width*cv.height*60*0.25))) });
         var chunks   = [];
 
         recorder.ondataavailable = function (e) { if (e.data.size > 0) chunks.push(e.data); };

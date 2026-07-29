@@ -2141,7 +2141,7 @@ $('#audioFile').addEventListener('change',e=>{
 let recorder=null,recording=false,recTimer=null,recStart=0;
 $('#recBtn').addEventListener('click',async()=>{
   if(recording){recorder.stop();return;}
-  const vstream=canvas.captureStream(30);
+  const vstream=canvas.captureStream(60);
   let stream=vstream, withAudio=false;
   if(audioReady&&recAudioEl){                         // mix the uploaded audio into the clip
     try{
@@ -2159,7 +2159,7 @@ $('#recBtn').addEventListener('click',async()=>{
   const atypes=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
   const types=withAudio?atypes:vtypes;
   const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'video/webm';const chunks=[];
-  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12e6,audioBitsPerSecond:128e3});
+  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(canvas.width*canvas.height*60*0.25))),audioBitsPerSecond:192e3});
   recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
   recorder.onstop=()=>{recording=false;clearInterval(recTimer);if(recAudioEl)recAudioEl.pause();$('#recBtn').textContent='Record';$('#recBtn').classList.add('rec');
     downloadBlob('kinetic-reel.'+(mime.includes('mp4')?'mp4':'webm'),new Blob(chunks,{type:mime}));};

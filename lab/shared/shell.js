@@ -85,8 +85,8 @@ window.Shell = (function(){
     const mime=pickMime(); if(!mime){ toast("This browser can't encode video. Try Safari or Chrome."); return; }
     const [rw,rh]=RECDIMS[recFmt]; rc.width=rw; rc.height=rh;
     layoutFrame(); showFrame(true); frameEl()&&frameEl().classList.add('live');
-    const stream=rc.captureStream(30); chunks=[];
-    try{ mediaRec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12000000}); }
+    const stream=rc.captureStream(60); chunks=[];
+    try{ mediaRec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(rc.width*rc.height*60*0.25)))}); }
     catch(e){ mediaRec=new MediaRecorder(stream); }
     mediaRec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
     mediaRec.onstop=finishRec; mediaRec.start(100);

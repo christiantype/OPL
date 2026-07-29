@@ -4728,10 +4728,12 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
   // Start the MediaRecorder + REC indicator (no button chrome — the caller owns that).
   function beginRecordingCore() {
     applyOutputSize();                          // high-res + chosen aspect BEFORE capture
-    const stream = canvas.captureStream(30);    // 30 fps at the boosted resolution
+    const stream = canvas.captureStream(60);    // 60 fps at the boosted resolution
     const mimeType = pickMime();
+    const bitrate = Math.min(60000000, Math.max(24000000, Math.round(canvas.width * canvas.height * 60 * 0.25)));
     try {
-      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const opts = mimeType ? { mimeType, videoBitsPerSecond: bitrate } : { videoBitsPerSecond: bitrate };
+      recorder = new MediaRecorder(stream, opts);
     } catch (e) { alert('Could not start recording: ' + e.message); return false; }
     chunks = [];
     recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };

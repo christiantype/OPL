@@ -493,8 +493,8 @@ function setRecBtn(on){ const b=document.getElementById('recBtn'); if(!b)return;
 function toggleRec(){ if(rec){ rec.stop(); return; } if(countIv){ clearInterval(countIv); countIv=null; document.getElementById('recDot').classList.remove('on'); setRecBtn(false); return; }
   if(!img) return; const dot=document.getElementById('recDot'), b=dot.querySelector('b'); dot.classList.add('on'); setRecBtn(true);
   let c=3; b.textContent=c; countIv=setInterval(()=>{ c--; if(c>0){ b.textContent=c; } else { clearInterval(countIv); countIv=null; beginRec(); } },1000); }
-function beginRec(){ const mime=pickMime(); if(!mime) return; const FPS=30; const stream=comp.captureStream(FPS);
-  rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(40000000,Math.round(comp.width*comp.height*FPS*0.13))}); recChunks=[];
+function beginRec(){ const mime=pickMime(); if(!mime) return; const FPS=60; const stream=comp.captureStream(FPS);
+  rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(comp.width*comp.height*FPS*0.25)))}); recChunks=[];
   rec.ondataavailable=e=>{ if(e.data.size) recChunks.push(e.data); };
   rec.onstop=()=>{ const blob=new Blob(recChunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kirlian_'+comp.width+'x'+comp.height+'.'+(mime.indexOf('mp4')>=0?'mp4':'webm'); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); rec=null; document.getElementById('recDot').classList.remove('on'); setRecBtn(false); };
   rec.start(); document.getElementById('recDot').querySelector('b').textContent='REC'; }
