@@ -248,11 +248,11 @@ const comp=document.createElement('canvas'), cctx=comp.getContext('2d',{willRead
 // ---------------- state ----------------
 const P={
   aspect:'4:5', longEdge:1200, fit:'contain',
-  shape:'pixels', density:9, size:2.4, alpha:1,
+  shape:'pixels', density:9, size:1.05, alpha:1,
   source:'edges', soft:0.30, mode:'loop', front:0.55, speed:0.16,
   rise:560, blowout:64, turb:120, wob:28, wind:0,
   burn:0, ember:'#ff6a2a', ash:'#8a8f98',
-  bg:'#07080f', blend:'glow', transparent:0,
+  bg:'#07080f', blend:'normal', transparent:0,
   play:true,
 };
 let img=null, parts=null;
@@ -332,7 +332,7 @@ function buildParticles(){
     }
     thr[k]=clamp(t*0.92 + seed[k]*0.08, 0, 1);           // a little grain so bands don't march
   }
-  parts={n,hx,hy,thr,seed,rx,ry,cr,cg,cb};
+  parts={n,hx,hy,thr,seed,rx,ry,cr,cg,cb,gap};
 }
 
 // ---------------- front (dissolve position 0..1+soft) ----------------
@@ -370,13 +370,13 @@ function drawScene(time){
   if(!parts) return;
   cctx.globalCompositeOperation = P.blend==='glow' ? 'lighter' : 'source-over';
   cctx.lineCap='round';
-  const n=parts.n, soft=P.soft, size=P.size, front=curFront, shape=P.shape, baseA=P.alpha;
+  const n=parts.n, soft=P.soft, size=P.size, gap=parts.gap, front=curFront, shape=P.shape, baseA=P.alpha;
   const em=hexRgb(P.ember), as=hexRgb(P.ash), burn=P.burn;
   for(let k=0;k<n;k++){
     const thr=parts.thr[k];
     const a=smooth(thr,thr+soft,front);
     const hx=parts.hx[k], hy=parts.hy[k];
-    let px,py,alpha,ds=size;
+    let px,py,alpha,ds=gap*size;
     if(a<=0){ px=hx; py=hy; alpha=baseA; }
     else {
       const sd=parts.seed[k], rise=P.rise*a*a;
@@ -385,7 +385,7 @@ function drawScene(time){
       const blow=P.blowout*a*(0.4+0.6*a);
       px=hx + parts.rx[k]*blow + tx*P.turb*a + wob + P.wind*a;
       py=hy - rise + parts.ry[k]*blow*0.3 + ty*P.turb*a;
-      alpha=clamp(1-a*a,0,1)*baseA; ds=size*(1+a*0.6);
+      alpha=clamp(1-a*a,0,1)*baseA; ds=gap*size*(1+a*0.6);
     }
     if(alpha<=0.012) continue;
     let r=parts.cr[k], g=parts.cg[k], b=parts.cb[k];
@@ -474,7 +474,7 @@ function buildPanel(){
   const gP=grp('Particles','What the image is made of.');
   select(gP,'shape','Shape',[{t:'Pixels',v:'pixels'},{t:'Dots',v:'dots'},{t:'Streaks',v:'streaks'},{t:'Triangles',v:'triangles'},{t:'Sparks (cross)',v:'cross'}]);
   slider(gP,'density','Density',3,20,1,v=>v+' px',true);
-  const pp=duo(gP); slider(pp,'size','Size',1,8,0.1,v=>(+v).toFixed(1)); slider(pp,'alpha','Opacity',0.1,1,0.01,v=>(+v).toFixed(2));
+  const pp=duo(gP); slider(pp,'size','Grain',0.3,2.2,0.05,v=>(+v).toFixed(2)+'×'); slider(pp,'alpha','Opacity',0.1,1,0.01,v=>(+v).toFixed(2));
 
   // Dissolve
   const gD=grp('Dissolve','Where the burn begins, and how it moves.');
