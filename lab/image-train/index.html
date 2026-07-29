@@ -249,28 +249,28 @@
     <button type="button" class="rowhead" aria-expanded="true">Bands</button>
     <p class="rowhint">How the frame is sliced.</p>
     <div class="duo">
-      <div class="grp" data-tip="How many bands the frame is sliced into. A few is bold; a lot is a fine weave."><label>Count <b id="countR">18</b></label><input id="count" type="range" min="2" max="80" value="18" /></div>
-      <div class="grp" data-tip="How much the band thicknesses vary. Zero is even stripes."><label>Uneven <b id="unevenR">55</b></label><input id="uneven" type="range" min="0" max="100" value="55" /></div>
+      <div class="grp" data-tip="How many bands the frame is sliced into. A few is bold; a lot is a fine weave."><label>Count <b id="countR">43</b></label><input id="count" type="range" min="2" max="80" value="43" /></div>
+      <div class="grp" data-tip="How much the band thicknesses vary. Zero is even stripes."><label>Uneven <b id="unevenR">100</b></label><input id="uneven" type="range" min="0" max="100" value="100" /></div>
     </div>
-    <div class="grp" data-tip="Space between bands. Low packs them tight edge-to-edge with no gaps; high scatters them apart with gaps between."><label>Gap <b id="gapR">35</b></label><input id="gap" type="range" min="0" max="100" value="35" /></div>
+    <div class="grp" data-tip="Space between bands. Low packs them tight edge-to-edge with no gaps; high scatters them apart with gaps between."><label>Gap <b id="gapR">0</b></label><input id="gap" type="range" min="0" max="100" value="0" /></div>
     <div class="grp" data-tip="Rows scroll left and right; Columns scroll up and down; Weave lays a few crossing bands over the rows for the woven look."><label>Direction</label>
       <div class="seg" id="axisSeg">
-        <button data-a="rows" aria-pressed="true">Rows</button>
+        <button data-a="rows" aria-pressed="false">Rows</button>
         <button data-a="cols" aria-pressed="false">Columns</button>
-        <button data-a="weave" aria-pressed="false">Weave</button>
+        <button data-a="weave" aria-pressed="true">Weave</button>
         <button data-a="radial" aria-pressed="false">Radial</button>
       </div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="How many crossing bands the Weave lays over the top."><label>Cross <b id="crossR">30</b></label><input id="cross" type="range" min="0" max="100" value="30" /></div>
-      <div class="grp" data-tip="Breaks each band into scattered pieces so the images never fully assemble — sliced and dispersed across the frame."><label>Disperse <b id="fragmentR">0</b></label><input id="fragment" type="range" min="0" max="100" value="0" /></div>
+      <div class="grp" data-tip="How many crossing bands the Weave lays over the top."><label>Cross <b id="crossR">61</b></label><input id="cross" type="range" min="0" max="100" value="61" /></div>
+      <div class="grp" data-tip="Breaks each band into scattered pieces so the images never fully assemble — sliced and dispersed across the frame."><label>Disperse <b id="fragmentR">26</b></label><input id="fragment" type="range" min="0" max="100" value="26" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Turns bands into smudge streaks (from Lake Opeka) — a single moving column stretched sideways, keeping vertical detail. Higher smears more bands."><label>Smudge <b id="smudgeR">0</b></label><input id="smudge" type="range" min="0" max="100" value="0" /></div>
+      <div class="grp" data-tip="Turns bands into smudge streaks (from Lake Opeka) — a single moving column stretched sideways, keeping vertical detail. Higher smears more bands."><label>Smudge <b id="smudgeR">16</b></label><input id="smudge" type="range" min="0" max="100" value="16" /></div>
       <div class="grp" data-tip="Links the bands with connection lines and nodes. Higher draws more connections across the frame."><label>Connect <b id="connectR">0</b></label><input id="connect" type="range" min="0" max="100" value="0" /></div>
     </div>
     <div class="grp" data-tip="Overlay the frame with its own data — clinical telemetry, code fragments, time, location and per-band speeds scattered across the frame."><label>Metadata</label>
-      <div class="seg" id="metaSeg"><button data-x="0" aria-pressed="true">Off</button><button data-x="1" aria-pressed="false">On</button></div>
+      <div class="seg" id="metaSeg"><button data-x="0" aria-pressed="false">Off</button><button data-x="1" aria-pressed="true">On</button></div>
     </div>
   </div>
 
@@ -281,8 +281,12 @@
       <div class="grp" data-tip="Overall speed of the bands."><label>Speed <b id="speedR">45</b></label><input id="speed" type="range" min="0" max="100" value="45" /></div>
       <div class="grp" data-tip="How much speed and direction vary band to band. High sends them every which way."><label>Spread <b id="spreadR">60</b></label><input id="spread" type="range" min="0" max="100" value="60" /></div>
     </div>
+    <div class="grp" data-tip="Cycle each band through your images over time instead of one fixed image per band — they switch, staggered, so you see every picture come around on the bands."><label>Cycle images</label>
+      <div class="seg" id="cycleSeg"><button data-x="0" aria-pressed="true">Off</button><button data-x="1" aria-pressed="false">On</button></div>
+    </div>
+    <div class="grp" id="cycrateWrap" data-tip="How fast bands switch to the next image."><label>Cycle rate <b id="cycrateR">40</b></label><input id="cycrate" type="range" min="0" max="100" value="40" /></div>
     <div class="grp"><button class="btn" id="shuffle" style="width:100%" data-tip="Reshuffles which image, direction and speed each band gets.">Shuffle</button></div>
-    <div class="grp" data-tip="Colour behind any gaps."><div class="cin"><input type="color" id="bg" value="#0a0b10"><label>Ground</label></div></div>
+    <div class="grp" data-tip="Colour behind any gaps."><div class="cin"><input type="color" id="bg" value="#ffffff"><label>Ground</label></div></div>
   </div>
 
   <div class="row">
@@ -324,8 +328,9 @@
   const $=id=>document.getElementById(id);
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
   let THEME='dark';
-  const state={ count:18, uneven:55, axis:'rows', cross:30, speed:45, spread:60, bg:'#0a0b10',
-    size:'1080x1350', res:3200, seed:7, meta:0, fragment:0, connect:0, smudge:0, gap:35, vol:85, playing:true };
+  const state={ count:43, uneven:100, axis:'weave', cross:61, speed:45, spread:60, bg:'#ffffff',
+    size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, connect:0, smudge:16, gap:0, vol:85, playing:true,
+    cycle:'0', cycrate:40 };
   const CW=()=>+state.size.split('x')[0], CH=()=>+state.size.split('x')[1];
   function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
   function h01(a,b){ let h=(Math.imul(a|0,73856093) ^ Math.imul(b|0,19349663) ^ Math.imul(state.seed|0,83492791))>>>0; h=Math.imul(h^h>>>15,2246822519); h^=h>>>13; return (h>>>0)/4294967296; }
@@ -376,6 +381,13 @@
         dir:r()<0.5?-1:1, spd:0.3+r()*2.0, zoom:0.6+r()*1.5, phase:r(), sr:r() });
     }
     bandsKey=key; }
+  // Cycle: instead of one fixed image per band, each band steps through the whole image set
+  // over time — staggered by its phase so bands switch at different moments — so you see every
+  // picture come around, and the same image lands on a whole band in turn.
+  function imgAt(b,t){ const L=imgs.length; if(L<=1) return 0; if(!(+state.cycle)) return b.img%L;
+    const rate=0.05+(state.cycrate/100)*0.85;                 // ~0.05..0.9 switches per second
+    const step=Math.floor((t + b.phase*7.31)*rate);
+    return (((b.img+step)%L)+L)%L; }
   // Smudge (from Lake Opeka): stretch a single moving source column across the band, keeping
   // its vertical detail but smearing it sideways into a streak.
   function drawSmudge(g,im,horiz,x,y,w,h,srcPf,srcLf,off){ if(!im) return; const iw=im.naturalWidth, ih=im.naturalHeight;
@@ -387,7 +399,7 @@
   // strip drawn along its ray — a one-point-perspective tunnel.
   function drawRadial(g,W,H,t,base){ if(!bands||!imgs.length) return; const N=bands.length;
     const cx=W/2, cy=H/2, R=Math.hypot(W,H)/2*1.04, hw=Math.PI/N;
-    for(let i=0;i<N;i++){ const b=bands[i], im=imgs[b.img%imgs.length]; if(!im) continue;
+    for(let i=0;i<N;i++){ const b=bands[i], im=imgs[imgAt(b,t)]; if(!im) continue;
       const a=(i/N)*Math.PI*2, off=(t*base*0.7*b.spd)*b.dir + b.phase*600;
       const iw=im.naturalWidth, ih=im.naturalHeight, sh=Math.max(1,b.thick*ih), sy=clamp(b.p,0,1-b.thick)*ih;
       const halfW=Math.tan(hw)*R, dw=Math.max(10, R*0.55*b.zoom); let o=((off%dw)+dw)%dw;
@@ -410,7 +422,7 @@
     // node anchored on each band: cross-axis = band position; along-axis spread by the band's
     // own seed so full-width bands don't collapse into one line.
     const pts=bands.map(b=> b.horiz ? [(0.12+b.phase*0.76)*W,(b.p+b.thick/2)*H] : [(b.p+b.thick/2)*W,(0.12+b.phase*0.76)*H]);
-    const groups={}; bands.forEach((b,i)=>{ const k=b.img%imgs.length; (groups[k]=groups[k]||[]).push(i); });
+    const groups={}; bands.forEach((b,i)=>{ const k=imgAt(b,t); (groups[k]=groups[k]||[]).push(i); });
     const kk=1+Math.round(state.connect/100*3), seen=new Set(), edges=[], deg=new Array(pts.length).fill(0);
     for(const key in groups){ const grp=groups[key];   // link each band to nearest bands of the same image
       for(const i of grp){ const d=grp.filter(j=>j!==i).map(j=>{ const dx=pts[i][0]-pts[j][0],dy=pts[i][1]-pts[j][1]; return [dx*dx+dy*dy,j]; }).sort((a,b)=>a[0]-b[0]);
@@ -421,7 +433,7 @@
       const mpx=(a[0]+b[0])/2, mpy=(a[1]+b[1])/2, nx=-(b[1]-a[1]), ny=(b[0]-a[0]), nl=Math.hypot(nx,ny)||1;
       const bow=((i+j)%2?1:-1)*Math.hypot(b[0]-a[0],b[1]-a[1])*0.14;   // gentle curve
       g.beginPath(); g.moveTo(a[0],a[1]); g.quadraticCurveTo(mpx+nx/nl*bow, mpy+ny/nl*bow, b[0],b[1]); g.stroke(); }
-    for(let i=0;i<pts.length;i++){ if(!deg[i]) continue; const p=pts[i], col=CONN_HUE[(bands[i].img%imgs.length)%CONN_HUE.length], rr=Math.max(1.8,s*0.0028*(1+deg[i]*0.45));
+    for(let i=0;i<pts.length;i++){ if(!deg[i]) continue; const p=pts[i], col=CONN_HUE[imgAt(bands[i],t)%CONN_HUE.length], rr=Math.max(1.8,s*0.0028*(1+deg[i]*0.45));
       g.strokeStyle=`rgba(${col},0.65)`; g.lineWidth=Math.max(1,s*0.0011); g.beginPath(); g.arc(p[0],p[1],rr,0,6.283); g.stroke();
       g.fillStyle=`rgba(${col},0.95)`; g.beginPath(); g.arc(p[0],p[1],Math.max(1,rr*0.4),0,6.283); g.fill(); }
     g.restore(); }
@@ -455,7 +467,7 @@
     const base=state.speed/100*260, frag=state.fragment/100;
     if(state.axis==="radial"){ drawRadial(g,W,H,t,base); drawConns(g,W,H,t); if(+state.meta) drawMeta(g,W,H,t); return; }
     let bi=0;
-    for(const b of bands){ const im=imgs[b.img%imgs.length]; const off=(t*base*b.spd)*b.dir + b.phase*500; bi++;
+    for(const b of bands){ const im=imgs[imgAt(b,t)]; const off=(t*base*b.spd)*b.dir + b.phase*500; bi++;
       const fc = frag>0.01 ? 1+Math.round(frag*5) : 1;   // dice the band into scattered pieces
       const sm = b.sr < state.smudge/100;                 // this band renders as a smudge streak
       if(b.horiz){ const y=b.p*H, h=Math.max(1,b.thick*H), x=b.start*W, w=Math.max(1,b.len*W), cw=w/fc;
@@ -558,12 +570,14 @@
 
   // ---- UI ----
   function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
+  function updateCycleGate(){ const w=$('cycrateWrap'); if(w) w.style.display=(+state.cycle)?'':'none'; }
   function bindSeg(id,key,dk,after){ document.querySelectorAll(`#${id} button`).forEach(b=>b.addEventListener('click',()=>{
     state[key]=b.dataset[dk]; document.querySelectorAll(`#${id} button`).forEach(x=>x.setAttribute('aria-pressed',String(x===b))); bandsKey=''; if(after)after(); markDirty(); })); }
   const bind=(id,key,fn)=>{ const e=$(id); e.addEventListener('input',ev=>{ state[key]=+ev.target.value; const r=$(id+'R'); if(r)r.textContent=ev.target.value; bandsKey=''; if(fn)fn(); markDirty(); }); };
   function wire(){
     bindSeg('axisSeg','axis','a'); bindSeg('metaSeg','meta','x'); bindSeg('sizeSeg','size','z',()=>{ syncRes(); syncHint(); });
-    ['count','uneven','gap','cross','fragment','smudge','connect','speed','spread'].forEach(id=>bind(id,id));
+    bindSeg('cycleSeg','cycle','x',updateCycleGate); updateCycleGate();
+    ['count','uneven','gap','cross','fragment','smudge','connect','speed','spread','cycrate'].forEach(id=>bind(id,id));
     $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
     $('addBtn').addEventListener('click',()=>$('fileInp').click());
