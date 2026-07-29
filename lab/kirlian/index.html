@@ -274,7 +274,18 @@ function fbm1(x){ const xi=Math.floor(x),xf=x-xi,u=xf*xf*(3-2*xf); return lerp(h
 // ---------------- build corona from image ----------------
 function newC(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
 function tint(mask,hex){ const c=newC(mask.width,mask.height), x=c.getContext('2d'); x.drawImage(mask,0,0); x.globalCompositeOperation='source-in'; x.fillStyle=hex; x.fillRect(0,0,c.width,c.height); return c; }
-function retint(){ if(!maskC) return; glowIn=tint(maskC,P.inner); glowMid=tint(maskC,P.mid); glowOut=tint(maskC,P.outer); }
+function retint(){ if(!maskC) return; glowIn=tint(maskC,P.inner); glowMid=tint(maskC,P.mid); glowOut=tint(maskC,P.outer); buildGlow(); }
+// The aura layers are static — they only change with the image, its colours, or the reach/
+// spread sliders. Blurring them once into cached canvases (instead of every frame) is what
+// keeps the render at full frame rate, so recordings stay smooth.
+let bGlowIn=null, bGlowMid=null, bGlowOut=null, bRim=null, bBloom=null;
+function blurLayer(src,px){ const c=newC(src.width,src.height), x=c.getContext('2d'); x.filter='blur('+Math.max(0,px).toFixed(2)+'px)'; x.drawImage(src,0,0); x.filter='none'; return c; }
+function buildGlow(){ if(!glowIn) return; const unit=comp.width/1000;
+  bGlowOut=blurLayer(glowOut, 22*unit*P.glowRadius*P.glowSpread);
+  bGlowMid=blurLayer(glowMid, 10*unit*P.glowRadius*P.glowSpread);
+  bGlowIn =blurLayer(glowIn,  3.5*unit*P.glowRadius);
+  bRim    =blurLayer(glowIn,  1.1*unit);
+  bBloom  =blurLayer(glowMid, 40*unit*P.glowSpread); }
 
 function buildEdges(){
   if(!img){ return; }
@@ -338,26 +349,25 @@ function drawScene(time){
   const W=comp.width,H=comp.height;
   cctx.setTransform(1,0,0,1,0,0); cctx.globalCompositeOperation='source-over'; cctx.globalAlpha=1;
   cctx.fillStyle=P.bg; cctx.fillRect(0,0,W,H);
-  if(!maskC) return;
+  if(!maskC || !bGlowIn) return;
   drawSubject();
   const unit=W/1000;
   const flick=clamp(1 + (fbm1(time*4*P.flickSpeed)-0.5)*P.flicker*1.6 + (Math.random()-0.5)*P.flicker*0.4, 0.15, 1.9);
   const gi=P.glowIntensity*flick;
   cctx.globalCompositeOperation='lighter'; cctx.lineCap='round';
-  // aura — outer to inner
-  cctx.filter=`blur(${(22*unit*P.glowRadius*P.glowSpread).toFixed(1)}px)`; cctx.globalAlpha=clamp(0.5*gi,0,1); cctx.drawImage(glowOut,0,0);
-  cctx.filter=`blur(${(10*unit*P.glowRadius*P.glowSpread).toFixed(1)}px)`; cctx.globalAlpha=clamp(0.7*gi,0,1); cctx.drawImage(glowMid,0,0);
-  cctx.filter=`blur(${(3.5*unit*P.glowRadius).toFixed(1)}px)`;               cctx.globalAlpha=clamp(0.95*gi,0,1); cctx.drawImage(glowIn,0,0);
-  cctx.filter='none';
-  // filaments
+  // aura — pre-blurred layers, outer to inner (no per-frame blur, so the frame rate holds)
+  cctx.globalAlpha=clamp(0.5*gi,0,1);  cctx.drawImage(bGlowOut,0,0);
+  cctx.globalAlpha=clamp(0.7*gi,0,1);  cctx.drawImage(bGlowMid,0,0);
+  cctx.globalAlpha=clamp(0.95*gi,0,1); cctx.drawImage(bGlowIn,0,0);
+  // filaments — the one live, per-frame element
   if(P.filaments && epts){ const n=epts.length/4; const count=Math.round(n*0.12*P.filDensity);
     for(let k=0;k<count;k++){ const idx=(Math.random()*n)|0, o=idx*4;
       const ff=0.5+Math.random()*0.9; streamer(epts[o],epts[o+1],epts[o+2],epts[o+3], (34+Math.random()*60)*unit*P.filLength, P.filJitter, ff*flick); } }
   // crisp rim
-  cctx.filter=`blur(${(1.1*unit).toFixed(1)}px)`; cctx.globalAlpha=clamp(0.9*flick,0,1); cctx.drawImage(glowIn,0,0);
+  cctx.globalAlpha=clamp(0.9*flick,0,1); cctx.drawImage(bRim,0,0);
   // bloom halo
-  if(P.bloom>0){ cctx.filter=`blur(${(40*unit*P.glowSpread).toFixed(1)}px)`; cctx.globalAlpha=clamp(P.bloom*0.6*flick,0,1); cctx.drawImage(glowMid,0,0); }
-  cctx.filter='none'; cctx.globalAlpha=1; cctx.globalCompositeOperation='source-over';
+  if(P.bloom>0){ cctx.globalAlpha=clamp(P.bloom*0.6*flick,0,1); cctx.drawImage(bBloom,0,0); }
+  cctx.globalAlpha=1; cctx.globalCompositeOperation='source-over';
 }
 function blitToStage(){
   const sw=stage.width, sh=stage.height; sctx.setTransform(1,0,0,1,0,0);
@@ -395,7 +405,7 @@ function buildPanel(){
   const when=(node,expr)=>{ node.dataset.when=expr; return node; };
   const slider=(g,key,label,min,max,step,fmt,rebuild)=>{ const gr=el('div','grp'); const v=el('b',null,(fmt?fmt(P[key]):P[key])); const lab=el('label',null,label+' '); lab.appendChild(v);
     const r=el('input'); r.type='range'; r.min=min; r.max=max; r.step=step; r.value=P[key];
-    r.oninput=()=>{ P[key]=(String(step).indexOf('.')>=0)?parseFloat(r.value):parseInt(r.value); v.textContent=fmt?fmt(P[key]):P[key]; if(rebuild) buildEdges(); };
+    r.oninput=()=>{ P[key]=(String(step).indexOf('.')>=0)?parseFloat(r.value):parseInt(r.value); v.textContent=fmt?fmt(P[key]):P[key]; if(rebuild===true) buildEdges(); else if(typeof rebuild==='function') rebuild(); };
     gr.appendChild(lab); gr.appendChild(r); g.appendChild(gr); refs.push({key,r,v,fmt}); return gr; };
   const seg=(g,key,label,opts,rebuild)=>{ const gr=el('div','grp'); if(label) gr.appendChild(el('label',null,label)); const s=el('div','seg');
     opts.forEach(o=>{ const b=el('button',null,o.t); b.setAttribute('aria-pressed',String(P[key]==o.v)); b.onclick=()=>{ P[key]=o.v; [...s.children].forEach(c=>c.setAttribute('aria-pressed',String(c===b))); if(rebuild) buildEdges(); refreshGate(); }; s.appendChild(b); });
@@ -421,7 +431,7 @@ function buildPanel(){
   const pr=el('div',null,''); pr.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:6px';
   Object.keys(PRESETS).forEach(n=>{ const b=el('button','btn',n); b.onclick=()=>{ const c=PRESETS[n]; P.inner=c[0];P.mid=c[1];P.outer=c[2]; retint(); syncPanel(); }; pr.appendChild(b); }); gG.appendChild(pr);
   const cr=el('div','swatches'); cr.appendChild(color('inner','Inner')); cr.appendChild(color('mid','Mid')); cr.appendChild(color('outer','Outer')); gG.appendChild(cr);
-  const g1=duo(gG); slider(g1,'glowRadius','Reach',0.3,2.5,0.05,v=>(+v).toFixed(2)); slider(g1,'glowSpread','Spread',0.4,2.5,0.05,v=>(+v).toFixed(2));
+  const g1=duo(gG); slider(g1,'glowRadius','Reach',0.3,2.5,0.05,v=>(+v).toFixed(2),buildGlow); slider(g1,'glowSpread','Spread',0.4,2.5,0.05,v=>(+v).toFixed(2),buildGlow);
   const g2=duo(gG); slider(g2,'glowIntensity','Intensity',0.2,2.2,0.05,v=>(+v).toFixed(2)); slider(g2,'bloom','Bloom',0,1.5,0.02,v=>(+v).toFixed(2));
 
   const gF=grp('Filaments','The crackle — streamers leaping off the edge.');
