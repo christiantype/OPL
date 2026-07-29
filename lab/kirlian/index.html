@@ -292,15 +292,27 @@ function buildEdges(){
   const W=CW(),H=CH(); comp.width=W; comp.height=H;
   const s=(P.fit==='cover'?Math.max(W/img.width,H/img.height):Math.min(W/img.width,H/img.height))*P.scale;
   const dw=img.width*s, dh=img.height*s, ox=(W-dw)/2, oy=(H-dh)/2;
+  const rx0=clamp(Math.round(ox),0,W-1), ry0=clamp(Math.round(oy),0,H-1),
+        rx1=clamp(Math.round(ox+dw)-1,0,W-1), ry1=clamp(Math.round(oy+dh)-1,0,H-1);
   fittedC=newC(W,H); { const x=fittedC.getContext('2d'); x.drawImage(img,ox,oy,dw,dh); }
   const sc=newC(W,H); const x=sc.getContext('2d',{willReadFrequently:true}); x.clearRect(0,0,W,H); x.drawImage(img,ox,oy,dw,dh);
   const id=x.getImageData(0,0,W,H), d=id.data;
-  const N=W*H, L=new Float32Array(N), A=new Float32Array(N); hasA=false;
-  for(let i=0;i<N;i++){ const o=i*4; L[i]=(0.2126*d[o]+0.7152*d[o+1]+0.0722*d[o+2])/255; A[i]=d[o+3]/255; if(d[o+3]<250) hasA=true; }
+  const N=W*H, L=new Float32Array(N), A=new Float32Array(N);
+  for(let i=0;i<N;i++){ const o=i*4; L[i]=(0.2126*d[o]+0.7152*d[o+1]+0.0722*d[o+2])/255; A[i]=d[o+3]/255; }
+  // Is the SUBJECT itself a cut-out? Check transparency only INSIDE the image rect (inset to
+  // skip anti-aliased edges) — otherwise the empty plate around a scaled-down image reads as
+  // "transparent" and the rectangle border becomes a false silhouette.
+  hasA=false; const insX0=rx0+2, insX1=rx1-2, insY0=ry0+2, insY1=ry1-2;
+  for(let y=insY0;y<=insY1 && !hasA;y++) for(let xx=insX0;xx<=insX1;xx++){ if(d[(y*W+xx)*4+3]<230){ hasA=true; break; } }
   const F = hasA ? A : L;                                     // coverage field: silhouette if we have alpha, else luminance
-  // edge magnitude + normal from the coverage field
   const edge=new Float32Array(N); let mx=1e-6;
-  const at=(xx,yy)=>F[clamp(yy,0,H-1)*W+clamp(xx,0,W-1)];
+  // For an opaque photo the drawn rectangle reads as a hard edge, so the corona grips that
+  // box — worst when you scale the image down. Clamp sampling to the image rect so its outer
+  // border carries no gradient; the aura then comes from the picture's internal contours.
+  // A cut-out (alpha) keeps full-canvas sampling, so its silhouette stays the edge, as intended.
+  const cX = hasA ? (v)=>clamp(v,0,W-1) : (v)=>clamp(v,rx0,rx1);
+  const cY = hasA ? (v)=>clamp(v,0,H-1) : (v)=>clamp(v,ry0,ry1);
+  const at=(xx,yy)=>F[cY(yy)*W+cX(xx)];
   const md=new ImageData(W,H); const mdd=md.data;
   for(let y=0;y<H;y++) for(let xx=0;xx<W;xx++){ const i=y*W+xx;
     const gx=at(xx+1,y)-at(xx-1,y), gy=at(xx,y+1)-at(xx,y-1); const g=Math.hypot(gx,gy);
@@ -312,7 +324,9 @@ function buildEdges(){
   retint();
   // silhouette fill (subject void) — alpha coverage, or a soft box for opaque photos
   silC=newC(W,H); { const sx=silC.getContext('2d'); const sid=sx.createImageData(W,H), sd=sid.data;
-    for(let i=0;i<N;i++){ const o=i*4; const cov=hasA?A[i]:1.0; sd[o]=0;sd[o+1]=0;sd[o+2]=0; sd[o+3]=(cov*255)|0; }
+    for(let y=0;y<H;y++) for(let xx=0;xx<W;xx++){ const i=y*W+xx, o=i*4;
+      const cov = hasA ? A[i] : ((xx>=rx0&&xx<=rx1&&y>=ry0&&y<=ry1)?1:0);   // opaque subject = the image rect
+      sd[o]=0; sd[o+1]=0; sd[o+2]=0; sd[o+3]=(cov*255)|0; }
     sx.putImageData(sid,0,0); }
   // edge point set for filaments (subsample), normal points outward (down the coverage gradient)
   const pts=[]; const step=Math.max(2,Math.round(W/420));
