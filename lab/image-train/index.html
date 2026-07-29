@@ -291,14 +291,17 @@
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Sound</button>
-    <p class="rowhint">Add a music track and it's baked into the recording &#8212; ready to post as a reel.</p>
+    <p class="rowhint">A synthesized ambience, or your own track &#8212; both play live and bake into the recording.</p>
+    <div class="grp" data-tip="A synthesized ambient bed — no file needed. Projector is sprocket clatter (its pace follows Speed) over a motor hum; Wind is an airy bed; Room is a soft tone. Plays live and is recorded."><label>Ambience</label>
+      <div class="seg" id="ambSeg"><button data-m="off" aria-pressed="true">Off</button><button data-m="projector" aria-pressed="false">Projector</button><button data-m="wind" aria-pressed="false">Wind</button><button data-m="room" aria-pressed="false">Room</button></div>
+    </div>
     <div class="grp"><div style="display:flex; gap:6px;">
       <button class="btn" id="musicBtn" style="flex:1" data-tip="Adds an audio track that plays and is recorded together with the video.">Add music</button>
       <button class="btn" id="musicClear" style="flex:1" data-tip="Removes the track.">Clear</button>
     </div></div>
     <input id="musicInp" type="file" accept="audio/*" hidden />
     <p class="rowhint" id="trackName" style="opacity:.55;margin:3px 0 0">no track</p>
-    <div class="grp" data-tip="How loud the music sits in the recording."><label>Volume <b id="volR">85</b></label><input id="vol" type="range" min="0" max="100" value="85" /></div>
+    <div class="grp" data-tip="Overall sound level — ambience and music, live and in the recording."><label>Volume <b id="volR">85</b></label><input id="vol" type="range" min="0" max="100" value="85" /></div>
   </div>
 
   <div class="row">
@@ -330,7 +333,7 @@
   let THEME='dark';
   const state={ count:43, uneven:100, axis:'weave', cross:61, speed:45, spread:60, bg:'#ffffff',
     size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, connect:0, smudge:16, gap:0, vol:85, playing:true,
-    cycle:'0', cycrate:40 };
+    cycle:'0', cycrate:40, ambience:'off' };
   const CW=()=>+state.size.split('x')[0], CH=()=>+state.size.split('x')[1];
   function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
   function h01(a,b){ let h=(Math.imul(a|0,73856093) ^ Math.imul(b|0,19349663) ^ Math.imul(state.seed|0,83492791))>>>0; h=Math.imul(h^h>>>15,2246822519); h^=h>>>13; return (h>>>0)/4294967296; }
@@ -535,21 +538,63 @@
   // Record with a 3-2-1 countdown, then run until the user clicks Stop.
   let recState='idle', mrec=null, mchunks=[], mrecRAF=null, mrecCv=null, mrecG=null, mrecStart=0;
   // ---- music: an uploaded track, routed through Web Audio so it can be muxed into the recording ----
-  let audioEl=null, audioAC=null, audioSrc=null, audioDest=null, audioGain=null;
+  let audioEl=null, musicOn=false, audioAC=null, audioSrc=null, audioDest=null, musicGain=null, masterGain=null;
+  // One master bus feeds both the speakers and the recording stream, so anything routed into it
+  // (an uploaded track, or the synthesized ambience) is heard live and muxed into the video.
+  function ensureAudioCtx(){ if(!audioAC){ audioAC=new (window.AudioContext||window.webkitAudioContext)();
+      masterGain=audioAC.createGain(); masterGain.gain.value=state.vol/100;
+      audioDest=audioAC.createMediaStreamDestination(); masterGain.connect(audioDest); masterGain.connect(audioAC.destination); }
+    if(audioAC.state==='suspended') audioAC.resume(); return audioAC; }
   function loadAudio(file){ if(!audioEl){ audioEl=new Audio(); audioEl.loop=true; }
-    audioEl.src=URL.createObjectURL(file); audioEl.load(); $('trackName').textContent=file.name;
-    setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1400); }
-  function ensureAudioGraph(){ if(!audioEl) return null;
-    if(!audioAC){ audioAC=new (window.AudioContext||window.webkitAudioContext)();
-      audioSrc=audioAC.createMediaElementSource(audioEl); audioDest=audioAC.createMediaStreamDestination();
-      audioGain=audioAC.createGain(); audioSrc.connect(audioGain); audioGain.connect(audioDest); audioGain.connect(audioAC.destination); }
-    audioGain.gain.value=state.vol/100; if(audioAC.state==='suspended') audioAC.resume(); return audioDest.stream; }
+    audioEl.src=URL.createObjectURL(file); audioEl.load(); musicOn=true; ensureMusicGraph();
+    $('trackName').textContent=file.name; setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1400); }
+  function ensureMusicGraph(){ if(!audioEl) return null; ensureAudioCtx();
+    if(!audioSrc){ audioSrc=audioAC.createMediaElementSource(audioEl); musicGain=audioAC.createGain(); musicGain.gain.value=1; audioSrc.connect(musicGain); musicGain.connect(masterGain); }
+    return audioDest.stream; }
+  const audioActive=()=>musicOn||Ambient.on;
+
+  // ---- Ambient: a synthesized bed (projector clatter / wind / room), no file needed ----
+  const Ambient=(()=>{
+    let on=false, mode='off', out=null, voices=[], clk=null, nextT=0, nb=null;
+    const R=Math.random;
+    function noise(){ if(nb) return nb; const ac=audioAC, len=(ac.sampleRate*2)|0; nb=ac.createBuffer(1,len,ac.sampleRate);
+      const d=nb.getChannelData(0); for(let i=0;i<len;i++) d[i]=R()*2-1; return nb; }
+    function bed(freq,q,lvl,lfoRate,lfoDepth){ const ac=audioAC; const s=ac.createBufferSource(); s.buffer=noise(); s.loop=true;
+      const f=ac.createBiquadFilter(); f.type='lowpass'; f.frequency.value=freq; f.Q.value=q||0.7;
+      const g=ac.createGain(); g.gain.value=lvl; s.connect(f); f.connect(g); g.connect(out); s.start(); voices.push(s);
+      if(lfoDepth){ const lfo=ac.createOscillator(); lfo.frequency.value=lfoRate; const la=ac.createGain(); la.gain.value=lfoDepth;
+        lfo.connect(la); la.connect(f.frequency); lfo.start(); voices.push(lfo); } }
+    function motor(){ const ac=audioAC; [46,46.5].forEach(hz=>{ const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=hz;
+      const f=ac.createBiquadFilter(); f.type='lowpass'; f.frequency.value=210; const g=ac.createGain(); g.gain.value=0.05;
+      o.connect(f); f.connect(g); g.connect(out); o.start(); voices.push(o);
+      const lfo=ac.createOscillator(); lfo.frequency.value=5.6; const la=ac.createGain(); la.gain.value=0.02; lfo.connect(la); la.connect(g.gain); lfo.start(); voices.push(lfo); }); }
+    function click(t){ const ac=audioAC; const s=ac.createBufferSource(); s.buffer=noise();
+      const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1500+R()*1500; bp.Q.value=1.1;
+      const g=ac.createGain(); const amp=0.10+R()*0.10;
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(amp,t+0.002); g.gain.exponentialRampToValueAtTime(0.0001,t+0.03+R()*0.02);
+      s.connect(bp); bp.connect(g); g.connect(out); s.start(t,R()*1.5); s.stop(t+0.1); }
+    function startClatter(){ const ac=audioAC; nextT=ac.currentTime+0.05;
+      clk=setInterval(()=>{ if(!on) return; const now=ac.currentTime;                     // clatter pace follows Speed
+        if(!state.playing){ nextT=now+0.1; return; }                                       // film stopped → no clicks
+        const cps=6+(state.speed/100)*22, iv=1/Math.max(1,cps);
+        while(nextT<now+0.12){ click(nextT); nextT+=iv*(0.8+R()*0.5); } },30); }
+    function start(){ ensureAudioCtx(); teardown(); const ac=audioAC; out=ac.createGain(); out.gain.value=0.0001; out.connect(masterGain);
+      out.gain.exponentialRampToValueAtTime(1,ac.currentTime+0.5);
+      if(mode==='wind') bed(520,0.9,0.16,0.05,260);
+      else if(mode==='room') bed(170,0.7,0.12,0.03,40);
+      else if(mode==='projector'){ bed(240,0.7,0.045,0.05,120); motor(); startClatter(); }
+      on=true; }
+    function teardown(){ if(clk){ clearInterval(clk); clk=null; } voices.forEach(n=>{ try{n.stop();}catch(e){} }); voices=[];
+      if(out){ try{ out.disconnect(); }catch(e){} out=null; } }
+    return { get on(){return on;}, get mode(){return mode;},
+      set(m){ mode=m; if(m==='off'){ teardown(); on=false; } else start(); } };
+  })();
 
   function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
   function toggleRec(){ if(recState==='recording') return stopRec(); if(recState==='idle') startCountdown(); }
   function startCountdown(){ if(!imgs.length){ setStatus('add an image first'); setTimeout(()=>setStatus(''),1600); return; }
     if(!pickMime()){ setStatus('recording not supported here'); setTimeout(()=>setStatus(''),2600); return; }
-    ensureAudioGraph();   // create/resume the audio context inside the click gesture
+    ensureAudioCtx();   // create/resume the audio context inside the click gesture
     recState='counting'; const ov=$('countdown'); let n=3; ov.textContent=n; ov.classList.add('show');
     const iv=setInterval(()=>{ if(recState!=='counting'){ clearInterval(iv); ov.classList.remove('show'); return; }
       n--; if(n>0){ ov.textContent=n; } else { clearInterval(iv); ov.classList.remove('show'); beginRec(); } },800); }
@@ -557,7 +602,8 @@
     mrecCv=document.createElement('canvas'); mrecCv.width=w; mrecCv.height=h; mrecG=mrecCv.getContext('2d');
     const mime=pickMime(); const bitrate=Math.min(60000000, Math.max(24000000, Math.round(w*h*60*0.25)));
     let tracks=mrecCv.captureStream(60).getVideoTracks();
-    if(audioEl){ try{ const as=ensureAudioGraph(); audioEl.currentTime=0; audioEl.play().catch(()=>{}); tracks=tracks.concat(as.getAudioTracks()); }catch(e){ console.warn('audio',e); } }
+    if(audioActive()){ try{ ensureAudioCtx(); if(musicOn&&audioEl){ ensureMusicGraph(); audioEl.currentTime=0; audioEl.play().catch(()=>{}); }
+      tracks=tracks.concat(audioDest.stream.getAudioTracks()); }catch(e){ console.warn('audio',e); } }
     mrec=new MediaRecorder(new MediaStream(tracks),{mimeType:mime,videoBitsPerSecond:bitrate}); mchunks=[];
     mrec.ondataavailable=e=>{ if(e.data.size) mchunks.push(e.data); };
     mrec.onstop=()=>{ if(audioEl){ try{ audioEl.pause(); }catch(e){} } const ext=mime.includes('mp4')?'mp4':'webm'; dl(new Blob(mchunks,{type:mime}),`image-train-${Date.now()}.${ext}`);
@@ -577,6 +623,7 @@
   function wire(){
     bindSeg('axisSeg','axis','a'); bindSeg('metaSeg','meta','x'); bindSeg('sizeSeg','size','z',()=>{ syncRes(); syncHint(); });
     bindSeg('cycleSeg','cycle','x',updateCycleGate); updateCycleGate();
+    bindSeg('ambSeg','ambience','m',()=>Ambient.set(state.ambience));
     ['count','uneven','gap','cross','fragment','smudge','connect','speed','spread','cycrate'].forEach(id=>bind(id,id));
     $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
@@ -587,8 +634,8 @@
     $('pngBtn').addEventListener('click',exportPNG); $('vidBtn').addEventListener('click',toggleRec);
     $('musicBtn').addEventListener('click',()=>$('musicInp').click());
     $('musicInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadAudio(f); e.target.value=''; });
-    $('musicClear').addEventListener('click',()=>{ if(audioEl){ try{ audioEl.pause(); }catch(e){} audioEl.removeAttribute('src'); } $('trackName').textContent='no track'; });
-    $('vol').addEventListener('input',e=>{ state.vol=+e.target.value; $('volR').textContent=e.target.value; if(audioGain) audioGain.gain.value=state.vol/100; });
+    $('musicClear').addEventListener('click',()=>{ if(audioEl){ try{ audioEl.pause(); }catch(e){} audioEl.removeAttribute('src'); } musicOn=false; $('trackName').textContent='no track'; });
+    $('vol').addEventListener('input',e=>{ state.vol=+e.target.value; $('volR').textContent=e.target.value; if(masterGain) masterGain.gain.value=state.vol/100; });
     $('playBtn').addEventListener('click',()=>{ state.playing=!state.playing; last=null; $('playBtn').setAttribute('aria-pressed',String(state.playing));
       $('playBtn').innerHTML=state.playing?'<svg viewBox="0 0 12 12" width="11" height="11"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>':'<svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 1.8 L10 6 L3 10.2 Z" fill="currentColor"/></svg>'; });
     $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark'));
