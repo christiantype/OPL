@@ -188,7 +188,6 @@
   @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
   @media (max-width:560px){ input[type=range]{ width:82px; } }
 
-  /* Letter Strings — its own bits */
   #stage{ background:transparent; touch-action:none; }
   #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none; font-family:ui-monospace,Menlo,monospace; font-size:10px; letter-spacing:.05em; color:var(--mute); }
   #hint b{ color:var(--ink); font-weight:600; } body.fs #hint{ display:none; }
@@ -204,15 +203,15 @@
 <div id="hint"></div>
 <div id="recDot"><i></i><b>REC</b></div>
 <div id="bar">
-  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
-  <button class="icon" id="playBtn" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
-  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen">&#9974;</button>
-  <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
+  <button class="icon" id="themeBtn" title="Light / dark">&#9681;</button>
+  <button class="icon" id="playBtn" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
+  <button class="icon" id="fsBtn" title="Full screen">&#9974;</button>
+  <button class="icon" id="toggle" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
 </div>
-<button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
+<button class="icon" id="exitFs" title="Exit (Esc)">&#10005;</button>
 <div id="rail" class="rail rail-l"></div>
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name:'Letter Strings', desc:'Strings of characters, blown by a wind you control', version:'v1', about:'Lines of text — reading down or across — become little ropes of characters. Blow them with a wind and gusts, or switch to Clock mode where rotating hands sweep through and fling the letters. Drag on the canvas to push them around. Export a still or record the motion.' });</script>
+<script>Opal.mountTopbar({ name:'Letter Strings', desc:'Strings of characters, blown by a wind you control', version:'v1', about:'Lines of text become little ropes of characters. Blow them with a wind that swings back and forth, wrap them onto a cylinder, sphere or 3D box, or switch to Clock mode where hands fling the letters. Colour individual words, upload your own font, drag to push. Export a still or the motion.' });</script>
 <script>
 'use strict';
 (function(){
@@ -220,15 +219,16 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, TAU=Math.PI*2;
 const stage=document.getElementById('stage'), sctx=stage.getContext('2d');
 const comp=document.createElement('canvas'), cctx=comp.getContext('2d');
 
-const FONTS={ mono:'ui-monospace,"SFMono-Regular",Menlo,monospace', sans:'ui-sans-serif,Inter,Arial,sans-serif', serif:'"Bodoni Moda",Georgia,"Times New Roman",serif' };
+const FONTS={ mono:'ui-monospace,"SFMono-Regular",Menlo,monospace', sans:'ui-sans-serif,Inter,Arial,sans-serif', serif:'"Bodoni Moda",Georgia,"Times New Roman",serif', custom:'"LS-Custom",ui-monospace,monospace' };
 const P={
   aspect:'9:16', longEdge:1400,
   text:'function main(){ const strings = wind.blow(letters); return strings.map(s => s.sway()); }  the quick brown fox jumps over the lazy dog  ',
-  mode:'wind', orient:'vertical', font:'mono',
+  mode:'wind', orient:'vertical', shape:'curtain', font:'mono',
   density:46, spacing:15, size:13,
   pin:'start', gravity:0.05, damping:0.94, stiffness:2,
-  wind:0.55, windDir:0, turb:0.8, turbScale:24, gust:0.5,
+  wind:0.55, windDir:0, sway:0.6, swayRate:0.5, turb:0.8, turbScale:24, gust:0.5,
   hands:3, handSpeed:1.0, handLen:0.9, throwForce:7, spring:0.03, showFace:1,
+  colors:[],
   ink:'#15151c', bg:'#f4f3ee', follow:1, transparent:0,
   play:true,
 };
@@ -249,39 +249,88 @@ function vnoise(x,y,z){ const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z)
   const x01=lerp(hash(xi,yi,zi+1),hash(xi+1,yi,zi+1),u), x11=lerp(hash(xi,yi+1,zi+1),hash(xi+1,yi+1,zi+1),u);
   return lerp(lerp(x00,x10,v),lerp(x01,x11,v),w); }
 
+// tokenize into word / non-word segments (newlines → spaces)
+function tokenize(text){ const t=(text||' ').replace(/\n/g,' '); const isW=c=>/[A-Za-z0-9]/.test(c); const segs=[]; let i=0;
+  while(i<t.length){ const w=isW(t[i]); let j=i; while(j<t.length && isW(t[j])===w) j++; segs.push({w,s:t.slice(i,j)}); i=j; }
+  if(!segs.length) segs.push({w:false,s:' '}); return segs; }
+// a stream of {ch,color} cycling the text; a coloured word only stays coloured for its first `count` occurrences
+function buildStream(need){ const segs=tokenize(P.text), rules=(P.colors||[]).filter(r=>r.word&&r.word.trim());
+  const used=rules.map(()=>0), out=[]; let ti=0, guard=0;
+  while(out.length<need && guard++<need*4+1000){ const seg=segs[ti%segs.length];
+    let col=null; if(seg.w){ for(let ri=0;ri<rules.length;ri++){ if(rules[ri].word.trim().toUpperCase()===seg.s.toUpperCase()){ if(used[ri]<rules[ri].count){ col=rules[ri].color; used[ri]++; } break; } } }
+    for(const ch of [...seg.s]){ if(out.length<need) out.push({ch,color:col}); }
+    ti++; }
+  while(out.length<need) out.push({ch:' ',color:null}); return out; }
+
 // ---------------- build ----------------
 function build(){
   const W=CW(), H=CH(); comp.width=W; comp.height=H;
-  const chars=[...P.text].filter(c=>c!=='\n'); if(!chars.length) chars.push(' ');
-  let ci=0; strands=[]; nodes=[];
+  strands=[]; nodes=[];
   const m=Math.max(24,P.size*1.6);
+  if(is3D()){ build3D(P.shape); return; }
   if(P.mode==='wind'){
     const vert=P.orient==='vertical';
     const crossSpan=(vert?W:H)-2*m, mainSpan=(vert?H:W)-2*m;
     const count=Math.max(1,P.density|0), nPer=Math.max(2,Math.floor(mainSpan/P.spacing)+1);
     for(let s=0;s<count;s++){ const cpos=m+crossSpan*(count===1?0.5:s/(count-1)); const strand=[];
       for(let j=0;j<nPer;j++){ const mp=m+j*P.spacing; const x=vert?cpos:mp, y=vert?mp:cpos;
-        const nd={x,y,ox:x,oy:y,ch:chars[ci++%chars.length],pin:false,hx:x,hy:y}; strand.push(nd); nodes.push(nd); }
+        const nd={x,y,ox:x,oy:y,ch:' ',col:null,pin:false,hx:x,hy:y}; strand.push(nd); nodes.push(nd); }
       if(P.pin==='start'||P.pin==='both') strand[0].pin=true;
       if(P.pin==='both') strand[strand.length-1].pin=true;
       strand.aA={x:strand[0].x,y:strand[0].y}; strand.aB={x:strand[strand.length-1].x,y:strand[strand.length-1].y};
       strands.push(strand); }
-  } else { // clock — a field of characters, each springs to home, hands throw them
+  } else {
     const gx=P.spacing, gy=P.spacing*1.35; const cols=Math.max(1,Math.floor((W-2*m)/gx)), rows=Math.max(1,Math.floor((H-2*m)/gy));
     for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){ const x=m+c*gx+gx*0.5, y=m+r*gy+gy*0.5;
-      nodes.push({x,y,ox:x,oy:y,ch:chars[ci++%chars.length],pin:false,hx:x,hy:y}); }
+      nodes.push({x,y,ox:x,oy:y,ch:' ',col:null,pin:false,hx:x,hy:y}); }
   }
+  const stream=buildStream(nodes.length);
+  for(let i=0;i<nodes.length;i++){ nodes[i].ch=stream[i].ch; nodes[i].col=stream[i].color; }
 }
 
 // ---------------- wind ----------------
-function windAt(x,y,t){ const a=P.windDir*Math.PI/180; let wx=Math.cos(a)*P.wind, wy=Math.sin(a)*P.wind;
+function windAt(x,y,t){ const a=P.windDir*Math.PI/180;
+  let mag=P.wind; if(P.sway>0) mag=P.wind*((1-P.sway)+P.sway*Math.sin(t*P.swayRate*0.03)); // back-and-forth swing
+  let wx=Math.cos(a)*mag, wy=Math.sin(a)*mag;
   if(P.turb>0){ const s=P.turbScale/1000, n=vnoise(x*s,y*s,t*0.01*P.gust)*2-1, ang=n*Math.PI*2.5;
     wx+=Math.cos(ang)*P.turb; wy+=Math.sin(ang)*P.turb; }
   return [wx,wy]; }
 
+// ---------------- 3D shapes (curtain wraps onto a rotating solid) ----------------
+let angY=0, angX=0;
+function is3D(){ return P.mode==='wind' && P.shape!=='curtain'; }
+function build3D(shape){ const W=comp.width,H=comp.height, R=Math.min(W,H)*0.32; nodes=[]; strands=[];
+  const mk=(x,y,z)=>({x3:x,y3:y,z3:z,ch:' ',col:null,sx:0,sy:0,sc:1,alpha:1});
+  const N=Math.max(6,Math.min(80,P.density|0));
+  if(shape==='cylinder'){ const around=N, tall=Math.max(4,Math.floor(N*H/W*1.1));
+    for(let v=0;v<tall;v++) for(let u=0;u<around;u++){ const a=u/around*TAU; nodes.push(mk(R*Math.cos(a),(v/(tall-1)-0.5)*R*2.4,R*Math.sin(a))); } }
+  else if(shape==='sphere'){ const lat=Math.max(6,Math.floor(N*0.7)), lon=N;
+    for(let i=0;i<lat;i++){ const th=(i+0.5)/lat*Math.PI, rr=Math.sin(th), cnt=Math.max(3,Math.round(lon*rr));
+      for(let j=0;j<cnt;j++){ const ph=j/cnt*TAU; nodes.push(mk(R*rr*Math.cos(ph),R*Math.cos(th),R*rr*Math.sin(ph))); } } }
+  else { const g=Math.max(3,Math.floor(N/2.4)), s=R*1.05, F=[['z',s],['z',-s],['x',s],['x',-s],['y',s],['y',-s]];
+    for(const [ax,d] of F) for(let a=0;a<g;a++) for(let b=0;b<g;b++){ const u=(a/(g-1)-0.5)*2*s, w=(b/(g-1)-0.5)*2*s;
+      let x,y,z; if(ax==='z'){x=u;y=w;z=d;} else if(ax==='x'){x=d;y=u;z=w;} else {x=u;y=d;z=w;} nodes.push(mk(x,y,z)); } }
+  const stream=buildStream(nodes.length); for(let i=0;i<nodes.length;i++){ nodes[i].ch=stream[i].ch; nodes[i].col=stream[i].color; }
+}
+function step3D(){ const t=clock, W=comp.width,H=comp.height;
+  let sp=(0.006+P.wind*0.02); if(P.sway>0) sp = sp*((1-P.sway)+P.sway*Math.sin(t*P.swayRate*0.03));   // wind spins it; sway rocks it
+  angY+=sp; angX=Math.sin(t*0.006)*0.22;
+  const cy=Math.cos(angY),sy=Math.sin(angY),cx=Math.cos(angX),sx=Math.sin(angX), f=Math.min(W,H)*1.15, cxp=W/2, cyp=H/2, R=Math.min(W,H)*0.5;
+  for(const nd of nodes){ let x=nd.x3,y=nd.y3,z=nd.z3;
+    if(P.turb>0){ const s=0.006, W1=(vnoise(x*s+t*0.01,y*s,z*s)*2-1)*P.turb*7; x+=W1; y+=(vnoise(y*s,z*s+3.1,t*0.011)*2-1)*P.turb*7; }
+    let x1=x*cy-z*sy, z1=x*sy+z*cy, y1=y*cx-z1*sx, z2=y*sx+z1*cx;
+    const persp=f/(f+z2+R); nd.sx=cxp+x1*persp; nd.sy=cyp+y1*persp; nd.sc=persp; nd.alpha=clamp(0.28+persp*0.95,0,1); }
+  nodes.sort((a,b)=>a.sc-b.sc); }
+function draw3D(){ const W=comp.width,H=comp.height; cctx.setTransform(1,0,0,1,0,0);
+  if(P.transparent) cctx.clearRect(0,0,W,H); else { cctx.fillStyle=P.bg; cctx.fillRect(0,0,W,H); }
+  cctx.textAlign='center'; cctx.textBaseline='middle'; const fam=FONTS[P.font]||FONTS.mono;
+  for(const nd of nodes){ const sz=Math.max(1,P.size*nd.sc); cctx.font=`${sz.toFixed(1)}px ${fam}`; cctx.globalAlpha=nd.alpha; cctx.fillStyle=nd.col||P.ink; cctx.fillText(nd.ch,nd.sx,nd.sy); }
+  cctx.globalAlpha=1; }
+
 let handAng=[0,0,0,0,0];
 function step(){
   const t=clock, W=comp.width, H=comp.height;
+  if(is3D()){ step3D(); clock++; return; }
   if(P.mode==='wind'){
     for(const nd of nodes){ if(nd.pin) continue;
       let vx=(nd.x-nd.ox)*P.damping, vy=(nd.y-nd.oy)*P.damping; nd.ox=nd.x; nd.oy=nd.y;
@@ -330,6 +379,7 @@ function softBounds(){ const W=comp.width,H=comp.height,m=6;
 
 // ---------------- draw ----------------
 function draw(){
+  if(is3D()){ draw3D(); return; }
   const W=comp.width,H=comp.height; cctx.setTransform(1,0,0,1,0,0);
   if(P.transparent) cctx.clearRect(0,0,W,H); else { cctx.fillStyle=P.bg; cctx.fillRect(0,0,W,H); }
   cctx.fillStyle=P.ink; cctx.strokeStyle=P.ink;
@@ -339,8 +389,8 @@ function draw(){
     for(const strand of strands) for(let i=0;i<strand.length;i++){ const nd=strand[i];
       const p=strand[Math.max(0,i-1)], q=strand[Math.min(strand.length-1,i+1)];
       let ang=Math.atan2(q.y-p.y,q.x-p.x)-(P.orient==='vertical'?Math.PI/2:0);
-      cctx.save(); cctx.translate(nd.x,nd.y); cctx.rotate(ang); cctx.fillText(nd.ch,0,0); cctx.restore(); }
-  } else { for(const nd of nodes) cctx.fillText(nd.ch,nd.x,nd.y); }
+      cctx.fillStyle=nd.col||P.ink; cctx.save(); cctx.translate(nd.x,nd.y); cctx.rotate(ang); cctx.fillText(nd.ch,0,0); cctx.restore(); }
+  } else { for(const nd of nodes){ cctx.fillStyle=nd.col||P.ink; cctx.fillText(nd.ch,nd.x,nd.y); } }
 }
 function drawClock(W,H){ const cx=W/2,cy=H/2,R=Math.min(W,H)*0.5*P.handLen;
   cctx.save(); cctx.globalAlpha=0.28; cctx.lineWidth=Math.max(1,P.size*0.09);
@@ -393,10 +443,17 @@ function buildPanel(){
 
   const gT=grp('Text','The characters that fill the strings. It cycles through them.');
   const ta=el('textarea'); ta.value=P.text; ta.rows=3; ta.style.cssText='width:100%;box-sizing:border-box;background:var(--cell);border:1px solid var(--hair);color:var(--ink);border-radius:4px;font:12px ui-monospace,monospace;padding:8px'; ta.oninput=()=>{ P.text=ta.value; build(); }; gT.appendChild(ta);
-  select(gT,'font','Typeface',[{t:'Mono',v:'mono'},{t:'Sans',v:'sans'},{t:'Serif',v:'serif'}]);
+  select(gT,'font','Typeface',[{t:'Mono',v:'mono'},{t:'Sans',v:'sans'},{t:'Serif',v:'serif'},{t:'Custom (uploaded)',v:'custom'}]);
+  const fb=el('button','btn','Upload font (.ttf/.otf/.woff)'); fb.style.cssText='width:100%;margin-top:6px'; fb.onclick=()=>document.getElementById('fontFile').click(); gT.appendChild(fb);
+
+  const gCo=grp('Colours','Give a word its own colour — and how many times, from the start, it stays coloured. e.g. the month once, the city once.');
+  const list=el('div'); list.id='colorList'; gCo.appendChild(list);
+  const ab=el('button','btn','+ Add colour'); ab.style.width='100%'; ab.onclick=()=>{ P.colors.push({word:'',color:'#e0342b',count:1}); renderColorRules(); build(); }; gCo.appendChild(ab);
+  renderColorRules();
 
   const gM=grp('Mode','Wind blows the strings; Clock throws them with rotating hands.');
   seg(gM,'mode','Mode',[{t:'Wind',v:'wind'},{t:'Clock',v:'clock'}],true);
+  when(select(gM,'shape','Shape',[{t:'Curtain (flat)',v:'curtain'},{t:'Cylinder',v:'cylinder'},{t:'Sphere',v:'sphere'},{t:'3D Box',v:'box'}],true),'mode:wind');
   when(seg(gM,'orient','Reading',[{t:'Vertical',v:'vertical'},{t:'Horizontal',v:'horizontal'}],true),'mode:wind');
   when(seg(gM,'pin','Pinned',[{t:'Start',v:'start'},{t:'Both',v:'both'},{t:'None',v:'none'}],true),'mode:wind');
 
@@ -404,8 +461,9 @@ function buildPanel(){
   const l1=duo(gL); slider(l1,'density','Strings',4,140,1,v=>v|0,true); slider(l1,'spacing','Spacing',6,40,1,v=>(v|0)+'px',true);
   slider(gL,'size','Char size',6,40,1,v=>(v|0)+'px');
 
-  const gW=grp('Wind','A steady breeze plus gusts you can crank.'); when(gW,'mode:wind');
+  const gW=grp('Wind','A steady breeze that swings back and forth, plus gusts you can crank.'); when(gW,'mode:wind');
   const w1=duo(gW); slider(w1,'wind','Strength',0,3,0.05,v=>(+v).toFixed(2)); slider(w1,'windDir','Direction',0,360,1,v=>(v|0)+'°');
+  const w3=duo(gW); slider(w3,'sway','Back & forth',0,1,0.02,v=>(+v).toFixed(2)); slider(w3,'swayRate','Swing rate',0.05,2,0.05,v=>(+v).toFixed(2));
   const w2=duo(gW); slider(w2,'turb','Gust',0,3,0.05,v=>(+v).toFixed(2)); slider(w2,'turbScale','Gust scale',4,80,1,v=>v|0);
   slider(gW,'gust','Gust speed',0,2,0.02,v=>(+v).toFixed(2));
 
@@ -485,7 +543,22 @@ function beginRec(){ const mime=pickMime(); if(!mime)return; const FPS=60, strea
   rec.onstop=()=>{ const blob=new Blob(recChunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='letter-strings_'+comp.width+'x'+comp.height+'.'+(mime.indexOf('mp4')>=0?'mp4':'webm'); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); rec=null; document.getElementById('recDot').classList.remove('on'); setRecBtn(false); };
   rec.start(); document.getElementById('recDot').querySelector('b').textContent='REC'; }
 
+// ---------------- colour rules editor ----------------
+function renderColorRules(){ const list=document.getElementById('colorList'); if(!list) return; list.innerHTML='';
+  if(!P.colors.length){ const hint=el('p','rowhint','No coloured words yet.'); hint.style.margin='0 0 6px'; list.appendChild(hint); }
+  P.colors.forEach((r,i)=>{ const row=el('div'); row.style.cssText='display:flex;gap:5px;align-items:center;margin-bottom:5px';
+    const w=el('input'); w.type='text'; w.value=r.word; w.placeholder='word'; w.spellcheck=false; w.style.cssText='flex:1;min-width:0;background:var(--cell);border:1px solid var(--hair);color:var(--ink);font:inherit;font-size:11px;padding:5px 6px;border-radius:2px;text-transform:uppercase';
+    w.oninput=()=>{ r.word=w.value; build(); };
+    const c=el('input'); c.type='color'; c.value=r.color; c.style.cssText='width:26px;height:24px;border:1px solid var(--hair);background:none;border-radius:4px;padding:0;cursor:pointer'; c.oninput=()=>{ r.color=c.value; build(); };
+    const n=el('input'); n.type='number'; n.min='1'; n.value=r.count; n.title='times coloured'; n.style.cssText='width:44px;background:var(--cell);border:1px solid var(--hair);color:var(--ink);font:inherit;font-size:11px;padding:5px;border-radius:2px'; n.oninput=()=>{ r.count=Math.max(1,parseInt(n.value)||1); build(); };
+    const x=el('button'); x.innerHTML='&#10005;'; x.style.cssText='background:none;border:0;color:var(--mute);cursor:pointer;font-size:12px;padding:2px 4px'; x.onclick=()=>{ P.colors.splice(i,1); renderColorRules(); build(); };
+    row.append(w,c,n,x); list.appendChild(row); }); }
+function loadFontFile(f){ if(!f) return; const rd=new FileReader(); rd.onload=e=>{ const ff=new FontFace('LS-Custom', e.target.result);
+  ff.load().then(face=>{ document.fonts.add(face); P.font='custom'; syncPanel(); const sel=document.querySelector('#rail select.sel'); }).catch(()=>{}); }; rd.readAsArrayBuffer(f); }
+
 // ---------------- boot ----------------
+const fontInp=document.createElement('input'); fontInp.type='file'; fontInp.id='fontFile'; fontInp.accept='.ttf,.otf,.woff,.woff2'; fontInp.hidden=true; document.body.appendChild(fontInp);
+fontInp.addEventListener('change',e=>{ if(e.target.files[0]) loadFontFile(e.target.files[0]); });
 document.body.classList.add('dark'); resize(); build(); buildPanel(); wireBar(); requestAnimationFrame(tick);
 addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return; if(e.key===' '){ e.preventDefault(); P.play=!P.play; setPlayIcon(); } if(e.key==='s'||e.key==='S'){ savePNG(); } });
 })();
