@@ -208,6 +208,7 @@ AGAIN</textarea>
     <div class="oc-lbl">Typeface</div>
     <select id="fontPick">
       <option value="bentonsans">Benton Sans Bold</option>
+      <option value="sidepiece">Sidepiece · HoneyPie (display)</option>
       <optgroup label="Univers Next Pro">
         <option value="universultralight">UltraLight</option>
         <option value="universthin">Thin</option>
@@ -669,6 +670,66 @@ function sampleGlyph(gl,T){
   return pts;
 }
 
+// ===== SECOND THOUGHT — point morph. Each word is sampled to a fixed set of outline points;
+// point i travels from one word to the next while the warp storm (the WILD sliders) rides on
+// top. No fade, no snap — the marks physically move between the letterforms. =====
+const MORPH_N=440;
+function stLayoutLine(text,W,H){ const upm=font.unitsPerEm,scale=S.size/upm,wScale=S.width/100;
+  const items=[]; let w=0; for(const ch of text){ const g=font.charToGlyph(ch); const adv=g.advanceWidth*scale*wScale; items.push({g,ch,adv}); w+=adv+S.tracking; }
+  if(items.length)w-=S.tracking; const cx=W/2+S.offsetX,cyMid=H/2+S.offsetY,baseY=cyMid+S.size*0.34;
+  const glyphs=[]; let x=cx-w/2; for(const it of items){ if(it.ch.trim()) glyphs.push({...it,x,baseY,index:glyphs.length}); x+=it.adv+S.tracking; } return glyphs; }
+function stResample(pts,N,cx,cy){ const out=[]; if(!pts.length){ for(let i=0;i<N;i++)out.push([cx,cy]); return out; }
+  for(let i=0;i<N;i++) out.push(pts[Math.min(pts.length-1,Math.floor(i/N*pts.length))]); return out; }
+// rasterise a CSS-font word and pull a point cloud from the filled letters
+function stRasterCloud(text,W,H){ const o=document.createElement('canvas'); o.width=W; o.height=H; const g=o.getContext('2d');
+  g.clearRect(0,0,W,H); g.fillStyle='#000'; g.textAlign='center'; g.textBaseline='middle';
+  g.font=`${Math.round(S.size)}px '${cssFontFamily}'`; g.fillText(text,W/2+S.offsetX,H/2+S.offsetY);
+  const d=g.getImageData(0,0,W,H).data, step=Math.max(3,Math.round(S.size*0.02)), pts=[];
+  for(let y=0;y<H;y+=step) for(let x=0;x<W;x+=step){ if(d[(y*W+x)*4+3]>40) pts.push([x,y]); }
+  return stResample(pts,MORPH_N,W/2,H/2); }
+function stCloud(text,W,H){ const fk=($('#fontPick')&&$('#fontPick').value)||'';
+  const key=text+'|'+Math.round(S.size)+'|'+W+'|'+H+'|'+Math.round(S.width)+'|'+fk;
+  if(ST.cache[text]&&ST.cache[text].key===key) return ST.cache[text].cloud;
+  let cloud;
+  if(cssFontFamily){ cloud=stRasterCloud(text,W,H); }
+  else { const gl=stLayoutLine(text,W,H), idT=(x,y)=>[x,y]; let pts=[];
+    for(const g of gl) pts=pts.concat(sampleGlyph(g,idT)); cloud=stResample(pts,MORPH_N,W/2,H/2); }
+  ST.cache[text]={key,cloud}; return cloud; }
+// the position-based warp fields from makeT, applied to a free point cloud (+ global behaviors)
+function stWarp(px,py,C,idx,N){ let X=px,Y=py;
+  if(S.orbit){ const ang=-Math.PI/2+(idx/N)*TAU+phase*0.3, k=Math.min(1,S.orbit/700); X=lerp(X,C.cx+Math.cos(ang)*S.orbit,k); Y=lerp(Y,C.cyMid+Math.sin(ang)*S.orbit,k); }
+  let rx=X-C.cx,ry=Y-C.cyMid; const dist=Math.hypot(rx,ry),t=Math.max(0,1-dist/C.R);
+  if(S.pulse){const s=1+(S.pulse/100)*Math.sin(phase*3)*0.5;rx*=s;ry*=s;}
+  if(S.sway){const a=S.sway*DEG*Math.sin(phase*1.5),c=Math.cos(a),si=Math.sin(a),nx=rx*c-ry*si;ry=rx*si+ry*c;rx=nx;}
+  if(S.pinch){const s=1+(S.pinch/100)*t;rx*=s;ry*=s;}
+  if(S.fisheye){const rn=dist/C.R,f=1+(S.fisheye/100)*(rn*rn-0.34);rx*=f;ry*=f;}
+  if(S.twist){const a=S.twist*DEG*t,c=Math.cos(a),si=Math.sin(a),nx=rx*c-ry*si;ry=rx*si+ry*c;rx=nx;}
+  X=C.cx+rx;Y=C.cyMid+ry;
+  if(S.flow){const fs=S.flowScale/1000,ang=vnoise(X*fs,Y*fs,phase)*TAU*2;X+=Math.cos(ang)*S.flow;Y+=Math.sin(ang)*S.flow;}
+  if(S.melt){const col=vnoise(X*0.018,7.3,phase);Y+=col*col*S.melt;}
+  if(S.waveAmp)Y+=S.waveAmp*Math.sin(X*S.waveFreq*0.01+phase);
+  if(S.distort){const ns=S.distortScale/1000;X+=(vnoise(X*ns,Y*ns,phase)*2-1)*S.distort;Y+=(vnoise(X*ns+37.2,Y*ns+11.7,phase)*2-1)*S.distort;}
+  if(S.glitchSlice){const band=Math.floor(Y/16);X+=(vnoise(band*0.5,phase*2,0)*2-1)*S.glitchSlice;}
+  if(S.float)Y+=S.float*Math.sin(phase*2+X*0.008);
+  if(S.wiggle){X+=(vnoise(X*0.03,Y*0.03,phase*0.5)*2-1)*S.wiggle;Y+=(vnoise(X*0.03+9,Y*0.03+9,phase*0.5)*2-1)*S.wiggle;}
+  let px3=X-C.cx,py3=Y-C.cyMid,pz3=S.posZ||0;
+  const rX=(S.rotX+S.tumble*phase)*DEG,rY=(S.rotY+S.spin*phase)*DEG,rZ=(S.rotZ+S.roll*phase)*DEG;
+  if(rZ){const c=Math.cos(rZ),s=Math.sin(rZ),nx=px3*c-py3*s;py3=px3*s+py3*c;px3=nx;}
+  const cY=Math.cos(rY),sY=Math.sin(rY),cX=Math.cos(rX),sX=Math.sin(rX);
+  const x1=px3*cY+pz3*sY,z1=-px3*sY+pz3*cY,y1=py3*cX-z1*sX,z2=py3*sX+z1*cX;
+  const persp=S.perspective||1200,f=persp/Math.max(60,persp+z2);
+  return [C.cx+x1*f,C.cyMid+y1*f]; }
+function drawMorph(W,H){ const words=stWords(), fill=$('#fillColor').value;
+  const C={cx:W/2+S.offsetX,cyMid:H/2+S.offsetY,R:Math.hypot(W,H)/2};
+  if(!words.length) return;
+  const a=stCloud(words[ST.idx%words.length],W,H), b=stCloud(words[(ST.idx+1)%words.length],W,H);
+  const me=smooth(clamp(ST.morph,0,1)), N=MORPH_N, P=new Array(N);
+  for(let i=0;i<N;i++){ const hx=lerp(a[i][0],b[i][0],me), hy=lerp(a[i][1],b[i][1],me); P[i]=stWarp(hx,hy,C,i,N); }
+  const asz=Math.max(1.2,S.strokeW*1.1);                    // marks only — points ARE the letterform
+  ctx.fillStyle=fill; for(let i=0;i<N;i++){ const p=P[i]; ctx.fillRect(p[0]-asz,p[1]-asz,asz*2,asz*2); }
+  $('#status').innerHTML=`second thought · ${words.length} words · point morph · ${W}×${H}`;
+}
+
 let curW=0,curH=0,curDpr=0,dispScale=1;
 function ensureCanvas(){
   const W=Math.max(50,parseInt($('#docW').value)||1400),H=Math.max(50,parseInt($('#docH').value)||1980);
@@ -691,6 +752,7 @@ function render(){
   const transparent=$('#bgTransparent').checked,bgc=$('#bgColor').value;
   if(!transparent&&S.trail>0&&playing){ctx.fillStyle=hexA(bgc,1-S.trail);ctx.fillRect(0,0,W,H);} // motion trail: fade prev frame
   else{ctx.clearRect(0,0,W,H);if(!transparent){ctx.fillStyle=bgc;ctx.fillRect(0,0,W,H);}}
+  if(typeof ST!=='undefined'&&ST.on){ drawMorph(W,H); return; }   // Second Thought: point-morph engine
   let {glyphs,cx,cyMid}=layout(W,H);
   if(S.reveal<1)glyphs=glyphs.slice(0,Math.ceil(glyphs.length*S.reveal)); // typewriter reveal
   const C={cx,cyMid,R:Math.hypot(W,H)/2};
@@ -2018,7 +2080,15 @@ async function loadFont(key){$('#status').textContent='loading font…';
     const buf=await (await fetch(url)).arrayBuffer();
     font=opentype.parse(buf);render();}
   catch(e){$('#status').innerHTML='<span class="warn">font load failed — upload a .ttf/.otf</span>';console.error(e);}}
-$('#fontPick').addEventListener('change',e=>loadFont(e.target.value));
+// Sidepiece ships as woff2 (opentype.js can't parse it), so in the morph engine we sample it
+// straight from the CSS @font-face instead of glyph outlines.
+const CSS_FONTS={ sidepiece:'Sidepiece-HoneyPie' };
+let cssFontFamily=null;
+$('#fontPick').addEventListener('change',e=>{ const k=e.target.value; ST.cache={};
+  if(CSS_FONTS[k]){ cssFontFamily=CSS_FONTS[k];
+    const load=(document.fonts&&document.fonts.load)?document.fonts.load(`${Math.round(S.size)}px '${cssFontFamily}'`):Promise.resolve();
+    Promise.resolve(load).then(()=>render()); }
+  else { cssFontFamily=null; loadFont(k); } });
 $('#fontFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
   rd.onload=()=>{try{font=opentype.parse(rd.result);render();$('#status').textContent='custom font loaded';}
   catch(err){$('#status').innerHTML='<span class="warn">could not parse font</span>';}};rd.readAsArrayBuffer(f);});
@@ -2114,20 +2184,29 @@ $('#randBtn').addEventListener('click',()=>{const rnd=(a,b)=>a+Math.random()*(b-
 // from 0 (legible) up to that peak and back over each breath, then hands off to the next word.
 const WILD_IDS=['flow','flowScale','melt','distort','distortScale','waveAmp','waveFreq','pinch','fisheye',
   'twist','glitchSlice','wiggle','float','sway','pulse','stagger','trail','orbit','spin','tumble','roll','rotZ'];
-const ST={ on:true, period:5.0, hold:1.1, amount:1.0, idx:0, swapped:false, clock:0, prevTt:1e9, current:'' };
+const ST={ on:true, period:5.0, hold:1.1, amount:1.0, idx:0, clock:0, prevTt:0, morph:0, current:'', cache:{}, seed:0, mix:null, flip:{} };
 function stWords(){ return $('#text').value.split('\n').map(w=>w.trim()).filter(Boolean); }
+// Each breath draws a fresh hand: a random subset of the warps, at random intensity and
+// direction, over a new noise seed — so no two transitions read the same (not "twist-reverse"
+// every time). It's safe to reshuffle at the breath boundary because the storm is at zero there.
+function stNewBreath(){ const R=Math.random, ids=WILD_IDS.slice();
+  for(let i=ids.length-1;i>0;i--){ const j=(R()*(i+1))|0; const t=ids[i]; ids[i]=ids[j]; ids[j]=t; }
+  const k=4+((R()*5)|0);                                    // 4–8 active warps this breath
+  ST.mix={__set:1}; ST.flip={}; ST.seed=R()*997;
+  ids.forEach((id,i)=>{ ST.mix[id]=(i<k)?(0.5+R()*0.95):0; ST.flip[id]=(R()<0.5?-1:1); });
+}
 function stTick(dt){ if(!ST.on) return;
+  if(!ST.mix) stNewBreath();
   ST.clock+=dt; const P=Math.max(1.5,ST.period), H=clamp(ST.hold,0,P-0.6), tt=ST.clock%P;
   const w=stWords();
-  if(tt<ST.prevTt) ST.swapped=false;                     // a new breath began
-  const peakT=H+(P-H)*0.5;                                // the storm's peak — swap the word here,
-  if(w.length&&!ST.swapped&&tt>=peakT){ ST.idx=(ST.idx+1)%w.length; ST.swapped=true; } // hidden in the chaos, so it
-  ST.prevTt=tt;                                          // resolves back to legibility as the NEXT word
-  ST.current = w.length ? w[((ST.idx%w.length)+w.length)%w.length] : '';
-  // legible hold, then a smooth 0→1→0 storm across the rest of the breath
+  if(tt<ST.prevTt && w.length){ ST.idx=(ST.idx+1)%w.length; stNewBreath(); }   // new breath → next word + reshuffle
+  ST.prevTt=tt;
+  ST.morph = tt<H ? 0 : clamp((tt-H)/(P-H),0,1);             // 0 during the legible hold, then travel FROM→TO
+  ST.current = w.length ? w[ST.idx%w.length] : '';
+  // the storm rides the morph: warp swells 0→1→0 while the points are in flight
   const sh = tt<H ? 0 : (0.5-0.5*Math.cos(((tt-H)/(P-H))*2*Math.PI))*ST.amount;
   const s2=clamp(sh,0,1);
-  for(const id of WILD_IDS){ const el=$('#c-'+id); if(!el) continue; S[id]=(parseFloat(el.value)||0)*s2; }
+  for(const id of WILD_IDS){ const el=$('#c-'+id); if(!el) continue; S[id]=(parseFloat(el.value)||0)*s2*(ST.mix[id]||0)*(ST.flip[id]||1); }
 }
 let _stLast=0;
 function loop(){if(!playing)return;
