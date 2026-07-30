@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Letter Strings — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  /* Pattern shares the family chrome with the other Lab tools. */
+
+  /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
+     same knobs. What differs is everything below the chrome. */
+  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
+    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
+    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:100px; --rail:290px; }
+  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
+    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
+    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
+  /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
+     wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
+  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
+  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+
+  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
+     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
+     so the shared chrome gets carried into the theme too. The brand link sets its colour
+     inline via mountTopbar, hence !important. */
+  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
+  body.dark .opal-brand{ color:var(--ink) !important; }
+  body.dark .opal-subhead__name{ color:var(--ink); }
+  body.dark .opal-brand .opal-product,
+  body.dark .opal-subhead__desc,
+  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+
+  /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
+  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #stagewrap{ top:0; left:0; }
+  #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
+  body.fs #exitFs{ display:flex; }
+  body.fs.hint #exitFs{ opacity:1; }
+
+  @media (max-width:560px){ :root{ --top:92px; } }
+
+  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
+    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+
+  /* one hairline control strip — everything else is off until asked for */
+  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
+    background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  .icon svg{ display:block; }
+  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
+     fixed right offset kept colliding with it. Stays put in full screen so a recording
+     always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
+    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
+    background:var(--panel); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  #recDot.on{ display:flex; }
+  /* Count-in. Big enough that you are in no doubt what is about to happen. */
+
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  body.fs #recDot{ top:14px; }
+  @keyframes blink{ 50%{opacity:.2;} }
+
+  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
+     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
+     work with. */
+
+  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
+    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:var(--panel);
+    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+    display:flex; flex-direction:column; transition:transform .28s ease; }
+  .rail-l{ left:0; border-right:1px solid var(--edge); }
+  .rail-r{ right:0; border-left:1px solid var(--edge); }
+  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
+    padding:14px 0; border-bottom:1px solid var(--edge); }
+  .row:last-of-type{ border-bottom:0; }
+  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
+     past when you only want two of them. */
+  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
+    font-weight:600; opacity:.9; padding-bottom:2px;
+    display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
+    width:100%; background:none; border:0; font-family:inherit; text-align:left; }
+  .rowhead:hover{ opacity:1; }
+  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhead::before{ content:''; width:0; height:0; flex:none;
+    border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
+    transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
+  .row.folded .rowhead::before{ transform:rotate(0deg); }
+  .row.folded > *:not(.rowhead){ display:none; }
+  .row.folded{ padding-bottom:10px; }
+  .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .rail input[type=range]{ width:100%; }
+  .rail select{ width:100%; }
+  .rail .seg{ width:100%; }
+  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
+  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
+     nothing between you and the piece unless you ask for it. */
+  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
+  .rail-l{ transform:translateX(-100%); }
+  .rail-r{ transform:translateX(100%); }
+  .rail.open{ transform:none; }
+
+  /* Chrome fades out while you listen and comes back on movement. */
+  #bar{ transition:opacity .5s ease; }
+  body.idle #bar{ opacity:0; pointer-events:none; }
+  body.panels #bar{ opacity:1; pointer-events:auto; }
+
+  /* Mood — the one control that stays reachable. */
+
+  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
+    color:var(--mute); white-space:nowrap; }
+  .rail .grp > label{ white-space:normal; }
+  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
+  .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
+  .seg button:last-child{ border-right:0; }
+  .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
+  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
+  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
+     the control they describe and get out of the way on click. */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
+    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
+    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
+     underline is what the lane tabs use for that other meaning, so these fill instead. */
+
+  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
+     it's just visually replaced, so listeners and readouts are untouched. */
+  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
+  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; margin:0; pointer-events:none; }
+  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
+  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
+  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
+    transition:stroke-dasharray .04s linear; }
+  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
+  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+  .knob:focus-visible{ outline:none; }
+  .knob:focus-visible .k-hub{ stroke:var(--ink); }
+  .knob.drag .k-vl{ stroke-width:3.6; }
+  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
+  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
+    color:var(--mute); text-align:center; white-space:nowrap; }
+  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
+    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    padding:8px 12px; cursor:pointer; border-radius:2px; }
+  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  input[type=text]::placeholder{ color:var(--mute); }
+
+  /* step editor — a row of cells for the active lane; click one to set its note */
+
+  #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
+  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
+  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%;
+    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
+    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  @media (max-width:560px){ input[type=range]{ width:82px; } }
+
+  /* Letter Strings — its own bits */
+  #stage{ background:transparent; touch-action:none; }
+  #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none; font-family:ui-monospace,Menlo,monospace; font-size:10px; letter-spacing:.05em; color:var(--mute); }
+  #hint b{ color:var(--ink); font-weight:600; } body.fs #hint{ display:none; }
+  select.sel{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink); font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  .cin{ display:flex; align-items:center; gap:8px; } .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
+  .cin label{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); } .swatches{ display:flex; gap:8px; } .swatches .cin{ flex:1; }
+  .rowhint{ opacity:.74; }
+</style>
+</head>
+<body>
+
+<div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="hint"></div>
+<div id="recDot"><i></i><b>REC</b></div>
+<div id="bar">
+  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
+  <button class="icon" id="playBtn" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
+  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen">&#9974;</button>
+  <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
+</div>
+<button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
+<div id="rail" class="rail rail-l"></div>
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'Letter Strings', desc:'Strings of characters, blown by a wind you control', version:'v1', about:'Lines of text — reading down or across — become little ropes of characters. Blow them with a wind and gusts, or switch to Clock mode where rotating hands sweep through and fling the letters. Drag on the canvas to push them around. Export a still or record the motion.' });</script>
+<script>
+'use strict';
+(function(){
+const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, TAU=Math.PI*2;
+const stage=document.getElementById('stage'), sctx=stage.getContext('2d');
+const comp=document.createElement('canvas'), cctx=comp.getContext('2d');
+
+const FONTS={ mono:'ui-monospace,"SFMono-Regular",Menlo,monospace', sans:'ui-sans-serif,Inter,Arial,sans-serif', serif:'"Bodoni Moda",Georgia,"Times New Roman",serif' };
+const P={
+  aspect:'9:16', longEdge:1400,
+  text:'function main(){ const strings = wind.blow(letters); return strings.map(s => s.sway()); }  the quick brown fox jumps over the lazy dog  ',
+  mode:'wind', orient:'vertical', font:'mono',
+  density:46, spacing:15, size:13,
+  pin:'start', gravity:0.05, damping:0.94, stiffness:2,
+  wind:0.55, windDir:0, turb:0.8, turbScale:24, gust:0.5,
+  hands:3, handSpeed:1.0, handLen:0.9, throwForce:7, spring:0.03, showFace:1,
+  ink:'#15151c', bg:'#f4f3ee', follow:1, transparent:0,
+  play:true,
+};
+let strands=[], nodes=[], clock=0, t0=performance.now();
+let drag=null;   // {x,y,px,py}
+
+// ---------------- geometry ----------------
+function aspectWH(){ const [a,b]=P.aspect.split(':').map(Number), L=P.longEdge; return a>=b?[L,Math.round(L*b/a)]:[Math.round(L*a/b),L]; }
+function CW(){ return aspectWH()[0]; } function CH(){ return aspectWH()[1]; }
+function resize(){ const d=Math.min(devicePixelRatio||1,2); stage.width=(innerWidth*d)|0; stage.height=(innerHeight*d)|0; }
+addEventListener('resize',resize);
+
+// ---------------- noise ----------------
+function hash(x,y,z){ const n=Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453; return n-Math.floor(n); }
+function vnoise(x,y,z){ const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z),xf=x-xi,yf=y-yi,zf=z-zi;
+  const u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf),w=zf*zf*(3-2*zf);
+  const x00=lerp(hash(xi,yi,zi),hash(xi+1,yi,zi),u), x10=lerp(hash(xi,yi+1,zi),hash(xi+1,yi+1,zi),u);
+  const x01=lerp(hash(xi,yi,zi+1),hash(xi+1,yi,zi+1),u), x11=lerp(hash(xi,yi+1,zi+1),hash(xi+1,yi+1,zi+1),u);
+  return lerp(lerp(x00,x10,v),lerp(x01,x11,v),w); }
+
+// ---------------- build ----------------
+function build(){
+  const W=CW(), H=CH(); comp.width=W; comp.height=H;
+  const chars=[...P.text].filter(c=>c!=='\n'); if(!chars.length) chars.push(' ');
+  let ci=0; strands=[]; nodes=[];
+  const m=Math.max(24,P.size*1.6);
+  if(P.mode==='wind'){
+    const vert=P.orient==='vertical';
+    const crossSpan=(vert?W:H)-2*m, mainSpan=(vert?H:W)-2*m;
+    const count=Math.max(1,P.density|0), nPer=Math.max(2,Math.floor(mainSpan/P.spacing)+1);
+    for(let s=0;s<count;s++){ const cpos=m+crossSpan*(count===1?0.5:s/(count-1)); const strand=[];
+      for(let j=0;j<nPer;j++){ const mp=m+j*P.spacing; const x=vert?cpos:mp, y=vert?mp:cpos;
+        const nd={x,y,ox:x,oy:y,ch:chars[ci++%chars.length],pin:false,hx:x,hy:y}; strand.push(nd); nodes.push(nd); }
+      if(P.pin==='start'||P.pin==='both') strand[0].pin=true;
+      if(P.pin==='both') strand[strand.length-1].pin=true;
+      strand.aA={x:strand[0].x,y:strand[0].y}; strand.aB={x:strand[strand.length-1].x,y:strand[strand.length-1].y};
+      strands.push(strand); }
+  } else { // clock — a field of characters, each springs to home, hands throw them
+    const gx=P.spacing, gy=P.spacing*1.35; const cols=Math.max(1,Math.floor((W-2*m)/gx)), rows=Math.max(1,Math.floor((H-2*m)/gy));
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){ const x=m+c*gx+gx*0.5, y=m+r*gy+gy*0.5;
+      nodes.push({x,y,ox:x,oy:y,ch:chars[ci++%chars.length],pin:false,hx:x,hy:y}); }
+  }
+}
+
+// ---------------- wind ----------------
+function windAt(x,y,t){ const a=P.windDir*Math.PI/180; let wx=Math.cos(a)*P.wind, wy=Math.sin(a)*P.wind;
+  if(P.turb>0){ const s=P.turbScale/1000, n=vnoise(x*s,y*s,t*0.01*P.gust)*2-1, ang=n*Math.PI*2.5;
+    wx+=Math.cos(ang)*P.turb; wy+=Math.sin(ang)*P.turb; }
+  return [wx,wy]; }
+
+let handAng=[0,0,0,0,0];
+function step(){
+  const t=clock, W=comp.width, H=comp.height;
+  if(P.mode==='wind'){
+    for(const nd of nodes){ if(nd.pin) continue;
+      let vx=(nd.x-nd.ox)*P.damping, vy=(nd.y-nd.oy)*P.damping; nd.ox=nd.x; nd.oy=nd.y;
+      const [wx,wy]=windAt(nd.x,nd.y,t); nd.x+=vx+wx; nd.y+=vy+wy+P.gravity; }
+    applyDrag();
+    const it=Math.max(1,P.stiffness|0);
+    for(let k=0;k<it;k++) for(const strand of strands){
+      for(let i=0;i<strand.length-1;i++){ const a=strand[i],b=strand[i+1];
+        let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1e-4,diff=(d-P.spacing)/d;
+        const mA=a.pin?0:(b.pin?1:0.5), mB=b.pin?0:(a.pin?1:0.5);
+        a.x+=dx*diff*mA; a.y+=dy*diff*mA; b.x-=dx*diff*mB; b.y-=dy*diff*mB; }
+      if(strand[0].pin){ strand[0].x=strand.aA.x; strand[0].y=strand.aA.y; }
+      if(strand[strand.length-1].pin){ strand[strand.length-1].x=strand.aB.x; strand[strand.length-1].y=strand.aB.y; } }
+    softBounds();
+  } else {
+    // clock hands throw the field
+    const cx=W/2, cy=H/2, R=Math.min(W,H)*0.5*P.handLen;
+    const speeds=[1, 1/12, 1/60, 1/6, 1/30];   // second-ish, hour-ish, etc — varied
+    const nh=Math.max(1,Math.min(5,P.hands|0)); const prev=handAng.slice();
+    for(let h=0;h<nh;h++) handAng[h]+=speeds[h]*P.handSpeed*0.06;
+    for(const nd of nodes){
+      let vx=(nd.x-nd.ox)*P.damping, vy=(nd.y-nd.oy)*P.damping; nd.ox=nd.x; nd.oy=nd.y;
+      // spring home
+      vx+=(nd.hx-nd.x)*P.spring; vy+=(nd.hy-nd.y)*P.spring;
+      // hand sweeps
+      const rx=nd.x-cx, ry=nd.y-cy, rr=Math.hypot(rx,ry);
+      if(rr<R){ for(let h=0;h<nh;h++){ const ha=handAng[h], hd=Math.atan2(ry,rx);
+        let da=((hd-ha+Math.PI)%TAU+TAU)%TAU-Math.PI;           // angular gap to hand
+        const band=0.16/(1+rr/80);
+        if(Math.abs(da)<band){ const dir=Math.sign(P.handSpeed)||1;
+          const tx=-Math.sin(ha)*dir, ty=Math.cos(ha)*dir, f=P.throwForce*(0.4+rr/R);
+          vx+=tx*f; vy+=ty*f; } } }
+      nd.x+=vx; nd.y+=vy+P.gravity;
+    }
+    applyDrag(); softBounds();
+  }
+  clock++;
+}
+function applyDrag(){ if(!drag) return; const dx=drag.x-drag.px, dy=drag.y-drag.py, rad=Math.max(40,P.spacing*6), r2=rad*rad;
+  for(const nd of nodes){ if(nd.pin) continue; const ex=nd.x-drag.x, ey=nd.y-drag.y, d2=ex*ex+ey*ey;
+    if(d2<r2){ const f=(1-d2/r2); nd.x+=dx*f*0.6; nd.y+=dy*f*0.6; } }
+  drag.px=drag.x; drag.py=drag.y; }
+function softBounds(){ const W=comp.width,H=comp.height,m=6;
+  for(const nd of nodes){ if(nd.x<m){ nd.x=m; nd.ox=nd.x+(nd.ox-nd.x)*0.5; } if(nd.x>W-m){ nd.x=W-m; nd.ox=nd.x+(nd.ox-nd.x)*0.5; }
+    if(nd.y<m){ nd.y=m; nd.oy=nd.y+(nd.oy-nd.y)*0.5; } if(nd.y>H-m){ nd.y=H-m; nd.oy=nd.y+(nd.oy-nd.y)*0.5; } } }
+
+// ---------------- draw ----------------
+function draw(){
+  const W=comp.width,H=comp.height; cctx.setTransform(1,0,0,1,0,0);
+  if(P.transparent) cctx.clearRect(0,0,W,H); else { cctx.fillStyle=P.bg; cctx.fillRect(0,0,W,H); }
+  cctx.fillStyle=P.ink; cctx.strokeStyle=P.ink;
+  cctx.font=`${P.size}px ${FONTS[P.font]||FONTS.mono}`; cctx.textAlign='center'; cctx.textBaseline='middle';
+  if(P.mode==='clock' && P.showFace){ drawClock(W,H); }
+  if(P.mode==='wind' && P.follow){
+    for(const strand of strands) for(let i=0;i<strand.length;i++){ const nd=strand[i];
+      const p=strand[Math.max(0,i-1)], q=strand[Math.min(strand.length-1,i+1)];
+      let ang=Math.atan2(q.y-p.y,q.x-p.x)-(P.orient==='vertical'?Math.PI/2:0);
+      cctx.save(); cctx.translate(nd.x,nd.y); cctx.rotate(ang); cctx.fillText(nd.ch,0,0); cctx.restore(); }
+  } else { for(const nd of nodes) cctx.fillText(nd.ch,nd.x,nd.y); }
+}
+function drawClock(W,H){ const cx=W/2,cy=H/2,R=Math.min(W,H)*0.5*P.handLen;
+  cctx.save(); cctx.globalAlpha=0.28; cctx.lineWidth=Math.max(1,P.size*0.09);
+  cctx.beginPath(); cctx.arc(cx,cy,R,0,TAU); cctx.stroke();
+  for(let i=0;i<12;i++){ const a=i/12*TAU-Math.PI/2; cctx.beginPath(); cctx.moveTo(cx+Math.cos(a)*R*0.94,cy+Math.sin(a)*R*0.94); cctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R); cctx.stroke(); }
+  cctx.globalAlpha=0.85; const nh=Math.max(1,Math.min(5,P.hands|0));
+  for(let h=0;h<nh;h++){ const ha=handAng[h], len=R*(0.9-h*0.12); cctx.lineWidth=Math.max(1.5,P.size*0.18*(1-h*0.12));
+    cctx.beginPath(); cctx.moveTo(cx,cy); cctx.lineTo(cx+Math.cos(ha)*len,cy+Math.sin(ha)*len); cctx.stroke(); }
+  cctx.beginPath(); cctx.arc(cx,cy,Math.max(2,P.size*0.25),0,TAU); cctx.fill(); cctx.restore(); }
+
+function blit(){ const sw=stage.width,sh=stage.height; sctx.setTransform(1,0,0,1,0,0);
+  const paper=getComputedStyle(document.body).getPropertyValue('--paper').trim()||'#111';
+  sctx.fillStyle=paper; sctx.fillRect(0,0,sw,sh); if(!comp.width) return;
+  const sc=Math.min(sw/comp.width,sh/comp.height)*0.94, dw=comp.width*sc, dh=comp.height*sc, ox=(sw-dw)/2, oy=(sh-dh)/2;
+  sctx.drawImage(comp,ox,oy,dw,dh); sctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--edge').trim(); sctx.lineWidth=1; sctx.strokeRect(ox+.5,oy+.5,dw-1,dh-1);
+  compRect={ox,oy,sc}; }
+let compRect={ox:0,oy:0,sc:1};
+
+let fps=0,fa=0,fn=0;
+function tick(){ const now=performance.now(),dt=Math.min(0.05,(now-t0)/1000); t0=now;
+  if(P.play){ step(); } draw(); blit();
+  fa+=dt; fn++; if(fa>=0.5){ fps=fn/fa; fa=0; fn=0; const h=document.getElementById('hint'); if(h) h.innerHTML=`<b>${nodes.length}</b> chars &#183; <b>${fps.toFixed(0)}</b> fps &#183; ${comp.width}&#215;${comp.height}`; }
+  requestAnimationFrame(tick); }
+
+// ---------------- pointer (drag = local gust) ----------------
+function toComp(e){ const r=stage.getBoundingClientRect(), x=(e.clientX-r.left)*stage.width/r.width, y=(e.clientY-r.top)*stage.height/r.height;
+  return [ (x-compRect.ox)/compRect.sc, (y-compRect.oy)/compRect.sc ]; }
+stage.addEventListener('pointerdown',e=>{ const [x,y]=toComp(e); drag={x,y,px:x,py:y}; stage.setPointerCapture(e.pointerId); });
+stage.addEventListener('pointermove',e=>{ if(!drag)return; const [x,y]=toComp(e); drag.x=x; drag.y=y; });
+addEventListener('pointerup',()=>{ drag=null; }); addEventListener('pointercancel',()=>{ drag=null; });
+
+// ---------------- panel ----------------
+function el(t,c,h){ const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; }
+let refs=[];
+function buildPanel(){
+  const host=document.getElementById('rail'); host.innerHTML=''; refs=[];
+  const grp=(title,hint)=>{ const g=el('div','row'); const h=el('button','rowhead',title); h.type='button'; h.setAttribute('aria-expanded','true'); g.appendChild(h); if(hint)g.appendChild(el('p','rowhint',hint)); host.appendChild(g); return g; };
+  const duo=g=>{ const d=el('div','duo'); g.appendChild(d); return d; };
+  const when=(node,expr)=>{ node.dataset.when=expr; return node; };
+  const slider=(g,key,label,min,max,step,fmt,rebuild)=>{ const gr=el('div','grp'); const v=el('b',null,(fmt?fmt(P[key]):P[key])); const lab=el('label',null,label+' '); lab.appendChild(v);
+    const r=el('input'); r.type='range'; r.min=min; r.max=max; r.step=step; r.value=P[key];
+    r.oninput=()=>{ P[key]=(String(step).indexOf('.')>=0)?parseFloat(r.value):parseInt(r.value); v.textContent=fmt?fmt(P[key]):P[key]; if(rebuild) build(); };
+    gr.appendChild(lab); gr.appendChild(r); g.appendChild(gr); refs.push({key,r,v,fmt}); return gr; };
+  const seg=(g,key,label,opts,rebuild)=>{ const gr=el('div','grp'); if(label)gr.appendChild(el('label',null,label)); const s=el('div','seg');
+    opts.forEach(o=>{ const b=el('button',null,o.t); b.setAttribute('aria-pressed',String(P[key]==o.v)); b.onclick=()=>{ P[key]=o.v; [...s.children].forEach(c=>c.setAttribute('aria-pressed',String(c===b))); if(rebuild)build(); refreshGate(); }; s.appendChild(b); });
+    gr.appendChild(s); g.appendChild(gr); refs.push({key,seg:s,opts,kind:'seg'}); return gr; };
+  const select=(g,key,label,opts,rebuild)=>{ const gr=el('div','grp'); if(label)gr.appendChild(el('label',null,label)); const s=el('select','sel');
+    opts.forEach(o=>{ const op=el('option',null,o.t); op.value=o.v; s.appendChild(op); }); s.value=P[key]; s.onchange=()=>{ P[key]=s.value; if(rebuild)build(); refreshGate(); }; gr.appendChild(s); g.appendChild(gr); refs.push({key,sel:s,kind:'sel'}); return gr; };
+  const color=(key,label)=>{ const cin=el('div','cin'); const inp=el('input'); inp.type='color'; inp.value=P[key]; inp.oninput=()=>{ P[key]=inp.value; }; cin.appendChild(inp); cin.appendChild(el('label',null,label)); refs.push({key,inp,kind:'color'}); return cin; };
+
+  const gT=grp('Text','The characters that fill the strings. It cycles through them.');
+  const ta=el('textarea'); ta.value=P.text; ta.rows=3; ta.style.cssText='width:100%;box-sizing:border-box;background:var(--cell);border:1px solid var(--hair);color:var(--ink);border-radius:4px;font:12px ui-monospace,monospace;padding:8px'; ta.oninput=()=>{ P.text=ta.value; build(); }; gT.appendChild(ta);
+  select(gT,'font','Typeface',[{t:'Mono',v:'mono'},{t:'Sans',v:'sans'},{t:'Serif',v:'serif'}]);
+
+  const gM=grp('Mode','Wind blows the strings; Clock throws them with rotating hands.');
+  seg(gM,'mode','Mode',[{t:'Wind',v:'wind'},{t:'Clock',v:'clock'}],true);
+  when(seg(gM,'orient','Reading',[{t:'Vertical',v:'vertical'},{t:'Horizontal',v:'horizontal'}],true),'mode:wind');
+  when(seg(gM,'pin','Pinned',[{t:'Start',v:'start'},{t:'Both',v:'both'},{t:'None',v:'none'}],true),'mode:wind');
+
+  const gL=grp('Layout','How dense and how big.');
+  const l1=duo(gL); slider(l1,'density','Strings',4,140,1,v=>v|0,true); slider(l1,'spacing','Spacing',6,40,1,v=>(v|0)+'px',true);
+  slider(gL,'size','Char size',6,40,1,v=>(v|0)+'px');
+
+  const gW=grp('Wind','A steady breeze plus gusts you can crank.'); when(gW,'mode:wind');
+  const w1=duo(gW); slider(w1,'wind','Strength',0,3,0.05,v=>(+v).toFixed(2)); slider(w1,'windDir','Direction',0,360,1,v=>(v|0)+'°');
+  const w2=duo(gW); slider(w2,'turb','Gust',0,3,0.05,v=>(+v).toFixed(2)); slider(w2,'turbScale','Gust scale',4,80,1,v=>v|0);
+  slider(gW,'gust','Gust speed',0,2,0.02,v=>(+v).toFixed(2));
+
+  const gC=grp('Clock','Rotating hands sweep and fling the letters.'); when(gC,'mode:clock');
+  const c1=duo(gC); slider(c1,'hands','Hands',1,5,1,v=>v|0); slider(c1,'handSpeed','Hand speed',-3,3,0.05,v=>(+v).toFixed(2));
+  const c2=duo(gC); slider(c2,'throwForce','Throw',0,20,0.2,v=>(+v).toFixed(1)); slider(c2,'spring','Return',0,0.12,0.002,v=>(+v).toFixed(3));
+  const c3=duo(gC); slider(c3,'handLen','Reach',0.3,1.2,0.02,v=>(+v).toFixed(2)); seg(c3,'showFace','Face',[{t:'On',v:1},{t:'Off',v:0}]);
+
+  const gP=grp('Physics','Weight and stiffness of the strings.');
+  const p1=duo(gP); slider(p1,'gravity','Gravity',-0.2,0.4,0.005,v=>(+v).toFixed(3)); slider(p1,'damping','Damping',0.8,0.995,0.005,v=>(+v).toFixed(3));
+  slider(gP,'stiffness','Stiffness',1,8,1,v=>v|0);
+
+  const gS=grp('Style','Ink and plate.');
+  const sr=el('div','swatches'); sr.appendChild(color('ink','Ink')); sr.appendChild(color('bg','Plate')); gS.appendChild(sr);
+  seg(gS,'follow','Follow the curve',[{t:'On',v:1},{t:'Off',v:0}]);
+  seg(gS,'transparent','Transparent PNG',[{t:'Off',v:0},{t:'On',v:1}]);
+
+  const gCv=grp('Canvas','Output size.');
+  select(gCv,'aspect','Aspect',[{t:'Portrait 4:5',v:'4:5'},{t:'Story 9:16',v:'9:16'},{t:'Square 1:1',v:'1:1'},{t:'Landscape 16:9',v:'16:9'}],true);
+  slider(gCv,'longEdge','Long edge',720,1600,20,v=>v+' px',true);
+
+  const gE=grp('Export','A still, or record the motion.');
+  const eb=el('div',null,''); eb.style.cssText='display:flex;gap:6px'; const bp=el('button','btn','PNG'); bp.style.flex='1'; bp.onclick=savePNG; const br=el('button','btn','Record'); br.style.flex='1'; br.id='recBtn'; br.onclick=toggleRec; eb.appendChild(bp); eb.appendChild(br); gE.appendChild(eb);
+  const rr=el('div',null,''); rr.style.cssText='display:flex;gap:6px;margin-top:6px'; const bReset=el('button','btn','Re-settle'); bReset.style.flex='1'; bReset.onclick=build; rr.appendChild(bReset); gE.appendChild(rr);
+
+  document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
+  setupFolds(); setupTooltips(); refreshGate();
+}
+function refreshGate(){ document.querySelectorAll('#rail [data-when]').forEach(node=>{ const [k,vals]=node.dataset.when.split(':'); node.style.display=vals.split(',').includes(String(P[k]))?'':'none'; }); }
+function syncPanel(){ refs.forEach(o=>{ if(o.r){ o.r.value=P[o.key]; o.v.textContent=o.fmt?o.fmt(P[o.key]):P[o.key]; if(o.r.repaintKnob)o.r.repaintKnob(); }
+  else if(o.kind==='color'){ o.inp.value=P[o.key]; } else if(o.kind==='seg'){ [...o.seg.children].forEach((c,i)=>c.setAttribute('aria-pressed',String(o.opts[i].v==P[o.key]))); } else if(o.kind==='sel'){ o.sel.value=P[o.key]; } }); refreshGate(); setPlayIcon(); }
+
+// ---------------- shared shell scaffolding ----------------
+function makeKnob(inp){ if(inp.dataset.knob) return; inp.dataset.knob='1'; const w=document.createElement('div'); w.className='knob'; w.tabIndex=0; w.setAttribute('role','slider');
+  inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
+  w.insertAdjacentHTML('beforeend','<svg viewBox="0 0 44 44" width="42" height="42" aria-hidden="true"><path class="k-tr" d="M9 35 A18 18 0 1 1 35 35"/><path class="k-vl" d="M9 35 A18 18 0 1 1 35 35"/><circle class="k-hub" cx="22" cy="22" r="9"/><line class="k-pt" x1="22" y1="22" x2="22" y2="14"/></svg>');
+  const k={el:w,inp}; inp.repaintKnob=()=>paintKnob(k); const set=v=>{ inp.value=String(v); inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); };
+  let dy=0,dv=0; w.addEventListener('pointerdown',e=>{ e.preventDefault(); w.setPointerCapture(e.pointerId); w.classList.add('drag'); dy=e.clientY; dv=+inp.value; });
+  w.addEventListener('pointermove',e=>{ if(!w.classList.contains('drag'))return; const span=(+inp.max)-(+inp.min),st=+inp.step||1; set(clamp(Math.round((dv+(dy-e.clientY)/150*span)/st)*st,+inp.min,+inp.max)); });
+  const up=()=>w.classList.remove('drag'); w.addEventListener('pointerup',up); w.addEventListener('pointercancel',up);
+  w.addEventListener('keydown',e=>{ const st=+inp.step||1; if(e.key==='ArrowUp'||e.key==='ArrowRight'){ e.preventDefault(); set(clamp(+inp.value+st,+inp.min,+inp.max)); } if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); set(clamp(+inp.value-st,+inp.min,+inp.max)); } }); paintKnob(k); }
+function paintKnob(k){ const inp=k.inp,mn=+inp.min,mx=+inp.max,v=+inp.value,f=(v-mn)/(mx-mn||1); const path=k.el.querySelector('.k-vl'),len=path.getTotalLength();
+  path.style.strokeDasharray=len; path.style.strokeDashoffset=len*(1-f); const a=(-135+270*f)*Math.PI/180,pt=k.el.querySelector('.k-pt'); pt.setAttribute('x2',(22+Math.sin(a)*8).toFixed(2)); pt.setAttribute('y2',(22-Math.cos(a)*8).toFixed(2)); }
+function setupFolds(){ const KEY='ls-folded'; const saved=new Set((()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}})());
+  document.querySelectorAll('.rail .rowhead').forEach(h=>{ const row=h.closest('.row'); const name=h.textContent.trim();
+    if(saved.has(name)){ row.classList.add('folded'); h.setAttribute('aria-expanded','false'); }
+    h.addEventListener('click',()=>{ const f=row.classList.toggle('folded'); h.setAttribute('aria-expanded',String(!f));
+      const cur=new Set((()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}})()); f?cur.add(name):cur.delete(name); try{localStorage.setItem(KEY,JSON.stringify([...cur]))}catch(e){} }); }); }
+let tipEl=null,tipT=null,tipFor=null;
+function setupTooltips(){ addEventListener('pointerover',e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor)return; clearTimeout(tipT); if(!h){hideTip();return;} tipFor=h; tipT=setTimeout(()=>showTip(h),240); }); addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true); }
+function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+function showTip(host){ const text=host.getAttribute('data-tip'); if(!text)return; if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+  tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0'; const r=host.getBoundingClientRect(),t=tipEl.getBoundingClientRect();
+  let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8,r.bottom+8); tipEl.style.left=Math.max(8,Math.min(r.left,innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+function setPlayIcon(){ const b=document.getElementById('playBtn'); if(!b)return; b.setAttribute('aria-pressed',String(P.play));
+  b.innerHTML=P.play?'<svg viewBox="0 0 12 12" width="11" height="11"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>':'<svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 1.8 L10 6 L3 10.2 Z" fill="currentColor"/></svg>'; }
+function setFs(on){ document.body.classList.toggle('fs',on); if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{}); else if(!on&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{}); }
+function wireBar(){ document.getElementById('playBtn').onclick=()=>{ P.play=!P.play; setPlayIcon(); };
+  document.getElementById('themeBtn').onclick=()=>{ document.body.classList.toggle('dark'); };
+  document.getElementById('fsBtn').onclick=()=>setFs(!document.body.classList.contains('fs'));
+  document.getElementById('exitFs').onclick=()=>setFs(false);
+  document.getElementById('toggle').onclick=()=>{ const r=document.getElementById('rail'); const open=!r.classList.contains('open'); r.classList.toggle('open',open); document.body.classList.toggle('panels',open); document.getElementById('toggle').setAttribute('aria-pressed',String(open)); };
+  document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement&&document.body.classList.contains('fs')) setFs(false); });
+  setPlayIcon(); }
+
+// ---------------- export ----------------
+function savePNG(){ const a=document.createElement('a'); comp.toBlob(b=>{ a.href=URL.createObjectURL(b); a.download='letter-strings_'+comp.width+'x'+comp.height+'.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); },'image/png'); }
+let rec=null, recChunks=[], countIv=null;
+function pickMime(){ return ['video/mp4;codecs=avc1.640028','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m)); }
+function setRecBtn(on){ const b=document.getElementById('recBtn'); if(!b)return; b.textContent=on?'Stop':'Record'; b.style.borderColor=on?'#ff4d5e':''; b.style.color=on?'#ff4d5e':''; }
+function toggleRec(){ if(rec){ rec.stop(); return; } if(countIv){ clearInterval(countIv); countIv=null; document.getElementById('recDot').classList.remove('on'); setRecBtn(false); return; }
+  const dot=document.getElementById('recDot'), b=dot.querySelector('b'); dot.classList.add('on'); setRecBtn(true); let c=3; b.textContent=c;
+  countIv=setInterval(()=>{ c--; if(c>0){ b.textContent=c; } else { clearInterval(countIv); countIv=null; beginRec(); } },1000); }
+function beginRec(){ const mime=pickMime(); if(!mime)return; const FPS=60, stream=comp.captureStream(FPS);
+  rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(comp.width*comp.height*FPS*0.25)))}); recChunks=[];
+  rec.ondataavailable=e=>{ if(e.data.size) recChunks.push(e.data); };
+  rec.onstop=()=>{ const blob=new Blob(recChunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='letter-strings_'+comp.width+'x'+comp.height+'.'+(mime.indexOf('mp4')>=0?'mp4':'webm'); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); rec=null; document.getElementById('recDot').classList.remove('on'); setRecBtn(false); };
+  rec.start(); document.getElementById('recDot').querySelector('b').textContent='REC'; }
+
+// ---------------- boot ----------------
+document.body.classList.add('dark'); resize(); build(); buildPanel(); wireBar(); requestAnimationFrame(tick);
+addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return; if(e.key===' '){ e.preventDefault(); P.play=!P.play; setPlayIcon(); } if(e.key==='s'||e.key==='S'){ savePNG(); } });
+})();
+
+</script>
+</body>
+</html>
