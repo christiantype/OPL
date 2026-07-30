@@ -685,25 +685,46 @@ function stLayoutLine(text,W,H){ const upm=font.unitsPerEm,scale=S.size/upm,wSca
   const glyphs=[]; let x=cx-w/2; for(const it of items){ if(it.ch.trim()) glyphs.push({...it,x,baseY,index:glyphs.length}); x+=it.adv+S.tracking; } return glyphs; }
 function stResample(pts,N,cx,cy){ const out=[]; if(!pts.length){ for(let i=0;i<N;i++)out.push([cx,cy]); return out; }
   for(let i=0;i<N;i++) out.push(pts[Math.min(pts.length-1,Math.floor(i/N*pts.length))]); return out; }
-// rasterise a CSS-font word and pull a point cloud from the filled letters
-function stRasterCloud(text,W,H){ const o=document.createElement('canvas'); o.width=W; o.height=H; const g=o.getContext('2d');
+// rasterise a CSS-font word and collect its EDGE pixels (outline), unordered
+function stRasterEdgePts(text,W,H){ const o=document.createElement('canvas'); o.width=W; o.height=H; const g=o.getContext('2d');
   g.clearRect(0,0,W,H); g.fillStyle='#000'; g.textAlign='center'; g.textBaseline='middle';
   g.font=`${Math.round(S.size)}px '${cssFontFamily}'`; g.fillText(text,W/2+S.offsetX,H/2+S.offsetY);
-  const d=g.getImageData(0,0,W,H).data, step=Math.max(2,Math.round(S.size*0.014)), pts=[];
+  const d=g.getImageData(0,0,W,H).data, step=Math.max(2,Math.round(S.size*0.016)), pts=[];
   const ink=(x,y)=> x>=0&&y>=0&&x<W&&y<H && d[((y*W+x)<<2)+3]>50;
-  // keep EDGE pixels (filled with an empty neighbour) so the cloud is the letter OUTLINE, not a fill
   for(let y=0;y<H;y+=step) for(let x=0;x<W;x+=step){
     if(ink(x,y) && (!ink(x-step,y)||!ink(x+step,y)||!ink(x,y-step)||!ink(x,y+step))) pts.push([x,y]); }
-  return stResample(pts,MORPH_N,W/2,H/2); }
+  return pts; }
+// order those edge pixels into a path (nearest-neighbour walk); mark a break wherever the walk
+// has to jump a gap (a new letter/contour) so we never draw a line across the word
+function stRasterOrdered(text,W,H){ const raw=stRasterEdgePts(text,W,H), n=raw.length; if(!n) return {pts:[],brk:[]};
+  const used=new Uint8Array(n), pts=[raw[0]], brk=[true], jump2=(W*0.04)*(W*0.04); used[0]=1; let cur=0;
+  for(let k=1;k<n;k++){ let best=-1,bd=1e18; const cx=raw[cur][0],cy=raw[cur][1];
+    for(let j=0;j<n;j++){ if(used[j])continue; const dx=cx-raw[j][0],dy=cy-raw[j][1],dd=dx*dx+dy*dy; if(dd<bd){bd=dd;best=j;} }
+    if(best<0)break; used[best]=1; pts.push(raw[best]); brk.push(bd>jump2); cur=best; }
+  return {pts,brk}; }
+// sample outline-font glyphs into ordered points, break at each contour start / new glyph
+function stOutlinePts(glyphs){ const pts=[],brk=[],sp=Math.max(3,S.size*0.014);
+  for(const gl of glyphs){ const path=gl.g.getPath(gl.x,gl.baseY,S.size); let cur=[0,0];
+    const push=(x,y,b)=>{ pts.push([wsx(gl,x),y]); brk.push(b); };
+    const seg=(a,b)=>{ const len=Math.hypot(b[0]-a[0],b[1]-a[1]),m=Math.max(1,Math.round(len/sp)); for(let i=1;i<=m;i++)push(lerp(a[0],b[0],i/m),lerp(a[1],b[1],i/m),false); };
+    for(const c of path.commands){
+      if(c.type==='M'){ push(c.x,c.y,true); cur=[c.x,c.y]; }
+      else if(c.type==='L'){ seg(cur,[c.x,c.y]); cur=[c.x,c.y]; }
+      else if(c.type==='Q'){ let p=cur; for(let i=1;i<=8;i++){const q=qpt(cur,[c.x1,c.y1],[c.x,c.y],i/8);seg(p,q);p=q;} cur=[c.x,c.y]; }
+      else if(c.type==='C'){ let p=cur; for(let i=1;i<=10;i++){const q=cpt(cur,[c.x1,c.y1],[c.x2,c.y2],[c.x,c.y],i/10);seg(p,q);p=q;} cur=[c.x,c.y]; } } }
+  return {pts,brk}; }
+// resample an ordered point list to exactly N, carrying the break flags
+function stResampleB(pts,brk,N){ const L=pts.length; if(!L){ const P=[],B=[]; for(let i=0;i<N;i++){P.push([0,0]);B.push(false);} return {P,B}; }
+  const P=[],B=[]; let prev=-1;
+  for(let i=0;i<N;i++){ const idx=Math.min(L-1,Math.floor(i/N*L)); P.push(pts[idx]); let bk=(i===0);
+    for(let j=prev+1;j<=idx;j++){ if(brk[j]){bk=true;break;} } B.push(bk); prev=idx; }
+  return {P,B}; }
 function stCloud(text,W,H){ const fk=($('#fontPick')&&$('#fontPick').value)||'';
   const key=text+'|'+Math.round(S.size)+'|'+W+'|'+H+'|'+Math.round(S.width)+'|'+fk;
   if(ST.cache[text]&&ST.cache[text].key===key) return ST.cache[text].cloud;
-  let P;
-  if(cssFontFamily){ P=stRasterCloud(text,W,H); }
-  else { const gl=stLayoutLine(text,W,H), idT=(x,y)=>[x,y]; let pts=[];
-    for(const g of gl) pts=pts.concat(sampleGlyph(g,idT)); P=stResample(pts,MORPH_N,W/2,H/2); }
-  const cloud={P, edges: stGraph(P, Math.max(12,S.size*0.055))};
-  ST.cache[text]={key,cloud}; return cloud; }
+  const src = cssFontFamily ? stRasterOrdered(text,W,H) : stOutlinePts(stLayoutLine(text,W,H));
+  const {P,B}=stResampleB(src.pts,src.brk,MORPH_N);
+  const cloud={P, breaks:B}; ST.cache[text]={key,cloud}; return cloud; }
 // the position-based warp fields from makeT, applied to a free point cloud (+ global behaviors)
 function stWarp(px,py,C,idx,N){ let X=px,Y=py;
   if(S.orbit){ const ang=-Math.PI/2+(idx/N)*TAU+phase*0.3, k=Math.min(1,S.orbit/700); X=lerp(X,C.cx+Math.cos(ang)*S.orbit,k); Y=lerp(Y,C.cyMid+Math.sin(ang)*S.orbit,k); }
@@ -728,21 +749,19 @@ function stWarp(px,py,C,idx,N){ let X=px,Y=py;
   const x1=px3*cY+pz3*sY,z1=-px3*sY+pz3*cY,y1=py3*cX-z1*sX,z2=py3*sX+z1*cX;
   const persp=S.perspective||1200,f=persp/Math.max(60,persp+z2);
   return [C.cx+x1*f,C.cyMid+y1*f]; }
-function drawMorph(W,H){ const words=stWords(), fill=$('#fillColor').value;
+function drawMorphRaster(W,H){ const words=stWords(), fill=$('#fillColor').value;
   const C={cx:W/2+S.offsetX,cyMid:H/2+S.offsetY,R:Math.hypot(W,H)/2};
   if(!words.length) return;
-  const A=stCloud(words[ST.idx%words.length],W,H), B=stCloud(words[(ST.idx+1)%words.length],W,H);
-  const me=smooth(clamp(ST.morph,0,1)), N=MORPH_N, P=new Array(N), aP=A.P, bP=B.P;
-  for(let i=0;i<N;i++){ const a=aP[i]||aP[aP.length-1], b=bP[i]||bP[bP.length-1];
-    P[i]=stWarp(lerp(a[0],b[0],me),lerp(a[1],b[1],me),C,i,N); }
-  // the proximity web — connects the letterform and STRETCHES with the storm (stays dense, no dust)
-  const edges = me<0.5 ? A.edges : B.edges;
-  ctx.strokeStyle=hexA(fill,0.6); ctx.lineWidth=Math.max(0.5,S.strokeW*0.55); ctx.lineJoin='round'; ctx.lineCap='round';
+  // Sidepiece stand-in: warp its ordered outline (contour order, no line across breaks) + anchor
+  // marks. Not true vector béziers (woff2 has no outline data), but the same editor-view spirit.
+  const cl=stCloud(words[ST.idx%words.length],W,H), P0=cl.P, N=P0.length, P=new Array(N), br=cl.breaks;
+  for(let i=0;i<N;i++){ P[i]=stWarp(P0[i][0],P0[i][1],C,i,N); }
+  ctx.strokeStyle=hexA(fill,0.82); ctx.lineWidth=Math.max(0.6,S.strokeW*0.8); ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.beginPath();
-  for(let k=0;k<edges.length;k+=2){ const a=P[edges[k]],b=P[edges[k+1]]; if(!a||!b)continue; ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); }
+  for(let i=1;i<N;i++){ if(br[i]) continue; const a=P[i-1],b=P[i]; ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); }
   ctx.stroke();
-  const asz=Math.max(1.3,S.strokeW*1.05); ctx.fillStyle=fill;
-  for(let i=0;i<N;i++){ const p=P[i]; ctx.fillRect(p[0]-asz,p[1]-asz,asz*2,asz*2); }
+  const asz=Math.max(1.5,S.strokeW*1.15); ctx.fillStyle=fill;   // anchor marks along the outline
+  for(let i=0;i<N;i+=3){ const p=P[i]; ctx.fillRect(p[0]-asz,p[1]-asz,asz*2,asz*2); }
   $('#status').innerHTML=`second thought · ${words.length} words · point morph · ${W}×${H}`;
 }
 
@@ -768,7 +787,9 @@ function render(){
   const transparent=$('#bgTransparent').checked,bgc=$('#bgColor').value;
   if(!transparent&&S.trail>0&&playing){ctx.fillStyle=hexA(bgc,1-S.trail);ctx.fillRect(0,0,W,H);} // motion trail: fade prev frame
   else{ctx.clearRect(0,0,W,H);if(!transparent){ctx.fillStyle=bgc;ctx.fillRect(0,0,W,H);}}
-  if(typeof ST!=='undefined'&&ST.on){ drawMorph(W,H); return; }   // Second Thought: point-morph engine
+  // Second Thought: outline fonts use Flux's REAL béziers engine (drawBeziers, below), warped by
+  // the storm; only Sidepiece (woff2, no vector outline) gets the raster stand-in.
+  if(typeof ST!=='undefined'&&ST.on&&cssFontFamily){ drawMorphRaster(W,H); return; }
   let {glyphs,cx,cyMid}=layout(W,H);
   if(S.reveal<1)glyphs=glyphs.slice(0,Math.ceil(glyphs.length*S.reveal)); // typewriter reveal
   const C={cx,cyMid,R:Math.hypot(W,H)/2};
@@ -2200,7 +2221,7 @@ $('#randBtn').addEventListener('click',()=>{const rnd=(a,b)=>a+Math.random()*(b-
 // from 0 (legible) up to that peak and back over each breath, then hands off to the next word.
 const WILD_IDS=['flow','flowScale','melt','distort','distortScale','waveAmp','waveFreq','pinch','fisheye',
   'twist','glitchSlice','wiggle','float','sway','pulse','stagger','trail','orbit','spin','tumble','roll','rotZ'];
-const ST={ on:true, period:5.0, hold:1.1, amount:1.0, idx:0, clock:0, prevTt:0, morph:0, current:'', cache:{}, seed:0, mix:null, flip:{} };
+const ST={ on:true, period:5.0, hold:1.1, amount:1.0, idx:0, swapped:false, clock:0, prevTt:0, storm:0, current:'', cache:{}, seed:0, mix:null, flip:{} };
 function stWords(){ return $('#text').value.split('\n').map(w=>w.trim()).filter(Boolean); }
 // Each breath draws a fresh hand: a random subset of the warps, at random intensity and
 // direction, over a new noise seed — so no two transitions read the same (not "twist-reverse"
@@ -2218,14 +2239,15 @@ function stTick(dt){ if(!ST.on) return;
   if(!ST.mix) stNewBreath();
   ST.clock+=dt; const P=Math.max(1.5,ST.period), H=clamp(ST.hold,0,P-0.6), tt=ST.clock%P;
   const w=stWords();
-  if(tt<ST.prevTt && w.length){ ST.idx=(ST.idx+1)%w.length; stNewBreath(); }   // new breath → next word + reshuffle
+  if(tt<ST.prevTt){ ST.swapped=false; stNewBreath(); }      // a new breath began — reshuffle the storm
+  const peakT=H+(P-H)*0.5;                                   // swap the word at the storm's peak, hidden in the warp,
+  if(w.length&&!ST.swapped&&tt>=peakT){ ST.idx=(ST.idx+1)%w.length; ST.swapped=true; }  // so it re-forms as the next word
   ST.prevTt=tt;
-  ST.morph = tt<H ? 0 : clamp((tt-H)/(P-H),0,1);             // 0 during the legible hold, then travel FROM→TO
   ST.current = w.length ? w[ST.idx%w.length] : '';
-  // the storm rides the morph: warp swells 0→1→0 while the points are in flight
+  // warp swells 0→1→0 across the breath; the real béziers view is legible at the ends, a storm in the middle
   const sh = tt<H ? 0 : (0.5-0.5*Math.cos(((tt-H)/(P-H))*2*Math.PI))*ST.amount;
-  const s2=clamp(sh,0,1);
-  for(const id of WILD_IDS){ const el=$('#c-'+id); if(!el) continue; S[id]=(parseFloat(el.value)||0)*s2*(ST.mix[id]||0)*(ST.flip[id]||1); }
+  ST.storm=clamp(sh,0,1);
+  for(const id of WILD_IDS){ const el=$('#c-'+id); if(!el) continue; S[id]=(parseFloat(el.value)||0)*ST.storm*(ST.mix[id]||0)*(ST.flip[id]||1); }
 }
 let _stLast=0;
 function loop(){if(!playing)return;
@@ -2445,9 +2467,8 @@ loadFont('bentonsans').then(()=>{                        // keep an opentype fac
   $('#fillColor').value='#111214'; $('#bgColor').value='#bfeee0';       // black marks on mint, like the reference
   const qe=qs.get('engine'); if(qe)applyEngine(qe);
   const qt=qs.get('text'); if(qt)$('#text').value=qt;
-  // default to Sidepiece
-  $('#fontPick').value='sidepiece'; cssFontFamily=CSS_FONTS.sidepiece; ST.cache={};
-  const fl=(document.fonts&&document.fonts.load)?document.fonts.load(`${Math.round(S.size)}px '${cssFontFamily}'`):Promise.resolve();
-  Promise.resolve(fl).then(()=>{ render(); startPlay(); });
+  // default to an outline face so the REAL béziers editor view shows (Sidepiece can't do vector béziers)
+  cssFontFamily=null; $('#fontPick').value='bentonsans';
+  render(); startPlay();
 });
 </script>
