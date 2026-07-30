@@ -498,7 +498,7 @@ const CONTROLS={
     ['offsetX','offset x',-700,700,1,0],
     ['offsetY','offset y',-900,900,1,0],
   ],
-  style:[['strokeW','stroke w',0.2,24,0.1,1.4]],
+  style:[['strokeW','stroke w',0.2,24,0.1,2.4]],
 };
 const S={}, DEC={};
 const fmtVal=(id,v)=>(+v).toFixed(DEC[id]!=null?DEC[id]:2);   // clean readout, rounded to the control's step
@@ -1962,12 +1962,13 @@ function drawRipple(glyphs,C,W,H,fill,svg){
 function drawBeziers(gl,T,fill,svg){
   const path=gl.g.getPath(gl.x,gl.baseY,S.size);
   const P=(x,y)=>T(wsx(gl,x),y,0);
-  const asz=Math.max(2.2,S.size*0.011), csz=asz*0.95, hw=Math.max(0.5,S.strokeW*0.5);
+  const asz=Math.max(2.2,S.size*0.011), csz=asz*0.95;
+  const ow=Math.max(0.5,S.strokeW), hw=Math.max(0.4,S.strokeW*0.6);   // outline reads at full stroke w; handles a touch lighter
   const d=buildD(gl,T,0);
-  ctx.lineJoin='round';ctx.strokeStyle=hexA(fill,0.45);ctx.lineWidth=hw;ctx.stroke(new Path2D(d));
-  if(svg.length<SVGMAX)svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-opacity="0.45" stroke-width="${hw.toFixed(2)}"/>`);
-  const handle=(a,b)=>{ctx.strokeStyle=hexA(fill,0.5);ctx.lineWidth=hw;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
-    if(svg.length<SVGMAX)svg.push(`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${fill}" stroke-opacity="0.5" stroke-width="${hw.toFixed(2)}"/>`);};
+  ctx.lineJoin='round';ctx.strokeStyle=hexA(fill,0.9);ctx.lineWidth=ow;ctx.stroke(new Path2D(d));
+  if(svg.length<SVGMAX)svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-opacity="0.9" stroke-width="${ow.toFixed(2)}"/>`);
+  const handle=(a,b)=>{ctx.strokeStyle=hexA(fill,0.6);ctx.lineWidth=hw;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${fill}" stroke-opacity="0.6" stroke-width="${hw.toFixed(2)}"/>`);};
   const ctrl=p=>{ctx.strokeStyle=fill;ctx.lineWidth=hw;ctx.beginPath();ctx.arc(p[0],p[1],csz,0,TAU);ctx.stroke();
     if(svg.length<SVGMAX)svg.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${csz.toFixed(1)}" fill="none" stroke="${fill}" stroke-width="${hw.toFixed(2)}"/>`);};
   const anch=p=>{ctx.fillStyle=fill;ctx.fillRect(p[0]-asz,p[1]-asz,asz*2,asz*2);
@@ -2113,13 +2114,16 @@ $('#randBtn').addEventListener('click',()=>{const rnd=(a,b)=>a+Math.random()*(b-
 // from 0 (legible) up to that peak and back over each breath, then hands off to the next word.
 const WILD_IDS=['flow','flowScale','melt','distort','distortScale','waveAmp','waveFreq','pinch','fisheye',
   'twist','glitchSlice','wiggle','float','sway','pulse','stagger','trail','orbit','spin','tumble','roll','rotZ'];
-const ST={ on:true, period:5.0, hold:1.1, amount:1.0, idx:-1, clock:0, prevTt:1e9, current:'' };
+const ST={ on:true, period:5.0, hold:1.1, amount:1.0, idx:0, swapped:false, clock:0, prevTt:1e9, current:'' };
 function stWords(){ return $('#text').value.split('\n').map(w=>w.trim()).filter(Boolean); }
 function stTick(dt){ if(!ST.on) return;
   ST.clock+=dt; const P=Math.max(1.5,ST.period), H=clamp(ST.hold,0,P-0.6), tt=ST.clock%P;
-  if(tt<ST.prevTt){ const w=stWords(); if(w.length) ST.idx=(ST.idx+1)%w.length; }   // wrapped → next word
-  ST.prevTt=tt;
-  const w=stWords(); ST.current = w.length ? w[ST.idx%w.length] : '';
+  const w=stWords();
+  if(tt<ST.prevTt) ST.swapped=false;                     // a new breath began
+  const peakT=H+(P-H)*0.5;                                // the storm's peak — swap the word here,
+  if(w.length&&!ST.swapped&&tt>=peakT){ ST.idx=(ST.idx+1)%w.length; ST.swapped=true; } // hidden in the chaos, so it
+  ST.prevTt=tt;                                          // resolves back to legibility as the NEXT word
+  ST.current = w.length ? w[((ST.idx%w.length)+w.length)%w.length] : '';
   // legible hold, then a smooth 0→1→0 storm across the rest of the breath
   const sh = tt<H ? 0 : (0.5-0.5*Math.cos(((tt-H)/(P-H))*2*Math.PI))*ST.amount;
   const s2=clamp(sh,0,1);
