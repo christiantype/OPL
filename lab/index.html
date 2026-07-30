@@ -37,27 +37,48 @@
       aspect-ratio: 1 / 1; padding: var(--space-6);
       border-radius: 12px; text-decoration: none; color: var(--color-ink);
       overflow: hidden; isolation: isolate;
-      background-size: 220% 220%;
-      animation: row-in 0.5s ease both, tileMorph 20s ease-in-out infinite;
+      background-size: 300% 300%;
+      animation: row-in 0.5s ease both, tileFlow 13s ease-in-out infinite;
       transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.35s ease;
     }
-    /* subtle morphing gradients — drift out of phase per tile */
-    @keyframes tileMorph {
-      0%, 100% { background-position: 0% 50%; }
-      50%      { background-position: 100% 50%; }
+    /* the gradient itself flows in a slow circular path */
+    @keyframes tileFlow {
+      0%   { background-position: 0% 50%; }
+      25%  { background-position: 50% 100%; }
+      50%  { background-position: 100% 50%; }
+      75%  { background-position: 50% 0%; }
+      100% { background-position: 0% 50%; }
     }
-    .tool-grid .tool-tile:nth-child(2) { animation-duration: 0.5s, 25s; }
-    .tool-grid .tool-tile:nth-child(3) { animation-duration: 0.5s, 30s; }
-    .tool-grid .tool-tile:nth-child(4) { animation-duration: 0.5s, 22s; }
-    .tool-grid .tool-tile:nth-child(5) { animation-duration: 0.5s, 27s; }
-    .tool-grid .tool-tile:nth-child(6) { animation-duration: 0.5s, 24s; }
-    .tool-grid .tool-tile:nth-child(7) { animation-duration: 0.5s, 29s; }
-    .tool-grid .tool-tile:nth-child(8) { animation-duration: 0.5s, 23s; }
-    .tool-grid .tool-tile:nth-child(9) { animation-duration: 0.5s, 28s; }
-    .tool-grid .tool-tile:nth-child(10) { animation-duration: 0.5s, 26s; }
-    .tool-grid .tool-tile:nth-child(11) { animation-duration: 0.5s, 30s; }
-    .tool-grid .tool-tile:nth-child(12) { animation-duration: 0.5s, 25s; }
-    @media (prefers-reduced-motion: reduce) { .tool-tile { animation: row-in 0.5s ease both; } }
+    /* a soft light bloom that drifts around the tile, out of phase — keeps it feeling alive */
+    .tool-tile::before {
+      content: ''; position: absolute; inset: -30%; z-index: -1; pointer-events: none;
+      background:
+        radial-gradient(38% 38% at 50% 50%, rgba(255,255,255,0.5), rgba(255,255,255,0) 70%),
+        radial-gradient(30% 30% at 50% 50%, rgba(255,255,255,0.28), rgba(255,255,255,0) 72%);
+      mix-blend-mode: soft-light;
+      animation: tileSheen 17s linear infinite;
+    }
+    @keyframes tileSheen {
+      0%   { transform: translate(-18%, -12%) scale(1.05); }
+      33%  { transform: translate(16%, 10%)  scale(1.25); }
+      66%  { transform: translate(-8%, 18%)  scale(1.1); }
+      100% { transform: translate(-18%, -12%) scale(1.05); }
+    }
+    /* stagger both animations per tile so the grid shimmers out of phase */
+    .tool-grid .tool-tile:nth-child(2)  { animation-duration: 0.5s, 16s; } .tool-grid .tool-tile:nth-child(2)::before  { animation-duration: 20s; animation-delay: -3s; }
+    .tool-grid .tool-tile:nth-child(3)  { animation-duration: 0.5s, 11s; } .tool-grid .tool-tile:nth-child(3)::before  { animation-duration: 15s; animation-delay: -7s; }
+    .tool-grid .tool-tile:nth-child(4)  { animation-duration: 0.5s, 15s; } .tool-grid .tool-tile:nth-child(4)::before  { animation-duration: 22s; animation-delay: -2s; }
+    .tool-grid .tool-tile:nth-child(5)  { animation-duration: 0.5s, 12s; } .tool-grid .tool-tile:nth-child(5)::before  { animation-duration: 18s; animation-delay: -9s; }
+    .tool-grid .tool-tile:nth-child(6)  { animation-duration: 0.5s, 14s; } .tool-grid .tool-tile:nth-child(6)::before  { animation-duration: 16s; animation-delay: -5s; }
+    .tool-grid .tool-tile:nth-child(7)  { animation-duration: 0.5s, 10s; } .tool-grid .tool-tile:nth-child(7)::before  { animation-duration: 21s; animation-delay: -11s; }
+    .tool-grid .tool-tile:nth-child(8)  { animation-duration: 0.5s, 15s; } .tool-grid .tool-tile:nth-child(8)::before  { animation-duration: 17s; animation-delay: -4s; }
+    .tool-grid .tool-tile:nth-child(9)  { animation-duration: 0.5s, 12s; } .tool-grid .tool-tile:nth-child(9)::before  { animation-duration: 19s; animation-delay: -8s; }
+    .tool-grid .tool-tile:nth-child(10) { animation-duration: 0.5s, 13s; } .tool-grid .tool-tile:nth-child(10)::before { animation-duration: 23s; animation-delay: -6s; }
+    .tool-grid .tool-tile:nth-child(11) { animation-duration: 0.5s, 16s; } .tool-grid .tool-tile:nth-child(11)::before { animation-duration: 15s; animation-delay: -1s; }
+    .tool-grid .tool-tile:nth-child(12) { animation-duration: 0.5s, 11s; } .tool-grid .tool-tile:nth-child(12)::before { animation-duration: 20s; animation-delay: -10s; }
+    .tool-grid .tool-tile:nth-child(13) { animation-duration: 0.5s, 14s; } .tool-grid .tool-tile:nth-child(13)::before { animation-duration: 18s; animation-delay: -3s; }
+    .tool-grid .tool-tile:nth-child(14) { animation-duration: 0.5s, 12s; } .tool-grid .tool-tile:nth-child(14)::before { animation-duration: 22s; animation-delay: -7s; }
+    @media (prefers-reduced-motion: reduce) { .tool-tile { animation: row-in 0.5s ease both; } .tool-tile::before { animation: none; } }
     .tool-tile:hover { transform: translateY(-6px); box-shadow: 0 24px 50px -22px rgba(0, 0, 0, 0.4); }
     .tool-tile:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 3px; }
     .tool-tile__ver {
@@ -76,13 +97,13 @@
       letter-spacing: 2px; text-transform: uppercase;
     }
 
-    /* One unique gradient per tile — OP/AL brand palette */
-    .g-1 { background-image: linear-gradient(135deg, #ff94c9 0%, #ffd36e 100%); }
-    .g-2 { background-image: linear-gradient(135deg, #79c7f1 0%, #bbff34 100%); }
-    .g-3 { background-image: linear-gradient(135deg, #ffed00 0%, #ff94c9 100%); }
-    .g-4 { background-image: linear-gradient(135deg, #fcc1b8 0%, #79c7f1 100%); }
-    .g-5 { background-image: linear-gradient(135deg, #bbff34 0%, #79c7f1 100%); }
-    .g-6 { background-image: linear-gradient(135deg, #c9b8ff 0%, #ff94c9 100%); }
+    /* One unique gradient per tile — OP/AL brand palette. Three stops so the flow shifts colour. */
+    .g-1 { background-image: linear-gradient(135deg, #ff94c9 0%, #ffd36e 50%, #79c7f1 100%); }
+    .g-2 { background-image: linear-gradient(135deg, #79c7f1 0%, #bbff34 50%, #ffed00 100%); }
+    .g-3 { background-image: linear-gradient(135deg, #ffed00 0%, #ff94c9 50%, #c9b8ff 100%); }
+    .g-4 { background-image: linear-gradient(135deg, #fcc1b8 0%, #79c7f1 50%, #bbff34 100%); }
+    .g-5 { background-image: linear-gradient(135deg, #bbff34 0%, #79c7f1 50%, #c9b8ff 100%); }
+    .g-6 { background-image: linear-gradient(135deg, #c9b8ff 0%, #ff94c9 50%, #ffd36e 100%); }
 
     @media (max-width: 40em) { .tool-tile { aspect-ratio: 4 / 3; } }
   </style>
@@ -219,6 +240,13 @@
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Corona-discharge aura from any image</span>
             <span class="tool-tile__title">Kirlian</span>
+          </span>
+        </a>
+        <a class="tool-tile col-4 g-4" href="/lab/second-thought/" style="animation-delay:0.84s">
+          <span class="tool-tile__ver">v1</span>
+          <span class="tool-tile__foot">
+            <span class="tool-tile__desc">Words read clear, go wild, then resolve</span>
+            <span class="tool-tile__title">Second Thought</span>
           </span>
         </a>
       </div>
