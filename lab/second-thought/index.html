@@ -684,8 +684,11 @@ function stResample(pts,N,cx,cy){ const out=[]; if(!pts.length){ for(let i=0;i<N
 function stRasterCloud(text,W,H){ const o=document.createElement('canvas'); o.width=W; o.height=H; const g=o.getContext('2d');
   g.clearRect(0,0,W,H); g.fillStyle='#000'; g.textAlign='center'; g.textBaseline='middle';
   g.font=`${Math.round(S.size)}px '${cssFontFamily}'`; g.fillText(text,W/2+S.offsetX,H/2+S.offsetY);
-  const d=g.getImageData(0,0,W,H).data, step=Math.max(3,Math.round(S.size*0.02)), pts=[];
-  for(let y=0;y<H;y+=step) for(let x=0;x<W;x+=step){ if(d[(y*W+x)*4+3]>40) pts.push([x,y]); }
+  const d=g.getImageData(0,0,W,H).data, step=Math.max(2,Math.round(S.size*0.014)), pts=[];
+  const ink=(x,y)=> x>=0&&y>=0&&x<W&&y<H && d[((y*W+x)<<2)+3]>50;
+  // keep EDGE pixels (filled with an empty neighbour) so the cloud is the letter OUTLINE, not a fill
+  for(let y=0;y<H;y+=step) for(let x=0;x<W;x+=step){
+    if(ink(x,y) && (!ink(x-step,y)||!ink(x+step,y)||!ink(x,y-step)||!ink(x,y+step))) pts.push([x,y]); }
   return stResample(pts,MORPH_N,W/2,H/2); }
 function stCloud(text,W,H){ const fk=($('#fontPick')&&$('#fontPick').value)||'';
   const key=text+'|'+Math.round(S.size)+'|'+W+'|'+H+'|'+Math.round(S.width)+'|'+fk;
@@ -725,7 +728,14 @@ function drawMorph(W,H){ const words=stWords(), fill=$('#fillColor').value;
   const a=stCloud(words[ST.idx%words.length],W,H), b=stCloud(words[(ST.idx+1)%words.length],W,H);
   const me=smooth(clamp(ST.morph,0,1)), N=MORPH_N, P=new Array(N);
   for(let i=0;i<N;i++){ const hx=lerp(a[i][0],b[i][0],me), hy=lerp(a[i][1],b[i][1],me); P[i]=stWarp(hx,hy,C,i,N); }
-  const asz=Math.max(1.2,S.strokeW*1.1);                    // marks only — points ARE the letterform
+  // editor-view outline: join consecutive points ONLY when they're still close (same stretch of
+  // contour) — long jumps between letters/contours are skipped, so no scan-lines. As the storm
+  // pulls points apart the joins fall away and it's just marks in flight.
+  const asz=Math.max(1.1,S.strokeW*1.05), maxSeg=Math.max(10,S.size*0.11), ms2=maxSeg*maxSeg;
+  ctx.strokeStyle=hexA(fill,0.55); ctx.lineWidth=Math.max(0.5,S.strokeW*0.7); ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.beginPath();
+  for(let i=1;i<N;i++){ const a=P[i-1],b=P[i], dx=b[0]-a[0],dy=b[1]-a[1]; if(dx*dx+dy*dy<ms2){ ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); } }
+  ctx.stroke();
   ctx.fillStyle=fill; for(let i=0;i<N;i++){ const p=P[i]; ctx.fillRect(p[0]-asz,p[1]-asz,asz*2,asz*2); }
   $('#status').innerHTML=`second thought · ${words.length} words · point morph · ${W}×${H}`;
 }
@@ -2420,12 +2430,15 @@ function buildST(){ const host=$('#st-panel'); if(!host) return;
   $('#stOn').addEventListener('change',e=>{ ST.on=e.target.checked; ST.current=''; if(ST.on&&!playing) startPlay(); render(); });
 }
 buildControls(); buildST();
-loadFont('bentonsans').then(()=>{
+loadFont('bentonsans').then(()=>{                        // keep an opentype face loaded as a fallback
   const qs=new URLSearchParams(location.search);
-  applyEngine('beziers'); setControl('size',500);
+  applyEngine('beziers'); setControl('size',420);
   $('#fillColor').value='#111214'; $('#bgColor').value='#bfeee0';       // black marks on mint, like the reference
   const qe=qs.get('engine'); if(qe)applyEngine(qe);
   const qt=qs.get('text'); if(qt)$('#text').value=qt;
-  render(); startPlay();
+  // default to Sidepiece
+  $('#fontPick').value='sidepiece'; cssFontFamily=CSS_FONTS.sidepiece; ST.cache={};
+  const fl=(document.fonts&&document.fonts.load)?document.fonts.load(`${Math.round(S.size)}px '${cssFontFamily}'`):Promise.resolve();
+  Promise.resolve(fl).then(()=>{ render(); startPlay(); });
 });
 </script>
