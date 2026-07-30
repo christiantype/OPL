@@ -2228,25 +2228,30 @@ function stWords(){ return $('#text').value.split('\n').map(w=>w.trim()).filter(
 // every time). It's safe to reshuffle at the breath boundary because the storm is at zero there.
 function stNewBreath(){ const R=Math.random;
   const shuf=a=>{ for(let i=a.length-1;i>0;i--){ const j=(R()*(i+1))|0,t=a[i];a[i]=a[j];a[j]=t; } return a; };
-  const spread=['flow','distort','orbit','twist','fisheye'];      // these give the storm 2D body
-  const rest=WILD_IDS.filter(id=>spread.indexOf(id)<0);
+  const expansive=['flow','distort','orbit','waveAmp','melt'];     // push the form OUTWARD → fills the frame, never a blob
+  const rest=WILD_IDS.filter(id=>expansive.indexOf(id)<0);
+  const rot={twist:1,spin:1,tumble:1,roll:1,sway:1};               // only rotations flip direction (flipping pinch/fisheye collapses it)
   ST.mix={__set:1}; ST.flip={}; ST.seed=R()*997;
-  WILD_IDS.forEach(id=>{ ST.mix[id]=0; ST.flip[id]=(R()<0.5?-1:1); });
-  shuf(spread); const ns=2+((R()*2)|0); for(let i=0;i<ns;i++) ST.mix[spread[i]]=0.6+R()*0.8;   // 2–3 spreaders — never a flat smear
-  shuf(rest);   const nr=2+((R()*4)|0); for(let i=0;i<nr;i++) ST.mix[rest[i]]=0.4+R()*0.9;      // + a random handful of the rest
+  WILD_IDS.forEach(id=>{ ST.mix[id]=0; ST.flip[id]=(rot[id]&&R()<0.5)?-1:1; });
+  shuf(expansive); const ne=3+((R()*2)|0); for(let i=0;i<ne;i++) ST.mix[expansive[i]]=0.9+R()*1.1;   // 3–4 expansive, overdriven
+  if(!ST.mix.orbit && !ST.mix.flow) ST.mix[R()<0.5?'orbit':'flow']=1.0+R()*0.8;                      // always a strong spreader
+  shuf(rest); const nr=3+((R()*4)|0); for(let i=0;i<nr;i++) ST.mix[rest[i]]=0.7+R()*1.0;               // + a big handful of the rest
 }
 function stTick(dt){ if(!ST.on) return;
   if(!ST.mix) stNewBreath();
   ST.clock+=dt; const P=Math.max(1.5,ST.period), H=clamp(ST.hold,0,P-0.6), tt=ST.clock%P;
   const w=stWords();
   if(tt<ST.prevTt){ ST.swapped=false; stNewBreath(); }      // a new breath began — reshuffle the storm
-  const peakT=H+(P-H)*0.5;                                   // swap the word at the storm's peak, hidden in the warp,
-  if(w.length&&!ST.swapped&&tt>=peakT){ ST.idx=(ST.idx+1)%w.length; ST.swapped=true; }  // so it re-forms as the next word
-  ST.prevTt=tt;
+  const rise=(P-H)*0.34, peakT=(H+P)/2;                      // ramp up → FULL-CHAOS PLATEAU → ramp down
+  if(w.length&&!ST.swapped&&tt>=peakT){ ST.idx=(ST.idx+1)%w.length; ST.swapped=true; }  // swap deep inside the plateau,
+  ST.prevTt=tt;                                             // where the form is total chaos, so nothing snaps
   ST.current = w.length ? w[ST.idx%w.length] : '';
-  // warp swells 0→1→0 across the breath; the real béziers view is legible at the ends, a storm in the middle
-  const sh = tt<H ? 0 : (0.5-0.5*Math.cos(((tt-H)/(P-H))*2*Math.PI))*ST.amount;
-  ST.storm=clamp(sh,0,1);
+  let sh;
+  if(tt<H) sh=0;                                            // legible hold
+  else if(tt<H+rise) sh=smooth((tt-H)/rise);                // ramp into chaos
+  else if(tt<P-rise) sh=1;                                  // sustained full chaos — the swap is buried here
+  else sh=smooth(Math.max(0,(P-tt)/rise));                  // ramp back to legible (the NEXT word)
+  ST.storm=clamp(sh*ST.amount,0,1);
   for(const id of WILD_IDS){ const el=$('#c-'+id); if(!el) continue; S[id]=(parseFloat(el.value)||0)*ST.storm*(ST.mix[id]||0)*(ST.flip[id]||1); }
 }
 let _stLast=0;
