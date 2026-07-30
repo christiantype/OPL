@@ -1,0 +1,2348 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Second Thought — OP/AL</title>
+<script src="/lab/shared/gate.js"></script>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  /* ── Brand fonts (copied from the OP/AL site so the tool is self-contained) ── */
+  @font-face{font-family:'Sidepiece-HoneyPie';src:url('/shared/fonts/Sidepiece-HoneyPie.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Untitled Sans';src:url('/shared/fonts/UntitledSans-Regular.otf') format('opentype');font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:'Untitled Sans';src:url('/shared/fonts/UntitledSans-Bold.otf') format('opentype');font-weight:700;font-style:normal;font-display:swap}
+
+  /* Light editorial chrome — matches the OP/AL "Lake Opeka" tool. Color lives
+     only inside the canvas; the rails and topbar stay monochrome. */
+  :root{
+    --bg:#ffffff; --panel:#f4f4f4; --panel2:#f4f4f4; --line:#e2e2e2; --hairline:#e2e2e2;
+    --ink:#111111; --text:#111111; --mid:#4d4d54; --dim:#7c7c84;
+    --accent:#111111; --on-accent:#ffffff; --cobalt:#1c39bb; --pink:#ff94c9;
+    --sans:'Untitled Sans',system-ui,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;
+    --display:'Sidepiece-HoneyPie','Untitled Sans',sans-serif;
+    --mono:'JetBrains Mono','SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;display:grid;grid-template-rows:56px 44px 1fr;height:100vh;overflow:hidden;position:relative}
+  button,input,select,textarea{font-family:inherit;color:inherit}
+
+  /* Shared shell bars (rows 1 & 2). The canvas fills the whole area below;
+     the controls float over it as an island — Figma-style. */
+  .opal-topbar{grid-row:1}
+  .opal-subhead{grid-row:2}
+
+  /* Controls flyout — opens next to the left rail; one section open at a time. */
+  #panel{position:absolute;top:116px;left:72px;bottom:72px;width:320px;z-index:6;
+    background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border:1px solid var(--hairline);border-radius:12px;box-shadow:0 12px 40px -16px rgba(0,0,0,.22);
+    display:flex;flex-direction:column;overflow:hidden}
+  body.panel-closed #panel{display:none}
+  /* Input section — its own light-gray zone with white controls */
+  #pTop{padding:16px 16px 16px;background:#f0f0ee;border-bottom:1px solid var(--hairline)}
+  #pTop textarea,#pTop select,#pTop input[type=number],#pTop .filebtn{background:#fff}
+  /* Labeled sub-sections (Font · Engine) with consistent field spacing */
+  .oc-sec{margin-top:14px}
+  .oc-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:6px}
+  .oc-sec select,.oc-sec .filebtn{margin-top:0}
+  .oc-sec select + .filebtn,.oc-sec .filebtn + select{margin-top:6px}
+  /* Engine settings — always-visible block below the input zone */
+  .eng-params{padding-bottom:16px;margin-bottom:4px;border-bottom:1px solid var(--hairline)}
+  .eng-params .oc-lbl{margin-bottom:12px}
+  #pScroll{flex:1;overflow-y:auto;padding:14px 18px 18px}
+  #pScroll::-webkit-scrollbar{width:9px}#pScroll::-webkit-scrollbar-thumb{background:#d9d9d9}
+  #pScroll::-webkit-scrollbar-thumb:hover{background:#c4c4c4}
+
+  /* Brand lockup — OP/AL wordmark + product label, echoing the Lake Opeka topbar */
+  .brand{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+  .brand svg{display:block;height:15px;width:auto;color:var(--ink)}
+  h1{font-family:var(--sans);font-size:11px;letter-spacing:.14em;margin:0;text-transform:uppercase;font-weight:400;color:var(--dim)}
+  .sub{color:var(--dim);font-size:10px;letter-spacing:.16em;margin-bottom:16px;text-transform:uppercase}
+
+  textarea{width:100%;background:var(--panel);border:1px solid var(--hairline);color:var(--ink);
+    padding:8px 9px;font-family:var(--sans);font-size:13px;resize:vertical;min-height:38px;line-height:1.3;border-radius:10px}
+  textarea:focus,select:focus,input:focus{outline:none;border-color:var(--accent)}
+  .mini{margin-top:7px}.mini select,.mini .filebtn{margin-top:6px}
+
+  /* Morflax-style underline tabs */
+  #tabs{display:flex;gap:0;margin:14px 0 4px;border-bottom:1px solid var(--hairline)}
+  #tabs button{flex:1;background:none;border:none;border-bottom:1.5px solid transparent;color:var(--dim);font-family:var(--sans);
+    font-size:11px;letter-spacing:.08em;padding:9px 4px;cursor:pointer;text-transform:uppercase;margin-bottom:-1px;transition:color .15s ease,border-color .15s ease}
+  #tabs button:hover:not(.active){color:var(--ink)}
+  #tabs button.active{color:var(--ink);border-bottom-color:var(--ink)}
+  .pane{display:none}.pane.active{display:block}
+
+  .grp{border-top:1px solid var(--hairline);padding-top:13px;margin-top:13px}
+  .grp:first-child{border-top:none;margin-top:6px}
+  /* Morflax-style quiet section headers: sentence case, light, value chip + chevron */
+  .grp h3{font-family:var(--sans);font-size:12px;letter-spacing:0;color:var(--ink);text-transform:none;margin:0 0 10px;
+    display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-weight:400}
+  .grp h3 .grp-val{margin-left:auto;color:var(--dim);font-size:11px;font-family:var(--mono);text-transform:none;letter-spacing:0;
+    max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .grp h3 .tw{color:var(--dim);font-size:9px;flex:none}
+  .grp.closed h3{margin-bottom:0}
+  .grp.closed .gbody{display:none}
+  .renderNote{color:var(--dim);font-size:11px;line-height:1.55;padding:2px 0}
+
+  .ctrl{margin-bottom:7px}
+  .ctrl .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:1px}
+  .ctrl label{color:var(--ink);font-size:12px;letter-spacing:0;text-transform:capitalize}
+  /* Editable value readout — click to type a number */
+  .ctrl .val{color:var(--ink);font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;
+    -webkit-appearance:none;appearance:none;background:transparent;border:none;text-align:right;width:76px;padding:2px 4px;
+    outline:1px solid transparent;outline-offset:-1px;border-radius:3px;cursor:text;transition:background .12s,outline-color .12s}
+  .ctrl .val:hover{background:rgba(0,0,0,.05);outline-color:var(--hairline)}
+  .ctrl .val:focus{background:rgba(0,0,0,.08);outline-color:var(--ink)}
+  /* Pill sliders: light-gray rounded track + tall rounded white handle */
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;cursor:pointer;padding:0;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{background:#eaeaea;height:22px;border-radius:11px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:26px;border-radius:8px;
+    background:#fff;border:1px solid var(--hairline);box-shadow:0 1px 4px rgba(0,0,0,.2);margin-top:-2px;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb:hover{border-color:var(--dim)}
+  input[type=range]::-moz-range-track{background:#eaeaea;height:22px;border-radius:11px}
+  input[type=range]::-moz-range-thumb{width:16px;height:26px;border-radius:8px;background:#fff;border:1px solid var(--hairline);box-shadow:0 1px 4px rgba(0,0,0,.2);cursor:pointer}
+
+  /* Unified dropdown — custom chevron, no native arrow (shared with Lake Opeka) */
+  select{-webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c7c84' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 11px center;padding-right:28px}
+  select,input[type=number]{width:100%;background-color:var(--panel);border:1px solid var(--hairline);color:var(--ink);
+    padding:8px 11px;font-family:var(--sans);font-size:12px;cursor:pointer;border-radius:10px}
+  select:hover,input[type=number]:hover{border-color:var(--dim)}
+  /* Unified segmented control — rounded, uppercase (shared language with Lake Opeka .seg) */
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .chip{background:var(--panel);border:1px solid var(--hairline);color:var(--mid);padding:8px 5px;border-radius:8px;
+    text-align:center;cursor:pointer;letter-spacing:.1em;text-transform:uppercase;user-select:none;transition:.12s;font-size:10px}
+  .chip:hover{border-color:var(--dim);color:var(--ink)}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .filebtn{display:block;background:var(--panel);border:1px dashed var(--hairline);padding:8px;border-radius:10px;
+    text-align:center;color:var(--mid);cursor:pointer;font-size:12px;transition:border-color .15s ease,color .15s ease}
+  .filebtn:hover{border-color:var(--accent);color:var(--ink)}
+  input[type=color]{width:100%;height:32px;background:var(--panel);border:1px solid var(--hairline);padding:2px;cursor:pointer;border-radius:8px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .two label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid)}
+  .toggle{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--mid);margin-top:8px;font-size:12px}
+  .toggle input{accent-color:var(--accent);width:16px;height:16px}
+  .hidden{display:none}
+  /* Size · Leading · Kerning share one row */
+  #g-type{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  #g-type .ctrl{margin-bottom:0;min-width:0}
+  #g-type .ctrl .row{gap:2px;min-width:0}
+  #g-type .ctrl label{font-size:10px;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  #g-type .ctrl .val{font-size:10px;width:auto;flex:none;max-width:46px;padding:1px 2px}
+
+  #stage{grid-row:3;position:relative;overflow:hidden;background:#f5f5f5}
+  /* Canvas sits between the left icon rail, the right controls island and the bottom bar. */
+  #canvasArea{position:absolute;top:0;left:408px;right:16px;bottom:64px;
+    display:flex;align-items:center;justify-content:center;padding:28px;transition:left .2s ease}
+  body.panel-closed #canvasArea{left:80px}
+  /* Dimensional (glass 3D) engine — iframe fills the canvas area; 2D chrome hides */
+  #dimFrame{position:absolute;inset:0;width:100%;height:100%;border:none;background:#fff;display:none}
+  body.dim-mode #canvasWrap{display:none}
+  body.dim-mode #dimFrame{display:block}
+  body.dim-mode #tbar{display:none}
+  body.dim-mode #canvasArea{bottom:16px}
+  /* Dimensional owns its own text/typeface UI — hide Flux's redundant panes, keep Engine */
+  body.dim-mode #railL button[data-tab="font"],
+  body.dim-mode #railL button[data-tab="shape"],
+  body.dim-mode #railL button[data-tab="behavior"],
+  body.dim-mode #railL button[data-tab="output"]{display:none}
+
+  #canvasWrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  #view{box-shadow:0 12px 40px -10px rgba(0,0,0,.15)}
+
+  /* Left icon rail — Morflax-style section switcher */
+  #railL{position:absolute;top:16px;left:16px;bottom:80px;width:48px;z-index:6;
+    display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;
+    background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border:1px solid var(--hairline);border-radius:12px;box-shadow:0 12px 40px -16px rgba(0,0,0,.22)}
+  #railL button{width:34px;height:34px;border:none;background:none;border-radius:8px;color:var(--dim);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:color .15s,background .15s}
+  #railL button:hover{color:var(--ink);background:var(--panel)}
+  #railL button.active{color:var(--on-accent);background:var(--accent)}
+  #railL svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  #railL button.rail-bottom{margin-top:auto}   /* Output pinned to the bottom */
+
+  /* Bottom timeline bar — play / transport / export */
+  #tbar{position:absolute;left:0;right:0;bottom:0;height:56px;z-index:6;display:flex;align-items:center;gap:14px;padding:0 18px;
+    border-top:1px solid var(--hairline);background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+  #tbar .tbar-grp{display:flex;align-items:center;gap:8px}
+  #tbar .tbar-line{flex:1;height:2px;background:var(--hairline);border-radius:2px;position:relative}
+  #tbar .tbar-line .tbar-prog{position:absolute;left:0;top:0;bottom:0;width:32%;background:var(--ink);border-radius:2px}
+  #tbar .sep{width:1px;height:20px;background:var(--hairline)}
+  #tbar button{background:var(--panel);border:1px solid var(--hairline);color:var(--ink);padding:8px 14px;font-family:var(--sans);border-radius:10px;
+    font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+  #tbar button:hover{border-color:var(--ink)}
+  #tbar button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  #tbar button.rec{color:#e0202a}
+  #tbar button.rec:hover{border-color:#e0202a}
+  #tbar button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  #view{cursor:grab}#view:active{cursor:grabbing}
+  #status{display:none}
+  .warn{color:var(--cobalt)}.ok{color:var(--cobalt)}
+
+  /* ── Mobile: icon rail becomes a top bar, the flyout a slide-up bottom sheet ── */
+  @media (max-width:760px){
+    #railL{top:8px;left:8px;right:8px;bottom:auto;width:auto;height:46px;flex-direction:row;align-items:center;padding:5px 6px;gap:3px}
+    #railL button{width:36px;height:36px}
+    #railL button.rail-bottom{margin-top:0;margin-left:auto}
+    #panel{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:72vh;border-radius:16px 16px 0 0;overflow-y:auto;z-index:14;
+      box-shadow:0 -12px 40px -16px rgba(0,0,0,.24)}
+    #canvasArea{left:8px !important;right:8px;top:62px;bottom:56px}
+    body.panel-closed #canvasArea{left:8px}
+    body.dim-mode #canvasArea{left:8px;top:62px}
+    #tbar{flex-wrap:wrap;height:auto;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));gap:6px;justify-content:center}
+    #tbar button{padding:8px 10px}
+    #tbar .tbar-line{display:none}
+  }
+</style>
+
+<div id="panel">
+  <div id="pScroll">
+  <div class="pane active" data-pane="font">
+  <div class="oc-lbl" style="margin-bottom:5px">Words · one per line — it cycles through them</div>
+  <textarea id="text" spellcheck="false" rows="4">SECOND
+THOUGHT
+SAY IT
+AGAIN</textarea>
+  <div id="st-panel" class="oc-sec"></div>
+  <div id="g-type" style="margin-top:12px"></div>
+  <div class="oc-sec">
+    <div class="oc-lbl">Typeface</div>
+    <select id="fontPick">
+      <option value="bentonsans">Benton Sans Bold</option>
+      <optgroup label="Univers Next Pro">
+        <option value="universultralight">UltraLight</option>
+        <option value="universthin">Thin</option>
+        <option value="universlight">Light</option>
+        <option value="universmedium">Medium</option>
+        <option value="universbold">Bold</option>
+      </optgroup>
+      <option value="arimo">Arimo (Arial / Helvetica)</option>
+      <option value="inter">Inter (clean sans)</option>
+      <option value="archivoblack">Archivo Black (heavy grotesk)</option>
+      <option value="spacegrotesk">Space Grotesk</option>
+      <option value="bodoni">Bodoni Moda (serif)</option>
+      <option value="dmserif">DM Serif Display</option>
+    </select>
+    <label class="filebtn">Upload font<input id="fontFile" type="file" accept=".ttf,.otf" hidden></label>
+  </div>
+  </div>
+
+  <div class="pane" data-pane="engine">
+  <div class="oc-sec">
+    <div class="oc-lbl">Engine</div>
+    <select id="renderStyle" title="render engine">
+      <option value="solid">Solid</option>
+      <option value="heatmap">Thermal field (organism)</option>
+      <option value="chromatic">Chromatic / RGB glitch</option>
+      <option value="particles">Particle dispersion</option>
+      <option value="halftone">Halftone dot-matrix</option>
+      <option value="outline">Contour rings</option>
+      <option value="network">Network / constellation</option>
+      <option value="glow">Luminous halftone</option>
+      <option value="slice">Databend slice</option>
+      <option value="topo">Topographic lines</option>
+      <option value="streams">Flow streamlines</option>
+      <option value="linescreen">Line screen (engraving)</option>
+      <option value="moire">Moiré interference</option>
+      <option value="lowpoly">Low-poly facets</option>
+      <option value="iso">Isometric relief</option>
+      <option value="weave">Weave</option>
+      <option value="metaballs">Metaballs</option>
+      <option value="bubbles">Bubbles · soap film (3D)</option>
+      <option value="marble">Marble · ink in water</option>
+      <option value="relief">Relief · shaded topography</option>
+      <option value="wood">Woodgrain · annual rings</option>
+      <option value="ferro">Ferrofluid · magnetic spikes</option>
+      <option value="shatter">Shatter · fractured shards</option>
+      <option value="pixelsort">Pixel sort</option>
+      <option value="ascii">Glyph mosaic</option>
+      <optgroup label="Vector · B&amp;W (SVG line-art)">
+        <option value="beziers">Vector · béziers (editor view)</option>
+        <option value="isoline">Isolines · topographic</option>
+        <option value="fieldfill">Metaball fill</option>
+        <option value="ripple">Ripple interference</option>
+        <option value="truchet">Truchet weave</option>
+        <option value="hatch">Contour hatch (engraving)</option>
+        <option value="polygon">Polygon wireframe (hand-drawn)</option>
+        <option value="stitch">Stitch · embroidered thread</option>
+        <option value="crosshatch">Crosshatch · engraving</option>
+        <option value="dendrite">Dendrite · branching growth</option>
+        <option value="blueprint">Blueprint · drafting sheet</option>
+        <option value="wireframe">Wireframe · 3D mesh</option>
+      </optgroup>
+      <option value="dimensional">Dimensional · glass 3D</option>
+    </select>
+  </div>
+  <div class="eng-params">
+    <div class="oc-lbl">Settings</div>
+        <div id="g-render"></div>
+        <div id="style-mosaic" class="mini hidden">
+          <div class="row"><label>mosaic glyphs · light → dark</label></div>
+          <input type="text" id="mosaicChars" value=".:-=+*#%@" spellcheck="false" autocapitalize="off"
+                 title="Characters to build the mosaic from, lightest first. One character = a single-glyph mosaic shaded by opacity.">
+        </div>
+        <div id="renderNote" class="renderNote"></div>
+  </div>
+    <div class="grp"><h3>Color <span class="tw">▾</span></h3><div class="gbody">
+      <div class="two">
+        <div><div class="row"><label>fill</label></div><input type="color" id="fillColor" value="#ffffff"></div>
+        <div><div class="row"><label>background</label></div><input type="color" id="bgColor" value="#000000"></div>
+      </div>
+      <div id="g-style" style="margin-top:8px">
+        <div id="style-colorway" class="mini hidden">
+          <div class="row"><label>colorway</label></div>
+          <select id="heatPalette">
+            <option value="custom">Custom · your colors</option>
+            <option value="turbo">Turbo · astro</option>
+            <option value="inferno">Inferno</option>
+            <option value="ice">Ice</option>
+            <option value="viridis">Viridis</option>
+            <option value="ember">Ember</option>
+            <option value="acid">Acid</option>
+            <option value="ultra">Ultraviolet</option>
+            <option value="mono">Mono</option>
+          </select>
+        </div>
+        <div id="style-accents" class="two hidden">
+          <div><div class="row"><label>accent 1</label></div><input type="color" id="accentColor" value="#ff5ad0"></div>
+          <div><div class="row"><label>accent 2</label></div><input type="color" id="accent2" value="#5ecbff"></div>
+        </div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="fillOn" checked> fill</label>
+      <label class="toggle"><input type="checkbox" id="strokeOn"> stroke outline</label>
+      <label class="toggle"><input type="checkbox" id="bgTransparent"> transparent bg</label>
+      <label class="toggle"><input type="checkbox" id="clipGlyph"> effect inside letters</label>
+    </div></div>
+  </div>
+
+  <div class="pane" data-pane="shape">
+    <div class="grp"><h3>Warp <span class="tw">▾</span></h3><div class="gbody"><div id="g-warp"></div></div></div>
+    <div class="grp closed"><h3>Glyph <span class="tw">▾</span></h3><div class="gbody"><div id="g-glyph"></div></div></div>
+    <div class="grp closed"><h3>Position &amp; width <span class="tw">▾</span></h3><div class="gbody"><div id="g-layout"></div></div></div>
+  </div>
+
+  <div class="pane" data-pane="behavior">
+    <div class="grp"><h3>Behaviors <span class="tw">▾</span></h3><div class="gbody"><div id="g-animate"></div></div></div>
+    <div class="grp closed"><h3>Echo / trails <span class="tw">▾</span></h3><div class="gbody"><div id="g-repeat"></div></div></div>
+    <div class="grp closed"><h3>3D — drag canvas to move <span class="tw">▾</span></h3><div class="gbody"><div id="g-three"></div></div></div>
+  </div>
+
+  <div class="pane" data-pane="output">
+  <div class="grp"><h3>Output <span class="tw">▾</span></h3><div class="gbody">
+    <div class="oc-lbl">Preset</div>
+    <select id="format" title="canvas size">
+      <optgroup label="Social / Digital">
+        <option value="1080x1920">Instagram Story / Reel · 1080×1920</option>
+        <option value="1080x1080">Instagram Square · 1080×1080</option>
+        <option value="1080x1350">Instagram Portrait · 1080×1350</option>
+        <option value="1080x566">Instagram Landscape · 1080×566</option>
+        <option value="1200x630">Facebook · 1200×630</option>
+        <option value="1600x900">X / Twitter · 1600×900</option>
+        <option value="1280x720">YouTube Thumb · 1280×720</option>
+        <option value="1000x1500">Pinterest · 1000×1500</option>
+      </optgroup>
+      <optgroup label="Print · 300 dpi">
+        <option value="2175x2850" selected>Studio · 7.25×9.5″ · 2175×2850</option>
+        <option value="2480x3508">A4 · 2480×3508</option>
+        <option value="1748x2480">A5 · 1748×2480</option>
+        <option value="2550x3300">US Letter · 2550×3300</option>
+        <option value="3600x3600">Square 12″ · 3600×3600</option>
+        <option value="5400x7200">Poster 18×24″ · 5400×7200</option>
+      </optgroup>
+      <option value="custom">Custom…</option>
+    </select>
+    <div class="oc-lbl" style="margin-top:12px">Canvas · px</div>
+    <div class="two">
+      <input type="number" id="docW" value="2175" title="width px">
+      <input type="number" id="docH" value="2850" title="height px">
+    </div>
+    <div class="oc-lbl" style="margin-top:12px">Print · inches × dpi</div>
+    <div class="three">
+      <input type="number" id="printW" value="7.25" min="1" step="0.25" title="width in">
+      <input type="number" id="printH" value="9.5" min="1" step="0.25" title="height in">
+      <select id="printDpi" title="dpi"><option value="150">150</option><option value="300" selected>300</option><option value="600">600</option></select>
+    </div>
+    <button class="filebtn" id="applyPrint" style="margin-top:8px">Set print size</button>
+  </div></div>
+  </div>
+
+  </div><!--pScroll-->
+</div>
+
+<div id="stage">
+  <!-- Left icon rail — section switcher (Morflax-style) -->
+  <div id="railL">
+    <button data-tab="font" class="active" title="Font"><svg viewBox="0 0 24 24"><path d="M5 20l5-14 5 14M7.5 14h7"/></svg></button>
+    <button data-tab="engine" title="Engine"><svg viewBox="0 0 24 24"><path d="M12 3l1.7 6.3L20 11l-6.3 1.7L12 19l-1.7-6.3L4 11l6.3-1.7z"/></svg></button>
+    <button data-tab="shape" title="Shape"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="5"/><rect x="10.5" y="10.5" width="9" height="9" rx="1"/></svg></button>
+    <button data-tab="behavior" title="Behavior"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg></button>
+    <button data-tab="output" class="rail-bottom" title="Output"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg></button>
+  </div>
+  <div id="canvasArea">
+    <div id="canvasWrap"><canvas id="view"></canvas></div>
+    <!-- Dimensional (glass 3D) engine — the migrated More-Than-Design app -->
+    <iframe id="dimFrame" title="Dimensional — glass 3D"></iframe>
+  </div>
+  <div id="status">loading…</div>
+  <!-- Bottom timeline bar — export · play · transport -->
+  <div id="tbar">
+    <div class="tbar-grp">
+      <button id="pngBtn">PNG</button>
+      <button id="svgBtn" class="primary">SVG</button>
+    </div>
+    <span class="sep"></span>
+    <button id="playBtn">Animate</button>
+    <div style="flex:1"></div>
+    <div class="tbar-grp">
+      <button id="resetBtn">Reset</button>
+      <button id="randBtn">Randomize</button>
+      <button id="audioBtn" title="Add a sound track to recordings — click to upload audio">♪ Sound</button>
+      <input id="audioFile" type="file" accept="audio/*" hidden>
+      <button id="recBtn" class="rec">Record</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name: 'Second Thought', desc: 'Words that read clear, then go wild, then resolve', version: 'v1', about: 'A series of words that breathe — each one lands legible, blows out into a wild storm of warp and motion, then resolves and hands off to the next. Type your words one per line; the Warp and Behaviors sliders set how wild the peak gets. Built on the Flux type engine.' });</script>
+<script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<script>
+/* ===========================================================================
+   Flux — experimental type instrument
+   Non-linear geometry (flow field, melt, distort, warp, 3D) is applied to real
+   glyph outline points -> one d-string per glyph feeds canvas + SVG so
+   geometry effects stay print-true vectors. Render engines layer color/pattern.
+=========================================================================== */
+const $=s=>document.querySelector(s);
+const canvas=$('#view'), ctx=canvas.getContext('2d');
+const TAU=Math.PI*2, DEG=Math.PI/180;
+let font=null, phase=0, playing=false, lastSVG='';
+
+const CONTROLS={
+  render:[
+    ['chromatic','chromatic offset',0,60,0.5,10],
+    ['heatShift','heat bias',-100,100,1,0],
+    ['pDensity','point density',5,100,1,60],
+    ['pSpread','dispersion',0,320,1,0],
+    ['dotSize','halftone cell',4,44,1,11],
+    ['ringCount','ring count',1,24,1,7],
+    ['ringGap','ring gap %',1,44,1,7],
+    ['linkDist','link distance',5,180,1,46],
+    ['bloom','glow / bloom',2,90,1,28],
+    ['gain','intensity',0.4,3,0.05,1.5],
+    ['breath','breathing',0,1,0.02,0.55],
+    ['fieldDrift','organic drift',0,140,1,34],
+    ['grain','film grain',0,60,1,14],
+    ['cellSize','cell size',10,150,1,64],
+    ['sliceW','slice width',2,240,1,12],
+    ['sliceShift','slice shift',0,440,1,150],
+    ['inflate','inflate letters',0,60,1,0],
+    ['openEdge','open perimeter %',0,100,1,0],
+    ['filmThick','film thickness nm',80,900,5,340],
+  ],
+  warp:[
+    ['flow','flow field',0,220,1,45],
+    ['flowScale','flow scale',0.5,60,0.5,27.5],
+    ['melt','melt / drip',0,420,1,249],
+    ['distort','distort',0,160,0.5,125],
+    ['distortScale','distort scale',0.5,60,0.5,12],
+    ['waveAmp','wave amp',0,300,1,226],
+    ['waveFreq','wave freq',0.1,8,0.1,6.6],
+    ['pinch','pinch ← / bloat →',-100,100,1,100],
+    ['fisheye','fisheye ± (barrel)',-100,100,1,100],
+    ['twist','twist °',-360,360,1,360],
+    ['glitchSlice','glitch slice',0,140,1,128],
+  ],
+  repeat:[
+    ['echo','echo count',0,28,1,0],
+    ['echoX','echo shift x',-140,140,1,0],
+    ['echoY','echo shift y',-140,140,1,0],
+    ['echoRot','echo spin °',-30,30,0.5,0],
+    ['echoScale','echo scale',0.8,1.2,0.005,1],
+    ['echoFade','echo fade',0,1,0.02,0.7],
+  ],
+  glyph:[
+    ['explode','explode',0,800,1,0],
+    ['jitter','jitter',0,260,1,0],
+    ['rotate','rotate ±°',0,180,1,0],
+    ['slant','slant °',-45,45,0.5,0],
+    ['scaleVary','size vary',0,100,1,0],
+  ],
+  three:[
+    ['rotX','rotate X °',-180,180,1,0],
+    ['rotY','rotate Y °',-180,180,1,0],
+    ['rotZ','roll Z °',-180,180,1,0],
+    ['posZ','depth / dolly',-800,1600,1,0],
+    ['perspective','perspective',200,2500,10,900],
+    ['extrude','extrude depth',0,60,1,0],
+  ],
+  animate:[
+    ['spin','spin Y °/t',-200,200,1,0],
+    ['tumble','tumble X °/t',-200,200,1,0],
+    ['roll','roll Z °/t',-200,200,1,0],
+    ['wiggle','wiggle',0,160,1,149],
+    ['float','float / bob',0,260,1,260],
+    ['sway','sway °',0,45,0.5,45],
+    ['pulse','pulse %',0,80,1,80],
+    ['stagger','stagger',0,2,0.02,1.96],
+    ['trail','motion trail',0,0.95,0.01,0.95],
+    ['orbit','orbit radius',0,700,1,412],
+    ['reveal','reveal (typewriter)',0,1,0.01,1],
+  ],
+  type:[
+    ['size','size',20,2400,1,300],
+    ['lineHeight','leading',0.4,2,0.01,0.95],
+    ['tracking','kerning',-160,280,1,0],
+  ],
+  layout:[
+    ['width','width %',20,240,1,100],
+    ['offsetX','offset x',-700,700,1,0],
+    ['offsetY','offset y',-900,900,1,0],
+  ],
+  style:[['strokeW','stroke w',0.2,24,0.1,1.4]],
+};
+const S={}, DEC={};
+const fmtVal=(id,v)=>(+v).toFixed(DEC[id]!=null?DEC[id]:2);   // clean readout, rounded to the control's step
+function buildControls(){
+  for(const grp in CONTROLS){const host=$('#g-'+grp);
+    for(const [id,label,min,max,step,def] of CONTROLS[grp]){S[id]=def;
+      DEC[id]=(String(step).split('.')[1]||'').length;
+      const wrap=document.createElement('div');wrap.className='ctrl';wrap.id='ctrl-'+id;
+      wrap.innerHTML=`<div class="row"><label>${label}</label><input class="val" id="v-${id}" type="text" inputmode="decimal" spellcheck="false"></div>
+        <input type="range" id="c-${id}" min="${min}" max="${max}" step="${step}" value="${def}">`;
+      host.appendChild(wrap);
+      const inp=$('#c-'+id), val=$('#v-'+id);
+      inp.addEventListener('input',()=>{S[id]=parseFloat(inp.value);val.value=fmtVal(id,inp.value);render();});
+      val.addEventListener('change',()=>{let v=parseFloat(val.value);if(isNaN(v))v=S[id];v=Math.max(min,Math.min(max,v));
+        inp.value=v;S[id]=parseFloat(inp.value);val.value=fmtVal(id,S[id]);render();});
+      val.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();val.blur();}});
+      val.value=fmtVal(id,def);}}
+}
+S.renderStyle='solid';
+
+/* deterministic noise */
+function hash(x,y){let n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);}
+const smooth=t=>t*t*(3-2*t),lerp=(a,b,t)=>a+(b-a)*t,clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const hexA=(h,a)=>`rgba(${parseInt(h.substr(1,2),16)},${parseInt(h.substr(3,2),16)},${parseInt(h.substr(5,2),16)},${a})`;
+const hexRGB=h=>[parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];
+const darken=(h,f)=>{const c=hexRGB(h);return `rgb(${Math.round(c[0]*f)},${Math.round(c[1]*f)},${Math.round(c[2]*f)})`;};
+/* Ceiling on SVG elements per export. This is a runaway guard, not a budget — set it low
+   and a dense render quietly ships an .svg that disagrees with the canvas. If it is ever
+   hit, finishSVG says so out loud rather than handing over a short file. */
+const SVGMAX=200000;
+/* rasterize the letterforms into a (optionally blurred) coverage field, sampled by maskAt */
+function buildField(glyphs,C,W,H,fw,blur){
+  const scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  oc.fillStyle='#000';oc.fillRect(0,0,fw,fh);
+  if(blur&&blur>0.3)oc.filter=`blur(${blur}px)`;
+  oc.fillStyle='#fff';oc.save();oc.scale(scale,scale);
+  for(const gl of glyphs){const T=makeT(gl,C);oc.fill(new Path2D(buildD(gl,T,0)));}
+  oc.restore();oc.filter='none';
+  return {data:oc.getImageData(0,0,fw,fh).data,fw,fh,scale};
+}
+const maskAt=(m,X,Y)=>{const x=(X*m.scale)|0,y=(Y*m.scale)|0;if(x<0||y<0||x>=m.fw||y>=m.fh)return 0;return m.data[(y*m.fw+x)*4];};
+function vnoise(x,y,t){x+=t*0.6;const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi;
+  const u=smooth(xf),v=smooth(yf);
+  return lerp(lerp(hash(xi,yi),hash(xi+1,yi),u),lerp(hash(xi,yi+1),hash(xi+1,yi+1),u),v);}
+function grand(i,salt){let n=Math.sin((i+1)*(salt*97.3+12.9))*43758.5453;return n-Math.floor(n);}
+
+const HEAT=[[0,[8,8,32]],[.22,[74,12,120]],[.45,[196,28,54]],[.66,[240,120,20]],[.85,[250,214,44]],[1,[255,255,242]]];
+function heat(t){t=clamp(t,0,1);for(let i=1;i<HEAT.length;i++){if(t<=HEAT[i][0]){const a=HEAT[i-1],b=HEAT[i],k=(t-a[0])/(b[0]-a[0]);
+  return `rgb(${a[1].map((c,j)=>Math.round(lerp(c,b[1][j],k))).join(',')})`;}}return 'rgb(255,255,242)';}
+/* turbo-ish astro colormap (black→indigo→teal→green→yellow→orange→red→hot) for the thermal field */
+const TURBO=[[0,[3,2,14]],[.10,[22,10,60]],[.22,[48,26,140]],[.34,[28,80,168]],[.46,[18,150,150]],
+  [.56,[28,182,92]],[.67,[150,204,44]],[.78,[244,196,32]],[.87,[244,124,26]],[.94,[228,52,28]],[1,[255,168,120]]];
+function turbo(t){t=clamp(t,0,1);for(let i=1;i<TURBO.length;i++){if(t<=TURBO[i][0]){const a=TURBO[i-1],b=TURBO[i],k=(t-a[0])/(b[0]-a[0]);
+  return [Math.round(lerp(a[1][0],b[1][0],k)),Math.round(lerp(a[1][1],b[1][1],k)),Math.round(lerp(a[1][2],b[1][2],k))];}}return [255,168,120];}
+/* Thermal colorways — each a stop list [pos,[r,g,b]]; ramp() interpolates. */
+const PALETTES={
+  turbo:TURBO,
+  inferno:[[0,[4,2,20]],[.18,[46,10,72]],[.38,[122,20,84]],[.58,[196,48,52]],[.76,[238,120,26]],[.9,[250,190,60]],[1,[252,252,196]]],
+  ice:[[0,[2,4,18]],[.32,[16,42,108]],[.56,[20,118,196]],[.78,[92,208,238]],[1,[240,252,255]]],
+  viridis:[[0,[38,6,80]],[.24,[54,60,140]],[.48,[30,130,142]],[.68,[70,182,92]],[.88,[180,210,40]],[1,[250,232,40]]],
+  ember:HEAT.map(s=>[s[0],s[1]]),
+  acid:[[0,[8,10,4]],[.28,[22,82,28]],[.54,[120,200,20]],[.8,[220,240,60]],[1,[250,255,222]]],
+  ultra:[[0,[6,4,22]],[.3,[64,18,140]],[.55,[196,26,150]],[.78,[250,96,120]],[1,[255,224,236]]],
+  mono:[[0,[8,8,10]],[1,[250,250,252]]],
+};
+function ramp(arr,t){t=clamp(t,0,1);for(let i=1;i<arr.length;i++){if(t<=arr[i][0]){const a=arr[i-1],b=arr[i],k=(t-a[0])/(b[0]-a[0]);
+  return [Math.round(lerp(a[1][0],b[1][0],k)),Math.round(lerp(a[1][1],b[1][1],k)),Math.round(lerp(a[1][2],b[1][2],k))];}}
+  const L=arr[arr.length-1][1];return [L[0],L[1],L[2]];}
+/* Custom colorway: the four colour pickers become the ramp, cold -> hot.
+   background = the field at rest, fill = the hottest cores (the word itself). */
+const customPal=()=>{const c=id=>hexRGB($('#'+id).value);
+  return [[0,c('bgColor')],[.42,c('accentColor')],[.72,c('accent2')],[1,c('fillColor')]];};
+function heatPal(){const pe=$('#heatPalette'),k=pe?pe.value:'turbo';
+  return k==='custom'?customPal():(PALETTES[k]||TURBO);}
+const luma=c=>(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255;
+
+function layout(W,H){
+  const lines=(typeof ST!=='undefined'&&ST.on&&ST.current!==''?ST.current:$('#text').value).split('\n');
+  const upm=font.unitsPerEm,scale=S.size/upm,wScale=S.width/100;
+  const lineData=lines.map(line=>{let w=0;const items=[];
+    for(const ch of line){const g=font.charToGlyph(ch);const adv=g.advanceWidth*scale*wScale;items.push({g,ch,adv});w+=adv+S.tracking;}
+    if(items.length)w-=S.tracking;return {items,w};});
+  const lh=S.size*S.lineHeight,blockH=lh*(lines.length-1);
+  const cx=W/2+S.offsetX,cyMid=H/2+S.offsetY;const glyphs=[];let gi=0;
+  lineData.forEach((ld,li)=>{let x=cx-ld.w/2;const baseY=cyMid-blockH/2+li*lh+S.size*0.34;
+    for(const it of ld.items){if(it.ch.trim())glyphs.push({...it,x,baseY,index:gi});x+=it.adv+S.tracking;gi++;}});
+  if(S.orbit>0){const n=glyphs.length;glyphs.forEach((g,i)=>{const ang=-Math.PI/2+(i/n)*TAU+phase*0.3;
+    g.x=cx+Math.cos(ang)*S.orbit-g.adv/2;g.baseY=cyMid+Math.sin(ang)*S.orbit+S.size*0.34;});}
+  return {glyphs,cx,cyMid};
+}
+
+/* per-glyph point transform: geometry warps + 3D + procedural (Cavalry-style) behaviors */
+function makeT(gl,C){
+  const sp=phase-gl.index*S.stagger;                     // stagger: motion cascades letter-to-letter
+  let rot=(grand(gl.index,3.1)*2-1)*S.rotate*DEG + S.sway*DEG*Math.sin(sp*1.5);
+  let sv=(1+(grand(gl.index,7.7)*2-1)*S.scaleVary/100)*(1+(S.pulse/100)*Math.sin(sp*3));
+  const jx=(grand(gl.index,1.3)*2-1)*S.jitter+(vnoise(gl.index*2.1,sp*0.5,0)*2-1)*S.wiggle;
+  const jy=(grand(gl.index,9.2)*2-1)*S.jitter+(vnoise(gl.index*2.1+9,sp*0.5,0)*2-1)*S.wiggle;
+  const fl=S.float*Math.sin(sp*2);                        // float / bob
+  const shear=Math.tan(S.slant*DEG);
+  const gcx=gl.x+gl.adv/2,gcy=gl.baseY-S.size*0.3;
+  let ex=0,ey=0;
+  if(S.explode){let dx=gcx-C.cx,dy=gcy-C.cyMid;const d=Math.hypot(dx,dy)||1;ex=dx/d*S.explode;ey=dy/d*S.explode;}
+  const cR=Math.cos(rot),sR=Math.sin(rot);
+  const rX=(S.rotX+S.tumble*phase)*DEG,rY=(S.rotY+S.spin*phase)*DEG,rZ=(S.rotZ+S.roll*phase)*DEG;
+  const cX=Math.cos(rX),sX=Math.sin(rX),cY=Math.cos(rY),sY=Math.sin(rY),cZ=Math.cos(rZ),sZ=Math.sin(rZ);
+  const persp=S.perspective;
+  return function(px,py,z0){z0=z0||0;
+    let dx=px-gcx,dy=py-gcy;dx+=dy*shear;dx*=sv;dy*=sv;
+    let X=gcx+dx*cR-dy*sR+ex+jx,Y=gcy+dx*sR+dy*cR+ey+jy+fl;
+    let rx=X-C.cx,ry=Y-C.cyMid;const dist=Math.hypot(rx,ry),t=Math.max(0,1-dist/C.R);
+    if(S.pinch){const s=1+(S.pinch/100)*t;rx*=s;ry*=s;}
+    if(S.fisheye){const rn=dist/C.R,f=1+(S.fisheye/100)*(rn*rn-0.34);rx*=f;ry*=f;} // barrel(+)/pincushion(−) lens
+    if(S.twist){const a=S.twist*DEG*t,c=Math.cos(a),si=Math.sin(a);const nx=rx*c-ry*si;ry=rx*si+ry*c;rx=nx;}
+    X=C.cx+rx;Y=C.cyMid+ry;
+    if(S.flow){const fs=S.flowScale/1000,ang=vnoise(X*fs,Y*fs,phase)*TAU*2;X+=Math.cos(ang)*S.flow;Y+=Math.sin(ang)*S.flow;}
+    if(S.melt){const col=vnoise(X*0.018,7.3,phase);Y+=col*col*S.melt;}
+    if(S.waveAmp)Y+=S.waveAmp*Math.sin(X*S.waveFreq*0.01+phase);
+    if(S.distort){const ns=S.distortScale/1000;
+      X+=(vnoise(X*ns,Y*ns,phase)*2-1)*S.distort;Y+=(vnoise(X*ns+37.2,Y*ns+11.7,phase)*2-1)*S.distort;}
+    if(S.glitchSlice){const band=Math.floor(Y/16);X+=(vnoise(band*0.5,phase*2,0)*2-1)*S.glitchSlice;}
+    // 3D: roll(Z) -> yaw(Y) -> pitch(X) -> perspective project, with depth/dolly
+    let px3=X-C.cx,py3=Y-C.cyMid,pz3=S.posZ+z0;
+    if(rZ){const nx=px3*cZ-py3*sZ;py3=px3*sZ+py3*cZ;px3=nx;}
+    const x1=px3*cY+pz3*sY,z1=-px3*sY+pz3*cY;
+    const y1=py3*cX-z1*sX,z2=py3*sX+z1*cX;
+    const f=persp/Math.max(60,persp+z2);
+    return [C.cx+x1*f,C.cyMid+y1*f];};
+}
+const nonlinear=()=>S.flow||S.melt||S.distort||S.waveAmp||S.pinch||S.fisheye||S.twist||S.glitchSlice||
+  S.rotX||S.rotY||S.rotZ||S.posZ||S.spin||S.tumble||S.roll||S.extrude>0;
+
+/* bezier eval */
+function qpt(p0,p1,p2,t){const u=1-t;return[u*u*p0[0]+2*u*t*p1[0]+t*t*p2[0],u*u*p0[1]+2*u*t*p1[1]+t*t*p2[1]];}
+function cpt(p0,p1,p2,p3,t){const u=1-t;return[
+  u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],
+  u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]];}
+
+/* build d-string from a raw-point map function (flattens curves when warped) */
+function buildDp(gl,pt){
+  const path=gl.g.getPath(gl.x,gl.baseY,S.size),r=n=>Math.round(n*100)/100,flat=nonlinear(),N=8;
+  let d='',cur=[0,0];const P=(x,y)=>{const[a,b]=pt(x,y);return r(a)+' '+r(b);};
+  for(const c of path.commands){
+    if(c.type==='M'){cur=[c.x,c.y];d+='M'+P(c.x,c.y);}
+    else if(c.type==='L'){d+='L'+P(c.x,c.y);cur=[c.x,c.y];}
+    else if(c.type==='Q'){if(flat){for(let i=1;i<=N;i++){const p=qpt(cur,[c.x1,c.y1],[c.x,c.y],i/N);d+='L'+P(p[0],p[1]);}}
+      else d+='Q'+P(c.x1,c.y1)+' '+P(c.x,c.y);cur=[c.x,c.y];}
+    else if(c.type==='C'){if(flat){for(let i=1;i<=N;i++){const p=cpt(cur,[c.x1,c.y1],[c.x2,c.y2],[c.x,c.y],i/N);d+='L'+P(p[0],p[1]);}}
+      else d+='C'+P(c.x1,c.y1)+' '+P(c.x2,c.y2)+' '+P(c.x,c.y);cur=[c.x,c.y];}
+    else if(c.type==='Z')d+='Z';}
+  return d;
+}
+const wsx=(gl,x)=>gl.x+(x-gl.x)*(S.width/100);
+function buildD(gl,T,z){return buildDp(gl,(x,y)=>T(wsx(gl,x),y,z));}
+
+function sampleGlyph(gl,T){
+  const path=gl.g.getPath(gl.x,gl.baseY,S.size);
+  const spacing=lerp(20,3,S.pDensity/100),pts=[];let cur=[0,0];
+  const emit=(rx,ry)=>{const[a,b]=T(wsx(gl,rx),ry,0);pts.push([a,b]);};
+  const seg=(a,b)=>{const len=Math.hypot(b[0]-a[0],b[1]-a[1]);const n=Math.max(1,Math.round(len/spacing));
+    for(let i=1;i<=n;i++)emit(lerp(a[0],b[0],i/n),lerp(a[1],b[1],i/n));};
+  for(const c of path.commands){
+    if(c.type==='M'){cur=[c.x,c.y];emit(c.x,c.y);}
+    else if(c.type==='L'){seg(cur,[c.x,c.y]);cur=[c.x,c.y];}
+    else if(c.type==='Q'){let p=cur;for(let i=1;i<=10;i++){const q=qpt(cur,[c.x1,c.y1],[c.x,c.y],i/10);seg(p,q);p=q;}cur=[c.x,c.y];}
+    else if(c.type==='C'){let p=cur;for(let i=1;i<=12;i++){const q=cpt(cur,[c.x1,c.y1],[c.x2,c.y2],[c.x,c.y],i/12);seg(p,q);p=q;}cur=[c.x,c.y];}}
+  return pts;
+}
+
+let curW=0,curH=0,curDpr=0,dispScale=1;
+function ensureCanvas(){
+  const W=Math.max(50,parseInt($('#docW').value)||1400),H=Math.max(50,parseInt($('#docH').value)||1980);
+  const dpr=(W>1500||H>1500)?1:2;
+  if(W!==curW||H!==curH||dpr!==curDpr){canvas.width=W*dpr;canvas.height=H*dpr;curW=W;curH=H;curDpr=dpr;}
+  canvas._w=W;canvas._h=H;
+  const wrap=$('#canvasWrap').getBoundingClientRect();
+  const s=Math.min((wrap.width-44)/W,(wrap.height-44)/H,1);dispScale=s;
+  canvas.style.width=(W*s)+'px';canvas.style.height=(H*s)+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);return {W,H};
+}
+
+let rasterMode=false;
+let curClipDs=null;   // glyph outline d-strings when "effect inside letters" is on (for SVG export)
+function render(){
+  if(!font)return;
+  if(S.renderStyle==='dimensional')return;   // 3D engine is the dimensional.html iframe
+  rasterMode=false;
+  const {W,H}=ensureCanvas();
+  const transparent=$('#bgTransparent').checked,bgc=$('#bgColor').value;
+  if(!transparent&&S.trail>0&&playing){ctx.fillStyle=hexA(bgc,1-S.trail);ctx.fillRect(0,0,W,H);} // motion trail: fade prev frame
+  else{ctx.clearRect(0,0,W,H);if(!transparent){ctx.fillStyle=bgc;ctx.fillRect(0,0,W,H);}}
+  let {glyphs,cx,cyMid}=layout(W,H);
+  if(S.reveal<1)glyphs=glyphs.slice(0,Math.ceil(glyphs.length*S.reveal)); // typewriter reveal
+  const C={cx,cyMid,R:Math.hypot(W,H)/2};
+  const fill=$('#fillColor').value,fillOn=$('#fillOn').checked,strokeOn=$('#strokeOn').checked;
+  const acc=[$('#accentColor').value,$('#accent2').value];
+  const style=S.renderStyle,svg=[];
+  // "Effect inside letters" — clip the whole-canvas effect to the glyph shapes; the
+  // solid background color shows everywhere outside the letterforms.
+  const clipToLetters=!!($('#clipGlyph')&&$('#clipGlyph').checked);
+  function drawEngine(){
+  if(style==='bubbles'){drawBubbles(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · bubbles · ${W}×${H}<span class="ok"> · WebGL thin-film · PNG</span>`;return;}
+  if(style==='heatmap'){drawThermalField(glyphs,C,W,H);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · thermal field · ${W}×${H}<span class="ok"> · living · PNG/video</span>`;return;}
+  if(style==='halftone'){drawHalftone(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='glow'){drawGlowHalftone(glyphs,C,W,H,fill);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · luminous halftone · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='slice'){drawSlice(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='topo'){drawTopo(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · topographic · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='streams'){drawStreams(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='pixelsort'){drawPixelSort(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='linescreen'){drawLineScreen(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='lowpoly'){drawLowPoly(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='iso'){drawIso(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='weave'){drawWeave(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='ascii'){drawAscii(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='metaballs'){drawMetaballs(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · metaballs · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='moire'){drawMoire(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · moiré · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='isoline'){drawIsoline(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='fieldfill'){drawFieldFill(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='ripple'){drawRipple(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='truchet'){drawTruchet(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='hatch'){drawHatch(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='polygon'){drawPolygon(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='stitch'){drawStitch(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='crosshatch'){drawCrosshatch(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='dendrite'){drawDendrite(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='blueprint'){drawBlueprint(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='ferro'){drawFerro(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='shatter'){drawShatter(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='wood'){drawWood(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · woodgrain · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='marble'){drawMarble(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · marble · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='relief'){drawRelief(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · relief · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='wireframe'){drawWireframe(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+
+  for(const gl of glyphs){
+    const T=makeT(gl,C);
+    if(style==='particles'){drawParticles(gl,T,fill,svg,acc);continue;}
+    if(style==='network'){drawNetwork(gl,T,fill,svg);continue;}
+    if(style==='outline'){drawOutline(gl,T,C,fill,svg);continue;}
+    if(style==='beziers'){drawBeziers(gl,T,fill,svg);continue;}
+    const d=buildD(gl,T,0);
+    // echo / trails (behind, any style)
+    if(S.echo>0){const n=Math.min(28,Math.round(S.echo));
+      for(let e=n;e>=1;e--){const op=Math.max(0,1-(e/n)*S.echoFade);const sc=Math.pow(S.echoScale,e);
+        const tf=`translate(${cx} ${cyMid}) rotate(${S.echoRot*e}) scale(${sc}) translate(${-cx} ${-cyMid}) translate(${S.echoX*e} ${S.echoY*e})`;
+        ctx.save();ctx.globalAlpha=op;ctx.translate(cx,cyMid);ctx.rotate(S.echoRot*DEG*e);ctx.scale(sc,sc);
+        ctx.translate(-cx,-cyMid);ctx.translate(S.echoX*e,S.echoY*e);ctx.fillStyle=fill;ctx.fill(new Path2D(d));ctx.restore();
+        svg.push(`<path d="${d}" fill="${fill}" opacity="${op.toFixed(3)}" transform="${tf}"/>`);}}
+    // extrusion (solid/heatmap/chromatic)
+    if(S.extrude>0){const steps=Math.min(30,Math.round(S.extrude)),stepZ=3.2;
+      for(let i=steps;i>=1;i--){const dd=buildD(gl,T,i*stepZ);const sh=Math.round(90-70*(i/steps));
+        ctx.fillStyle=`rgb(${sh},${sh},${sh+6})`;ctx.fill(new Path2D(dd));svg.push(`<path d="${dd}" fill="rgb(${sh},${sh},${sh+6})"/>`);}}
+    // front face
+    const p2=new Path2D(d);
+    if(style==='chromatic'){drawChromatic(d,svg);}
+    else{let col=fill;
+      if(style==='heatmap'){const [hx,hy]=T(gl.x+gl.adv/2,gl.baseY-S.size*0.3,0);
+        const disp=Math.hypot(hx-(gl.x+gl.adv/2),hy-(gl.baseY-S.size*0.3))/(S.size*0.9+1);
+        const pos=1-Math.hypot(hx-cx,hy-cyMid)/C.R;col=heat(clamp(disp*0.95+pos*0.5+S.heatShift/100,0,1));}
+      if(fillOn){ctx.fillStyle=col;ctx.fill(p2);svg.push(`<path d="${d}" fill="${col}"/>`);}
+      if(strokeOn){ctx.strokeStyle=col;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.stroke(p2);
+        if(!fillOn)svg.push(`<path d="${d}" fill="none" stroke="${col}" stroke-width="${S.strokeW}"/>`);}}
+  }
+  finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);
+  }
+  curClipDs = clipToLetters ? glyphs.map(gl=>buildD(gl,makeT(gl,C),0)) : null;
+  if(clipToLetters){
+    const cp=new Path2D();
+    for(const d of curClipDs){cp.addPath(new Path2D(d));}
+    ctx.save(); ctx.clip(cp); drawEngine(); ctx.restore();
+  } else drawEngine();
+}
+
+function bgIsDark(){if($('#bgTransparent').checked)return true;const h=$('#bgColor').value;
+  return (0.299*parseInt(h.substr(1,2),16)+0.587*parseInt(h.substr(3,2),16)+0.114*parseInt(h.substr(5,2),16))<128;}
+function drawChromatic(d,svg){const o=S.chromatic,p=new Path2D(d),dark=bgIsDark();
+  // RGB channel split, each channel further torn into horizontal bands -> signal glitch
+  const combos=dark?[['#ff2b2b',-1],['#2bff2b',0],['#2b2bff',1]]:[['#00b7c4',-1],['#e5006d',1],['#ffd400',0]];
+  const blend=dark?'screen':'multiply',bands=9,bh=(canvas._h||1980)/bands;
+  ctx.save();ctx.globalCompositeOperation=blend;
+  for(const [col,dir] of combos){ctx.fillStyle=col;
+    for(let b=0;b<bands;b++){const shift=(vnoise(b*1.7+dir*11,phase*2,0)*2-1)*o*1.4;
+      ctx.save();ctx.beginPath();ctx.rect(0,b*bh,canvas._w||1400,bh);ctx.clip();
+      ctx.translate(dir*o+shift,0);ctx.fill(p);ctx.restore();}}
+  ctx.restore();
+  for(const [col,dir] of combos)svg.push(`<path d="${d}" transform="translate(${dir*o} 0)" fill="${col}" style="mix-blend-mode:${blend}"/>`);}
+
+function drawParticles(gl,T,fill,svg,acc){
+  const cols=[fill,acc[0],acc[1]];   // dispersion spreads across all three chosen colors
+  const pts=sampleGlyph(gl,T),spread=S.pSpread,base=Math.max(0.7,S.size/140*1.6);
+  for(let k=0;k<pts.length;k++){let [x,y]=pts[k];
+    if(spread){const a=grand(gl.index*977+k,2.2)*TAU,mag=grand(gl.index*977+k,5.5),drift=vnoise(x*0.01+k*0.3,y*0.01,phase);
+      x+=Math.cos(a)*mag*spread*drift;y+=Math.sin(a)*mag*spread*drift-spread*drift*0.2;}
+    const rad=base*(0.6+grand(gl.index*13+k,4.4)*0.9);
+    // dispersion tints particles across all three chosen colors (fill leads, accents fill in)
+    const r=grand(gl.index*977+k,8.1);
+    const col=spread?(r<0.5?fill:r<0.75?acc[0]:acc[1]):fill;
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,rad,0,TAU);ctx.fill();
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${col}"/>`);}
+}
+
+function drawNetwork(gl,T,fill,svg){
+  const pts=sampleGlyph(gl,T),spread=S.pSpread;
+  const P=pts.map((p,k)=>{let x=p[0],y=p[1];
+    if(spread){const a=grand(gl.index*7+k,2.2)*TAU,m=grand(gl.index*7+k,5.5)*vnoise(x*0.01,y*0.01,phase);
+      x+=Math.cos(a)*m*spread;y+=Math.sin(a)*m*spread;}return [x,y];});
+  // A dense constellation runs to tens of thousands of links. The cap is a runaway guard,
+  // not a budget — set it low and the .svg quietly disagrees with what's on the canvas.
+  const NETMAX=SVGMAX;
+  const link=S.linkDist,l2=link*link;ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.globalAlpha=0.5;ctx.beginPath();
+  let lines=0;
+  for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const dx=P[i][0]-P[j][0],dy=P[i][1]-P[j][1];
+    if(dx*dx+dy*dy<l2){ctx.moveTo(P[i][0],P[i][1]);ctx.lineTo(P[j][0],P[j][1]);
+      if(lines++<NETMAX)svg.push(`<line x1="${P[i][0].toFixed(1)}" y1="${P[i][1].toFixed(1)}" x2="${P[j][0].toFixed(1)}" y2="${P[j][1].toFixed(1)}" stroke="${fill}" stroke-width="${S.strokeW}" opacity="0.5"/>`);}}
+  ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle=fill;
+  const nr=Math.max(1,S.strokeW*1.6);
+  for(const p of P){ctx.beginPath();ctx.arc(p[0],p[1],nr,0,TAU);ctx.fill();
+    if(svg.length<NETMAX+8000)svg.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${nr.toFixed(2)}" fill="${fill}"/>`);}
+}
+
+function drawOutline(gl,T,C,fill,svg){
+  const rings=Math.max(1,Math.round(S.ringCount)),gap=S.ringGap;
+  const gcx=gl.x+gl.adv/2,gcy=gl.baseY-S.size*0.3;
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';
+  for(let i=0;i<rings;i++){const sc=1+i*gap/100;
+    const d=buildDp(gl,(x,y)=>{const rx=gcx+(x-gcx)*sc,ry=gcy+(y-gcy)*sc;return T(wsx(gl,rx),ry,0);});
+    ctx.stroke(new Path2D(d));svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}
+}
+
+/* coverage-based halftone: dot size grows with local ink density (Ben-Day / newsprint) */
+function drawHalftone(glyphs,C,W,H,fill,svg){
+  const step=Math.max(4,Math.round(S.dotSize));
+  const m=buildField(glyphs,C,W,H,340,step*0.28*(340/W)*8);
+  ctx.fillStyle=fill;
+  for(let y=step/2;y<H;y+=step)for(let x=step/2;x<W;x+=step){
+    const v=maskAt(m,x,y)/255;if(v<0.06)continue;
+    const rad=step*0.56*Math.sqrt(v);
+    ctx.beginPath();ctx.arc(x,y,rad,0,TAU);ctx.fill();
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${fill}"/>`);}
+}
+/* luminous halftone — glowing dots + chromatic fringe on black (reference #1) */
+function drawGlowHalftone(glyphs,C,W,H,fill){
+  const step=Math.max(4,Math.round(S.dotSize));
+  const m=buildField(glyphs,C,W,H,340,Math.max(1,S.bloom*0.5));
+  // background already painted by render(); glow adds light on top (best on a dark bg)
+  ctx.save();ctx.globalCompositeOperation='lighter';const o=S.chromatic;
+  for(let y=step/2;y<H;y+=step)for(let x=step/2;x<W;x+=step){
+    const v=maskAt(m,x,y)/255;if(v<0.04)continue;
+    const rad=step*0.6*Math.sqrt(v)*S.gain;
+    const g=ctx.createRadialGradient(x,y,0,x,y,rad*2.2);
+    g.addColorStop(0,`rgba(255,255,255,${Math.min(1,v*1.3)})`);
+    g.addColorStop(0.4,hexA(fill,0.5*v));g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,rad*2.2,0,TAU);ctx.fill();
+    if(o){ctx.fillStyle=`rgba(255,40,40,${0.28*v})`;ctx.beginPath();ctx.arc(x-o,y,rad,0,TAU);ctx.fill();
+      ctx.fillStyle=`rgba(40,90,255,${0.28*v})`;ctx.beginPath();ctx.arc(x+o,y,rad,0,TAU);ctx.fill();}}
+  ctx.restore();if(S.grain)addGrain(W,H,S.grain);
+}
+function drawSlice(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,440,0);
+  const cw=Math.max(2,S.sliceW),rh=cw;
+  for(let c=0,x=0;x<W;c++,x+=cw){
+    const shift=(vnoise(c*0.35,phase*1.5,0)*2-1)*S.sliceShift;
+    const sc=0.55+vnoise(c*0.35+50,phase*1.5,0)*1.1;
+    for(let y=0;y<H;y+=rh){const sy=(y-H/2-shift)/sc+H/2;
+      if(maskAt(m,x+cw/2,sy)>60){ctx.fillStyle=fill;ctx.fillRect(x,y,cw+0.6,rh+0.6);
+        if(svg.length<SVGMAX)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(cw+0.6).toFixed(1)}" height="${(rh+0.6).toFixed(1)}" fill="${fill}"/>`);}}}
+}
+
+/* ---- thermal field: letterforms seed a blurred, breathing, glowing organism ----
+   Intensity is biased LOW (so black/indigo dominates and only dense stroke areas
+   go hot) and points scatter so the word disperses into a soft constellation. */
+/* Field resolution. The maths below is resolution-independent (radii and blur all
+   scale), so this only trades detail for speed: cheap while animating, full detail
+   when still, and true output resolution on export — a 300dpi print needs real
+   pixels, not a 640px field upscaled 6x. */
+let hiRes=false;
+const thermalRes=W=>Math.min(W,hiRes?4096:playing?640:1400);
+function drawThermalField(glyphs,C,W,H){
+  const fw=thermalRes(W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const A=document.createElement('canvas');A.width=fw;A.height=fh;const a=A.getContext('2d');
+  a.fillStyle='#000';a.fillRect(0,0,fw,fh);a.globalCompositeOperation='lighter';
+  const br=S.breath,t=phase,spread=S.pSpread;
+  // legible base: the word itself as a soft warm mass so it reads through the field
+  a.save();a.scale(scale,scale);a.fillStyle='rgba(52,52,52,1)';
+  for(const gl of glyphs){const T=makeT(gl,C);a.fill(new Path2D(buildD(gl,T,0)));}
+  a.restore();
+  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
+    for(let k=0;k<pts.length;k+=2){
+      let x=pts[k][0],y=pts[k][1];
+      // scatter: word -> constellation (biased so most stay near the stroke)
+      if(spread){const sa=grand(gl.index*13+k,4.7)*TAU,sm=Math.pow(grand(gl.index*13+k,2.9),1.6)*spread;
+        x+=Math.cos(sa)*sm;y+=Math.sin(sa)*sm;}
+      // living drift
+      const ang=vnoise(x*0.005,y*0.005,t)*TAU*2;
+      x=(x+Math.cos(ang)*S.fieldDrift)*scale;y=(y+Math.sin(ang)*S.fieldDrift)*scale;
+      const seed=grand(gl.index*61+k,3.3),pulse=0.5+0.5*Math.sin(t*1.4+seed*TAU);
+      const hotCore=grand(gl.index*31+k,6.6)>0.87;                   // rare bright emitters
+      let inten=hotCore?(0.72+0.28*grand(k,4.2)):Math.pow(grand(k,1.1),2.0); // mostly dim
+      inten*=(1-br+br*pulse);
+      const rad=(7+Math.pow(grand(k,2.2),2)*72)*scale*(0.8+0.4*pulse*br)*(hotCore?1.25:1);
+      const c=Math.round(24+185*inten);
+      const g=a.createRadialGradient(x,y,0,x,y,rad);
+      g.addColorStop(0,`rgba(${c},${c},${c},1)`);g.addColorStop(1,'rgba(0,0,0,0)');
+      a.fillStyle=g;a.beginPath();a.arc(x,y,rad,0,TAU);a.fill();}}
+  const B=document.createElement('canvas');B.width=fw;B.height=fh;const b=B.getContext('2d');
+  b.filter=`blur(${Math.max(1.2,S.bloom*scale*0.7)}px)`;b.drawImage(A,0,0);b.filter='none';
+  const img=b.getImageData(0,0,fw,fh),px=img.data,bias=S.heatShift/100;
+  const PAL=heatPal();
+  for(let i=0;i<px.length;i+=4){const col=ramp(PAL,clamp(px[i]/255*S.gain+bias,0,1));
+    px[i]=col[0];px[i+1]=col[1];px[i+2]=col[2];px[i+3]=255;}
+  b.putImageData(img,0,0);
+  // the cold end of the ramp is the field at rest — base fill and vignette follow it
+  const cold=ramp(PAL,0),coldCSS=`rgb(${cold[0]},${cold[1]},${cold[2]})`;
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.fillStyle=coldCSS;ctx.fillRect(0,0,W,H);ctx.drawImage(B,0,0,W,H);
+  // additive glow would blow a light background out to white — fade it as the bg brightens
+  const glow=0.32*(1-luma(cold));
+  if(glow>0.01){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=glow;ctx.filter=`blur(${S.bloom*0.8}px)`;
+    ctx.drawImage(B,0,0,W,H);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;}
+  const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.16,W/2,H/2,Math.max(W,H)*0.72);
+  vg.addColorStop(0,`rgba(${cold[0]},${cold[1]},${cold[2]},0)`);vg.addColorStop(1,`rgba(${cold[0]},${cold[1]},${cold[2]},0.62)`);
+  ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+  if(S.grain)addGrain(W,H,S.grain);
+}
+function addGrain(W,H,amt){
+  const gw=300,gh=Math.max(1,Math.round(gw*H/W));
+  const g=document.createElement('canvas');g.width=gw;g.height=gh;const gx=g.getContext('2d');
+  const id=gx.createImageData(gw,gh),d=id.data;
+  for(let i=0;i<d.length;i+=4){const v=Math.random()*255;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;}
+  gx.putImageData(id,0,0);
+  ctx.save();ctx.globalCompositeOperation='overlay';ctx.globalAlpha=amt/100*0.45;ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(g,0,0,W,H);ctx.restore();ctx.globalAlpha=1;
+}
+function drawPixelSort(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,440,0),cw=Math.max(2,S.sliceW);
+  const rect=(x,y,w,h,a)=>{ctx.fillStyle=hexA(fill,a);ctx.fillRect(x,y,w,h);
+    if(a>0.06&&svg.length<SVGMAX)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}" fill-opacity="${a.toFixed(2)}"/>`);};
+  for(let x=0;x<W;x+=cw){let inRun=false,top=0;
+    for(let y=0;y<=H;y+=cw){const ink=y<H&&maskAt(m,x+cw/2,y)>60;
+      if(ink&&!inRun){inRun=true;top=y;}
+      else if(!ink&&inRun){inRun=false;const len=y-top,smear=(0.4+vnoise(x*0.05,top*0.02,phase))*S.sliceShift;
+        for(let yy=top;yy<Math.min(H,top+len+smear);yy+=cw){const a=yy<top+len?1:Math.max(0,1-(yy-top-len)/(smear||1));rect(x,yy,cw+0.6,cw+0.6,a);}}}}
+}
+/* line screen — engraved horizontal lines, weight follows ink density */
+function drawLineScreen(glyphs,C,W,H,fill,svg){
+  const gap=Math.max(3,S.dotSize),m=buildField(glyphs,C,W,H,420,gap*0.25);
+  for(let y=gap/2;y<H;y+=gap)for(let x=0;x<W;x+=gap*0.8){
+    const v=Math.min(1,maskAt(m,x+gap*0.4,y)/255*S.gain),th=v*gap*0.92;if(th<0.4)continue;
+    ctx.fillStyle=fill;ctx.fillRect(x,y-th/2,gap*0.8+0.6,th);
+    if(svg.length<SVGMAX)svg.push(`<rect x="${x.toFixed(1)}" y="${(y-th/2).toFixed(1)}" width="${(gap*0.8+0.6).toFixed(1)}" height="${th.toFixed(1)}" fill="${fill}"/>`);}
+}
+function drawLowPoly(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,360,S.cellSize*0.15),s=Math.max(16,S.cellSize);
+  const B3=hexRGB(bg),F3=hexRGB(fill),pt=(r,c)=>[c*s-(r%2)*s/2+(grand(r*97+c,1.1)*2-1)*s*0.3,r*s+(grand(r*97+c,2.2)*2-1)*s*0.3];
+  for(let r=-1;r<H/s+1;r++)for(let c=-1;c<W/s+2;c++){const a=pt(r,c),b=pt(r,c+1),d=pt(r+1,c),e=pt(r+1,c+1);
+    for(const tri of [[a,b,d],[b,e,d]]){const cx=(tri[0][0]+tri[1][0]+tri[2][0])/3,cy=(tri[0][1]+tri[1][1]+tri[2][1])/3;
+      const v=maskAt(m,cx,cy)/255,sh=0.82+0.32*grand(r*31+c,3.3);
+      const col=`rgb(${lerp(B3[0],F3[0],v)*sh|0},${lerp(B3[1],F3[1],v)*sh|0},${lerp(B3[2],F3[2],v)*sh|0})`;
+      ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(tri[0][0],tri[0][1]);ctx.lineTo(tri[1][0],tri[1][1]);ctx.lineTo(tri[2][0],tri[2][1]);ctx.closePath();ctx.fill();
+      if(svg.length<SVGMAX)svg.push(`<polygon points="${tri.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${col}"/>`);}}
+}
+/* isometric relief — blocks built from the letterforms */
+function drawIso(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,300,0),s=Math.max(14,S.cellSize),w=s*0.5,hh=w*0.5,ch=s*Math.max(0.2,S.gain);
+  const top=fill,left=darken(fill,0.55),right=darken(fill,0.78),cells=[];
+  for(let gy=-2;gy<H/hh+4;gy++)for(let gx=-2;gx<W/w+4;gx++){const sx=W*0.5+(gx-gy)*w,sy=H*0.28+(gx+gy)*hh;
+    if(sx<-s||sx>W+s||sy<-s||sy>H+s)continue;if(maskAt(m,sx,sy)>60)cells.push([gx+gy,sx,sy]);}
+  cells.sort((a,b)=>a[0]-b[0]);
+  const poly=(pts,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.closePath();ctx.fill();
+    if(svg.length<SVGMAX)svg.push(`<polygon points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${col}"/>`);};
+  for(const [,sx,sy] of cells){const A=[sx,sy-ch],B=[sx+w,sy+hh-ch],D=[sx,sy+2*hh-ch],E=[sx-w,sy+hh-ch],B2=[sx+w,sy+hh],D2=[sx,sy+2*hh],E2=[sx-w,sy+hh];
+    poly([E,D,D2,E2],left);poly([B,D,D2,B2],right);poly([A,B,D,E],top);}
+}
+/* weave — over-under strips */
+function drawWeave(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,320,0),s=Math.max(8,S.cellSize),g=Math.max(0,S.strokeW);ctx.fillStyle=fill;
+  const rect=(x,y,w,h)=>{ctx.fillRect(x,y,w,h);if(svg.length<SVGMAX)svg.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"/>`);};
+  for(let gy=0;gy*s<H;gy++)for(let gx=0;gx*s<W;gx++){const x=gx*s,y=gy*s;if(maskAt(m,x+s/2,y+s/2)<60)continue;
+    if((gx+gy)%2===0)rect(x,y+s*0.22,s,s*0.56-g);else rect(x+s*0.22,y,s*0.56-g,s);}
+}
+/* metaballs — merging gooey blobs (thresholded field) */
+function drawMetaballs(glyphs,C,W,H,fill,bg){
+  const fw=Math.min(320,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const A=document.createElement('canvas');A.width=fw;A.height=fh;const a=A.getContext('2d');
+  a.fillStyle='#000';a.fillRect(0,0,fw,fh);a.globalCompositeOperation='lighter';
+  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
+    for(let k=0;k<pts.length;k+=2){const x=pts[k][0]*scale,y=pts[k][1]*scale,rad=(16+S.bloom)*scale;
+      const g=a.createRadialGradient(x,y,0,x,y,rad);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(1,'rgba(0,0,0,0)');
+      a.fillStyle=g;a.beginPath();a.arc(x,y,rad,0,TAU);a.fill();}}
+  const data=a.getImageData(0,0,fw,fh).data,thr=255*clamp(1.5-S.gain,0.15,1.2);
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data,F=hexRGB(fill),Bk=hexRGB(bg);
+  for(let i=0;i<data.length;i+=4){const t=clamp((data[i]-thr)/12+0.5,0,1);
+    D[i]=lerp(Bk[0],F[0],t);D[i+1]=lerp(Bk[1],F[1],t);D[i+2]=lerp(Bk[2],F[2],t);D[i+3]=255;}
+  oc.putImageData(img,0,0);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H);
+}
+function drawMoire(glyphs,C,W,H,fill,bg){
+  const sp=Math.max(3,S.dotSize),diff=S.chromatic*0.012;
+  const lines=ang=>{ctx.save();ctx.translate(W/2,H/2);ctx.rotate(ang);ctx.strokeStyle=fill;ctx.lineWidth=sp*0.42;
+    const R=Math.hypot(W,H);ctx.beginPath();for(let d=-R;d<R;d+=sp){ctx.moveTo(d,-R);ctx.lineTo(d,R);}ctx.stroke();ctx.restore();};
+  lines(0);
+  ctx.save();const clip=new Path2D();for(const gl of glyphs){const T=makeT(gl,C);clip.addPath(new Path2D(buildD(gl,T,0)));}
+  ctx.clip(clip);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);lines(diff);ctx.restore();
+}
+/* glyph mosaic — your characters mapped to ink density, lightest first. Pick a single
+   character and there's no ramp left to climb, so density rides opacity instead. */
+const ASCII_RAMP='.:-=+*#%@';
+const xmlEsc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function drawAscii(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,320,S.dotSize*0.15),s=Math.max(8,S.dotSize);
+  const el=$('#mosaicChars'),set=[...((el&&el.value)||ASCII_RAMP)],one=set.length===1;
+  ctx.font=`${s}px "SF Mono",ui-monospace,monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let y=s/2;y<H;y+=s)for(let x=s/2;x<W;x+=s){const v=maskAt(m,x,y)/255;if(v<0.04)continue;
+    const ch=one?set[0]:set[Math.min(set.length-1,Math.floor(v*set.length))];if(ch===' ')continue;
+    // steep on purpose: solid ink should hit full weight and only the edge falls away,
+    // otherwise a one-glyph mosaic reads as a grey haze rather than a word
+    const al=one?Math.min(1,0.24+v*1.7):1;
+    ctx.fillStyle=hexA(fill,al);ctx.fillText(ch,x,y);
+    if(svg.length<SVGMAX)svg.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="monospace" font-size="${s}" fill="${fill}" fill-opacity="${al.toFixed(2)}" text-anchor="middle" dominant-baseline="middle">${xmlEsc(ch)}</text>`);}
+}
+function _chaikin(pl,it){let p=pl,cl=pl.closed;for(let k=0;k<it;k++){const n=p.length,o=[];
+  if(cl){for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}}
+  else{o.push(p[0]);for(let i=0;i<n-1;i++){const a=p[i],b=p[i+1];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}o.push(p[n-1]);}
+  o.closed=cl;p=o;}return p;}
+function _strokePl(pl){ctx.beginPath();ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);if(pl.closed)ctx.closePath();ctx.stroke();}
+function _mstep(W){return Math.max(4,W/240);}
+
+/* topographic lines — contour rings rippling out from the letterforms */
+function drawTopo(glyphs,C,W,H,fill,bg){
+  const fw=Math.min(360,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,fw,Math.max(3,S.bloom));
+  const levels=Math.max(3,Math.round(S.ringCount)),lv=v=>Math.floor(v/255*levels);
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data,W3=hexRGB(fill),B3=hexRGB(bg);
+  for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){const i=y*fw+x,p=i*4,l=lv(m.data[i*4]);
+    const edge=(x+1<fw&&lv(m.data[(i+1)*4])!==l)||(y+1<fh&&lv(m.data[(i+fw)*4])!==l);
+    const c=edge?W3:B3;D[p]=c[0];D[p+1]=c[1];D[p+2]=c[2];D[p+3]=255;}
+  oc.putImageData(img,0,0);
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H);
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.4;ctx.filter='blur(2px)';ctx.drawImage(o,0,0,W,H);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;
+}
+/* flow streamlines — lines combed through a flow field, densest over the word */
+function drawStreams(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,300,4),step=lerp(24,7,S.pDensity/100);
+  ctx.lineCap='round';
+  for(let y=step*0.5;y<H;y+=step)for(let x=step*0.5;x<W;x+=step){
+    const cov=maskAt(m,x,y)/255;
+    if(cov<0.12)continue;                                    // only over the word -> legible
+    let px=x+(grand(x,1.1)*2-1)*step*0.5,py=y+(grand(y,2.2)*2-1)*step*0.5;
+    const pts=[[px,py]];
+    for(let s=0;s<6;s++){const a=vnoise(px*0.004,py*0.004,phase)*TAU*2;px+=Math.cos(a)*step*0.6;py+=Math.sin(a)*step*0.6;pts.push([px,py]);}
+    const alpha=(0.4+0.6*cov).toFixed(2);ctx.strokeStyle=hexA(fill,+alpha);ctx.lineWidth=S.strokeW;
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();
+    if(svg.length<7000)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-opacity="${alpha}"/>`);}
+}
+function _msGrid(sample,W,H,step){
+  const gx=Math.ceil(W/step)+1, gy=Math.ceil(H/step)+1, v=new Float32Array(gx*gy);
+  for(let j=0;j<gy;j++){const y=j*step;for(let i=0;i<gx;i++)v[j*gx+i]=sample(i*step,y);}
+  return {v,gx,gy,step};
+}
+function _msLevel(g,level){
+  const {v,gx,gy,step}=g, at=(i,j)=>v[j*gx+i];
+  const lp=(x0,y0,a,x1,y1,b)=>{const t=(level-a)/(b-a);return [x0+(x1-x0)*t,y0+(y1-y0)*t];};
+  const pts=new Map(), adj=new Map();
+  const put=(id,p)=>{if(!pts.has(id))pts.set(id,p);if(!adj.has(id))adj.set(id,[]);};
+  const seg=(e0,p0,e1,p1)=>{put(e0,p0);put(e1,p1);adj.get(e0).push(e1);adj.get(e1).push(e0);};
+  const hE=(i,j)=>'h'+i+'_'+j, vE=(i,j)=>'v'+i+'_'+j;
+  for(let j=0;j<gy-1;j++)for(let i=0;i<gx-1;i++){
+    const x0=i*step,y0=j*step,x1=x0+step,y1=y0+step;
+    const va=at(i,j),vb=at(i+1,j),vc=at(i+1,j+1),vd=at(i,j+1);
+    let c=0;if(va>=level)c|=1;if(vb>=level)c|=2;if(vc>=level)c|=4;if(vd>=level)c|=8;
+    if(c===0||c===15)continue;
+    const TT=()=>[hE(i,j),lp(x0,y0,va,x1,y0,vb)], RR=()=>[vE(i+1,j),lp(x1,y0,vb,x1,y1,vc)],
+          BB=()=>[hE(i,j+1),lp(x0,y1,vd,x1,y1,vc)], LL=()=>[vE(i,j),lp(x0,y0,va,x0,y1,vd)];
+    const cc=[];
+    switch(c){
+      case 1:case 14:cc.push([LL(),TT()]);break; case 2:case 13:cc.push([TT(),RR()]);break;
+      case 3:case 12:cc.push([LL(),RR()]);break; case 4:case 11:cc.push([RR(),BB()]);break;
+      case 6:case 9:cc.push([TT(),BB()]);break;  case 7:case 8:cc.push([LL(),BB()]);break;
+      case 5:{const m=(va+vb+vc+vd)*.25;if(m>=level){cc.push([LL(),TT()]);cc.push([RR(),BB()]);}else{cc.push([TT(),RR()]);cc.push([LL(),BB()]);}break;}
+      case 10:{const m=(va+vb+vc+vd)*.25;if(m>=level){cc.push([TT(),RR()]);cc.push([LL(),BB()]);}else{cc.push([LL(),TT()]);cc.push([RR(),BB()]);}break;}
+    }
+    for(const [a,b] of cc) seg(a[0],a[1],b[0],b[1]);
+  }
+  const lines=[], rm=(a,b)=>{const la=adj.get(a);let k=la.indexOf(b);if(k>=0)la.splice(k,1);const lb=adj.get(b);k=lb.indexOf(a);if(k>=0)lb.splice(k,1);};
+  const keys=[...adj.keys()], ns=()=>{for(const k of keys)if(adj.get(k).length===1)return k;for(const k of keys)if(adj.get(k).length>0)return k;return null;};
+  let s;while((s=ns())!==null){const line=[pts.get(s)];let cur=s;
+    while(true){const nb=adj.get(cur);if(!nb||!nb.length)break;const nx=nb[0];rm(cur,nx);line.push(pts.get(nx));cur=nx;if(cur===s){line.closed=true;break;}}
+    if(line.length>1)lines.push(line);}
+  return lines;
+}
+function _chaikin(pl,it){let p=pl,cl=pl.closed;for(let k=0;k<it;k++){const n=p.length,o=[];
+  if(cl){for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}}
+  else{o.push(p[0]);for(let i=0;i<n-1;i++){const a=p[i],b=p[i+1];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}o.push(p[n-1]);}
+  o.closed=cl;p=o;}return p;}
+const _pd=pl=>{let d='M'+pl[0][0].toFixed(1)+' '+pl[0][1].toFixed(1);for(let i=1;i<pl.length;i++)d+='L'+pl[i][0].toFixed(1)+' '+pl[i][1].toFixed(1);if(pl.closed)d+='Z';return d;};
+function _strokePl(pl){ctx.beginPath();ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);if(pl.closed)ctx.closePath();ctx.stroke();}
+function _mstep(W){return Math.max(4,W/240);}
+
+/* Isolines — vector topographic contour rings around the letters */
+function drawIsoline(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2.5,S.bloom*0.42));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const N=Math.max(2,Math.round(S.ringCount));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let k=0;k<N;k++){const level=14+k*(232/N);
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<13000)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}}
+}
+function _msGrid(sample,W,H,step){
+  const gx=Math.ceil(W/step)+1, gy=Math.ceil(H/step)+1, v=new Float32Array(gx*gy);
+  for(let j=0;j<gy;j++){const y=j*step;for(let i=0;i<gx;i++)v[j*gx+i]=sample(i*step,y);}
+  return {v,gx,gy,step};
+}
+function _msLevel(g,level){
+  const {v,gx,gy,step}=g, at=(i,j)=>v[j*gx+i];
+  const lp=(x0,y0,a,x1,y1,b)=>{const t=(level-a)/(b-a);return [x0+(x1-x0)*t,y0+(y1-y0)*t];};
+  const pts=new Map(), adj=new Map();
+  const put=(id,p)=>{if(!pts.has(id))pts.set(id,p);if(!adj.has(id))adj.set(id,[]);};
+  const seg=(e0,p0,e1,p1)=>{put(e0,p0);put(e1,p1);adj.get(e0).push(e1);adj.get(e1).push(e0);};
+  const hE=(i,j)=>'h'+i+'_'+j, vE=(i,j)=>'v'+i+'_'+j;
+  for(let j=0;j<gy-1;j++)for(let i=0;i<gx-1;i++){
+    const x0=i*step,y0=j*step,x1=x0+step,y1=y0+step;
+    const va=at(i,j),vb=at(i+1,j),vc=at(i+1,j+1),vd=at(i,j+1);
+    let c=0;if(va>=level)c|=1;if(vb>=level)c|=2;if(vc>=level)c|=4;if(vd>=level)c|=8;
+    if(c===0||c===15)continue;
+    const TT=()=>[hE(i,j),lp(x0,y0,va,x1,y0,vb)], RR=()=>[vE(i+1,j),lp(x1,y0,vb,x1,y1,vc)],
+          BB=()=>[hE(i,j+1),lp(x0,y1,vd,x1,y1,vc)], LL=()=>[vE(i,j),lp(x0,y0,va,x0,y1,vd)];
+    const cc=[];
+    switch(c){
+      case 1:case 14:cc.push([LL(),TT()]);break; case 2:case 13:cc.push([TT(),RR()]);break;
+      case 3:case 12:cc.push([LL(),RR()]);break; case 4:case 11:cc.push([RR(),BB()]);break;
+      case 6:case 9:cc.push([TT(),BB()]);break;  case 7:case 8:cc.push([LL(),BB()]);break;
+      case 5:{const m=(va+vb+vc+vd)*.25;if(m>=level){cc.push([LL(),TT()]);cc.push([RR(),BB()]);}else{cc.push([TT(),RR()]);cc.push([LL(),BB()]);}break;}
+      case 10:{const m=(va+vb+vc+vd)*.25;if(m>=level){cc.push([TT(),RR()]);cc.push([LL(),BB()]);}else{cc.push([LL(),TT()]);cc.push([RR(),BB()]);}break;}
+    }
+    for(const [a,b] of cc) seg(a[0],a[1],b[0],b[1]);
+  }
+  const lines=[], rm=(a,b)=>{const la=adj.get(a);let k=la.indexOf(b);if(k>=0)la.splice(k,1);const lb=adj.get(b);k=lb.indexOf(a);if(k>=0)lb.splice(k,1);};
+  const keys=[...adj.keys()], ns=()=>{for(const k of keys)if(adj.get(k).length===1)return k;for(const k of keys)if(adj.get(k).length>0)return k;return null;};
+  let s;while((s=ns())!==null){const line=[pts.get(s)];let cur=s;
+    while(true){const nb=adj.get(cur);if(!nb||!nb.length)break;const nx=nb[0];rm(cur,nx);line.push(pts.get(nx));cur=nx;if(cur===s){line.closed=true;break;}}
+    if(line.length>1)lines.push(line);}
+  return lines;
+}
+function _mstep(W){return Math.max(4,W/240);}
+
+/* Isolines — vector topographic contour rings around the letters */
+function drawIsoline(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2.5,S.bloom*0.42));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const N=Math.max(2,Math.round(S.ringCount));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let k=0;k<N;k++){const level=14+k*(232/N);
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<13000)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}}
+}
+function _strokePl(pl){ctx.beginPath();ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);if(pl.closed)ctx.closePath();ctx.stroke();}
+function _mstep(W){return Math.max(4,W/240);}
+
+/* Isolines — vector topographic contour rings around the letters */
+function drawIsoline(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2.5,S.bloom*0.42));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const N=Math.max(2,Math.round(S.ringCount));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let k=0;k<N;k++){const level=14+k*(232/N);
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<13000)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}}
+}
+/* flow streamlines — lines combed through a flow field, densest over the word */
+function drawStreams(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,300,4),step=lerp(24,7,S.pDensity/100);
+  ctx.lineCap='round';
+  for(let y=step*0.5;y<H;y+=step)for(let x=step*0.5;x<W;x+=step){
+    const cov=maskAt(m,x,y)/255;
+    if(cov<0.12)continue;                                    // only over the word -> legible
+    let px=x+(grand(x,1.1)*2-1)*step*0.5,py=y+(grand(y,2.2)*2-1)*step*0.5;
+    const pts=[[px,py]];
+    for(let s=0;s<6;s++){const a=vnoise(px*0.004,py*0.004,phase)*TAU*2;px+=Math.cos(a)*step*0.6;py+=Math.sin(a)*step*0.6;pts.push([px,py]);}
+    const alpha=(0.4+0.6*cov).toFixed(2);ctx.strokeStyle=hexA(fill,+alpha);ctx.lineWidth=S.strokeW;
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();
+    if(svg.length<7000)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-opacity="${alpha}"/>`);}
+}
+/* topographic lines — contour rings rippling out from the letterforms */
+function drawTopo(glyphs,C,W,H,fill,bg){
+  const fw=Math.min(360,W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,fw,Math.max(3,S.bloom));
+  const levels=Math.max(3,Math.round(S.ringCount)),lv=v=>Math.floor(v/255*levels);
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data,W3=hexRGB(fill),B3=hexRGB(bg);
+  for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){const i=y*fw+x,p=i*4,l=lv(m.data[i*4]);
+    const edge=(x+1<fw&&lv(m.data[(i+1)*4])!==l)||(y+1<fh&&lv(m.data[(i+fw)*4])!==l);
+    const c=edge?W3:B3;D[p]=c[0];D[p+1]=c[1];D[p+2]=c[2];D[p+3]=255;}
+  oc.putImageData(img,0,0);
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(o,0,0,W,H);
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.4;ctx.filter='blur(2px)';ctx.drawImage(o,0,0,W,H);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;
+}
+/* Isolines — vector topographic contour rings around the letters */
+function drawIsoline(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2.5,S.bloom*0.42));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const N=Math.max(2,Math.round(S.ringCount));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let k=0;k<N;k++){const level=14+k*(232/N);
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<SVGMAX)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}}
+}
+/* Metaball fill — letters merged into filled gooey masses, carved by inner rings */
+function drawFieldFill(glyphs,C,W,H,fill,bg,svg){
+  // Blur here is applied in FIELD space (<=460px), not canvas space. bloom*1.5 put a 45px
+  // blur on a 460px field at the default, which flattened the peak below the 120 contour
+  // level — every isoline vanished and the engine rendered nothing. Keep it in the range
+  // that actually produces closed coasts.
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),clamp(2+S.bloom*0.2,3,12));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const coast=_msLevel(g,120).map(p=>_chaikin(p,2)).filter(p=>p.closed);
+  ctx.fillStyle=fill;ctx.beginPath();
+  for(const pl of coast){ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);ctx.closePath();}
+  ctx.fill('evenodd');
+  if(coast.length)svg.push(`<path d="${coast.map(_pd).join('')}" fill="${fill}" fill-rule="evenodd"/>`);
+  const N=Math.max(0,Math.round(S.ringCount));
+  ctx.strokeStyle=bg;ctx.lineWidth=Math.max(1,S.strokeW);ctx.lineJoin='round';
+  for(let k=1;k<=N;k++){const level=120+k*((238-120)/(N+1));
+    for(let pl of _msLevel(g,level)){pl=_chaikin(pl,2);_strokePl(pl);
+      if(svg.length<SVGMAX)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${bg}" stroke-width="${Math.max(1,S.strokeW)}"/>`);}}
+}
+/* ---------- raster engines below share this: cheap while animating, full detail when
+   still, true output resolution on export (a 300dpi plate needs real pixels) ---------- */
+const rasterRes=W=>Math.min(W,hiRes?4096:playing?520:1300);
+/* resample a polyline to evenly spaced points so stitches land at equal arc length */
+function _resample(pl,step){
+  const out=[pl[0]];let acc=0;
+  for(let i=1;i<pl.length;i++){
+    let ax=pl[i-1][0],ay=pl[i-1][1];const bx=pl[i][0],by=pl[i][1];
+    let seg=Math.hypot(bx-ax,by-ay);
+    while(acc+seg>=step){
+      const t=(step-acc)/seg;ax=lerp(ax,bx,t);ay=lerp(ay,by,t);
+      out.push([ax,ay]);seg=Math.hypot(bx-ax,by-ay);acc=0;}
+    acc+=seg;}
+  return out;
+}
+/* ---- stitch: the word embroidered — running stitches along the contours, knotted ----
+   Thread is drawn as a slightly darker core with a lighter sheen offset along its length,
+   which is what reads as floss rather than a plain line. */
+function drawStitch(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),clamp(2+S.bloom*0.12,2,9));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const rows=Math.max(1,Math.round(S.ringCount));
+  const len=Math.max(6,S.cellSize*0.42), gap=len*0.42, wob=S.fieldDrift*0.03;
+  const th=Math.max(0.6,S.strokeW), sheen=hexA(fill,0.55);
+  ctx.lineCap='round';ctx.lineJoin='round';
+  let k=0;
+  for(let r=0;r<rows;r++){
+    const level=118+r*(120/(rows+0.5));            // nested contours = concentric stitch rows
+    for(let pl of _msLevel(g,level)){
+      if(pl.length<3)continue;
+      pl=_chaikin(pl,2);
+      const pts=_resample(pl,len+gap);
+      for(let i=0;i+1<pts.length;i++){
+        const a=pts[i],b=pts[i+1];
+        const dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy)||1;
+        // shorten to leave the gap, and wobble so no two stitches sit perfectly true
+        const ux=dx/d,uy=dy/d,nx=-uy,ny=ux;
+        const j=(grand(k,2.3)*2-1)*wob, j2=(grand(k,5.1)*2-1)*wob;
+        const x0=a[0]+nx*j, y0=a[1]+ny*j;
+        const x1=a[0]+ux*len+nx*j2, y1=a[1]+uy*len+ny*j2;
+        ctx.strokeStyle=fill;ctx.lineWidth=th;
+        ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+        // sheen: a thinner highlight riding one edge of the floss
+        ctx.strokeStyle=sheen;ctx.lineWidth=Math.max(0.3,th*0.34);
+        ctx.beginPath();ctx.moveTo(x0+nx*th*0.22,y0+ny*th*0.22);ctx.lineTo(x1+nx*th*0.22,y1+ny*th*0.22);ctx.stroke();
+        // knot where the needle entered
+        ctx.fillStyle=fill;ctx.beginPath();ctx.arc(x0,y0,th*0.62,0,TAU);ctx.fill();
+        if(svg.length<SVGMAX){
+          svg.push(`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${fill}" stroke-width="${th.toFixed(2)}" stroke-linecap="round"/>`);
+          svg.push(`<circle cx="${x0.toFixed(1)}" cy="${y0.toFixed(1)}" r="${(th*0.62).toFixed(2)}" fill="${fill}"/>`);}
+        k++;
+      }
+    }
+  }
+}
+/* ---- marble: ink suspended in water — the letterform dragged through a warped field ----
+   Domain warping (offset the sample point by noise, twice) is what turns a blurred blob
+   into something that looks combed and swirled rather than merely smeared. */
+function drawMarble(glyphs,C,W,H,fill,bg){
+  const fw=rasterRes(W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,Math.min(520,W),clamp(3+S.bloom*0.25,3,16));
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data;
+  const F=hexRGB(fill),B=hexRGB(bg);
+  const sw=Math.max(0,S.fieldDrift)*1.6, ns=0.0016, sep=S.chromatic*0.4;
+  for(let y=0;y<fh;y++){
+    const wy=y/scale;
+    for(let x=0;x<fw;x++){
+      const wx=x/scale;
+      // two-stage domain warp
+      const q1=vnoise(wx*ns,wy*ns,phase*0.15)*2-1, q2=vnoise(wx*ns+5.2,wy*ns+1.3,phase*0.15)*2-1;
+      const r1=vnoise((wx+sw*q1)*ns*2.1+9.1,(wy+sw*q2)*ns*2.1+7.7,phase*0.1)*2-1;
+      const r2=vnoise((wx+sw*q1)*ns*2.1+3.4,(wy+sw*q2)*ns*2.1+2.8,phase*0.1)*2-1;
+      const ox=sw*(q1*0.7+r1*0.5), oy=sw*(q2*0.7+r2*0.5);
+      // sample the ink through the warp; a small channel offset gives the veining colour
+      const s0=maskAt(m,wx+ox,wy+oy)/255;
+      const sR=sep?maskAt(m,wx+ox+sep,wy+oy)/255:s0;
+      const sB=sep?maskAt(m,wx+ox-sep,wy+oy)/255:s0;
+      const g=clamp((s0-0.5)*S.gain+0.5,0,1);
+      const gR=clamp((sR-0.5)*S.gain+0.5,0,1), gB=clamp((sB-0.5)*S.gain+0.5,0,1);
+      const p=(y*fw+x)*4;
+      D[p]  =lerp(B[0],F[0],gR)|0;
+      D[p+1]=lerp(B[1],F[1],g )|0;
+      D[p+2]=lerp(B[2],F[2],gB)|0;
+      D[p+3]=255;
+    }
+  }
+  oc.putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.drawImage(o,0,0,W,H);
+  if(S.grain)addGrain(W,H,S.grain);
+}
+/* ---- relief: the word as shaded topography — height from ink, lit from upper left ---- */
+function drawRelief(glyphs,C,W,H,fill,bg){
+  const fw=rasterRes(W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,Math.min(560,W),clamp(2+S.bloom*0.3,2,20));
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data;
+  const F=hexRGB(fill),B=hexRGB(bg);
+  const amp=S.gain*90, e=2.2/scale;                    // gradient step in canvas units
+  // light from upper-left, normalised
+  const lx=-0.55,ly=-0.62,lz=0.56;
+  const bands=Math.max(0,Math.round(S.ringCount));
+  for(let y=0;y<fh;y++){
+    const wy=y/scale;
+    for(let x=0;x<fw;x++){
+      const wx=x/scale;
+      const h=maskAt(m,wx,wy)/255;
+      const hx=(maskAt(m,wx+e,wy)-maskAt(m,wx-e,wy))/255*amp;
+      const hy=(maskAt(m,wx,wy+e)-maskAt(m,wx,wy-e))/255*amp;
+      // surface normal of the height field
+      let nx=-hx,ny=-hy,nz=1;const nl=Math.hypot(nx,ny,nz)||1;nx/=nl;ny/=nl;nz/=nl;
+      let d=nx*lx+ny*ly+nz*lz;d=clamp(d,0,1);
+      let sh=0.16+0.94*d*d;                            // squared falloff reads more like stone
+      if(bands>1)sh=Math.round(sh*bands)/bands;        // optional terracing
+      const t=clamp(h*1.15,0,1)*sh;
+      const p=(y*fw+x)*4;
+      D[p]  =lerp(B[0],F[0],t)|0;
+      D[p+1]=lerp(B[1],F[1],t)|0;
+      D[p+2]=lerp(B[2],F[2],t)|0;
+      D[p+3]=255;
+    }
+  }
+  oc.putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.drawImage(o,0,0,W,H);
+  if(S.grain)addGrain(W,H,S.grain);
+}
+/* ---- crosshatch engraving: tone built from layered parallel rules ----
+   Each layer adds a set of rules at a new angle and a higher ink threshold, so darker
+   regions accumulate more passes. That accumulation IS the tone — the way an etching works. */
+function drawCrosshatch(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(500,W),clamp(1+S.bloom*0.05,1,5));
+  const layers=Math.max(1,Math.round(S.ringCount));
+  const gap=Math.max(2.5,S.dotSize*0.62), th=Math.max(0.3,S.strokeW*0.6);
+  const diag=Math.hypot(W,H), step=Math.max(1.6,gap*0.34);
+  ctx.strokeStyle=fill;ctx.lineWidth=th;ctx.lineCap='butt';
+  for(let L=0;L<layers;L++){
+    const ang=0.42+S.chromatic*DEG*2+L*(Math.PI/layers);
+    const ca=Math.cos(ang),sa=Math.sin(ang);
+    const thr=255*clamp(0.10+0.74*(L/Math.max(1,layers))/Math.max(0.35,S.gain),0.03,0.97);
+    for(let d=-diag/2;d<diag/2;d+=gap){
+      let sx=0,sy=0,on=false;
+      for(let t=-diag/2;t<=diag/2;t+=step){
+        const x=W/2+ca*t-sa*d, y=H/2+sa*t+ca*d;
+        const ink=(x>=0&&y>=0&&x<W&&y<H)&&maskAt(m,x,y)>thr;
+        if(ink&&!on){sx=x;sy=y;on=true;}
+        else if(!ink&&on){
+          on=false;
+          if(Math.hypot(x-sx,y-sy)>step*0.9){
+            ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(x,y);ctx.stroke();
+            if(svg.length<SVGMAX)svg.push(`<line x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${fill}" stroke-width="${th.toFixed(2)}"/>`);}}
+      }
+    }
+  }
+}
+/* ---- dendrite: branching growth seeded on the letterform ----
+   Branches die when they wander off the ink, so the colony grows into the shape of the
+   word rather than merely being clipped by it. */
+function drawDendrite(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),3);
+  const th=Math.max(0.4,S.strokeW);
+  // Seed from INSIDE the ink on a jittered grid, not from the contour. Contour seeds fire
+  // half their branches straight out of the glyph, where they die on the first step — which
+  // leaves fragments instead of a colony.
+  const seeds=[],gap=Math.max(7,44-S.pDensity*0.34);
+  for(let y=gap/2,r=0;y<H;y+=gap*0.9,r++)for(let x=gap/2;x<W;x+=gap){
+    const jx=x+(r%2)*gap/2+(grand(r*151+x,2.4)*2-1)*gap*0.3,
+          jy=y+(grand(r*151+x,6.2)*2-1)*gap*0.3;
+    if(maskAt(m,jx,jy)>110)seeds.push([jx,jy]);}
+  const seg=Math.max(3,S.linkDist*0.16), maxD=Math.max(1,Math.round(S.ringCount*1.6));
+  ctx.strokeStyle=fill;ctx.lineCap='round';
+  let n=0;
+  const grow=(x,y,a,depth,w)=>{
+    if(depth>maxD||n>26000)return;
+    const wob=(vnoise(x*0.01,y*0.01,phase*0.3)*2-1)*S.fieldDrift*0.02;
+    const na=a+wob+(grand(n,3.7)*2-1)*0.5;
+    const nx=x+Math.cos(na)*seg, ny=y+Math.sin(na)*seg;
+    if(nx<0||ny<0||nx>=W||ny>=H)return;
+    if(maskAt(m,nx,ny)<34)return;                       // off the ink: the branch dies
+    ctx.lineWidth=Math.max(0.25,w);
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(nx,ny);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${fill}" stroke-width="${Math.max(0.25,w).toFixed(2)}" stroke-linecap="round"/>`);
+    n++;
+    grow(nx,ny,na,depth+1,w*0.86);
+    if(grand(n,5.9)>0.62)grow(nx,ny,na+(grand(n,1.7)>0.5?0.7:-0.7),depth+1,w*0.66);  // fork
+  };
+  seeds.forEach((p,i)=>grow(p[0],p[1],grand(i,4.4)*TAU,0,th));
+}
+/* ---- ferrofluid: spikes standing off the contour along the field normal ---- */
+function drawFerro(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),clamp(2+S.bloom*0.14,2,10));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  const len=Math.max(6,S.cellSize*0.9), th=Math.max(0.5,S.strokeW);
+  ctx.fillStyle=fill;ctx.strokeStyle=fill;ctx.lineJoin='round';
+  let k=0;
+  for(let pl of _msLevel(g,120)){
+    if(pl.length<4)continue;
+    pl=_chaikin(pl,2);
+    const pts=_resample(pl,Math.max(5,S.cellSize*0.42));
+    for(const p of pts){
+      const e=3;
+      let nx=maskAt(m,p[0]+e,p[1])-maskAt(m,p[0]-e,p[1]);
+      let ny=maskAt(m,p[0],p[1]+e)-maskAt(m,p[0],p[1]-e);
+      const nl=Math.hypot(nx,ny)||1;nx=-nx/nl;ny=-ny/nl;          // outward
+      const L=len*(0.35+0.9*grand(k,2.9))*(0.6+0.5*vnoise(p[0]*0.01,p[1]*0.01,phase));
+      const bx=-ny,by=nx,hw=th*(0.7+0.5*grand(k,6.1));
+      const tipx=p[0]+nx*L, tipy=p[1]+ny*L;
+      ctx.beginPath();
+      ctx.moveTo(p[0]+bx*hw,p[1]+by*hw);ctx.lineTo(tipx,tipy);ctx.lineTo(p[0]-bx*hw,p[1]-by*hw);ctx.closePath();ctx.fill();
+      if(svg.length<SVGMAX)svg.push(`<polygon points="${(p[0]+bx*hw).toFixed(1)},${(p[1]+by*hw).toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)} ${(p[0]-bx*hw).toFixed(1)},${(p[1]-by*hw).toFixed(1)}" fill="${fill}"/>`);
+      k++;
+    }
+  }
+  // solid core so the spikes read as growing off a body
+  const coast=_msLevel(g,120).map(p=>_chaikin(p,2)).filter(p=>p.closed);
+  ctx.beginPath();
+  for(const pl of coast){ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);ctx.closePath();}
+  ctx.fill('evenodd');
+  if(coast.length)svg.push(`<path d="${coast.map(_pd).join('')}" fill="${fill}" fill-rule="evenodd"/>`);
+}
+/* ---- woodgrain: annual rings warped around a pith, cut to the letterform ---- */
+function drawWood(glyphs,C,W,H,fill,bg){
+  const fw=rasterRes(W),scale=fw/W,fh=Math.max(1,Math.round(H*scale));
+  const m=buildField(glyphs,C,W,H,Math.min(520,W),1.5);
+  const o=document.createElement('canvas');o.width=fw;o.height=fh;const oc=o.getContext('2d');
+  const img=oc.createImageData(fw,fh),D=img.data;
+  const F=hexRGB(fill),B=hexRGB(bg);
+  const px=W*0.5,py=H*1.35, rings=Math.max(1,S.ringCount)*0.9, warp=S.fieldDrift*1.1;
+  for(let y=0;y<fh;y++){
+    const wy=y/scale;
+    for(let x=0;x<fw;x++){
+      const wx=x/scale;
+      const cov=maskAt(m,wx,wy)/255;
+      let t=0;
+      if(cov>0.02){
+        const w1=(vnoise(wx*0.0022,wy*0.010,0)*2-1)*warp;
+        const w2=(vnoise(wx*0.011,wy*0.004,0)*2-1)*warp*0.35;
+        const d=Math.hypot((wx-px)*0.42+w1, (wy-py)+w2);
+        const r=Math.sin(d*0.021*rings)*0.5+0.5;
+        // sharpen the late-wood band; grain is thin dark lines, not a soft sine
+        t=Math.pow(r,Math.max(1,4.2/Math.max(0.3,S.gain)));
+        t=clamp(t*cov*1.15,0,1);
+      }
+      const p=(y*fw+x)*4;
+      D[p]=lerp(B[0],F[0],t)|0;D[p+1]=lerp(B[1],F[1],t)|0;D[p+2]=lerp(B[2],F[2],t)|0;D[p+3]=255;
+    }
+  }
+  oc.putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.drawImage(o,0,0,W,H);
+  if(S.grain)addGrain(W,H,S.grain);
+}
+/* ---- shatter: the word fractured into shards, each thrown off the centre ---- */
+function drawShatter(glyphs,C,W,H,fill,bg,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),0);
+  let x0=W,y0=H,x1=0,y1=0;
+  for(const gl of glyphs){const T=makeT(gl,C);for(const p of sampleGlyph(gl,T)){
+    if(p[0]<x0)x0=p[0];if(p[1]<y0)y0=p[1];if(p[0]>x1)x1=p[0];if(p[1]>y1)y1=p[1];}}
+  if(x1<=x0)return;
+  const n=Math.max(8,Math.round(S.cellSize*1.4)),P=[];
+  for(let i=0;i<n;i++)P.push([lerp(x0-20,x1+20,grand(i,1.9)),lerp(y0-20,y1+20,grand(i,7.3))]);
+  const cx=(x0+x1)/2, cy=(y0+y1)/2, blast=S.pSpread*0.55, spin=S.fieldDrift*0.004;
+  const tris=delaunay(P);
+  ctx.lineJoin='round';
+  tris.forEach((t,i)=>{
+    const a=P[t[0]],b=P[t[1]],c=P[t[2]];
+    const mx=(a[0]+b[0]+c[0])/3,my=(a[1]+b[1]+c[1])/3;
+    if(maskAt(m,mx,my)<60)return;
+    const dx=mx-cx,dy=my-cy,d=Math.hypot(dx,dy)||1;
+    const push=blast*(0.25+grand(i,3.1))*(0.4+d/Math.max(1,Math.hypot(x1-x0,y1-y0)));
+    const ox=dx/d*push, oy=dy/d*push;
+    const rot=(grand(i,8.8)*2-1)*spin*push;
+    const cr=Math.cos(rot),sr=Math.sin(rot);
+    const put=p=>{const px2=p[0]-mx,py2=p[1]-my;
+      return [mx+px2*cr-py2*sr+ox, my+px2*sr+py2*cr+oy];};
+    const A=put(a),Bp=put(b),Cp=put(c);
+    const sh=0.55+0.45*grand(i,4.6);
+    const col=`rgb(${Math.round(hexRGB(fill)[0]*sh)},${Math.round(hexRGB(fill)[1]*sh)},${Math.round(hexRGB(fill)[2]*sh)})`;
+    ctx.fillStyle=col;ctx.strokeStyle=bg;ctx.lineWidth=Math.max(0.4,S.strokeW*0.5);
+    ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(Bp[0],Bp[1]);ctx.lineTo(Cp[0],Cp[1]);ctx.closePath();
+    ctx.fill();if(S.strokeW>0.3)ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<polygon points="${A[0].toFixed(1)},${A[1].toFixed(1)} ${Bp[0].toFixed(1)},${Bp[1].toFixed(1)} ${Cp[0].toFixed(1)},${Cp[1].toFixed(1)}" fill="${col}" stroke="${bg}" stroke-width="${Math.max(0.4,S.strokeW*0.5).toFixed(2)}"/>`);
+  });
+}
+/* ---- blueprint: the word as a drafting sheet — outline, ticks, dimension rules ---- */
+function drawBlueprint(glyphs,C,W,H,fill,svg){
+  const th=Math.max(0.4,S.strokeW*0.7), faint=hexA(fill,0.26), mid=hexA(fill,0.55);
+  const line=(x1,y1,x2,y2,col,w)=>{ctx.strokeStyle=col;ctx.lineWidth=w;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${fill}" stroke-opacity="${col===faint?0.26:col===mid?0.55:1}" stroke-width="${w.toFixed(2)}"/>`);};
+  // graph paper
+  const g=Math.max(12,S.cellSize);
+  for(let x=0;x<=W;x+=g)line(x,0,x,H,faint,th*0.5);
+  for(let y=0;y<=H;y+=g)line(0,y,W,y,faint,th*0.5);
+  // glyph outlines, thin and precise
+  ctx.lineJoin='round';
+  let bx0=W,by0=H,bx1=0,by1=0;
+  for(const gl of glyphs){const T=makeT(gl,C),d=buildD(gl,T,0);
+    ctx.strokeStyle=fill;ctx.lineWidth=th*1.6;ctx.stroke(new Path2D(d));
+    if(svg.length<SVGMAX)svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-width="${(th*1.6).toFixed(2)}"/>`);
+    for(const p of sampleGlyph(gl,T)){
+      if(p[0]<bx0)bx0=p[0];if(p[1]<by0)by0=p[1];if(p[0]>bx1)bx1=p[0];if(p[1]>by1)by1=p[1];}}
+  if(bx1<=bx0)return;
+  // anchor crosses along the contours
+  const cs=Math.max(3,S.dotSize*0.4);
+  let i=0;const every=Math.max(1,Math.round(26-S.pDensity*0.2));
+  for(const gl of glyphs){const T=makeT(gl,C),pts=sampleGlyph(gl,T);
+    for(let k=0;k<pts.length;k+=every){const p=pts[k];
+      line(p[0]-cs,p[1],p[0]+cs,p[1],mid,th);line(p[0],p[1]-cs,p[0],p[1]+cs,mid,th);i++;}}
+  // dimension rules around the word
+  const off=Math.max(26,S.ringGap*3.2);
+  const tick=(x,y,vert)=>{vert?line(x-6,y,x+6,y,mid,th):line(x,y-6,x,y+6,mid,th);};
+  line(bx0,by1+off,bx1,by1+off,mid,th);tick(bx0,by1+off,false);tick(bx1,by1+off,false);
+  line(bx0-off,by0,bx0-off,by1,mid,th);tick(bx0-off,by0,true);tick(bx0-off,by1,true);
+  // extension lines
+  line(bx0,by1,bx0,by1+off,faint,th);line(bx1,by1,bx1,by1+off,faint,th);
+  line(bx0,by0,bx0-off,by0,faint,th);line(bx0,by1,bx0-off,by1,faint,th);
+  // corner registration marks
+  for(const [x,y] of [[bx0,by0],[bx1,by0],[bx0,by1],[bx1,by1]]){
+    line(x-11,y,x+11,y,mid,th);line(x,y-11,x,y+11,mid,th);}
+}
+/* Truchet weave — the word rebuilt from woven quarter-arc tiles on a grid */
+function drawTruchet(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),2), s=Math.max(10,S.cellSize);
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineCap='round';ctx.lineJoin='round';
+  const arc=(cxp,cyp,r,a0,a1)=>{const pts=[],n=8;for(let i=0;i<=n;i++){const a=lerp(a0,a1,i/n);pts.push([cxp+Math.cos(a)*r,cyp+Math.sin(a)*r]);}return pts;};
+  for(let gy2=0;gy2<H;gy2+=s)for(let gx2=0;gx2<W;gx2+=s){
+    if(maskAt(m,gx2+s/2,gy2+s/2)/255<0.16)continue;
+    const r=s/2, flip=hash(Math.floor(gx2/s),Math.floor(gy2/s))>0.5;
+    const arcs=flip
+      ? [arc(gx2,gy2,r,0,Math.PI/2), arc(gx2+s,gy2+s,r,Math.PI,Math.PI*1.5)]
+      : [arc(gx2+s,gy2,r,Math.PI/2,Math.PI), arc(gx2,gy2+s,r,-Math.PI/2,0)];
+    for(const pts of arcs){_strokePl(pts);
+      if(svg.length<SVGMAX)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}
+  }
+}
+/* Contour hatch — engraved strokes following the field's contour direction */
+/* ---- polygon wireframe: the word triangulated into a hand-drawn mesh ----
+   Nodes scatter through the glyph interior and along its contour, get Delaunay-
+   triangulated, and only triangles whose centroid sits on ink survive — so the mesh
+   takes the shape of the word, counters and all. Edges only, blob at every node. */
+const orient2=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+function inCircum(p,a,b,c){
+  if(orient2(a,b,c)<0){const t=b;b=c;c=t;}                    // circumcircle test wants CCW
+  const ax=a[0]-p[0],ay=a[1]-p[1],bx=b[0]-p[0],by=b[1]-p[1],cx=c[0]-p[0],cy=c[1]-p[1];
+  return (ax*ax+ay*ay)*(bx*cy-cx*by)-(bx*bx+by*by)*(ax*cy-cx*ay)+(cx*cx+cy*cy)*(ax*by-bx*ay)>0;
+}
+/* Bowyer-Watson. Naive O(n·t) — fine for the few hundred nodes we feed it, and the
+   node count is capped below so a big canvas can't turn this into a hang. */
+function delaunay(P){
+  const n=P.length;if(n<3)return [];
+  let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
+  for(const p of P){mnx=Math.min(mnx,p[0]);mny=Math.min(mny,p[1]);mxx=Math.max(mxx,p[0]);mxy=Math.max(mxy,p[1]);}
+  const d=Math.max(mxx-mnx,mxy-mny)||1,mx=(mnx+mxx)/2,my=(mny+mxy)/2;
+  const V=P.concat([[mx-20*d,my-d],[mx,my+20*d],[mx+20*d,my-d]]);   // super-triangle
+  let tris=[[n,n+1,n+2]];
+  for(let i=0;i<n;i++){
+    const edges=[];
+    for(let t=tris.length-1;t>=0;t--){const tr=tris[t];
+      if(inCircum(V[i],V[tr[0]],V[tr[1]],V[tr[2]])){
+        edges.push([tr[0],tr[1]],[tr[1],tr[2]],[tr[2],tr[0]]);tris.splice(t,1);}}
+    for(let a=0;a<edges.length;a++){if(!edges[a])continue;      // drop edges shared by two
+      for(let b=a+1;b<edges.length;b++){if(!edges[b])continue;  // holes — they're interior
+        if((edges[a][0]===edges[b][0]&&edges[a][1]===edges[b][1])||
+           (edges[a][0]===edges[b][1]&&edges[a][1]===edges[b][0])){edges[a]=null;edges[b]=null;break;}}}
+    for(const e of edges)if(e)tris.push([e[0],e[1],i]);
+  }
+  return tris.filter(t=>t[0]<n&&t[1]<n&&t[2]<n);               // shed the super-triangle
+}
+/* The 3D tail of makeT, factored out. The polygon mesh is built across every glyph at
+   once, so it can't ride makeT's per-glyph camera — it shares this one instead. Returns
+   view depth alongside the projected point so the wireframe can sort and fade by it. */
+function proj3(x,y,z,C){
+  const rX=(S.rotX+S.tumble*phase)*DEG,rY=(S.rotY+S.spin*phase)*DEG,rZ=(S.rotZ+S.roll*phase)*DEG;
+  const cX=Math.cos(rX),sX=Math.sin(rX),cY=Math.cos(rY),sY=Math.sin(rY),cZ=Math.cos(rZ),sZ=Math.sin(rZ);
+  const persp=S.perspective;
+  let px3=x-C.cx,py3=y-C.cyMid,pz3=S.posZ+z;
+  if(rZ){const nx=px3*cZ-py3*sZ;py3=px3*sZ+py3*cZ;px3=nx;}
+  const x1=px3*cY+pz3*sY,z1=-px3*sY+pz3*cY;
+  const y1=py3*cX-z1*sX,z2=py3*sX+z1*cX;
+  const f=persp/Math.max(60,persp+z2);
+  return [C.cx+x1*f,C.cyMid+y1*f,z2];
+}
+function drawPolygon(glyphs,C,W,H,fill,svg){
+  // Inflate blurs the coverage field and reads it at a lower cut, so the mass swells
+  // past the true letterform and neighbouring strokes fuse into one puffy body.
+  const inf=S.inflate||0;
+  // Build the mesh flat, with the camera parked — 2D warps still bake in, but depth is
+  // ours to add below. Otherwise the silhouette would arrive pre-rotated and extruding
+  // it would push the walls in the wrong direction entirely.
+  const cam={rotX:S.rotX,rotY:S.rotY,rotZ:S.rotZ,posZ:S.posZ,tumble:S.tumble,spin:S.spin,roll:S.roll};
+  S.rotX=S.rotY=S.rotZ=S.posZ=S.tumble=S.spin=S.roll=0;
+  let m,contour=[];
+  try{
+    m=buildField(glyphs,C,W,H,Math.min(520,W),inf*0.5);
+    for(const gl of glyphs){const T=makeT(gl,C);for(const p of sampleGlyph(gl,T))contour.push(p);}
+  }finally{Object.assign(S,cam);}
+  const TH=Math.max(26,120-inf*1.6);
+  let step=Math.max(12,S.linkDist);
+  // size the mesh to the ink so a print-res canvas stays tractable
+  let ink=0;for(let y=0;y<H;y+=step)for(let x=0;x<W;x+=step)if(maskAt(m,x,y)>TH)ink++;
+  const MAXN=1000;if(ink>MAXN)step*=Math.sqrt(ink/MAXN);
+  /* Nodes: Poisson-disc grown inward from the contour. Even spacing with no grid to
+     give it away — the letterform's own edge is the scaffold it grows from. */
+  // node spacing sits well under the mesh size: a stroke needs nodes down BOTH of its
+  // edges, and at the full link distance nothing fits across a thin stem.
+  const r=step*0.55,cell=r/Math.SQRT2,gw=Math.ceil(W/cell)+2,gh=Math.ceil(H/cell)+2;
+  const grid=new Int32Array(gw*gh).fill(-1),P=[],active=[];let sd=0;
+  const clear=(x,y)=>{const cx=(x/cell)|0,cy=(y/cell)|0;
+    for(let j=Math.max(0,cy-2);j<=Math.min(gh-1,cy+2);j++)for(let i=Math.max(0,cx-2);i<=Math.min(gw-1,cx+2);i++){
+      const id=grid[j*gw+i];if(id<0)continue;const p=P[id];
+      if((p[0]-x)*(p[0]-x)+(p[1]-y)*(p[1]-y)<r*r)return false;}
+    return true;};
+  const push=(x,y)=>{const cx=(x/cell)|0,cy=(y/cell)|0;
+    if(cx<0||cy<0||cx>=gw||cy>=gh)return;grid[cy*gw+cx]=P.length;active.push(P.length);P.push([x,y]);};
+  // walk a contour node out to the inflated isoline, down the field's own gradient
+  const toIso=(x,y)=>{if(inf<=0)return [x,y];
+    for(let s=0;s<50&&maskAt(m,x,y)>TH;s++){
+      const gx=maskAt(m,x+2,y)-maskAt(m,x-2,y),gy=maskAt(m,x,y+2)-maskAt(m,x,y-2);
+      const g=Math.hypot(gx,gy);if(g<1)break;
+      x-=gx/g*2;y-=gy/g*2;}
+    return [x,y];};
+  for(const p of contour){const [x,y]=toIso(p[0],p[1]);if(clear(x,y))push(x,y);}
+  while(active.length){
+    const ai=(grand(sd++,7.3)*active.length)|0,p=P[active[ai]];let placed=false;
+    for(let t=0;t<10;t++){
+      const a=grand(sd++,1.9)*TAU,d=r*(1+grand(sd++,4.4));
+      const nx=p[0]+Math.cos(a)*d,ny=p[1]+Math.sin(a)*d;
+      if(nx<0||ny<0||nx>=W||ny>=H||maskAt(m,nx,ny)<=TH||!clear(nx,ny))continue;
+      push(nx,ny);placed=true;break;}
+    if(!placed)active.splice(ai,1);}
+  if(P.length<3)return;
+  const key=(i,j)=>i<j?i+'_'+j:j+'_'+i;
+  const tris=delaunay(P),cnt=new Map();
+  for(const t of tris){
+    const a=P[t[0]],b=P[t[1]],c=P[t[2]];
+    if(maskAt(m,(a[0]+b[0]+c[0])/3,(a[1]+b[1]+c[1])/3)<TH)continue;   // triangle off the mass
+    for(const [i,j] of [[t[0],t[1]],[t[1],t[2]],[t[2],t[0]]]){const k=key(i,j);cnt.set(k,(cnt.get(k)||0)+1);}}
+  // an edge carried by a single surviving triangle sits on the silhouette — that's a
+  // load-bearing chord; everything with two is interior web. The whole structural read.
+  let edges=[];
+  for(const [k,c] of cnt){const [i,j]=k.split('_').map(Number);edges.push([i,j,c===1]);}
+  // long spanning braces, like the chords of a space frame — kept only if they stay on the mass
+  const want=Math.round(S.ringCount);let got=0;
+  for(let t=0;t<want*40&&got<want&&P.length>4;t++){
+    const i=(grand(sd++,8.1)*P.length)|0,j=(grand(sd++,9.7)*P.length)|0;
+    if(i===j||cnt.has(key(i,j)))continue;
+    const a=P[i],b=P[j],len=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    if(len<step*3.5||len>step*14)continue;
+    let on=true;
+    for(let s=1;s<24&&on;s++){const u=s/24;if(maskAt(m,lerp(a[0],b[0],u),lerp(a[1],b[1],u))<TH)on=false;}
+    if(!on)continue;
+    cnt.set(key(i,j),1);edges.push([i,j,true]);got++;}
+  // open perimeter — break the silhouette so the form reads as scaffold, not outline
+  const op=S.openEdge||0;
+  if(op>0)edges=edges.filter(([i,j,chord])=>!chord||grand(i*7919+j,3.7)*100>=op);
+  const deg=new Map();for(const [i,j] of edges){deg.set(i,(deg.get(i)||0)+1);deg.set(j,(deg.get(j)||0)+1);}
+  const chordW=S.strokeW*(1+0.55*S.gain),webW=Math.max(0.3,S.strokeW*(1.25-0.42*S.gain));
+  /* Extrude: the flat mesh becomes two parallel sheets joined by walls at the silhouette.
+     Struts only on chord nodes — running one down every interior node turns the middle
+     into noise and you lose the structure entirely. */
+  const dz=S.extrude*3.2;
+  const F=P.map(p=>proj3(p[0],p[1],-dz/2,C)),B=dz>0?P.map(p=>proj3(p[0],p[1],dz/2,C)):null;
+  const segs=[];
+  const seg=(a,b,w,sd2)=>{if(a&&b)segs.push([a,b,w,(a[2]+b[2])/2,sd2]);};
+  for(const [i,j,chord] of edges)seg(F[i],F[j],chord?chordW:webW,i*7919+j);
+  if(B){
+    for(const [i,j,chord] of edges)seg(B[i],B[j],(chord?chordW:webW)*0.82,i*7919+j+5);
+    const wall=new Set();for(const [i,j,chord] of edges)if(chord){wall.add(i);wall.add(j);}
+    for(const i of wall)seg(F[i],B[i],chordW*0.9,i*31+7);
+  }
+  if(!segs.length)return;
+  let zmin=Infinity,zmax=-Infinity;for(const s of segs){zmin=Math.min(zmin,s[3]);zmax=Math.max(zmax,s[3]);}
+  const zr=(zmax-zmin)||1;
+  segs.sort((a,b)=>b[3]-a[3]);                       // painter's order: far members first
+  const wob=S.fieldDrift*0.09;
+  ctx.lineCap='round';ctx.lineJoin='round';
+  for(const [a,b,w0,zc,sd2] of segs){
+    const len=Math.hypot(b[0]-a[0],b[1]-a[1]);if(len<0.01)continue;
+    // far members recede into the ground — the only depth cue a wireframe really has
+    const t=dz>0?(zc-zmin)/zr:0,al=1-0.62*t,lw=w0*(1-0.34*t);
+    const nx=-(b[1]-a[1])/len,ny=(b[0]-a[0])/len,n=Math.max(2,Math.min(10,Math.round(len/16))),pts=[];
+    for(let k=0;k<=n;k++){const u=k/n;
+      // taper the wobble to nothing at both ends so members still meet at their joints
+      const wv=Math.sin(u*Math.PI)*(grand(sd2*17+k,2.7)*2-1)*wob;
+      pts.push([lerp(a[0],b[0],u)+nx*wv,lerp(a[1],b[1],u)+ny*wv]);}
+    ctx.strokeStyle=hexA(fill,al);ctx.lineWidth=lw;
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let k=1;k<pts.length;k++)ctx.lineTo(pts[k][0],pts[k][1]);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-opacity="${al.toFixed(2)}" stroke-width="${lw.toFixed(2)}" stroke-linecap="round"/>`);
+  }
+  // joints: the more members meeting, the heavier the node — a pen dwelling on a junction
+  const dot=(p,rr,al)=>{ctx.fillStyle=hexA(fill,al);ctx.beginPath();ctx.arc(p[0],p[1],rr,0,TAU);ctx.fill();
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${rr.toFixed(1)}" fill="${fill}" fill-opacity="${al.toFixed(2)}"/>`);};
+  if(B)for(const [i,d] of deg){const t=(B[i][2]-zmin)/zr;
+    dot(B[i],S.dotSize*0.15*(0.55+0.12*d)*(0.8+0.4*grand(i,5.1))*(1-0.3*t),1-0.62*t);}
+  for(const [i,d] of deg){const t=dz>0?(F[i][2]-zmin)/zr:0;
+    dot(F[i],S.dotSize*0.15*(0.55+0.12*d)*(0.8+0.4*grand(i,5.1))*(1-0.3*t),1-0.62*t);}
+}
+/* ---- wireframe · 3D mesh: the letter swept through depth as a quad cage ----
+   Each contour is pulled out as a closed loop in font space, then re-projected at every
+   z-slice. The slices are the rings; lines threading the same contour point across all
+   slices are the rails. Unlike the polygon engine this rides makeT's own per-glyph
+   camera, so z is real depth and rotate/perspective drive it directly. */
+function glyphLoops(gl,spacing){
+  const path=gl.g.getPath(gl.x,gl.baseY,S.size),loops=[];
+  let cur=null,pen=[0,0],start=[0,0];
+  const emit=(x,y)=>cur&&cur.push([x,y]);
+  const seg=(a,b)=>{const len=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.max(1,Math.round(len/spacing));
+    for(let i=1;i<=n;i++)emit(lerp(a[0],b[0],i/n),lerp(a[1],b[1],i/n));};
+  const close=()=>{if(cur&&cur.length>2)loops.push(cur);cur=null;};
+  for(const c of path.commands){
+    if(c.type==='M'){close();cur=[];pen=[c.x,c.y];start=pen;emit(c.x,c.y);}
+    else if(c.type==='L'){seg(pen,[c.x,c.y]);pen=[c.x,c.y];}
+    else if(c.type==='Q'){let p=pen;for(let i=1;i<=10;i++){const q=qpt(pen,[c.x1,c.y1],[c.x,c.y],i/10);seg(p,q);p=q;}pen=[c.x,c.y];}
+    else if(c.type==='C'){let p=pen;for(let i=1;i<=12;i++){const q=cpt(pen,[c.x1,c.y1],[c.x2,c.y2],[c.x,c.y],i/12);seg(p,q);p=q;}pen=[c.x,c.y];}
+    else if(c.type==='Z'){seg(pen,start);pen=start;}}
+  close();return loops;
+}
+function drawWireframe(glyphs,C,W,H,fill,svg){
+  // Depth and spacing scale with the type, not the canvas. Absolute pixels would mean the
+  // cage collapses into hatching the moment you set the word bigger — and on a 300dpi page
+  // you always do.
+  const rel=S.size/300;
+  const rings=Math.max(1,Math.round(S.ringCount)),dz=S.extrude*3.2*rel;
+  const spacing=lerp(20,3,S.pDensity/100)*rel,railGap=Math.max(8,S.linkDist*rel);
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineCap='round';ctx.lineJoin='round';
+  const poly=(pts,close)=>{if(pts.length<2)return;
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);
+    if(close)ctx.closePath();ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<path d="M${pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')}${close?'Z':''}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-linecap="round"/>`);};
+  for(const gl of glyphs){
+    const T=makeT(gl,C),loops=glyphLoops(gl,spacing);
+    const zAt=k=>rings<2?0:-dz/2+dz*(k/(rings-1));
+    for(const loop of loops){
+      const at=(p,z)=>T(wsx(gl,p[0]),p[1],z);
+      // rings — the contour redrawn at every depth slice
+      for(let k=0;k<rings;k++)poly(loop.map(p=>at(p,zAt(k))),true);
+      // rails — one contour point threaded through every slice, spaced by arc length
+      if(dz>0&&rings>1){
+        let acc=railGap;
+        for(let i=0;i<loop.length;i++){
+          if(i>0)acc+=Math.hypot(loop[i][0]-loop[i-1][0],loop[i][1]-loop[i-1][1]);
+          if(acc<railGap)continue;acc=0;
+          const rail=[];for(let k=0;k<rings;k++)rail.push(at(loop[i],zAt(k)));
+          poly(rail,false);}}
+    }
+  }
+}
+/* ================= WebGL surface core =================
+   Canvas 2D can fake a highlight, but it cannot do thin-film interference or real Fresnel,
+   and this output is going to print. The physically-shaded engines below render on the GPU
+   at full export resolution and composite back into the 2D context. */
+let _glc=null,_gl=null;const _glProg={};
+function glCtx(W,H){
+  if(!_glc){_glc=document.createElement('canvas');
+    _gl=_glc.getContext('webgl2',{alpha:true,premultipliedAlpha:true,antialias:true,preserveDrawingBuffer:true});}
+  if(!_gl)return null;
+  const MAX=_gl.getParameter(_gl.MAX_TEXTURE_SIZE);
+  if(W>MAX||H>MAX)return null;                       // caller falls back rather than draw nothing
+  if(_glc.width!==W||_glc.height!==H){_glc.width=W;_glc.height=H;}
+  return _gl;
+}
+function glProgram(gl,key,vsSrc,fsSrc){
+  if(_glProg[key])return _glProg[key];
+  const mk=(t,src)=>{const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);
+    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error('shader: '+gl.getShaderInfoLog(s));return s;};
+  const p=gl.createProgram();
+  gl.attachShader(p,mk(gl.VERTEX_SHADER,vsSrc));gl.attachShader(p,mk(gl.FRAGMENT_SHADER,fsSrc));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error('link: '+gl.getProgramInfoLog(p));
+  _glProg[key]=p;return p;
+}
+const GLSL_NOISE=`
+float h31(vec3 p){p=fract(p*0.3183099+vec3(0.71,0.113,0.419));p*=17.0;
+  return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float n3(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(h31(i),h31(i+vec3(1,0,0)),f.x),mix(h31(i+vec3(0,1,0)),h31(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(h31(i+vec3(0,0,1)),h31(i+vec3(1,0,1)),f.x),mix(h31(i+vec3(0,1,1)),h31(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float fbm3(vec3 p){float s=0.0,a=0.5;for(int i=0;i<5;i++){s+=a*n3(p);p*=2.03;a*=0.5;}return s;}`;
+
+/* ---- bubbles: thin-film soap film on instanced spheres ----
+   The iridescence is the real thing — optical path difference through a film of varying
+   thickness, evaluated per RGB wavelength. Thickness drains toward the top under gravity
+   and marbles with turbulence, which is what produces the familiar swirling bands. */
+const BUB_VS=`#version 300 es
+in vec2 a_corner; in vec4 a_bub;
+out vec2 v_uv; out float v_seed; out float v_r;
+uniform vec2 u_res;
+void main(){ v_uv=a_corner; v_seed=a_bub.w; v_r=a_bub.z;
+  vec2 p=a_bub.xy+a_corner*a_bub.z;
+  vec2 c=p/u_res*2.0-1.0;
+  gl_Position=vec4(c.x,-c.y,0.0,1.0); }`;
+const BUB_FS=`#version 300 es
+precision highp float;
+in vec2 v_uv; in float v_seed; in float v_r;
+out vec4 outColor;
+uniform float u_thick,u_turb,u_irid,u_rim,u_expo;
+${GLSL_NOISE}
+// Thin-film interference: OPD = 2*n*d*cos(theta_t), phase-shifted pi at the front reflection.
+vec3 filmColor(float d,float cosI){
+  const float n=1.33;
+  float s=sqrt(max(0.0,1.0-cosI*cosI))/n;
+  float cosT=sqrt(max(0.0,1.0-s*s));
+  float opd=2.0*n*d*cosT;
+  vec3 lam=vec3(680.0,550.0,440.0);
+  vec3 ph=6.2831853*opd/lam+3.1415927;
+  return 0.5+0.5*cos(ph);
+}
+void main(){
+  float r=length(v_uv);
+  float aa=max(fwidth(r),1e-4);
+  if(r>1.0+aa) discard;
+  float z=sqrt(max(0.0,1.0-r*r));
+  vec3 N=normalize(vec3(v_uv,z));
+  vec3 V=vec3(0.0,0.0,1.0);
+  float ndv=clamp(dot(N,V),0.0,1.0);
+  // film thickness: gravity drainage (thin at the crown) x turbulent marbling
+  float turb=fbm3(N*2.4+vec3(v_seed*17.3));
+  float drain=1.0-0.58*N.y;
+  float d=u_thick*drain*(0.5+u_turb*turb);
+  vec3 film=filmColor(d,ndv);
+  film=mix(vec3(dot(film,vec3(0.3333))),film,u_irid);
+  float F=pow(1.0-ndv,3.1);                      // Fresnel: rim bright, centre near-invisible
+  vec3 R=reflect(-V,N);
+  float sky=smoothstep(-0.45,0.95,R.y);
+  vec3 env=mix(vec3(0.02,0.03,0.05),vec3(0.50,0.58,0.70),sky);
+  vec3 L1=normalize(vec3(-0.45,0.75,0.55));
+  vec3 L2=normalize(vec3(0.62,-0.28,0.70));
+  float sp1=pow(max(dot(R,L1),0.0),1500.0);      // tight primary catchlight
+  float sp2=pow(max(dot(R,L2),0.0),240.0)*0.22;  // soft fill
+  vec3 col=film*F*1.55+env*F*0.55+vec3(sp1)*2.6+vec3(sp2);
+  col*=u_expo;
+  float a=clamp(F*u_rim+sp1*1.7+sp2*0.6+F*0.22,0.0,1.0);
+  a*=smoothstep(1.0+aa,1.0-aa*1.6,r);
+  outColor=vec4(col*a,a);                        // premultiplied
+}`;
+function drawBubbles(glyphs,C,W,H,fill,bgc){
+  const gl=glCtx(W,H);
+  if(!gl){ctx.fillStyle=bgc;ctx.fillRect(0,0,W,H);
+    $('#status').innerHTML='<span class="warn">bubbles needs WebGL2 — unavailable at this canvas size</span>';return;}
+  const m=buildField(glyphs,C,W,H,Math.min(560,W),0);
+  const rel=S.size/300, base=Math.max(4,S.cellSize*0.42*rel);
+  // Airy means space between bodies, not a foam. Bubbles scatter through the letterform
+  // with a long tail of small ones, plus a few drifting free of it.
+  const N=Math.round(18+S.pDensity*5.2), B=[];
+  const NSTRAY=Math.round(N*0.12);               // escapees are a fixed share of the total, not
+                                                // a per-attempt roll — that floods out the word
+  const put=(i,stray)=>{
+    const t=Math.pow(grand(i,2.9),2.2);          // many small, few large
+    const rr=base*(0.22+t*1.9)*(stray?0.6:1);
+    let px=grand(i,1.7)*W,py=grand(i,4.3)*H;
+    if(!stray){
+      let ok=false;
+      for(let k=0;k<400;k++){                    // rejection-sample inside the letterform
+        const x=grand(i*401+k,1.7)*W,y=grand(i*401+k,4.3)*H;
+        if(maskAt(m,x,y)>90){px=x;py=y;ok=true;break;}}
+      if(!ok)return;
+      if(S.pSpread){const a=grand(i,6.1)*TAU,mg=Math.pow(grand(i,3.3),1.9)*S.pSpread;
+        px+=Math.cos(a)*mg;py+=Math.sin(a)*mg;}
+    }
+    if(px<-rr||py<-rr||px>W+rr||py>H+rr)return;
+    B.push([px,py,rr,grand(i,8.8)*40]);
+  };
+  for(let i=0;i<N-NSTRAY;i++)put(i,false);
+  for(let i=0;i<NSTRAY;i++)put(9000+i,true);
+  if(!B.length)return;
+  B.sort((a,b)=>b[2]-a[2]);                      // big first: small bubbles read in front
+  const prog=glProgram(gl,'bubbles',BUB_VS,BUB_FS);
+  gl.viewport(0,0,W,H);
+  gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);   // premultiplied over
+  gl.useProgram(prog);
+  const quad=new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]);
+  const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,quad,gl.STATIC_DRAW);
+  const la=gl.getAttribLocation(prog,'a_corner');
+  gl.enableVertexAttribArray(la);gl.vertexAttribPointer(la,2,gl.FLOAT,false,0,0);
+  const ibo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,ibo);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(B.flat()),gl.STATIC_DRAW);
+  const lb=gl.getAttribLocation(prog,'a_bub');
+  gl.enableVertexAttribArray(lb);gl.vertexAttribPointer(lb,4,gl.FLOAT,false,0,0);
+  gl.vertexAttribDivisor(lb,1);
+  gl.uniform2f(gl.getUniformLocation(prog,'u_res'),W,H);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_thick'),S.filmThick);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_turb'),0.25+S.fieldDrift*0.012);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_irid'),clamp(S.gain*0.75,0,1.6));
+  gl.uniform1f(gl.getUniformLocation(prog,'u_rim'),0.55+S.bloom*0.008);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_expo'),0.75+S.gain*0.35);
+  gl.drawArraysInstanced(gl.TRIANGLES,0,6,B.length);
+  gl.deleteBuffer(vbo);gl.deleteBuffer(ibo);
+  ctx.fillStyle=bgc;ctx.fillRect(0,0,W,H);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.drawImage(_glc,0,0);
+  if(S.bloom>2){                                  // airy halo — light scattering off the film
+    ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.30;
+    ctx.filter=`blur(${(S.bloom*0.55*(W/1200)).toFixed(1)}px)`;
+    ctx.drawImage(_glc,0,0);ctx.restore();ctx.filter='none';ctx.globalAlpha=1;}
+  if(S.grain)addGrain(W,H,S.grain);
+}
+function drawHatch(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2,S.bloom*0.4)), gap=Math.max(4,S.dotSize);
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineCap='round';
+  for(let y=gap/2;y<H;y+=gap)for(let x=gap/2;x<W;x+=gap){
+    const cov=maskAt(m,x,y)/255;if(cov<0.14)continue;
+    const gxv=maskAt(m,x+3,y)-maskAt(m,x-3,y), gyv=maskAt(m,x,y+3)-maskAt(m,x,y-3);
+    const ang=Math.atan2(gyv,gxv)+Math.PI/2, len=gap*0.62*(0.5+cov);
+    const x0=x-Math.cos(ang)*len,y0=y-Math.sin(ang)*len,x1=x+Math.cos(ang)*len,y1=y+Math.sin(ang)*len;
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${fill}" stroke-width="${S.strokeW}"/>`);
+  }
+}
+/* Ripple interference — concentric fringes rippling out from the letterforms */
+function drawRipple(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(4,S.bloom)), freq=Math.max(2,S.ringGap)*0.9;
+  const g=_msGrid((x,y)=>Math.sin(maskAt(m,x,y)/255*freq*TAU),W,H,_mstep(W));
+  ctx.strokeStyle=fill;ctx.lineWidth=S.strokeW;ctx.lineJoin='round';ctx.lineCap='round';
+  for(let pl of _msLevel(g,0)){pl=_chaikin(pl,2);_strokePl(pl);
+    if(svg.length<SVGMAX)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}
+}
+
+/* Vector · béziers — the editor view: outline + anchor points, control points
+   and handle lines, exactly like a type-design tool. Real SVG. */
+function drawBeziers(gl,T,fill,svg){
+  const path=gl.g.getPath(gl.x,gl.baseY,S.size);
+  const P=(x,y)=>T(wsx(gl,x),y,0);
+  const asz=Math.max(2.2,S.size*0.011), csz=asz*0.95, hw=Math.max(0.5,S.strokeW*0.5);
+  const d=buildD(gl,T,0);
+  ctx.lineJoin='round';ctx.strokeStyle=hexA(fill,0.45);ctx.lineWidth=hw;ctx.stroke(new Path2D(d));
+  if(svg.length<SVGMAX)svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-opacity="0.45" stroke-width="${hw.toFixed(2)}"/>`);
+  const handle=(a,b)=>{ctx.strokeStyle=hexA(fill,0.5);ctx.lineWidth=hw;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${fill}" stroke-opacity="0.5" stroke-width="${hw.toFixed(2)}"/>`);};
+  const ctrl=p=>{ctx.strokeStyle=fill;ctx.lineWidth=hw;ctx.beginPath();ctx.arc(p[0],p[1],csz,0,TAU);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${csz.toFixed(1)}" fill="none" stroke="${fill}" stroke-width="${hw.toFixed(2)}"/>`);};
+  const anch=p=>{ctx.fillStyle=fill;ctx.fillRect(p[0]-asz,p[1]-asz,asz*2,asz*2);
+    if(svg.length<SVGMAX)svg.push(`<rect x="${(p[0]-asz).toFixed(1)}" y="${(p[1]-asz).toFixed(1)}" width="${(asz*2).toFixed(1)}" height="${(asz*2).toFixed(1)}" fill="${fill}"/>`);};
+  let cur=null;
+  for(const c of path.commands){
+    if(c.type==='M'){cur=[c.x,c.y];anch(P(c.x,c.y));}
+    else if(c.type==='L'){anch(P(c.x,c.y));cur=[c.x,c.y];}
+    else if(c.type==='Q'){const a0=P(cur[0],cur[1]),cp=P(c.x1,c.y1),e=P(c.x,c.y);handle(a0,cp);handle(e,cp);ctrl(cp);anch(e);cur=[c.x,c.y];}
+    else if(c.type==='C'){const a0=P(cur[0],cur[1]),c1=P(c.x1,c.y1),c2=P(c.x2,c.y2),e=P(c.x,c.y);handle(a0,c1);handle(e,c2);ctrl(c1);ctrl(c2);anch(e);cur=[c.x,c.y];}
+  }
+}
+
+function finishSVG(parts,W,H,transparent,bgc,style,n){
+  const bg=transparent?'':`<rect width="${W}" height="${H}" fill="${bgc}"/>`;
+  let defs='',body=parts.join('\n');
+  if(curClipDs&&curClipDs.length){   // clip the effect to the letterforms (solid bg outside)
+    defs=`<defs><clipPath id="glyphclip">${curClipDs.map(d=>`<path d="${d}"/>`).join('')}</clipPath></defs>`;
+    body=`<g clip-path="url(#glyphclip)">\n${body}\n</g>`;
+  }
+  lastSVG=`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+${defs}
+${bg}
+${body}
+</svg>`;window.lastSVG=lastSVG;
+  const note=(style==='halftone'||style==='particles')?' · SVG=dots':style==='network'?' · SVG=dots+lines':style==='chromatic'?' · SVG blend layers':'';
+  // never let the .svg quietly ship shorter than what's on screen
+  if(parts.length>=SVGMAX){
+    $('#status').innerHTML=`${n} glyphs · ${style} · ${W}×${H}<span class="warn"> · SVG capped at ${SVGMAX.toLocaleString()} elements — the .svg is missing detail the canvas shows. Lower density / link distance.</span>`;return;}
+  $('#status').innerHTML=`${n} glyphs · ${style} · ${W}×${H}<span class="ok">${note} · ${parts.length.toLocaleString()} el</span>`;
+}
+
+/* fonts */
+/* Google-hosted faces are CDN paths; anything starting with / is served from this site. */
+const FONTS={bentonsans:'/shared/fonts/BentonSans-Bold.otf',
+  universultralight:'/shared/fonts/UniversNextPro-UltraLight.ttf',
+  universthin:'/shared/fonts/UniversNextPro-Thin.ttf',
+  universlight:'/shared/fonts/UniversNextPro-Light.ttf',
+  universmedium:'/shared/fonts/UniversNextPro-Medium.ttf',
+  universbold:'/shared/fonts/UniversNextPro-Bold.ttf',
+  arimo:'ofl/arimo/Arimo%5Bwght%5D.ttf',inter:'ofl/inter/Inter%5Bopsz,wght%5D.ttf',
+  archivoblack:'ofl/archivoblack/ArchivoBlack-Regular.ttf',spacegrotesk:'ofl/spacegrotesk/SpaceGrotesk%5Bwght%5D.ttf',
+  bodoni:'ofl/bodonimoda/BodoniModa%5Bopsz,wght%5D.ttf',dmserif:'ofl/dmserifdisplay/DMSerifDisplay-Regular.ttf'};
+async function loadFont(key){$('#status').textContent='loading font…';
+  try{const p=FONTS[key],url=p[0]==='/'?p:'https://cdn.jsdelivr.net/gh/google/fonts@main/'+p;
+    const buf=await (await fetch(url)).arrayBuffer();
+    font=opentype.parse(buf);render();}
+  catch(e){$('#status').innerHTML='<span class="warn">font load failed — upload a .ttf/.otf</span>';console.error(e);}}
+$('#fontPick').addEventListener('change',e=>loadFont(e.target.value));
+$('#fontFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{font=opentype.parse(rd.result);render();$('#status').textContent='custom font loaded';}
+  catch(err){$('#status').innerHTML='<span class="warn">could not parse font</span>';}};rd.readAsArrayBuffer(f);});
+
+/* presets */
+function setControl(k,v){S[k]=v;const c=$('#c-'+k);
+  if(c){c.value=v;S[k]=parseFloat(c.value);const el=$('#v-'+k);if(el)el.value=fmtVal(k,S[k]);return;}
+  if(k==='renderStyle'){$('#renderStyle').value=v;return;}
+  if(k==='bgColor'||k==='fillColor'||k==='accentColor'||k==='accent2'||k==='heatPalette'){const el=$('#'+k);if(el)el.value=v;return;}}
+/* each engine auto-configures to a good starting look when selected (replaces presets) */
+/* Engines default to white on black. The six print/riso screens below are the exception —
+   they're built around light stock and read as mud without it. Accent 1 / accent 2 keep
+   their colour; only fill goes white. */
+const INK='#ffffff',PAPER='#000000';
+const ENGINE_DEFAULTS={
+  solid:{fillColor:INK,bgColor:PAPER},
+  heatmap:{bloom:20,gain:1.15,breath:0.5,fieldDrift:18,grain:14,heatShift:0,pDensity:66,pSpread:38,fillColor:INK,bgColor:PAPER,heatPalette:'turbo'},
+  chromatic:{chromatic:16,bgColor:PAPER,fillColor:INK},
+  particles:{pDensity:72,pSpread:70,fillColor:INK,bgColor:PAPER,accentColor:'#ff5ad0',accent2:'#5ecbff'},
+  halftone:{dotSize:12,fillColor:'#111111',bgColor:'#f2efe6'},            // print screen — stays on paper
+  outline:{ringCount:9,ringGap:7,strokeW:1.4,fillColor:INK,bgColor:PAPER},
+  network:{pDensity:64,linkDist:48,pSpread:26,strokeW:1,fillColor:INK,bgColor:PAPER},
+  glow:{dotSize:13,bloom:24,gain:1.3,grain:12,chromatic:7,fillColor:INK,bgColor:PAPER},
+  
+  
+  slice:{sliceW:12,sliceShift:150,bgColor:'#f2efe6',fillColor:'#0a0a0a'}, // print screen — stays on paper
+  
+  topo:{bloom:26,ringCount:11,fillColor:INK,bgColor:PAPER},
+  streams:{pDensity:60,strokeW:1.2,fillColor:INK,bgColor:PAPER},
+  pixelsort:{sliceW:5,sliceShift:200,fillColor:INK,bgColor:PAPER},
+  linescreen:{dotSize:8,gain:1.2,fillColor:'#141414',bgColor:'#efe9dd'},  // print screen — stays on paper
+  
+  lowpoly:{cellSize:74,fillColor:INK,bgColor:PAPER},
+  crosshatch:{ringCount:4,dotSize:9,strokeW:1.1,gain:1.5,bloom:6,chromatic:0,fillColor:INK,bgColor:PAPER},
+  dendrite:{pDensity:64,ringCount:7,linkDist:34,strokeW:1.6,fieldDrift:75,fillColor:INK,bgColor:PAPER},
+  blueprint:{cellSize:46,strokeW:1.5,dotSize:11,pDensity:52,ringGap:12,fillColor:INK,bgColor:PAPER},
+  ferro:{cellSize:52,strokeW:4.5,bloom:16,fillColor:INK,bgColor:PAPER},
+  shatter:{cellSize:96,pSpread:24,fieldDrift:38,strokeW:1.2,fillColor:INK,bgColor:PAPER},
+  wood:{ringCount:16,fieldDrift:58,gain:1.4,grain:10,fillColor:INK,bgColor:PAPER},
+  stitch:{ringCount:2,cellSize:66,strokeW:5.2,fieldDrift:30,bloom:7,fillColor:INK,bgColor:PAPER},
+  marble:{fieldDrift:105,gain:2.7,bloom:8,chromatic:14,grain:10,fillColor:INK,bgColor:PAPER},
+  relief:{bloom:9,gain:2.4,ringCount:1,grain:8,fillColor:INK,bgColor:PAPER},
+  polygon:{linkDist:52,strokeW:3.2,dotSize:26,fieldDrift:30,pDensity:60,gain:1.5,ringCount:8,inflate:0,openEdge:0,fillColor:INK,bgColor:PAPER},
+  // opens already turned in space — a wireframe cage reads as nothing when viewed flat on
+  // opens already turned in space — a wireframe cage reads as nothing viewed flat on. Long
+  // lens by default: these read as technical drawings, and a short one keystones them.
+  wireframe:{ringCount:6,linkDist:105,strokeW:1.2,pDensity:74,extrude:22,rotX:-12,rotY:22,perspective:2200,fillColor:INK,bgColor:PAPER},
+  iso:{cellSize:40,gain:1,fillColor:INK,bgColor:PAPER},
+  weave:{cellSize:36,strokeW:2,fillColor:'#1a1a1a',bgColor:'#efe9dd'},    // print screen — stays on paper
+  metaballs:{pDensity:55,gain:1.05,bloom:20,fillColor:INK,bgColor:PAPER},
+  // airy by default: fewer, larger films with room to drift — dense packing buries the
+  // iridescence that makes this engine worth having
+  bubbles:{pDensity:20,cellSize:230,pSpread:46,filmThick:305,gain:1.32,bloom:38,fieldDrift:60,grain:0,fillColor:INK,bgColor:PAPER},
+  moire:{dotSize:6,chromatic:8,fillColor:'#141414',bgColor:'#efe9dd'},    // print screen — stays on paper
+  ascii:{dotSize:18,fillColor:INK,bgColor:PAPER},
+  
+  // Vector · B&W engines — clean white ink on black
+  beziers:{strokeW:1.4,fillColor:INK,bgColor:PAPER},
+  isoline:{ringCount:12,bloom:20,strokeW:1.1,fillColor:INK,bgColor:PAPER},
+  fieldfill:{ringCount:6,bloom:30,strokeW:1.2,fillColor:INK,bgColor:PAPER},
+  ripple:{ringGap:8,bloom:16,strokeW:1,fillColor:INK,bgColor:PAPER},
+  truchet:{cellSize:40,strokeW:2,fillColor:INK,bgColor:PAPER},
+  hatch:{dotSize:9,bloom:8,strokeW:1,fillColor:INK,bgColor:PAPER},
+};
+function applyEngine(style){setControl('renderStyle',style);
+  const dim=style==='dimensional';document.body.classList.toggle('dim-mode',dim);
+  if(dim){const f=$('#dimFrame');if(!f.getAttribute('src'))f.setAttribute('src','dimensional.html');
+    // Dimensional is a full studio with its own text + typeface panels — collapse Flux's
+    // left flyout so there aren't two competing editors. Only the Engine rail stays (to switch).
+    panelOpen=false; curTab='engine';
+    document.querySelectorAll('#railL button[data-tab]').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.dataset.pane==='engine'));
+    document.body.classList.add('panel-closed');
+  }
+  const d=ENGINE_DEFAULTS[style]||{};
+  for(const k in d)setControl(k,d[k]);updateEngineUI();if(!dim)render();}
+$('#renderStyle').addEventListener('change',e=>applyEngine(e.target.value));
+/* Reset — restore every control to its default, then re-apply the current engine */
+$('#resetBtn').addEventListener('click',()=>{
+  for(const grp in CONTROLS)for(const c of CONTROLS[grp])setControl(c[0],c[5]);
+  applyEngine(S.renderStyle);
+});
+
+$('#randBtn').addEventListener('click',()=>{const rnd=(a,b)=>a+Math.random()*(b-a);
+  setControl('flow',rnd(0,80));setControl('flowScale',rnd(6,20));setControl('melt',rnd(0,120));
+  setControl('distort',rnd(0,50));setControl('waveAmp',rnd(0,50));setControl('pinch',rnd(-50,50));
+  setControl('twist',rnd(-120,120));setControl('glitchSlice',rnd(0,30));setControl('explode',rnd(0,140));
+  setControl('jitter',rnd(0,40));setControl('rotate',rnd(0,45));setControl('slant',rnd(-15,15));
+  setControl('echo',Math.round(rnd(0,12)));setControl('echoRot',rnd(-8,8));setControl('rotX',rnd(-20,20));setControl('rotY',rnd(-20,20));render();});
+
+// ===== SECOND THOUGHT — breathe legible ⇄ wild, one word per breath =====
+// The Warp/Behaviors sliders hold the WILD PEAK for each parameter; the macro scales them
+// from 0 (legible) up to that peak and back over each breath, then hands off to the next word.
+const WILD_IDS=['flow','flowScale','melt','distort','distortScale','waveAmp','waveFreq','pinch','fisheye',
+  'twist','glitchSlice','wiggle','float','sway','pulse','stagger','trail','orbit','spin','tumble','roll','rotZ'];
+const ST={ on:true, period:5.0, hold:1.1, amount:1.0, idx:-1, clock:0, prevTt:1e9, current:'' };
+function stWords(){ return $('#text').value.split('\n').map(w=>w.trim()).filter(Boolean); }
+function stTick(dt){ if(!ST.on) return;
+  ST.clock+=dt; const P=Math.max(1.5,ST.period), H=clamp(ST.hold,0,P-0.6), tt=ST.clock%P;
+  if(tt<ST.prevTt){ const w=stWords(); if(w.length) ST.idx=(ST.idx+1)%w.length; }   // wrapped → next word
+  ST.prevTt=tt;
+  const w=stWords(); ST.current = w.length ? w[ST.idx%w.length] : '';
+  // legible hold, then a smooth 0→1→0 storm across the rest of the breath
+  const sh = tt<H ? 0 : (0.5-0.5*Math.cos(((tt-H)/(P-H))*2*Math.PI))*ST.amount;
+  const s2=clamp(sh,0,1);
+  for(const id of WILD_IDS){ const el=$('#c-'+id); if(!el) continue; S[id]=(parseFloat(el.value)||0)*s2; }
+}
+let _stLast=0;
+function loop(){if(!playing)return;
+  const now=performance.now(); const dt=_stLast?Math.min(0.05,(now-_stLast)/1000):0.016; _stLast=now;
+  if(!drag&&(Math.abs(velRX)>0.02||Math.abs(velRY)>0.02)){ // spring/inertia after a flick
+    setC('rotY',S.rotY+velRY);setC('rotX',S.rotX+velRX);velRX*=0.93;velRY*=0.93;}
+  stTick(dt);
+  phase+=0.02;render();requestAnimationFrame(loop);}
+$('#playBtn').addEventListener('click',e=>{playing=!playing;
+  e.target.textContent=playing?'Freeze':'Animate';e.target.classList.toggle('primary',playing);if(playing)loop();});
+
+function downloadBlob(name,blob){const u=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);}
+/* Exports render at true output resolution — slower, but print-ready. */
+function renderHiRes(){hiRes=true;try{render();}finally{hiRes=false;}}
+$('#svgBtn').addEventListener('click',()=>{renderHiRes();
+  if(rasterMode){ // thermal field is raster — embed hi-res PNG so the .svg still opens
+    const png=canvas.toDataURL('image/png'),W=curW,H=curH;
+    const svg=`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<image width="${W}" height="${H}" xlink:href="${png}"/>
+</svg>`;
+    downloadBlob('kinetic-art.svg',new Blob([svg],{type:'image/svg+xml'}));return;}
+  downloadBlob('kinetic-type.svg',new Blob([lastSVG],{type:'image/svg+xml'}));});
+$('#pngBtn').addEventListener('click',()=>{renderHiRes();canvas.toBlob(b=>downloadBlob('kinetic-type.png',b));});
+
+/* ---- optional sound track for recordings — upload an audio file ---- */
+let recAudioEl=null, recAudioSrc=null, recAudioCtx=null, audioReady=false;
+$('#audioBtn').addEventListener('click',()=>$('#audioFile').click());
+$('#audioFile').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f)return;
+  if(!recAudioEl){recAudioEl=new Audio();recAudioEl.loop=true;}   // loop so the whole clip has sound
+  recAudioEl.src=URL.createObjectURL(f); recAudioEl.load();
+  audioReady=true;
+  const b=$('#audioBtn'); b.classList.add('on');
+  b.textContent='♪ '+(f.name.length>14?f.name.slice(0,12)+'…':f.name);
+  b.title='Sound: '+f.name+' — click to change';
+});
+
+let recorder=null,recording=false,recTimer=null,recStart=0;
+$('#recBtn').addEventListener('click',async()=>{
+  if(recording){recorder.stop();return;}
+  const vstream=canvas.captureStream(60);
+  let stream=vstream, withAudio=false;
+  if(audioReady&&recAudioEl){                         // mix the uploaded audio into the clip
+    try{
+      recAudioCtx=recAudioCtx||new (window.AudioContext||window.webkitAudioContext)();
+      if(recAudioCtx.state==='suspended')await recAudioCtx.resume();
+      if(!recAudioSrc)recAudioSrc=recAudioCtx.createMediaElementSource(recAudioEl); // once per element
+      recAudioSrc.disconnect();
+      const dest=recAudioCtx.createMediaStreamDestination();
+      recAudioSrc.connect(dest); recAudioSrc.connect(recAudioCtx.destination);      // record + hear it
+      stream=new MediaStream([...vstream.getVideoTracks(),...dest.stream.getAudioTracks()]);
+      withAudio=true;
+    }catch(err){console.warn('audio mix failed, recording video only:',err);}
+  }
+  const vtypes=['video/mp4;codecs=avc1.42E01E','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const atypes=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  const types=withAudio?atypes:vtypes;
+  const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'video/webm';const chunks=[];
+  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(canvas.width*canvas.height*60*0.25))),audioBitsPerSecond:192e3});
+  recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  recorder.onstop=()=>{recording=false;clearInterval(recTimer);if(recAudioEl)recAudioEl.pause();$('#recBtn').textContent='Record';$('#recBtn').classList.add('rec');
+    downloadBlob('kinetic-reel.'+(mime.includes('mp4')?'mp4':'webm'),new Blob(chunks,{type:mime}));};
+  if(withAudio){try{recAudioEl.currentTime=0;await recAudioEl.play();}catch(e){}}
+  recorder.start();recording=true;recStart=performance.now();$('#recBtn').classList.remove('rec');$('#recBtn').classList.add('primary');
+  if(!playing){playing=true;$('#playBtn').textContent='Freeze';$('#playBtn').classList.add('primary');loop();}
+  recTimer=setInterval(()=>{$('#recBtn').textContent='Stop '+((performance.now()-recStart)/1000).toFixed(1)+'s';},100);});
+
+$('#format').addEventListener('change',e=>{if(e.target.value==='custom'){updateChips();return;}
+  const [w,h]=e.target.value.split('x');$('#docW').value=w;$('#docH').value=h;render();updateChips();});
+['text','docW','docH'].forEach(id=>$('#'+id).addEventListener('input',()=>{render();updateChips();}));
+/* Print calculator: inches × dpi → pixels */
+function applyPrint(){const w=parseFloat($('#printW').value)||1,h=parseFloat($('#printH').value)||1,d=parseInt($('#printDpi').value)||300;
+  $('#docW').value=Math.round(w*d);$('#docH').value=Math.round(h*d);$('#format').value='custom';render();updateChips();}
+$('#applyPrint').addEventListener('click',applyPrint);
+['printW','printH','printDpi'].forEach(id=>$('#'+id).addEventListener('change',applyPrint));
+['fillColor','bgColor','fillOn','strokeOn','bgTransparent','accentColor','accent2','clipGlyph'].forEach(id=>$('#'+id).addEventListener('input',render));
+$('#heatPalette').addEventListener('input',()=>{updateEngineUI();render();});
+$('#mosaicChars').addEventListener('input',render);
+window.addEventListener('resize',()=>{if(font)render();});
+/* tabs + collapsible sub-groups */
+/* Left rail is the sole nav: click an icon to open that section's flyout;
+   click the active icon to close it. Only one section open at a time. */
+let panelOpen=true, curTab='font';
+function setTab(tab){
+  if(tab===curTab && panelOpen){ panelOpen=false; }
+  else { curTab=tab; panelOpen=true; }
+  document.querySelectorAll('#railL button[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===curTab && panelOpen));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.dataset.pane===curTab));
+  document.body.classList.toggle('panel-closed',!panelOpen);
+  if(font){render();setTimeout(render,240);}   // canvas re-fits as the flyout opens/closes
+}
+document.querySelectorAll('#railL button[data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+document.querySelectorAll('.grp h3').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('closed')));
+/* value chips on section headers (Morflax-style) */
+document.querySelectorAll('.grp h3').forEach(h=>{
+  const v=document.createElement('span'); v.className='grp-val';
+  h.insertBefore(v, h.querySelector('.tw'));
+  h.dataset.label=((h.firstChild&&h.firstChild.textContent)||'').trim().toLowerCase();
+});
+function updateChips(){
+  const eng=$('#renderStyle'); const engName=eng?eng.options[eng.selectedIndex].text:'';
+  document.querySelectorAll('.grp h3').forEach(h=>{
+    const v=h.querySelector('.grp-val'); if(!v)return;
+    if(h.dataset.label==='engine settings') v.textContent=engName;
+    else if(h.dataset.label==='output') v.textContent=$('#docW').value+'×'+$('#docH').value;
+    else v.textContent='';
+  });
+}
+/* contextual engine settings — only show sliders the active engine uses */
+const ENGINE_CTRLS={solid:[],dimensional:[],
+  heatmap:['bloom','gain','breath','fieldDrift','grain','heatShift','pDensity','pSpread'],
+  chromatic:['chromatic'],particles:['pDensity','pSpread'],halftone:['dotSize'],
+  outline:['ringCount','ringGap'],network:['pDensity','pSpread','linkDist','strokeW'],
+  glow:['dotSize','bloom','gain','grain','chromatic'],
+  slice:['sliceW','sliceShift'],
+  topo:['bloom','ringCount'],streams:['pDensity','strokeW'],
+  pixelsort:['sliceW','sliceShift'],linescreen:['dotSize','gain'],
+  lowpoly:['cellSize'],iso:['cellSize','gain'],weave:['cellSize','strokeW'],
+  metaballs:['pDensity','gain','bloom'],
+  bubbles:['pDensity','cellSize','pSpread','filmThick','gain','bloom','fieldDrift','grain'],moire:['dotSize','chromatic'],
+  ascii:['dotSize'],
+  beziers:['strokeW'],isoline:['ringCount','bloom','strokeW'],fieldfill:['ringCount','bloom','strokeW'],
+  ripple:['ringGap','bloom','strokeW'],truchet:['cellSize','strokeW'],hatch:['dotSize','bloom','strokeW'],
+  stitch:['ringCount','cellSize','strokeW','fieldDrift','bloom'],
+  crosshatch:['ringCount','dotSize','strokeW','gain','bloom','chromatic'],
+  dendrite:['pDensity','ringCount','linkDist','strokeW','fieldDrift'],
+  blueprint:['cellSize','strokeW','dotSize','pDensity','ringGap'],
+  ferro:['cellSize','strokeW','bloom'],
+  shatter:['cellSize','pSpread','fieldDrift','strokeW'],
+  wood:['ringCount','fieldDrift','gain','grain'],
+  marble:['fieldDrift','gain','bloom','chromatic','grain'],
+  relief:['bloom','gain','ringCount','grain'],
+  polygon:['linkDist','strokeW','dotSize','fieldDrift','pDensity','gain','ringCount','inflate','openEdge'],
+  wireframe:['ringCount','linkDist','strokeW','pDensity']};
+const RENDER_IDS=CONTROLS.render.map(c=>c[0]);
+const ENGINE_NOTE={solid:'Solid — no engine parameters. Shape it with Warp & Motion.',
+  dimensional:'Dimensional — full glass-3D studio. All its controls live in the panel that opens on the right.',
+  chromatic:'RGB channels split & sliced into bands — a digital signal glitch. Best on dark backgrounds.',
+  
+  
+  topo:'Contour rings ripple outward from the letterforms, like a topographic map. More glow = wider spacing; ring count = number of lines.',
+  streams:'Flow-field lines combed across the page, densest and brightest over the word.',
+  pixelsort:'Tone bleeds downward from each ink column — a restrained pixel-sort.',
+  linescreen:'Engraved horizontal line-screen; line weight follows ink density.',
+  
+  lowpoly:'Letterforms faceted into low-poly triangles.',
+  iso:'Isometric block relief built from the letterforms.',
+  weave:'The type woven from over-under strips.',
+  metaballs:'Merging gooey blobs — a hard-edged cousin of the thermal field.',
+  bubbles:'Real thin-film optics on GPU-shaded spheres — iridescence is computed from optical path difference, not faked. Film thickness sets the colour bands, drift the marbling, cell size the bubble scale. Renders at full export resolution.',
+  
+  moire:'Two line fields at a slight angle — the word emerges through interference.',
+  ascii:'Character mosaic mapped to ink density.',
+  
+  beziers:'Editor view — the letterform outlines with their anchor points, control points and handle lines, like a type-design tool. Exports as real SVG.',
+  isoline:'True vector topographic contour rings around the letters. Ring count = number of lines, glow = spacing. Clean SVG paths.',
+  fieldfill:'Letters merged into filled gooey metaball masses, carved by inner contour rings. Vector SVG — raise glow to merge more.',
+  ripple:'Concentric interference fringes rippling out from the letterforms. Ring gap = fringe spacing. Vector SVG.',
+  truchet:'The word rebuilt from woven Truchet quarter-arcs on a grid. Cell size sets the tile. Vector SVG.',
+  hatch:'Contour-following hatch strokes; density follows ink — an engraving. Cell = spacing. Plotter-ready vector.',
+  crosshatch:'Tonal engraving — each layer adds rules at a new angle and a higher ink threshold, so shadow accumulates passes. Ring count = layers, cell = rule spacing. Plotter-ready vector.',
+  dendrite:'Branching growth seeded on the letterform; branches die when they wander off the ink, so the colony grows into the word. Ring count = branch depth, link = segment length. Vector SVG.',
+  blueprint:'The word as a drafting sheet — graph paper, precise outlines, anchor crosses and dimension rules. Cell = grid, ring gap = dimension offset. Vector SVG.',
+  ferro:'Ferrofluid — spikes standing off the contour along the field normal, over a solid core. Cell = spike spacing and length. Vector SVG.',
+  shatter:'The word fractured into shards, each thrown and spun off the centre. Cell = shard count, dispersion = blast, drift = spin. Vector SVG.',
+  wood:'Annual rings warped around a pith and cut to the letterform. Ring count = grain density, drift = warp, intensity = late-wood sharpness.',
+  stitch:'The word embroidered — running stitches along nested contours, each with a knot and a thread sheen. Ring count = stitch rows, cell = stitch length, drift = hand wobble. Vector SVG.',
+  marble:'Ink suspended in water. The letterform is dragged through a twice-warped noise field; drift = swirl, intensity = ink contrast, chromatic = vein colour.',
+  relief:'The word as shaded topography, lit from the upper left. Glow = smoothing, intensity = height, ring count = terracing steps.',
+  polygon:'The word triangulated into a hand-drawn space frame. Silhouette edges read as heavy chords, interior as light web — intensity sets that contrast. Ring count = long braces, inflate swells the letters into one puffy mass, open perimeter breaks the outline. Extrude (3D panel) pulls it into a solid. Vector SVG.',
+  wireframe:'The letters swept through depth as a quad cage — rings at each depth slice, rails running along the extrusion. Ring count = slices, link distance = rail spacing. Drive depth and rotation from the 3D panel. Vector SVG.'};
+function updateEngineUI(){const on=new Set(ENGINE_CTRLS[S.renderStyle]||[]);
+  for(const id of RENDER_IDS){const el=document.getElementById('ctrl-'+id);if(el)el.classList.toggle('hidden',!on.has(id));}
+  $('#style-colorway').classList.toggle('hidden',S.renderStyle!=='heatmap');
+  $('#style-mosaic').classList.toggle('hidden',S.renderStyle!=='ascii');
+  // accents are the two mid stops of the thermal ramp when the colorway is custom
+  const customHeat=S.renderStyle==='heatmap'&&$('#heatPalette').value==='custom';
+  $('#style-accents').classList.toggle('hidden',S.renderStyle!=='particles'&&!customHeat);
+  $('#renderNote').textContent=ENGINE_NOTE[S.renderStyle]||'';updateChips();}
+
+/* ---- direct manipulation: drag orbit / shift-move / alt-roll / scroll-dolly ---- */
+const RANGES={};for(const g in CONTROLS)for(const c of CONTROLS[g])RANGES[c[0]]=[c[2],c[3]];
+function setC(id,v){const r=RANGES[id];if(r)v=clamp(v,r[0],r[1]);setControl(id,v);}
+let drag=null,lastX=0,lastY=0,velRX=0,velRY=0;
+canvas.addEventListener('pointerdown',e=>{drag=e.shiftKey?'move':e.altKey?'roll':'orbit';
+  velRX=velRY=0;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId);e.preventDefault();});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;
+  const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
+  if(drag==='orbit'){setC('rotY',S.rotY+dx*0.4);setC('rotX',S.rotX-dy*0.4);velRY=dx*0.4;velRX=-dy*0.4;}
+  else if(drag==='move'){setC('offsetX',S.offsetX+dx/dispScale);setC('offsetY',S.offsetY+dy/dispScale);}
+  else if(drag==='roll'){setC('rotZ',S.rotZ+dx*0.5);}
+  render();});
+canvas.addEventListener('pointerup',()=>{drag=null;}); // stay frozen if frozen — dragging renders live frames, no auto-resume
+canvas.addEventListener('pointercancel',()=>{drag=null;});
+canvas.addEventListener('wheel',e=>{e.preventDefault();setC('posZ',S.posZ-e.deltaY*1.6);render();},{passive:false});
+
+function startPlay(){if(playing)return;playing=true;$('#playBtn').textContent='Freeze';$('#playBtn').classList.add('primary');loop();}
+function stCtrl(id,label,min,max,step,val){ return `<div class="ctrl"><div class="row"><label>${label}</label><input class="val" id="v-${id}" type="text" inputmode="decimal" spellcheck="false" value="${val}"></div><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}"></div>`; }
+function buildST(){ const host=$('#st-panel'); if(!host) return;
+  host.innerHTML = `<label class="toggle"><input type="checkbox" id="stOn" checked> breathe legible → wild → next word</label>`
+    + stCtrl('stPeriod','breath · seconds per word',1.5,14,0.1,ST.period)
+    + stCtrl('stHold','legible hold · seconds',0,6,0.1,ST.hold)
+    + stCtrl('stAmt','wildness',0,1,0.01,ST.amount);
+  const bind=(id,key,dec)=>{ const r=$('#'+id),v=$('#v-'+id);
+    r.addEventListener('input',()=>{ ST[key]=parseFloat(r.value); v.value=(+r.value).toFixed(dec); });
+    v.addEventListener('change',()=>{ let n=parseFloat(v.value); if(isNaN(n))n=ST[key]; n=clamp(n,+r.min,+r.max); r.value=n; ST[key]=n; v.value=n.toFixed(dec); });
+    v.value=(+r.value).toFixed(dec); };
+  bind('stPeriod','period',1); bind('stHold','hold',1); bind('stAmt','amount',2);
+  $('#stOn').addEventListener('change',e=>{ ST.on=e.target.checked; ST.current=''; if(ST.on&&!playing) startPlay(); render(); });
+}
+buildControls(); buildST();
+loadFont('bentonsans').then(()=>{
+  const qs=new URLSearchParams(location.search);
+  applyEngine('beziers'); setControl('size',500);
+  $('#fillColor').value='#111214'; $('#bgColor').value='#bfeee0';       // black marks on mint, like the reference
+  const qe=qs.get('engine'); if(qe)applyEngine(qe);
+  const qt=qs.get('text'); if(qt)$('#text').value=qt;
+  render(); startPlay();
+});
+</script>
