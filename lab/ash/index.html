@@ -252,9 +252,11 @@ const P={
   source:'edges', soft:0.30, mode:'loop', front:0.55, speed:0.16,
   rise:560, blowout:64, turb:120, wob:28, wind:0,
   burn:0, ember:'#ff6a2a', ash:'#8a8f98',
+  wrap:'flat', spin:0.5,
   bg:'#07080f', blend:'normal', transparent:0,
   play:true,
 };
+const TAU2=Math.PI*2;
 let img=null, parts=null;
 let clock=0, loopPhase=0, curFront=0, t0=performance.now();
 
@@ -312,10 +314,14 @@ function buildParticles(){
   const n=keep.length;
   const hx=new Float32Array(n), hy=new Float32Array(n), thr=new Float32Array(n);
   const seed=new Float32Array(n), rx=new Float32Array(n), ry=new Float32Array(n);
+  const uu=new Float32Array(n), vv=new Float32Array(n);
   const cr=new Uint8Array(n), cg=new Uint8Array(n), cb=new Uint8Array(n);
   const cx=W/2, cy=H/2;
+  let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
+  for(const gi of keep){ const i=gi%gw, j=(gi/gw)|0, X=i*gap+off, Y=j*gap+off; if(X<minx)minx=X; if(X>maxx)maxx=X; if(Y<miny)miny=Y; if(Y>maxy)maxy=Y; }
+  const sx=(maxx-minx)||1, sy=(maxy-miny)||1;
   for(let k=0;k<n;k++){ const gi=keep[k], i=gi%gw, j=(gi/gw)|0;
-    const X=i*gap+off, Y=j*gap+off; hx[k]=X; hy[k]=Y;
+    const X=i*gap+off, Y=j*gap+off; hx[k]=X; hy[k]=Y; uu[k]=(X-minx)/sx; vv[k]=(Y-miny)/sy;
     cr[k]=sampR[gi]; cg[k]=sampG[gi]; cb[k]=sampB[gi];
     const dx=X-cx, dy=Y-cy, dl=Math.hypot(dx,dy)||1; rx[k]=dx/dl; ry[k]=dy/dl;
     seed[k]=hash2(i*1.7+3.1, j*2.3+5.9);
@@ -332,7 +338,7 @@ function buildParticles(){
     }
     thr[k]=clamp(t*0.92 + seed[k]*0.08, 0, 1);           // a little grain so bands don't march
   }
-  parts={n,hx,hy,thr,seed,rx,ry,cr,cg,cb,gap};
+  parts={n,hx,hy,thr,seed,rx,ry,cr,cg,cb,gap,uu,vv};
 }
 
 // ---------------- front (dissolve position 0..1+soft) ----------------
@@ -372,12 +378,21 @@ function drawScene(time){
   cctx.lineCap='round';
   const n=parts.n, soft=P.soft, size=P.size, gap=parts.gap, front=curFront, shape=P.shape, baseA=P.alpha;
   const em=hexRgb(P.ember), as=hexRgb(P.ash), burn=P.burn;
+  // 3D wrap: map each particle's uv onto a rotating sphere / cylinder / box and project
+  const is3=P.wrap!=='flat', R3=Math.min(W,H)*0.34, f3=Math.min(W,H)*1.25, ang=time*P.spin, cA=Math.cos(ang), sA=Math.sin(ang);
   for(let k=0;k<n;k++){
     const thr=parts.thr[k];
     const a=smooth(thr,thr+soft,front);
-    const hx=parts.hx[k], hy=parts.hy[k];
-    let px,py,alpha,ds=gap*size;
-    if(a<=0){ px=hx; py=hy; alpha=baseA; }
+    let hx=parts.hx[k], hy=parts.hy[k], dsc=1, rz=1;
+    if(is3){ const u=parts.uu[k], v=parts.vv[k]; let X,Y,Z;
+      if(P.wrap==='sphere'){ const th=u*TAU2, ph=v*Math.PI, sp=Math.sin(ph); X=R3*sp*Math.cos(th); Y=R3*Math.cos(ph); Z=R3*sp*Math.sin(th); }
+      else if(P.wrap==='cylinder'){ const th=u*TAU2; X=R3*Math.cos(th); Y=(v-0.5)*R3*2.2; Z=R3*Math.sin(th); }
+      else { const seg=u*4, fi=Math.floor(seg)%4, t=seg-Math.floor(seg), C=[[-R3,-R3],[R3,-R3],[R3,R3],[-R3,R3]], A=C[fi], B=C[(fi+1)%4]; X=lerp(A[0],B[0],t); Z=lerp(A[1],B[1],t); Y=(v-0.5)*R3*2.2; }
+      const rx3=X*cA - Z*sA; rz=X*sA + Z*cA; const persp=f3/(f3+rz+R3);
+      hx=W/2 + rx3*persp; hy=H/2 + Y*persp; dsc=persp;
+    }
+    let px,py,alpha,ds=gap*size*dsc;
+    if(a<=0){ px=hx; py=hy; alpha=baseA; if(is3 && rz<-R3*0.15) continue; }   // cull the back of the solid while settled
     else {
       const sd=parts.seed[k], rise=P.rise*a*a;
       const tx=Math.cos(sd*41.0+time*0.6), ty=Math.sin(sd*57.0+time*0.55);
@@ -385,7 +400,7 @@ function drawScene(time){
       const blow=P.blowout*a*(0.4+0.6*a);
       px=hx + parts.rx[k]*blow + tx*P.turb*a + wob + P.wind*a;
       py=hy - rise + parts.ry[k]*blow*0.3 + ty*P.turb*a;
-      alpha=clamp(1-a*a,0,1)*baseA; ds=gap*size*(1+a*0.6);
+      alpha=clamp(1-a*a,0,1)*baseA; ds=gap*size*dsc*(1+a*0.6);
     }
     if(alpha<=0.012) continue;
     let r=parts.cr[k], g=parts.cg[k], b=parts.cb[k];
@@ -475,6 +490,11 @@ function buildPanel(){
   select(gP,'shape','Shape',[{t:'Pixels',v:'pixels'},{t:'Dots',v:'dots'},{t:'Streaks',v:'streaks'},{t:'Triangles',v:'triangles'},{t:'Sparks (cross)',v:'cross'}]);
   slider(gP,'density','Density',3,20,1,v=>v+' px',true);
   const pp=duo(gP); slider(pp,'size','Grain',0.3,2.2,0.05,v=>(+v).toFixed(2)+'×'); slider(pp,'alpha','Opacity',0.1,1,0.01,v=>(+v).toFixed(2));
+
+  // Wrap
+  const gW=grp('Wrap','Wrap the image around a rotating solid, then let it disperse off.');
+  select(gW,'wrap','Shape',[{t:'Flat',v:'flat'},{t:'Sphere',v:'sphere'},{t:'Cylinder',v:'cylinder'},{t:'Box',v:'box'}]);
+  when(slider(gW,'spin','Spin',-2,2,0.02,v=>(+v).toFixed(2)),'wrap:sphere,cylinder,box');
 
   // Dissolve
   const gD=grp('Dissolve','Where the burn begins, and how it moves.');
