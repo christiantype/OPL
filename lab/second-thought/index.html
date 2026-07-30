@@ -673,7 +673,12 @@ function sampleGlyph(gl,T){
 // ===== SECOND THOUGHT — point morph. Each word is sampled to a fixed set of outline points;
 // point i travels from one word to the next while the warp storm (the WILD sliders) rides on
 // top. No fade, no snap — the marks physically move between the letterforms. =====
-const MORPH_N=440;
+const MORPH_N=700;
+// a proximity web over a point cloud (cached with the cloud): each point links to its nearby
+// neighbours, so the letterform stays connected — and the links STRETCH as the storm scatters
+// the points, giving the dense web look instead of lonely dots.
+function stGraph(P,r){ const r2=r*r,e=[],N=P.length; for(let i=0;i<N;i++){ let c=0;
+  for(let j=i+1;j<N;j++){ const dx=P[i][0]-P[j][0],dy=P[i][1]-P[j][1]; if(dx*dx+dy*dy<r2){ e.push(i,j); if(++c>=5)break; } } } return e; }
 function stLayoutLine(text,W,H){ const upm=font.unitsPerEm,scale=S.size/upm,wScale=S.width/100;
   const items=[]; let w=0; for(const ch of text){ const g=font.charToGlyph(ch); const adv=g.advanceWidth*scale*wScale; items.push({g,ch,adv}); w+=adv+S.tracking; }
   if(items.length)w-=S.tracking; const cx=W/2+S.offsetX,cyMid=H/2+S.offsetY,baseY=cyMid+S.size*0.34;
@@ -693,10 +698,11 @@ function stRasterCloud(text,W,H){ const o=document.createElement('canvas'); o.wi
 function stCloud(text,W,H){ const fk=($('#fontPick')&&$('#fontPick').value)||'';
   const key=text+'|'+Math.round(S.size)+'|'+W+'|'+H+'|'+Math.round(S.width)+'|'+fk;
   if(ST.cache[text]&&ST.cache[text].key===key) return ST.cache[text].cloud;
-  let cloud;
-  if(cssFontFamily){ cloud=stRasterCloud(text,W,H); }
+  let P;
+  if(cssFontFamily){ P=stRasterCloud(text,W,H); }
   else { const gl=stLayoutLine(text,W,H), idT=(x,y)=>[x,y]; let pts=[];
-    for(const g of gl) pts=pts.concat(sampleGlyph(g,idT)); cloud=stResample(pts,MORPH_N,W/2,H/2); }
+    for(const g of gl) pts=pts.concat(sampleGlyph(g,idT)); P=stResample(pts,MORPH_N,W/2,H/2); }
+  const cloud={P, edges: stGraph(P, Math.max(12,S.size*0.055))};
   ST.cache[text]={key,cloud}; return cloud; }
 // the position-based warp fields from makeT, applied to a free point cloud (+ global behaviors)
 function stWarp(px,py,C,idx,N){ let X=px,Y=py;
@@ -725,18 +731,18 @@ function stWarp(px,py,C,idx,N){ let X=px,Y=py;
 function drawMorph(W,H){ const words=stWords(), fill=$('#fillColor').value;
   const C={cx:W/2+S.offsetX,cyMid:H/2+S.offsetY,R:Math.hypot(W,H)/2};
   if(!words.length) return;
-  const a=stCloud(words[ST.idx%words.length],W,H), b=stCloud(words[(ST.idx+1)%words.length],W,H);
-  const me=smooth(clamp(ST.morph,0,1)), N=MORPH_N, P=new Array(N);
-  for(let i=0;i<N;i++){ const hx=lerp(a[i][0],b[i][0],me), hy=lerp(a[i][1],b[i][1],me); P[i]=stWarp(hx,hy,C,i,N); }
-  // editor-view outline: join consecutive points ONLY when they're still close (same stretch of
-  // contour) — long jumps between letters/contours are skipped, so no scan-lines. As the storm
-  // pulls points apart the joins fall away and it's just marks in flight.
-  const asz=Math.max(1.1,S.strokeW*1.05), maxSeg=Math.max(10,S.size*0.11), ms2=maxSeg*maxSeg;
-  ctx.strokeStyle=hexA(fill,0.55); ctx.lineWidth=Math.max(0.5,S.strokeW*0.7); ctx.lineJoin='round'; ctx.lineCap='round';
+  const A=stCloud(words[ST.idx%words.length],W,H), B=stCloud(words[(ST.idx+1)%words.length],W,H);
+  const me=smooth(clamp(ST.morph,0,1)), N=MORPH_N, P=new Array(N), aP=A.P, bP=B.P;
+  for(let i=0;i<N;i++){ const a=aP[i]||aP[aP.length-1], b=bP[i]||bP[bP.length-1];
+    P[i]=stWarp(lerp(a[0],b[0],me),lerp(a[1],b[1],me),C,i,N); }
+  // the proximity web — connects the letterform and STRETCHES with the storm (stays dense, no dust)
+  const edges = me<0.5 ? A.edges : B.edges;
+  ctx.strokeStyle=hexA(fill,0.6); ctx.lineWidth=Math.max(0.5,S.strokeW*0.55); ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.beginPath();
-  for(let i=1;i<N;i++){ const a=P[i-1],b=P[i], dx=b[0]-a[0],dy=b[1]-a[1]; if(dx*dx+dy*dy<ms2){ ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); } }
+  for(let k=0;k<edges.length;k+=2){ const a=P[edges[k]],b=P[edges[k+1]]; if(!a||!b)continue; ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); }
   ctx.stroke();
-  ctx.fillStyle=fill; for(let i=0;i<N;i++){ const p=P[i]; ctx.fillRect(p[0]-asz,p[1]-asz,asz*2,asz*2); }
+  const asz=Math.max(1.3,S.strokeW*1.05); ctx.fillStyle=fill;
+  for(let i=0;i<N;i++){ const p=P[i]; ctx.fillRect(p[0]-asz,p[1]-asz,asz*2,asz*2); }
   $('#status').innerHTML=`second thought · ${words.length} words · point morph · ${W}×${H}`;
 }
 
@@ -2199,11 +2205,14 @@ function stWords(){ return $('#text').value.split('\n').map(w=>w.trim()).filter(
 // Each breath draws a fresh hand: a random subset of the warps, at random intensity and
 // direction, over a new noise seed — so no two transitions read the same (not "twist-reverse"
 // every time). It's safe to reshuffle at the breath boundary because the storm is at zero there.
-function stNewBreath(){ const R=Math.random, ids=WILD_IDS.slice();
-  for(let i=ids.length-1;i>0;i--){ const j=(R()*(i+1))|0; const t=ids[i]; ids[i]=ids[j]; ids[j]=t; }
-  const k=4+((R()*5)|0);                                    // 4–8 active warps this breath
+function stNewBreath(){ const R=Math.random;
+  const shuf=a=>{ for(let i=a.length-1;i>0;i--){ const j=(R()*(i+1))|0,t=a[i];a[i]=a[j];a[j]=t; } return a; };
+  const spread=['flow','distort','orbit','twist','fisheye'];      // these give the storm 2D body
+  const rest=WILD_IDS.filter(id=>spread.indexOf(id)<0);
   ST.mix={__set:1}; ST.flip={}; ST.seed=R()*997;
-  ids.forEach((id,i)=>{ ST.mix[id]=(i<k)?(0.5+R()*0.95):0; ST.flip[id]=(R()<0.5?-1:1); });
+  WILD_IDS.forEach(id=>{ ST.mix[id]=0; ST.flip[id]=(R()<0.5?-1:1); });
+  shuf(spread); const ns=2+((R()*2)|0); for(let i=0;i<ns;i++) ST.mix[spread[i]]=0.6+R()*0.8;   // 2–3 spreaders — never a flat smear
+  shuf(rest);   const nr=2+((R()*4)|0); for(let i=0;i<nr;i++) ST.mix[rest[i]]=0.4+R()*0.9;      // + a random handful of the rest
 }
 function stTick(dt){ if(!ST.on) return;
   if(!ST.mix) stNewBreath();
