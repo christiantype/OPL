@@ -322,7 +322,7 @@
           sx.beginPath(); sx.arc(d.x,d.y,d.r,0,6.2832); sx.fill(); } }
     }
 
-    function resize(){ DPR=Math.min(devicePixelRatio||1,2); W=innerWidth; H=innerHeight;
+    function resize(){ DPR=Math.min(devicePixelRatio||1,1); W=innerWidth; H=innerHeight;   // sky is soft → low-res is invisible
       sky.width=W*DPR; sky.height=H*DPR; sx.setTransform(DPR,0,0,DPR,0,0); }
     addEventListener('resize', resize);
 
@@ -438,9 +438,9 @@
       'floaty','aglow','hushed','brimming','radiant','tingly','simmering','porous','melting','awake'];
     const P={
       text:'  '+EMOTIONS.join('   ')+'   ',
-      size:15, spacing:19, rowGap:70,
+      size:15, spacing:21, rowGap:78,
       swayAmp:34, windSway:20, swayFreq:0.012, breathFreq:0.0015, breathAmp:0.62,
-      spring:0.02, damp:0.9, collIter:2, collPush:0.5, restitution:0.5, accent:'#efe000', margin:40
+      spring:0.02, damp:0.9, collIter:1, collPush:0.5, restitution:0.4, accent:'#efe000', margin:40
     };
     const HL=new Set(['STILL','OPEN','PRESENT','AWE','ALIVE','WONDER','STILLNESS']);
     // per-letter colours — mostly black & white, with pops pulled from the studio screensaver palette
@@ -456,7 +456,7 @@
     addEventListener('oc-wind', e=>{ const s=e.detail.scale;
       P.swayAmp = clamp(28 + s*28, 28, 60); P.windSway = clamp(14 + s*24, 14, 42); });
 
-    function resize(){ DPR=Math.min(devicePixelRatio||1,2); W=innerWidth; H=innerHeight;
+    function resize(){ DPR=Math.min(devicePixelRatio||1,1.35); W=innerWidth; H=innerHeight;
       stage.width=W*DPR; stage.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); build(); }
     addEventListener('resize', resize);
 
@@ -570,7 +570,7 @@
     function draw(){
       ctx.clearRect(0,0,W,H);
       // network web — faint lines between nearby letters (grid-bucketed, one batched stroke)
-      { const D=P.size*2.6, D2=D*D, INV=1/D, g=new Map(), key=(cx,cy)=>((cx+2048)<<13)^(cy+2048);
+      { const D=P.size*2.1, D2=D*D, INV=1/D, g=new Map(), key=(cx,cy)=>((cx+2048)<<13)^(cy+2048);
         for(const nd of nodes){ const k=key((nd.x*INV)|0,(nd.y*INV)|0); let a=g.get(k); if(!a){a=[];g.set(k,a);} a.push(nd); }
         ctx.strokeStyle = OC.lumAt(0.5)>0.52 ? 'rgba(18,18,22,0.11)' : 'rgba(245,247,255,0.13)';
         ctx.lineWidth=1; ctx.beginPath();
@@ -587,8 +587,7 @@
       for(const nd of drawOrder){
         if(nd.font!==curFont){ ctx.font=nd.font; curFont=nd.font; }   // font set ~once per size, not per glyph
         ctx.fillStyle = nd.hero ? nd.col : ((uniform?darkTop:(OC.lumAt(nd.y/H)>0.52)) ? inkD : inkL);
-        if(nd.rot){ ctx.save(); ctx.translate(nd.x,nd.y); ctx.rotate(nd.rot); ctx.fillText(nd.ch,0,0); ctx.restore(); }
-        else ctx.fillText(nd.ch, nd.x, nd.y);
+        ctx.fillText(nd.ch, nd.x, nd.y);   // upright — no per-glyph save/rotate (big perf win)
       }
       // keep the identity layer's ink in step with the sky behind it (centre band)
       const centreDark=OC.lumAt(0.5)>0.52;
