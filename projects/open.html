@@ -85,6 +85,10 @@
       text-decoration:none; color:#141414; font-weight:500; border:1.5px solid #141414; border-radius:999px; padding:12px 26px;
       transition:background .25s ease, color .25s ease, border-color .25s ease; }
     .oc-panel .ov-join:hover{ background:var(--color-accent2); border-color:var(--color-accent2); color:#141414; }
+    .oc-panel .ov-actions{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; margin-top:6px; }
+    .oc-panel .ov-cal{ font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:#141414; text-decoration:none;
+      border-bottom:1px solid rgba(0,0,0,.3); padding-bottom:4px; transition:border-color .25s ease; }
+    .oc-panel .ov-cal:hover{ border-color:var(--color-accent2); }
     .oc-close{ position:absolute; top:14px; right:16px; width:34px; height:34px; border-radius:50%;
       border:1px solid rgba(0,0,0,.18); background:transparent; color:#141414; font-size:20px; line-height:1;
       cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
@@ -113,7 +117,10 @@
       <p>The form draws on council practice — a way of speaking and listening in a circle where the point is to bear witness and speak from the heart — and on Shunryu Suzuki's <em>Zen Mind, Beginner's Mind</em>, which describes a mind still open to many possibilities, unburdened by expertise.</p>
       <p>You don't need any background in meditation.</p>
       <p>Free, every week, never recorded.</p>
-      <a class="ov-join" href="https://us02web.zoom.us/j/82545325852" target="_blank" rel="noopener">Join Friday →</a>
+      <div class="ov-actions">
+        <a class="ov-join" href="https://us02web.zoom.us/j/82545325852" target="_blank" rel="noopener">Join Friday →</a>
+        <a class="ov-cal" href="https://calendar.google.com/calendar/event?action=TEMPLATE&amp;tmeid=c3AwM3UzN2F0ajVpNHI4aWNmMGFvbGRlb2tfMjAyNjA4MTRUMTEwMDAwWiBzb2xvY2hyaXMxNEBt&amp;tmsrc=solochris14%40gmail.com&amp;scp=ALL" target="_blank" rel="noopener">Add to calendar</a>
+      </div>
     </div>
   </div>
 
@@ -421,8 +428,9 @@
       drawOrder = nodes.slice().sort((a,b)=> a.hero===b.hero ? a.fsize-b.fsize : (a.hero?1:-1));
     }
     // the real message, as discrete bold phrases scattered through the field (natural breaks, no run-on)
-    const HERO=[['ongoing',0.09,0.14],['friday 6–7am',0.62,0.17],
-      ['20 minutes of stillness',0.08,0.70],['30 minutes of conversation',0.46,0.88]];
+    // the four colour phrases, pinned to the four corners
+    const HERO=[['ongoing',0.0,0.09],['friday 6–7am',1.0,0.09],
+      ['20 minutes of stillness',0.0,0.92],['30 minutes of conversation',1.0,0.92]];
     function buildHero(m){
       const sp=P.size*0.6;                          // same letter size as the field
       HERO.forEach(([t,fx,fy])=>{ const chars=[...t], width=chars.length*sp;
@@ -463,13 +471,11 @@
         const bhx=cx0+dxn*bs, bhy=cy0+dyn*bs;   // breathed home (circular)
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
-        if(nd.hero){   // rides the SAME flow+sway+breath as the field (sampled at the phrase anchor → never breaks apart),
-                       // plus a gentle per-letter wave so the phrase undulates off its baseline
+        if(nd.hero){   // pinned in its corner (raw home, no breath) — only a gentle wobble/drift so it stays alive
           const acx=vnoise(nd.ax*CS,nd.ay*CS,T1)-0.5, acy=vnoise(nd.ax*CS+31.7,nd.ay*CS+11.3,T1)-0.5;
-          const asway=swayBase*Math.cos(nd.ay*0.0011);
-          const wob=Math.sin(nd.hx*0.028 + t*0.02)*(P.size*0.42);   // travelling wave along the phrase
-          nd.x += (bhx + asway + acx*1.2*amp - nd.x)*0.08;
-          nd.y += (bhy + acy*1.0*amp + wob - nd.y)*0.08;
+          const wob=Math.sin(nd.hx*0.028 + t*0.02)*(P.size*0.3);   // gentle wave along the phrase
+          nd.x += (nd.hx + acx*0.3*amp - nd.x)*0.05;
+          nd.y += (nd.hy + acy*0.26*amp + wob - nd.y)*0.05;
           continue;
         }
         // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
