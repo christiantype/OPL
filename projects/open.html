@@ -77,7 +77,9 @@
       line-height:.95; margin:0 0 6px; color:#141414; }
     .oc-panel .ov-title .sl{ color:var(--color-accent2); }
     .oc-panel .ov-sub{ font-size:11px; letter-spacing:.2em; text-transform:uppercase; opacity:.5; margin:0 0 22px; color:#141414; }
+    .oc-panel .ov-lead{ font-size:clamp(17px,2.4vw,21px); line-height:1.5; margin:0 0 20px; color:#141414; }
     .oc-panel p{ font-size:15px; line-height:1.75; margin:0 0 15px; color:#141414; }
+    .oc-panel p em{ font-style:italic; }
     .oc-panel .ov-join{ display:inline-block; margin-top:10px; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase;
       text-decoration:none; color:#141414; font-weight:500; border:1.5px solid #141414; border-radius:999px; padding:12px 26px;
       transition:background .25s ease, color .25s ease, border-color .25s ease; }
@@ -105,10 +107,14 @@
       <button class="oc-close" id="oc-close" aria-label="Close">×</button>
       <h2 class="ov-title">OP<span class="sl">/</span>EN</h2>
       <p class="ov-sub">Original Practice / Everyday Noticing</p>
-      <p>A weekly hour of stillness. Every Friday, 6–7am Central — twenty minutes of silence, then a conversation, then a prompt. Done by seven. Free, open to anyone, never recorded.</p>
-      <p>Raw connection is becoming a luxury; most of what passes for it is mediated by something. This is a plainer thing — no cross-talk, nothing to fix, nothing to submit.</p>
-      <p>Friday isn't the practice. The practice is the twenty minutes you sit alone the rest of the week. Friday is where it gets held.</p>
-      <p>People who sit for years tend to become more generous, more willing to not know, harder to rattle. Come as you are.</p>
+      <p class="ov-lead">Fridays at six. We sit, we talk, we go.</p>
+      <p>OP/EN is a practice-based gathering. We sit together in silence for twenty minutes, then talk — each week around a theme drawn from the work itself: process, groundedness, craft, technology, whatever's actually in front of us. A timer holds the silent period. A prompt closes it.</p>
+      <p>There's no cross-talk, nothing to fix, and nothing to submit.</p>
+      <p>The form draws on council practice — a way of speaking and listening in a circle where the point is bearing witness rather than responding — and on Shunryu Suzuki's <em>Zen Mind, Beginner's Mind</em>, which describes a mind still open to many possibilities, unburdened by expertise. That's the disposition we're after, in the room and at the desk.</p>
+      <p>You don't need any background in meditation. You don't need to have done this before.</p>
+      <p>Friday is not the practice. The noticing is the part you do alone, the other six days. Friday is where it gets held.</p>
+      <p>The benefits are well-studied: regular practice calms the nervous system, widens attention, and eases stress. People who sit for years tend to become more generous, more willing to not know, harder to rattle. Come as you are.</p>
+      <p>Free, every week, never recorded.</p>
       <a class="ov-join" href="https://us02web.zoom.us/j/82545325852" target="_blank" rel="noopener">Join Friday →</a>
     </div>
   </div>
@@ -413,11 +419,13 @@
       for(const nd of nodes){
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
-        if(nd.hero){   // rides the SAME flow+sway as the field, sampled at the phrase anchor → moves rigidly, never breaks apart
+        if(nd.hero){   // rides the SAME flow+sway as the field (sampled at the phrase anchor → never breaks apart),
+                       // plus a gentle per-letter wave so the phrase undulates off its baseline
           const acx=vnoise(nd.ax*CS,nd.ay*CS,T1)-0.5, acy=vnoise(nd.ax*CS+31.7,nd.ay*CS+11.3,T1)-0.5;
           const asway=swayBase*Math.cos(nd.ay*0.0011);
+          const wob=Math.sin(nd.hx*0.028 + t*0.02)*(P.size*0.42);   // travelling wave along the phrase
           nd.x += (nd.hx + asway + acx*1.9*amp - nd.x)*0.08;
-          nd.y += (nd.hy + acy*1.35*amp - nd.y)*0.08;
+          nd.y += (nd.hy + acy*1.35*amp + wob - nd.y)*0.08;
           continue;
         }
         // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
