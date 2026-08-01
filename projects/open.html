@@ -56,6 +56,37 @@
       background:var(--oc-scrim,rgba(248,249,252,.96));
       transition:color 1.2s ease, background-color .3s ease, border-color .3s ease; }
     .oc-join:hover{ background:var(--color-accent2); border-color:var(--color-accent2); color:#141414; opacity:1; }
+    /* superscript info affordance on the wordmark */
+    .oc-info{ pointer-events:auto; vertical-align:super; font-size:0.18em; margin-left:0.16em;
+      width:1.7em; height:1.7em; border-radius:50%; border:1.6px solid currentColor; background:transparent;
+      color:inherit; cursor:pointer; font-family:Georgia,"Times New Roman",serif; font-style:italic; font-weight:400;
+      line-height:1; display:inline-flex; align-items:center; justify-content:center; padding:0; transform:translateY(-0.1em);
+      transition:background .2s ease, color .2s ease, border-color .2s ease; }
+    .oc-info:hover{ background:var(--color-accent2); border-color:var(--color-accent2); color:#141414; }
+    /* about overlay */
+    .oc-overlay{ position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; padding:24px;
+      background:rgba(12,14,22,.55); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+      opacity:0; transition:opacity .28s ease; }
+    .oc-overlay.open{ opacity:1; }
+    .oc-overlay[hidden]{ display:none; }
+    .oc-panel{ position:relative; width:min(560px,94vw); max-height:86vh; overflow:auto;
+      background:#fff; color:#141414; border-radius:10px; padding:clamp(28px,4vw,48px);
+      transform:translateY(10px) scale(.98); transition:transform .28s ease; }
+    .oc-overlay.open .oc-panel{ transform:none; }
+    .oc-panel .ov-title{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(38px,7vw,62px);
+      line-height:.95; margin:0 0 6px; color:#141414; }
+    .oc-panel .ov-title .sl{ color:var(--color-accent2); }
+    .oc-panel .ov-sub{ font-size:11px; letter-spacing:.2em; text-transform:uppercase; opacity:.5; margin:0 0 22px; color:#141414; }
+    .oc-panel p{ font-size:15px; line-height:1.75; margin:0 0 15px; color:#141414; }
+    .oc-panel .ov-join{ display:inline-block; margin-top:10px; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase;
+      text-decoration:none; color:#141414; font-weight:500; border:1.5px solid #141414; border-radius:999px; padding:12px 26px;
+      transition:background .25s ease, color .25s ease, border-color .25s ease; }
+    .oc-panel .ov-join:hover{ background:var(--color-accent2); border-color:var(--color-accent2); color:#141414; }
+    .oc-close{ position:absolute; top:14px; right:16px; width:34px; height:34px; border-radius:50%;
+      border:1px solid rgba(0,0,0,.18); background:transparent; color:#141414; font-size:20px; line-height:1;
+      cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+      transition:background .2s ease; }
+    .oc-close:hover{ background:rgba(0,0,0,.06); }
   </style>
 </head>
 <body class="project">
@@ -64,15 +95,40 @@
 
   <div class="oc-frame">
     <span class="oc-scrim" aria-hidden="true"></span>
-    <p class="oc-eyebrow"><span class="dot"></span>Ongoing</p>
-    <h1 class="oc-mark">OP<span class="sl">/</span>EN</h1>
-    <p class="oc-expand">Original Practice / Everyday Noticing</p>
-    <p class="oc-sched">Friday · 6–7am<br>20 minutes of stillness<br>30 minutes of conversation</p>
+    <h1 class="oc-mark">OP<span class="sl">/</span>EN<button class="oc-info" id="oc-info" aria-label="About OP/EN" title="About">i</button></h1>
     <a class="oc-join" href="https://us02web.zoom.us/j/82545325852" target="_blank" rel="noopener">Join Friday</a>
+  </div>
+
+  <!-- About overlay -->
+  <div class="oc-overlay" id="oc-overlay" hidden>
+    <div class="oc-panel" role="dialog" aria-modal="true" aria-label="About OP/EN">
+      <button class="oc-close" id="oc-close" aria-label="Close">×</button>
+      <h2 class="ov-title">OP<span class="sl">/</span>EN</h2>
+      <p class="ov-sub">Original Practice / Everyday Noticing</p>
+      <p>A weekly hour of stillness. Every Friday, 6–7am Central — twenty minutes of silence, then a conversation, then a prompt. Done by seven. Free, open to anyone, never recorded.</p>
+      <p>Raw connection is becoming a luxury; most of what passes for it is mediated by something. This is a plainer thing — no cross-talk, nothing to fix, nothing to submit.</p>
+      <p>Friday isn't the practice. The practice is the twenty minutes you sit alone the rest of the week. Friday is where it gets held.</p>
+      <p>People who sit for years tend to become more generous, more willing to not know, harder to rattle. Come as you are.</p>
+      <a class="ov-join" href="https://us02web.zoom.us/j/82545325852" target="_blank" rel="noopener">Join Friday →</a>
+    </div>
   </div>
 
   <script src="../shared/nav.js"></script>
   <script src="../shared/cursor.js"></script>
+
+  <script>
+  /* About overlay */
+  (function(){
+    const info=document.getElementById('oc-info'), ov=document.getElementById('oc-overlay'), close=document.getElementById('oc-close');
+    if(!info||!ov) return;
+    function open(){ ov.hidden=false; requestAnimationFrame(()=>ov.classList.add('open')); }
+    function shut(){ ov.classList.remove('open'); setTimeout(()=>{ ov.hidden=true; }, 300); }
+    info.addEventListener('click', open);
+    close.addEventListener('click', shut);
+    ov.addEventListener('click', e=>{ if(e.target===ov) shut(); });
+    addEventListener('keydown', e=>{ if(e.key==='Escape' && !ov.hidden) shut(); });
+  })();
+  </script>
 
   <script>
   /* ─────────────────────────────────────────────────────────────────────────
@@ -275,9 +331,9 @@
     };
     const HL=new Set(['STILL','OPEN','PRESENT','AWE','ALIVE','WONDER','STILLNESS']);
     // per-letter colours — mostly black & white, with pops pulled from the studio screensaver palette
-    const PAL=['#111111','#111111','#111111','#111111','#111111','#ffffff','#ffffff','#ffffff',
-      '#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
-      '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c'];
+    // vibrant screensaver colours — reserved for the information phrases (the field stays black)
+    const VIB=['#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
+      '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c','#0e5c5b','#4a2c4d'];
     let W=0,H=0,DPR=1, strands=[], nodes=[], clock=0;
 
     // Chicago wind sets how far the curtain leans
@@ -315,10 +371,23 @@
           const x=m+j*P.spacing+jx, y=cpos+jy;
           const sz=rnd(0.82,1.3);
           const nd={x,y,ox:x,oy:y,hx:x,hy:y, sz, r:P.size*sz*0.46, rot:rnd(-0.28,0.28), seed:rnd(0,900),
-            col:PAL[(Math.random()*PAL.length)|0], ch:g.ch, hot:g.hot};
+            ch:g.ch, hot:g.hot};
           strand.push(nd); nodes.push(nd); }
         strands.push(strand); }
+      buildHero(m);
       for(let i=0;i<nodes.length;i++) nodes[i].id=i;
+    }
+    // the real message, as discrete bold phrases scattered through the field (natural breaks, no run-on)
+    const HERO=[['ongoing',0.08,0.13],['original practice',0.55,0.10],['everyday noticing',0.10,0.34],
+      ['friday 6–7am',0.66,0.40],['20 minutes of stillness',0.06,0.72],['30 minutes of conversation',0.44,0.88]];
+    function buildHero(m){
+      const sp=P.size*0.6;                          // same letter size as the field
+      HERO.forEach(([t,fx,fy])=>{ const chars=[...t], width=chars.length*sp;
+        const x0=clamp(fx*W, m, Math.max(m, W-m-width)), y=Math.round(H*fy), strand=[];
+        const ax=x0+width/2, ay=y;                 // one anchor for the whole phrase → it moves rigidly
+        for(let j=0;j<chars.length;j++){ const x=x0+j*sp, ch=chars[j];
+          const nd={x,y,ox:x,oy:y,hx:x,hy:y, ax,ay, sz:1, r:0, rot:0, seed:0, col:VIB[(Math.random()*VIB.length)|0], ch, hero:true}; strand.push(nd); nodes.push(nd); }
+        strands.push(strand); });
     }
 
     // collision: a spatial grid so nearby letters push apart; Verlet turns each push into momentum
@@ -326,9 +395,9 @@
       const cell=P.size*1.1, INV=1/cell, grid=new Map();
       const key=(cx,cy)=>((cx+2048)<<13)^(cy+2048);
       for(const nd of nodes){ const k=key((nd.x*INV)|0,(nd.y*INV)|0); let a=grid.get(k); if(!a){a=[];grid.set(k,a);} a.push(nd); }
-      for(const nd of nodes){ const cx=(nd.x*INV)|0, cy=(nd.y*INV)|0;
+      for(const nd of nodes){ if(nd.hero) continue; const cx=(nd.x*INV)|0, cy=(nd.y*INV)|0;
         for(let gx=cx-1;gx<=cx+1;gx++) for(let gy=cy-1;gy<=cy+1;gy++){ const a=grid.get(key(gx,gy)); if(!a) continue;
-          for(const o of a){ if(o.id<=nd.id) continue;      // each pair once
+          for(const o of a){ if(o.id<=nd.id||o.hero) continue;      // each pair once; heroes glide through
             let dx=o.x-nd.x, dy=o.y-nd.y, d2=dx*dx+dy*dy; const rr=nd.r+o.r;
             if(d2<rr*rr && d2>1e-4){ const d=Math.sqrt(d2), push=(rr-d)/d*0.5*P.collPush;
               const px=dx*push, py=dy*push, b=P.restitution;
@@ -343,9 +412,16 @@
       const swayBase=Math.sin(t*P.swayFreq)*P.windSway;
       for(const nd of nodes){
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
+        const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
+        if(nd.hero){   // rides the SAME flow+sway as the field, sampled at the phrase anchor → moves rigidly, never breaks apart
+          const acx=vnoise(nd.ax*CS,nd.ay*CS,T1)-0.5, acy=vnoise(nd.ax*CS+31.7,nd.ay*CS+11.3,T1)-0.5;
+          const asway=swayBase*Math.cos(nd.ay*0.0011);
+          nd.x += (nd.hx + asway + acx*1.9*amp - nd.x)*0.08;
+          nd.y += (nd.hy + acy*1.35*amp - nd.y)*0.08;
+          continue;
+        }
         // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
         const fx=vnoise(nd.seed+T2,nd.hy*FS,T2)-0.5, fy=vnoise(nd.hx*FS,nd.seed+9.4+T2,T2)-0.5;
-        const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
         const tx=nd.hx + swayX + cx*1.9*amp + fx*amp*1.15, ty=nd.hy + cy*1.35*amp + fy*amp*1.15;
         const vx=(nd.x-nd.ox)*damp, vy=(nd.y-nd.oy)*damp; nd.ox=nd.x; nd.oy=nd.y;   // Verlet velocity
         nd.x += vx + (tx-nd.x)*K;
@@ -367,8 +443,12 @@
         for(let i=0;i<strand.length;i++){ const nd=strand[i];
           const p=strand[Math.max(0,i-1)], q=strand[Math.min(strand.length-1,i+1)];
           const ang=Math.atan2(q.y-p.y,q.x-p.x)*0.35 + nd.rot;   // rides the wave + its own organic tilt
-          ctx.font=`${(P.size*nd.sz).toFixed(1)}px ${fam}`;
-          ctx.fillStyle=nd.col;
+          if(nd.hero){   // the information — colourful (same size/weight as the field), stringed together
+            ctx.font=`${(P.size*nd.sz).toFixed(1)}px ${fam}`; ctx.fillStyle=nd.col;
+          } else {       // the feeling-field — all black (white at night so it stays legible)
+            const dark=OC.lumAt(clamp(nd.y/H,0,1))>0.52;
+            ctx.font=`${(P.size*nd.sz).toFixed(1)}px ${fam}`; ctx.fillStyle=dark?'#0b0b0e':'#f5f7fb';
+          }
           ctx.save(); ctx.translate(nd.x,nd.y); ctx.rotate(ang); ctx.fillText(nd.ch,0,0); ctx.restore(); }
       }
       // keep the identity layer's ink in step with the sky behind it (centre band)
