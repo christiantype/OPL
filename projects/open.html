@@ -434,8 +434,13 @@
       ['20 mins stillness',0.0,0.91],['30 mins conversation',1.0,0.91]];
     function buildHero(m){
       const sp=P.size*0.6;                          // same letter size as the field
+      // match the header: left edge = OP/AL logo, right edge = info icon
+      let padL=m, padR=m;
+      const logoEl=document.querySelector('nav .nav-logo-link'), menuEl=document.querySelector('nav .nav-menu-btn');
+      if(logoEl){ const r=logoEl.getBoundingClientRect(); if(r.width) padL=Math.max(6, r.left); }
+      if(menuEl){ const r=menuEl.getBoundingClientRect(); if(r.width) padR=Math.max(6, W-r.right); }
       HERO.forEach(([t,fx,fy])=>{ const chars=[...t], width=chars.length*sp;
-        const x0=clamp(fx*W, m, Math.max(m, W-m-width)), y=Math.round(H*fy), strand=[];
+        const x0 = fx<0.5 ? padL : Math.max(padL, W-padR-width), y=Math.round(H*fy), strand=[];
         const ax=x0+width/2, ay=y;                 // one anchor for the whole phrase → it moves rigidly
         const fs=Math.round(P.size);
         for(let j=0;j<chars.length;j++){ const x=x0+j*sp, ch=chars[j];
@@ -466,16 +471,17 @@
       // slow breath: a circular pulse from the centre (tantien). a radial Gaussian window keeps the
       // expansion round rather than scaling the whole rectangle (which reads square)
       const cx0=W/2, cy0=H/2, sig2=2*Math.pow(Math.min(W,H)*0.85,2);
-      const breath=breathEnv((t*P.breathFreq)%1)*P.breathAmp;   // hold → BAM → settle
+      const bE=breathEnv((t*P.breathFreq)%1), breath=bE*P.breathAmp;   // smooth swell (0..1 → displacement)
       for(const nd of nodes){
         const dxn=nd.hx-cx0, dyn=nd.hy-cy0, bs=1+breath*Math.exp(-(dxn*dxn+dyn*dyn)/sig2);
         const bhx=cx0+dxn*bs, bhy=cy0+dyn*bs;   // breathed home (circular)
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
-        if(nd.hero){   // pinned precisely in its corner (identical margins) — only a whisper of horizontal shimmer, no drift
+        if(nd.hero){   // pinned in its corner, but breathes in/out along its diagonal with the field
+          const dx=nd.hx-cx0, dy=nd.hy-cy0, len=Math.hypot(dx,dy)||1, push=bE*26;
           const wob=Math.sin(nd.hx*0.02 + t*0.018)*(P.size*0.15);
-          nd.x += (nd.hx + wob - nd.x)*0.06;
-          nd.y += (nd.hy - nd.y)*0.06;
+          nd.x += (nd.hx + dx/len*push + wob - nd.x)*0.06;
+          nd.y += (nd.hy + dy/len*push - nd.y)*0.06;
           continue;
         }
         // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
