@@ -236,10 +236,10 @@
     // current + target palettes; we ease current → target so weather changes glide in
     let cur = { top:[140,180,220], hor:[210,230,245], cloud:[255,255,255] };
     let tgt = cur;
-    let cloudCover = 0.45, driftScale = 0.4, isNight = false, curPhase = 'day';
+    let cloudCover = 0.45, cloudCoverTarget = 0.45, driftScale = 0.4, isNight = false, curPhase = 'day';
 
     function setWeather(phase, cc, windKmh, night){
-      cloudCover = clamp(cc,0,1); isNight = night; curPhase = phase;
+      cloudCoverTarget = clamp(cc,0,1); isNight = night; curPhase = phase;   // cover eases smoothly, no jump
       driftScale = clamp(0.15 + windKmh/40, 0.15, 1.1);
       let a,b,t;
       if(phase==='night'){ a=PAL.night; b=PAL.nightCl; t=Math.min(1,cc*0.9); }
@@ -247,7 +247,6 @@
       else if(phase==='dusk'){ a=PAL.dusk; b=PAL.duskCl; t=cc*0.75; }
       else { a=PAL.dayClear; b=PAL.dayCloud; t=cc*0.9; }
       tgt = mix(a,b,t);
-      seedClouds();
     }
 
     // luminance of the sky at a vertical fraction f (0 top → 1 horizon)
@@ -256,7 +255,7 @@
 
     // clouds: a handful of soft puffs drifting across the upper sky
     let puffs=[];
-    function seedClouds(){ const n=Math.round(3+cloudCover*9); puffs=[];
+    function seedClouds(){ const n=16; puffs=[];   // fixed set, seeded once; visibility eases with cloudCover
       for(let i=0;i<n;i++){ puffs.push({ x:Math.random(), y:0.05+Math.random()*0.62,
         s:0.7+Math.random()*1.6, spd:0.2+Math.random()*0.6, seed:Math.random()*10 }); } }
 
@@ -280,19 +279,17 @@
     function drawSun(){ let gx, warm;
       if(curPhase==='dawn'){ gx=0.24*W; warm='255,196,132'; }
       else if(curPhase==='dusk'){ gx=0.78*W; warm='255,150,96'; } else return;
-      const gy=H*0.82, r=Math.min(W,H)*0.62, a=0.5*(1-cloudCover*0.55);
+      const gy=H*0.86, r=Math.min(W,H)*0.85, a=0.42*(1-cloudCover*0.5);   // broad soft glow, no disc
       let g=sx.createRadialGradient(gx,gy,0,gx,gy,r);
-      g.addColorStop(0,`rgba(${warm},${a.toFixed(3)})`); g.addColorStop(0.45,`rgba(${warm},${(a*0.28).toFixed(3)})`); g.addColorStop(1,`rgba(${warm},0)`);
-      sx.fillStyle=g; sx.fillRect(0,0,W,H);
-      const dr=Math.min(W,H)*0.045, da=0.55*(1-cloudCover*0.7);
-      sx.fillStyle=`rgba(255,236,214,${da.toFixed(3)})`; sx.beginPath(); sx.arc(gx,gy,dr,0,6.2832); sx.fill(); }
+      g.addColorStop(0,`rgba(${warm},${a.toFixed(3)})`); g.addColorStop(0.5,`rgba(${warm},${(a*0.3).toFixed(3)})`); g.addColorStop(1,`rgba(${warm},0)`);
+      sx.fillStyle=g; sx.fillRect(0,0,W,H); }
     function drawSkyline(){
       const h=cur.hor, col=[Math.round(h[0]*0.42+16),Math.round(h[1]*0.42+20),Math.round(h[2]*0.42+32)];
       sx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},${isNight?0.55:0.3})`;
       for(const b of skyline){ sx.fillRect(b.x*W, H-b.h*H, b.w*W+0.6, b.h*H); } }
 
     // precipitation — rain streaks or snow, falling outside the glass
-    let precip={kind:'none',rate:0}, drops=[];
+    let precip={kind:'none',rate:0}, drops=[], precipVis=0, precipWant={kind:'none',rate:0};
     function mkDrop(){ if(precip.kind==='snow')
         return { x:Math.random()*W, y:Math.random()*H, r:1+Math.random()*2.6, spd:0.4+Math.random()*0.9, drift:Math.random()*6.28, sway:0.4+Math.random()*1.0 };
       // rain: layered depth (0 far → 1 near) drives length, speed, thickness, opacity → real-drop parallax
@@ -300,23 +297,23 @@
       return { x:Math.random()*W, y:Math.random()*H, layer, len:11+layer*24, spd:8+layer*13, w:0.7+layer*1.5, a:0.16+layer*0.4 }; }
     function seedPrecip(){ drops=[]; if(precip.kind==='none') return;
       const n=Math.round((precip.kind==='snow'?110:200)*precip.rate); for(let i=0;i<n;i++) drops.push(mkDrop()); }
-    function setPrecip(kind,rate){ precip={kind:kind||'none',rate:clamp(rate||0,0,1)}; seedPrecip(); }
+    function setPrecip(kind,rate){ precipWant={kind:kind||'none',rate:clamp(rate||0,0,1)}; }   // eased in/out by the frame loop
     function drawPrecip(){
-      if(precip.kind==='none'||!drops.length) return;
+      if(precip.kind==='none'||precipVis<0.01||!drops.length) return;
       const slant=clamp((driftScale-0.3)*1.4,-0.1,1.3);
       if(precip.kind==='rain'){
         const base=isNight?'205,218,238':'184,202,228', head=isNight?'234,241,253':'247,251,255';
         sx.lineCap='round';
         for(const d of drops){ const hx=d.x, hy=d.y, tx=hx-d.len*slant*0.5, ty=hy-d.len;
           const g=sx.createLinearGradient(tx,ty,hx,hy);   // glassy teardrop: faint tail → bright head
-          g.addColorStop(0,`rgba(${base},0)`); g.addColorStop(1,`rgba(${base},${d.a})`);
+          g.addColorStop(0,`rgba(${base},0)`); g.addColorStop(1,`rgba(${base},${(d.a*precipVis).toFixed(3)})`);
           sx.strokeStyle=g; sx.lineWidth=d.w; sx.beginPath(); sx.moveTo(tx,ty); sx.lineTo(hx,hy); sx.stroke();
-          sx.fillStyle=`rgba(${head},${Math.min(1,d.a*1.7)})`;
+          sx.fillStyle=`rgba(${head},${(Math.min(1,d.a*1.7)*precipVis).toFixed(3)})`;
           sx.beginPath(); sx.arc(hx,hy,d.w*0.95,0,6.2832); sx.fill();
           d.y+=d.spd; d.x-=slant*d.spd*0.16;
           if(d.y-d.len>H){ d.y=-Math.random()*40; d.x=Math.random()*W; } if(d.x<-4)d.x+=W; if(d.x>W+4)d.x-=W; }
       } else {
-        sx.fillStyle=isNight?'rgba(230,236,246,0.7)':'rgba(255,255,255,0.82)';
+        sx.fillStyle=isNight?`rgba(230,236,246,${(0.7*precipVis).toFixed(3)})`:`rgba(255,255,255,${(0.82*precipVis).toFixed(3)})`;
         for(const d of drops){ d.y+=d.spd; d.x+=Math.sin(d.drift+d.y*0.01)*d.sway*0.6 - slant*0.6; d.drift+=0.01;
           if(d.y>H){ d.y=-4; d.x=Math.random()*W; } if(d.x<-4)d.x+=W; if(d.x>W+4)d.x-=W;
           sx.beginPath(); sx.arc(d.x,d.y,d.r,0,6.2832); sx.fill(); } }
@@ -329,7 +326,8 @@
     let t=0;
     function frame(){
       // ease palette toward target
-      for(const k of ['top','hor','cloud']) for(let i=0;i<3;i++) cur[k][i]=lerp(cur[k][i],tgt[k][i],0.03);
+      for(const k of ['top','hor','cloud']) for(let i=0;i<3;i++) cur[k][i]=lerp(cur[k][i],tgt[k][i],0.02);
+      cloudCover += (cloudCoverTarget-cloudCover)*0.02;   // clouds thicken/thin smoothly
       t += 0.0016; twT += 0.045;
 
       // sky gradient
@@ -338,13 +336,13 @@
       g.addColorStop(1, `rgb(${cur.hor.map(Math.round).join(',')})`);
       sx.fillStyle=g; sx.fillRect(0,0,W,H);
 
-      drawSun(); drawStars(); drawMoon();   // depth behind the clouds
+      drawSun();   // soft ambient glow only — no moon, no stars, no discs
 
       // clouds
       const cc=cur.cloud.map(Math.round);
       for(const p of puffs){ p.x += (p.spd*driftScale*0.0006); if(p.x>1.25) p.x-=1.5;
         const cx=p.x*W, cy=p.y*H, base=Math.min(W,H)*0.16*p.s;
-        const alpha=(0.10+cloudCover*0.5);
+        const alpha=cloudCover*0.6;   // clear skies fade clouds toward 0
         // a cluster of soft blobs makes one fluffy mass
         for(let b=0;b<4;b++){ const off=(b-1.5), ox=cx+off*base*0.6+Math.sin(t*2+p.seed+b)*base*0.15,
           oy=cy+Math.cos(b*1.6+p.seed)*base*0.28, r=base*(1-Math.abs(off)*0.16);
@@ -353,6 +351,11 @@
           rg.addColorStop(1,`rgba(${cc[0]},${cc[1]},${cc[2]},0)`);
           sx.fillStyle=rg; sx.beginPath(); sx.arc(ox,oy,r,0,6.2832); sx.fill(); } }
 
+      // smooth precip cross-fade (fade one out before the next fades in)
+      if(precip.kind!==precipWant.kind){ if(precipVis<0.03){ precip={kind:precipWant.kind,rate:precipWant.rate}; seedPrecip(); } }
+      else precip.rate=precipWant.rate;
+      const pvTarget=(precip.kind!=='none'&&precip.kind===precipWant.kind)?1:0;
+      precipVis += (pvTarget-precipVis)*0.03;
       drawPrecip();
       requestAnimationFrame(frame);
     }
@@ -581,13 +584,13 @@
               if(dx*dx+dy*dy<D2){ ctx.moveTo(nd.x,nd.y); ctx.lineTo(o.x,o.y); } } } }
         ctx.stroke(); }
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      // field ink: usually the whole sky is uniformly light or dark, so resolve it once (skip per-glyph lumAt)
-      const darkTop=OC.lumAt(0)>0.52, darkBot=OC.lumAt(1)>0.52, uniform=(darkTop===darkBot);
-      const inkD='#0b0b0e', inkL='#f5f7fb';
+      // field ink shifts slowly + gradually with the sky (dark on bright skies → light on dark skies)
+      const L=OC.lumAt(0.5), kk=clamp((0.62-L)/0.42,0,1), iv=Math.round(14+kk*224);
+      const ink=`rgb(${iv},${iv},${iv})`;
       let curFont='';
       for(const nd of drawOrder){
         if(nd.font!==curFont){ ctx.font=nd.font; curFont=nd.font; }   // font set ~once per size, not per glyph
-        ctx.fillStyle = nd.hero ? nd.col : ((uniform?darkTop:(OC.lumAt(nd.y/H)>0.52)) ? inkD : inkL);
+        ctx.fillStyle = nd.hero ? nd.col : ink;
         ctx.fillText(nd.ch, nd.x, nd.y);   // upright — no per-glyph save/rotate (big perf win)
       }
       // keep the identity layer's ink in step with the sky behind it (centre band)
