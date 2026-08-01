@@ -42,10 +42,16 @@
       display:inline-flex; align-items:center; gap:8px; font-weight:600; color:var(--oc-platetext,#000);
       padding:.6em .9em; transition:color 1.2s ease; }
     .oc-eyebrow .dot{ width:5px; height:5px; border-radius:50%; background:var(--color-accent2); }
-    .oc-mark{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(56px,11vw,132px);
+    .oc-mark{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(44px,8.5vw,104px);
       line-height:.9; margin:0; letter-spacing:.01em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
-      text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6)); }
+      text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6)); display:inline-flex; align-items:baseline; }
     .oc-mark .sl{ color:var(--color-accent2); }
+    /* opening reveal: OP and EN start piled on the slash, then part to their sides */
+    .oc-mark .op, .oc-mark .en{ display:inline-block; transition:transform 1.15s cubic-bezier(.16,1,.3,1); }
+    .oc-mark .op{ transform:translateX(0.62em); }
+    .oc-mark .en{ transform:translateX(-0.62em); }
+    .oc-mark.revealed .op, .oc-mark.revealed .en{ transform:none; }
+    @media (prefers-reduced-motion: reduce){ .oc-mark .op, .oc-mark .en{ transition:none; transform:none; } }
     .oc-expand{ margin:22px 0 0; font-size:11px; letter-spacing:.22em; text-transform:uppercase; opacity:1; font-weight:600;
       color:var(--oc-platetext,#000); padding:.62em .9em; transition:color 1.2s ease; }
     .oc-sched{ margin:24px 0 0; font-size:clamp(11px,1.2vw,14px); letter-spacing:.03em; opacity:1; font-weight:500;
@@ -98,7 +104,7 @@
 
   <div class="oc-frame">
     <span class="oc-scrim" aria-hidden="true"></span>
-    <h1 class="oc-mark">OP<span class="sl">/</span>EN</h1>
+    <h1 class="oc-mark" id="oc-mark"><span class="op">OP</span><span class="sl">/</span><span class="en">EN</span></h1>
     <div class="oc-actions">
       <a class="oc-join" href="https://us02web.zoom.us/j/82545325852" target="_blank" rel="noopener">Join Friday</a>
       <button class="oc-info" id="oc-info" aria-label="About OP/EN" title="About">i</button>
@@ -125,6 +131,8 @@
   <script>
   /* About overlay */
   (function(){
+    const mark=document.getElementById('oc-mark');   // opening reveal: OP/EN part from the slash
+    if(mark) requestAnimationFrame(()=>requestAnimationFrame(()=>mark.classList.add('revealed')));
     const info=document.getElementById('oc-info'), ov=document.getElementById('oc-overlay'), close=document.getElementById('oc-close');
     if(!info||!ov) return;
     function open(){ ov.hidden=false; requestAnimationFrame(()=>ov.classList.add('open')); }
@@ -163,10 +171,10 @@
     // current + target palettes; we ease current → target so weather changes glide in
     let cur = { top:[140,180,220], hor:[210,230,245], cloud:[255,255,255] };
     let tgt = cur;
-    let cloudCover = 0.45, driftScale = 0.4, isNight = false;
+    let cloudCover = 0.45, driftScale = 0.4, isNight = false, curPhase = 'day';
 
     function setWeather(phase, cc, windKmh, night){
-      cloudCover = clamp(cc,0,1); isNight = night;
+      cloudCover = clamp(cc,0,1); isNight = night; curPhase = phase;
       driftScale = clamp(0.15 + windKmh/40, 0.15, 1.1);
       let a,b,t;
       if(phase==='night'){ a=PAL.night; b=PAL.nightCl; t=Math.min(1,cc*0.9); }
@@ -186,6 +194,37 @@
     function seedClouds(){ const n=Math.round(3+cloudCover*15); puffs=[];
       for(let i=0;i<n;i++){ puffs.push({ x:Math.random(), y:0.05+Math.random()*0.62,
         s:0.6+Math.random()*1.5, spd:0.2+Math.random()*0.6, seed:Math.random()*10 }); } }
+
+    // ── sky depth: stars, a dawn/dusk sun-glow, a moon, and a faint skyline ──
+    let stars=[], skyline=[], twT=0;
+    function seedStars(){ stars=[]; for(let i=0;i<140;i++) stars.push({
+      x:Math.random(), y:Math.random()*0.62, b:0.35+Math.random()*0.65, ph:Math.random()*6.28, sz:0.4+Math.random()*1.3 }); }
+    function seedSkyline(){ skyline=[]; let x=-0.02;
+      while(x<1.04){ const w=0.014+Math.random()*0.05, tall=Math.random()<0.12,
+        h=(tall?0.14+Math.random()*0.11:0.03+Math.random()*0.075);
+        skyline.push({x,w,h}); x+=w+Math.random()*0.006; } }
+    function drawStars(){ if(!isNight) return; const vis=1-cloudCover; if(vis<0.06) return;
+      for(const s of stars){ const a=s.b*(0.55+0.45*Math.sin(twT+s.ph))*vis*0.9; if(a<0.03) continue;
+        sx.fillStyle=`rgba(245,247,255,${a.toFixed(3)})`; sx.beginPath(); sx.arc(s.x*W,s.y*H,s.sz,0,6.2832); sx.fill(); } }
+    function drawMoon(){ if(!isNight) return; const vis=1-cloudCover*0.7; if(vis<0.15) return;
+      const mx=0.8*W, my=0.19*H, r=Math.min(W,H)*0.032;
+      let g=sx.createRadialGradient(mx,my,0,mx,my,r*4.2);
+      g.addColorStop(0,`rgba(226,235,250,${(0.22*vis).toFixed(3)})`); g.addColorStop(1,'rgba(226,235,250,0)');
+      sx.fillStyle=g; sx.beginPath(); sx.arc(mx,my,r*4.2,0,6.2832); sx.fill();
+      sx.fillStyle=`rgba(238,243,252,${(0.85*vis).toFixed(3)})`; sx.beginPath(); sx.arc(mx,my,r,0,6.2832); sx.fill(); }
+    function drawSun(){ let gx, warm;
+      if(curPhase==='dawn'){ gx=0.24*W; warm='255,196,132'; }
+      else if(curPhase==='dusk'){ gx=0.78*W; warm='255,150,96'; } else return;
+      const gy=H*0.82, r=Math.min(W,H)*0.62, a=0.5*(1-cloudCover*0.55);
+      let g=sx.createRadialGradient(gx,gy,0,gx,gy,r);
+      g.addColorStop(0,`rgba(${warm},${a.toFixed(3)})`); g.addColorStop(0.45,`rgba(${warm},${(a*0.28).toFixed(3)})`); g.addColorStop(1,`rgba(${warm},0)`);
+      sx.fillStyle=g; sx.fillRect(0,0,W,H);
+      const dr=Math.min(W,H)*0.045, da=0.55*(1-cloudCover*0.7);
+      sx.fillStyle=`rgba(255,236,214,${da.toFixed(3)})`; sx.beginPath(); sx.arc(gx,gy,dr,0,6.2832); sx.fill(); }
+    function drawSkyline(){
+      const h=cur.hor, col=[Math.round(h[0]*0.42+16),Math.round(h[1]*0.42+20),Math.round(h[2]*0.42+32)];
+      sx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},${isNight?0.55:0.3})`;
+      for(const b of skyline){ sx.fillRect(b.x*W, H-b.h*H, b.w*W+0.6, b.h*H); } }
 
     // precipitation — rain streaks or snow, falling outside the glass
     let precip={kind:'none',rate:0}, drops=[];
@@ -226,13 +265,15 @@
     function frame(){
       // ease palette toward target
       for(const k of ['top','hor','cloud']) for(let i=0;i<3;i++) cur[k][i]=lerp(cur[k][i],tgt[k][i],0.03);
-      t += 0.0016;
+      t += 0.0016; twT += 0.045;
 
       // sky gradient
       const g=sx.createLinearGradient(0,0,0,H);
       g.addColorStop(0, `rgb(${cur.top.map(Math.round).join(',')})`);
       g.addColorStop(1, `rgb(${cur.hor.map(Math.round).join(',')})`);
       sx.fillStyle=g; sx.fillRect(0,0,W,H);
+
+      drawSun(); drawStars(); drawMoon();   // depth behind the clouds
 
       // clouds
       const cc=cur.cloud.map(Math.round);
@@ -247,10 +288,11 @@
           rg.addColorStop(1,`rgba(${cc[0]},${cc[1]},${cc[2]},0)`);
           sx.fillStyle=rg; sx.beginPath(); sx.arc(ox,oy,r,0,6.2832); sx.fill(); } }
 
+      drawSkyline();   // faint city along the bottom
       drawPrecip();
       requestAnimationFrame(frame);
     }
-    resize(); seedClouds(); requestAnimationFrame(frame);
+    resize(); seedClouds(); seedStars(); seedSkyline(); requestAnimationFrame(frame);
 
     return { lumAt, setWeather, setPrecip, get isNight(){return isNight;}, get windScale(){return driftScale;} };
   })();
@@ -332,7 +374,7 @@
       'floaty','aglow','hushed','brimming','radiant','tingly','simmering','porous','melting','awake'];
     const P={
       text:'  '+EMOTIONS.join('   ')+'   ',
-      size:20, spacing:15, rowGap:56,
+      size:15, spacing:19, rowGap:70,
       swayAmp:60, windSway:46, swayFreq:0.012, breathFreq:0.005, breathAmp:0.12,
       spring:0.02, damp:0.9, collIter:3, collPush:0.5, restitution:0.5, accent:'#efe000', margin:40
     };
