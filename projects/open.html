@@ -85,7 +85,8 @@
       text-decoration:none; color:#141414; font-weight:500; border:1.5px solid #141414; border-radius:999px; padding:12px 26px;
       transition:background .25s ease, color .25s ease, border-color .25s ease; }
     .oc-panel .ov-join:hover{ background:var(--color-accent2); border-color:var(--color-accent2); color:#141414; }
-    .oc-panel .ov-actions{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; margin-top:6px; }
+    .oc-panel .ov-actions{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; margin-top:16px; }
+    .oc-panel .ov-actions .ov-join{ margin-top:0; }   /* keep both buttons on the same line */
     .oc-panel .ov-cal{ font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:#141414; text-decoration:none;
       border-bottom:1px solid rgba(0,0,0,.3); padding-bottom:4px; transition:border-color .25s ease; }
     .oc-panel .ov-cal:hover{ border-color:var(--color-accent2); }
@@ -428,9 +429,9 @@
       drawOrder = nodes.slice().sort((a,b)=> a.hero===b.hero ? a.fsize-b.fsize : (a.hero?1:-1));
     }
     // the real message, as discrete bold phrases scattered through the field (natural breaks, no run-on)
-    // the four colour phrases, pinned to the four corners
+    // the four colour phrases, pinned to the four corners with identical margins (symmetric top/bottom)
     const HERO=[['ongoing',0.0,0.09],['friday 6–7am',1.0,0.09],
-      ['20 minutes of stillness',0.0,0.92],['30 minutes of conversation',1.0,0.92]];
+      ['20 mins stillness',0.0,0.91],['30 mins conversation',1.0,0.91]];
     function buildHero(m){
       const sp=P.size*0.6;                          // same letter size as the field
       HERO.forEach(([t,fx,fy])=>{ const chars=[...t], width=chars.length*sp;
@@ -471,11 +472,10 @@
         const bhx=cx0+dxn*bs, bhy=cy0+dyn*bs;   // breathed home (circular)
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
-        if(nd.hero){   // pinned in its corner (raw home, no breath) — only a gentle wobble/drift so it stays alive
-          const acx=vnoise(nd.ax*CS,nd.ay*CS,T1)-0.5, acy=vnoise(nd.ax*CS+31.7,nd.ay*CS+11.3,T1)-0.5;
-          const wob=Math.sin(nd.hx*0.028 + t*0.02)*(P.size*0.3);   // gentle wave along the phrase
-          nd.x += (nd.hx + acx*0.3*amp - nd.x)*0.05;
-          nd.y += (nd.hy + acy*0.26*amp + wob - nd.y)*0.05;
+        if(nd.hero){   // pinned precisely in its corner (identical margins) — only a whisper of horizontal shimmer, no drift
+          const wob=Math.sin(nd.hx*0.02 + t*0.018)*(P.size*0.15);
+          nd.x += (nd.hx + wob - nd.x)*0.06;
+          nd.y += (nd.hy - nd.y)*0.06;
           continue;
         }
         // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
