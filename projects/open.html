@@ -43,7 +43,7 @@
       display:inline-flex; align-items:center; gap:8px; font-weight:600; color:var(--oc-platetext,#000);
       padding:.6em .9em; transition:color 1.2s ease; }
     .oc-eyebrow .dot{ width:5px; height:5px; border-radius:50%; background:var(--color-accent2); }
-    .oc-mark{ font-family:"Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(40px,7vw,84px);
+    .oc-mark{ font-family:"Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(27px,4.7vw,56px);
       line-height:.9; margin:0; letter-spacing:.01em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
       text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6)); }
     .oc-mark .sl{ color:var(--color-accent2); }
@@ -573,16 +573,6 @@
 
     function draw(){
       ctx.clearRect(0,0,W,H);
-      // network web — faint lines between nearby letters (grid-bucketed, one batched stroke)
-      { const D=P.size*2.1, D2=D*D, INV=1/D, g=new Map(), key=(cx,cy)=>((cx+2048)<<13)^(cy+2048);
-        for(const nd of nodes){ const k=key((nd.x*INV)|0,(nd.y*INV)|0); let a=g.get(k); if(!a){a=[];g.set(k,a);} a.push(nd); }
-        ctx.strokeStyle = OC.lumAt(0.5)>0.52 ? 'rgba(18,18,22,0.11)' : 'rgba(245,247,255,0.13)';
-        ctx.lineWidth=1; ctx.beginPath();
-        for(const nd of nodes){ const cx=(nd.x*INV)|0, cy=(nd.y*INV)|0;
-          for(let gx=cx-1;gx<=cx+1;gx++) for(let gy=cy-1;gy<=cy+1;gy++){ const a=g.get(key(gx,gy)); if(!a) continue;
-            for(const o of a){ if(o.id<=nd.id) continue; const dx=o.x-nd.x, dy=o.y-nd.y;
-              if(dx*dx+dy*dy<D2){ ctx.moveTo(nd.x,nd.y); ctx.lineTo(o.x,o.y); } } } }
-        ctx.stroke(); }
       ctx.textAlign='center'; ctx.textBaseline='middle';
       // field ink shifts slowly + gradually with the sky (dark on bright skies → light on dark skies)
       const L=OC.lumAt(0.5), kk=clamp((0.62-L)/0.42,0,1), iv=Math.round(14+kk*224);
@@ -607,6 +597,9 @@
     // make sure the canvas renders in Sidepiece (web fonts must be loaded before canvas can use them)
     if(document.fonts && document.fonts.load){ document.fonts.load('20px "Sidepiece-HoneyPie"').catch(()=>{}); }
     resize(); if(reduce){ draw(); } else requestAnimationFrame(tick);
+    // breath phase (0..1) for syncing external audio in captures
+    window.__breathPhase = ()=> (clock * P.breathFreq) % 1;
+    window.__breathPeriodSec = ()=> 1 / (P.breathFreq * 60);
   })();
   </script>
 </body>
