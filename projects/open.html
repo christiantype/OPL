@@ -96,6 +96,27 @@
       cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
       transition:background .2s ease; }
     .oc-close:hover{ background:rgba(0,0,0,.06); }
+    /* buttons that reuse link styling need the inherited font */
+    .oc-join, .oc-panel .ov-join{ font-family:inherit; cursor:pointer; }
+    /* request-invite form */
+    .req-panel .req-title{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:400;
+      font-size:clamp(28px,4.5vw,40px); line-height:1; margin:0 0 8px; color:#141414; }
+    .req-panel .req-sub{ font-size:14px; line-height:1.6; margin:0 0 26px; color:#141414; opacity:.65; }
+    .req-form{ display:flex; flex-direction:column; gap:18px; }
+    .req-field{ display:flex; flex-direction:column; gap:8px; font-size:10.5px; letter-spacing:.14em;
+      text-transform:uppercase; color:#141414; opacity:.7; }
+    .req-field input, .req-field select{ font-family:inherit; font-size:15px; letter-spacing:normal; text-transform:none;
+      padding:12px 14px; border:1px solid rgba(0,0,0,.25); border-radius:7px; background:#fff; color:#141414; width:100%; opacity:1; }
+    .req-field select{ appearance:none;
+      background-image:linear-gradient(45deg,transparent 50%,#141414 50%),linear-gradient(135deg,#141414 50%,transparent 50%);
+      background-position:calc(100% - 18px) 19px,calc(100% - 13px) 19px; background-size:5px 5px; background-repeat:no-repeat; }
+    .req-submit{ margin-top:6px; align-self:flex-start; font-family:inherit; cursor:pointer;
+      font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:#141414; font-weight:500;
+      border:1.5px solid #141414; border-radius:999px; padding:13px 28px; background:transparent;
+      transition:background .25s ease, border-color .25s ease; }
+    .req-submit:hover{ background:var(--color-accent2); border-color:var(--color-accent2); }
+    .req-submit:disabled{ opacity:.5; cursor:default; }
+    .req-msg{ font-size:13px; opacity:.8; margin:2px 0 0; min-height:1em; color:#141414; }
   </style>
 </head>
 <body class="project">
@@ -106,8 +127,31 @@
     <span class="oc-scrim" aria-hidden="true"></span>
     <h1 class="oc-mark">OPEN</h1>
     <div class="oc-actions">
-      <a class="oc-join" href="https://us02web.zoom.us/j/82545325852" target="_blank" rel="noopener">Join Friday</a>
+      <button class="oc-join" id="oc-request" type="button">Request Invite</button>
       <button class="oc-info" id="oc-info" aria-label="About OPEN" title="About">i</button>
+    </div>
+  </div>
+
+  <!-- Request an invite -->
+  <div class="oc-overlay" id="req-overlay" hidden>
+    <div class="oc-panel req-panel" role="dialog" aria-modal="true" aria-label="Request an invite">
+      <button class="oc-close" id="req-close" aria-label="Close">×</button>
+      <h2 class="req-title">Request an invite</h2>
+      <p class="req-sub">Tell us a little and we'll send you the link.</p>
+      <form id="req-form" class="req-form" novalidate>
+        <label class="req-field"><span>Name</span><input type="text" name="name" autocomplete="name" required></label>
+        <label class="req-field"><span>Email</span><input type="email" name="email" autocomplete="email" required></label>
+        <label class="req-field"><span>Do you have experience with meditation?</span>
+          <select name="experience" required>
+            <option value="" disabled selected>Choose one</option>
+            <option>New to it</option>
+            <option>A little</option>
+            <option>Years of practice</option>
+          </select>
+        </label>
+        <button type="submit" class="req-submit">Request invite →</button>
+        <p class="req-msg" id="req-msg" role="status" aria-live="polite"></p>
+      </form>
     </div>
   </div>
 
@@ -115,13 +159,11 @@
   <div class="oc-overlay" id="oc-overlay" hidden>
     <div class="oc-panel" role="dialog" aria-modal="true" aria-label="About OPEN">
       <button class="oc-close" id="oc-close" aria-label="Close">×</button>
-      <p>OPEN is a practice-based gathering. We sit together in silence for twenty minutes, then talk — each week around a theme drawn from the work itself: process, groundedness, craft, technology, whatever's actually in front of us. A timer holds the silence; a prompt closes it.</p>
-      <p>The form draws on council practice — a way of speaking and listening in a circle where the point is to bear witness and speak from the heart — and on Shunryu Suzuki's <em>Zen Mind, Beginner's Mind</em>, which describes a mind still open to many possibilities, unburdened by expertise.</p>
-      <p>You don't need any background in meditation.</p>
-      <p>Free, every week, never recorded.</p>
+      <p>OPEN is a practice-based gathering. We sit in silence for twenty minutes, then talk — each week around a theme like process, groundedness, craft, creativity, or technology. A timer holds the silence; a prompt closes it.</p>
+      <p>It borrows from council practice — a circle where you listen from the heart, not to respond — and from Suzuki's <em>Zen Mind, Beginner's Mind</em>: a mind still open, unburdened by expertise.</p>
+      <p>No background needed. Free, every week, never recorded.</p>
       <div class="ov-actions">
-        <a class="ov-join" href="https://us02web.zoom.us/j/82545325852" target="_blank" rel="noopener">Join Friday →</a>
-        <a class="ov-cal" href="https://calendar.google.com/calendar/event?action=TEMPLATE&amp;tmeid=c3AwM3UzN2F0ajVpNHI4aWNmMGFvbGRlb2tfMjAyNjA4MTRUMTEwMDAwWiBzb2xvY2hyaXMxNEBt&amp;tmsrc=solochris14%40gmail.com&amp;scp=ALL" target="_blank" rel="noopener">Add to calendar</a>
+        <button type="button" class="ov-join" id="ov-request">Request Invite</button>
       </div>
     </div>
   </div>
@@ -132,14 +174,38 @@
   <script>
   /* About overlay */
   (function(){
-    const info=document.getElementById('oc-info'), ov=document.getElementById('oc-overlay'), close=document.getElementById('oc-close');
-    if(!info||!ov) return;
-    function open(){ ov.hidden=false; requestAnimationFrame(()=>ov.classList.add('open')); }
-    function shut(){ ov.classList.remove('open'); setTimeout(()=>{ ov.hidden=true; }, 300); }
-    info.addEventListener('click', open);
-    close.addEventListener('click', shut);
-    ov.addEventListener('click', e=>{ if(e.target===ov) shut(); });
-    addEventListener('keydown', e=>{ if(e.key==='Escape' && !ov.hidden) shut(); });
+    // Paste your Google Apps Script Web App /exec URL here to collect requests into the Sheet:
+    const REQUEST_ENDPOINT = 'REPLACE_WITH_APPS_SCRIPT_URL';
+
+    function wire(ov, closeBtn){ if(!ov) return {open(){}, shut(){}};
+      const open=()=>{ ov.hidden=false; requestAnimationFrame(()=>ov.classList.add('open')); };
+      const shut=()=>{ ov.classList.remove('open'); setTimeout(()=>{ ov.hidden=true; }, 300); };
+      if(closeBtn) closeBtn.addEventListener('click', shut);
+      ov.addEventListener('click', e=>{ if(e.target===ov) shut(); });
+      addEventListener('keydown', e=>{ if(e.key==='Escape' && !ov.hidden) shut(); });
+      return {open, shut};
+    }
+    const about = wire(document.getElementById('oc-overlay'), document.getElementById('oc-close'));
+    const req   = wire(document.getElementById('req-overlay'), document.getElementById('req-close'));
+
+    const info=document.getElementById('oc-info'); if(info) info.addEventListener('click', about.open);
+    ['oc-request','ov-request'].forEach(id=>{ const el=document.getElementById(id);
+      if(el) el.addEventListener('click', ()=>{ about.shut(); req.open(); }); });
+
+    // request form → Google Sheet (via Apps Script)
+    const form=document.getElementById('req-form'), msg=document.getElementById('req-msg');
+    if(form){ form.addEventListener('submit', e=>{ e.preventDefault();
+      const fd=new FormData(form), name=(fd.get('name')||'').trim(), email=(fd.get('email')||'').trim(), exp=(fd.get('experience')||'').trim();
+      if(!name||!email||!exp){ msg.textContent='Please fill in every field.'; return; }
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.textContent='That email looks off.'; return; }
+      if(REQUEST_ENDPOINT.indexOf('REPLACE')===0){ msg.textContent='Requests aren’t connected yet.'; return; }
+      const btn=form.querySelector('.req-submit'); btn.disabled=true; msg.textContent='Sending…';
+      fetch(REQUEST_ENDPOINT,{ method:'POST', mode:'no-cors',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({name,email,experience:exp}).toString() })
+        .then(()=>{ msg.textContent='Thanks — we’ll be in touch.'; form.reset(); btn.disabled=false; })
+        .catch(()=>{ msg.textContent='Something went wrong. Try again.'; btn.disabled=false; });
+    }); }
   })();
   </script>
 
@@ -445,7 +511,9 @@
         const ax=x0+width/2, ay=y;                 // one anchor for the whole phrase → it moves rigidly
         const fs=Math.round(P.size);
         for(let j=0;j<chars.length;j++){ const x=x0+j*sp, ch=chars[j];
-          const nd={x,y,ox:x,oy:y,hx:x,hy:y, ax,ay, sz:1, r:0, rot:0, seed:0, fsize:fs, font:fs+'px '+FAM, col:VIB[(Math.random()*VIB.length)|0], ch, hero:true}; strand.push(nd); nodes.push(nd); }
+          const ea=Math.random()*6.2831853, em=0.4+Math.random()*0.75;   // per-letter explosion direction/strength
+          const nd={x,y,ox:x,oy:y,hx:x,hy:y, ax,ay, exx:Math.cos(ea)*em, exy:Math.sin(ea)*em,
+            sz:1, r:0, rot:0, seed:0, fsize:fs, font:fs+'px '+FAM, col:VIB[(Math.random()*VIB.length)|0], ch, hero:true}; strand.push(nd); nodes.push(nd); }
         strands.push(strand); });
     }
 
@@ -478,11 +546,10 @@
         const bhx=cx0+dxn*bs, bhy=cy0+dyn*bs;   // breathed home (circular)
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
-        if(nd.hero){   // pinned in its corner, but breathes in/out along its diagonal with the field
-          const dx=nd.hx-cx0, dy=nd.hy-cy0, len=Math.hypot(dx,dy)||1, push=bE*26;
-          const wob=Math.sin(nd.hx*0.02 + t*0.018)*(P.size*0.15);
-          nd.x += (nd.hx + dx/len*push + wob - nd.x)*0.06;
-          nd.y += (nd.hy + dy/len*push - nd.y)*0.06;
+        if(nd.hero){   // tidy at rest, but the letters explode apart on the breath and come back together
+          const ex=bE*bE*118;                    // eased so it holds tidy longer, then bursts
+          nd.x += (nd.hx + nd.exx*ex - nd.x)*0.07;
+          nd.y += (nd.hy + nd.exy*ex - nd.y)*0.07;
           continue;
         }
         // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
@@ -502,6 +569,16 @@
 
     function draw(){
       ctx.clearRect(0,0,W,H);
+      // network web — faint lines between nearby letters (grid-bucketed, one batched stroke)
+      { const D=P.size*2.6, D2=D*D, INV=1/D, g=new Map(), key=(cx,cy)=>((cx+2048)<<13)^(cy+2048);
+        for(const nd of nodes){ const k=key((nd.x*INV)|0,(nd.y*INV)|0); let a=g.get(k); if(!a){a=[];g.set(k,a);} a.push(nd); }
+        ctx.strokeStyle = OC.lumAt(0.5)>0.52 ? 'rgba(18,18,22,0.11)' : 'rgba(245,247,255,0.13)';
+        ctx.lineWidth=1; ctx.beginPath();
+        for(const nd of nodes){ const cx=(nd.x*INV)|0, cy=(nd.y*INV)|0;
+          for(let gx=cx-1;gx<=cx+1;gx++) for(let gy=cy-1;gy<=cy+1;gy++){ const a=g.get(key(gx,gy)); if(!a) continue;
+            for(const o of a){ if(o.id<=nd.id) continue; const dx=o.x-nd.x, dy=o.y-nd.y;
+              if(dx*dx+dy*dy<D2){ ctx.moveTo(nd.x,nd.y); ctx.lineTo(o.x,o.y); } } } }
+        ctx.stroke(); }
       ctx.textAlign='center'; ctx.textBaseline='middle';
       // field ink: usually the whole sky is uniformly light or dark, so resolve it once (skip per-glyph lumAt)
       const darkTop=OC.lumAt(0)>0.52, darkBot=OC.lumAt(1)>0.52, uniform=(darkTop===darkBot);
