@@ -42,7 +42,7 @@
       display:inline-flex; align-items:center; gap:8px; font-weight:600; color:var(--oc-platetext,#000);
       padding:.6em .9em; transition:color 1.2s ease; }
     .oc-eyebrow .dot{ width:5px; height:5px; border-radius:50%; background:var(--color-accent2); }
-    .oc-mark{ font-family:"Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(56px,11vw,132px);
+    .oc-mark{ font-family:"Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(40px,7vw,84px);
       line-height:.9; margin:0; letter-spacing:.01em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
       text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6)); }
     .oc-mark .sl{ color:var(--color-accent2); }
@@ -183,9 +183,9 @@
 
     // clouds: a handful of soft puffs drifting across the upper sky
     let puffs=[];
-    function seedClouds(){ const n=Math.round(3+cloudCover*15); puffs=[];
+    function seedClouds(){ const n=Math.round(3+cloudCover*9); puffs=[];
       for(let i=0;i<n;i++){ puffs.push({ x:Math.random(), y:0.05+Math.random()*0.62,
-        s:0.6+Math.random()*1.5, spd:0.2+Math.random()*0.6, seed:Math.random()*10 }); } }
+        s:0.7+Math.random()*1.6, spd:0.2+Math.random()*0.6, seed:Math.random()*10 }); } }
 
     // ── sky depth: stars, a dawn/dusk sun-glow, a moon, and a faint skyline ──
     let stars=[], skyline=[], twT=0;
@@ -273,7 +273,7 @@
         const cx=p.x*W, cy=p.y*H, base=Math.min(W,H)*0.16*p.s;
         const alpha=(0.10+cloudCover*0.5);
         // a cluster of soft blobs makes one fluffy mass
-        for(let b=0;b<5;b++){ const off=(b-2), ox=cx+off*base*0.55+Math.sin(t*2+p.seed+b)*base*0.15,
+        for(let b=0;b<4;b++){ const off=(b-1.5), ox=cx+off*base*0.6+Math.sin(t*2+p.seed+b)*base*0.15,
           oy=cy+Math.cos(b*1.6+p.seed)*base*0.28, r=base*(1-Math.abs(off)*0.16);
           const rg=sx.createRadialGradient(ox,oy,0,ox,oy,r);
           rg.addColorStop(0,`rgba(${cc[0]},${cc[1]},${cc[2]},${alpha})`);
@@ -366,19 +366,22 @@
     const P={
       text:'  '+EMOTIONS.join('   ')+'   ',
       size:15, spacing:19, rowGap:70,
-      swayAmp:60, windSway:46, swayFreq:0.012, breathFreq:0.005, breathAmp:0.12,
-      spring:0.02, damp:0.9, collIter:3, collPush:0.5, restitution:0.5, accent:'#efe000', margin:40
+      swayAmp:34, windSway:20, swayFreq:0.012, breathFreq:0.0015, breathAmp:0.62,
+      spring:0.02, damp:0.9, collIter:2, collPush:0.5, restitution:0.5, accent:'#efe000', margin:40
     };
     const HL=new Set(['STILL','OPEN','PRESENT','AWE','ALIVE','WONDER','STILLNESS']);
     // per-letter colours — mostly black & white, with pops pulled from the studio screensaver palette
     // vibrant screensaver colours — reserved for the information phrases (the field stays black)
     const VIB=['#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
       '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c','#0e5c5b','#4a2c4d'];
-    let W=0,H=0,DPR=1, strands=[], nodes=[], clock=0;
+    let W=0,H=0,DPR=1, strands=[], nodes=[], drawOrder=[], clock=0;
+    const FAM='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
+    const EB1=1.70158, EB3=EB1+1, easeOutBack=k=>1+EB3*Math.pow(k-1,3)+EB1*Math.pow(k-1,2);
+    function breathEnv(p){ const s=0.5-0.5*Math.cos(p*6.2831853); return s*s*(3-2*s); }   // smooth, deep swell (no abrupt burst)
 
-    // Chicago wind sets how far the curtain leans
+    // Chicago wind sets how far the curtain leans (kept gentle)
     addEventListener('oc-wind', e=>{ const s=e.detail.scale;
-      P.swayAmp = clamp(52 + s*70, 52, 128); P.windSway = clamp(30 + s*80, 30, 108); });
+      P.swayAmp = clamp(28 + s*28, 28, 60); P.windSway = clamp(14 + s*24, 14, 42); });
 
     function resize(){ DPR=Math.min(devicePixelRatio||1,2); W=innerWidth; H=innerHeight;
       stage.width=W*DPR; stage.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); build(); }
@@ -409,13 +412,15 @@
           // organic home jitter — break the grid
           const jx=rnd(-P.spacing*0.34,P.spacing*0.34), jy=rnd(-P.rowGap*0.32,P.rowGap*0.32);
           const x=m+j*P.spacing+jx, y=cpos+jy;
-          const sz=rnd(0.82,1.3);
+          const sz=rnd(0.82,1.3), fs=Math.round(P.size*sz);
           const nd={x,y,ox:x,oy:y,hx:x,hy:y, sz, r:P.size*sz*0.46, rot:rnd(-0.28,0.28), seed:rnd(0,900),
-            ch:g.ch, hot:g.hot};
+            fsize:fs, font:fs+'px '+FAM, ch:g.ch, hot:g.hot};
           strand.push(nd); nodes.push(nd); }
         strands.push(strand); }
       buildHero(m);
       for(let i=0;i<nodes.length;i++) nodes[i].id=i;
+      // draw in size-grouped order (heroes last, on top) so ctx.font is set ~once per size, not per glyph
+      drawOrder = nodes.slice().sort((a,b)=> a.hero===b.hero ? a.fsize-b.fsize : (a.hero?1:-1));
     }
     // the real message, as discrete bold phrases scattered through the field (natural breaks, no run-on)
     const HERO=[['ongoing',0.09,0.14],['friday 6–7am',0.62,0.17],
@@ -425,8 +430,9 @@
       HERO.forEach(([t,fx,fy])=>{ const chars=[...t], width=chars.length*sp;
         const x0=clamp(fx*W, m, Math.max(m, W-m-width)), y=Math.round(H*fy), strand=[];
         const ax=x0+width/2, ay=y;                 // one anchor for the whole phrase → it moves rigidly
+        const fs=Math.round(P.size);
         for(let j=0;j<chars.length;j++){ const x=x0+j*sp, ch=chars[j];
-          const nd={x,y,ox:x,oy:y,hx:x,hy:y, ax,ay, sz:1, r:0, rot:0, seed:0, col:VIB[(Math.random()*VIB.length)|0], ch, hero:true}; strand.push(nd); nodes.push(nd); }
+          const nd={x,y,ox:x,oy:y,hx:x,hy:y, ax,ay, sz:1, r:0, rot:0, seed:0, fsize:fs, font:fs+'px '+FAM, col:VIB[(Math.random()*VIB.length)|0], ch, hero:true}; strand.push(nd); nodes.push(nd); }
         strands.push(strand); });
     }
 
@@ -450,10 +456,13 @@
       const CS=0.0026, FS=0.021, T1=t*0.006, T2=t*0.019;
       // global wind: the whole curtain leans left↔right together (nearly uniform → wind, not bands)
       const swayBase=Math.sin(t*P.swayFreq)*P.windSway;
-      // slow breath: the whole field expands from the centre and contracts back
-      const cx0=W/2, cy0=H/2, bscale=1+Math.sin(t*P.breathFreq)*P.breathAmp;
+      // slow breath: a circular pulse from the centre (tantien). a radial Gaussian window keeps the
+      // expansion round rather than scaling the whole rectangle (which reads square)
+      const cx0=W/2, cy0=H/2, sig2=2*Math.pow(Math.min(W,H)*0.85,2);
+      const breath=breathEnv((t*P.breathFreq)%1)*P.breathAmp;   // hold → BAM → settle
       for(const nd of nodes){
-        const bhx=cx0+(nd.hx-cx0)*bscale, bhy=cy0+(nd.hy-cy0)*bscale;   // breathed home
+        const dxn=nd.hx-cx0, dyn=nd.hy-cy0, bs=1+breath*Math.exp(-(dxn*dxn+dyn*dyn)/sig2);
+        const bhx=cx0+dxn*bs, bhy=cy0+dyn*bs;   // breathed home (circular)
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
         if(nd.hero){   // rides the SAME flow+sway+breath as the field (sampled at the phrase anchor → never breaks apart),
@@ -461,13 +470,13 @@
           const acx=vnoise(nd.ax*CS,nd.ay*CS,T1)-0.5, acy=vnoise(nd.ax*CS+31.7,nd.ay*CS+11.3,T1)-0.5;
           const asway=swayBase*Math.cos(nd.ay*0.0011);
           const wob=Math.sin(nd.hx*0.028 + t*0.02)*(P.size*0.42);   // travelling wave along the phrase
-          nd.x += (bhx + asway + acx*1.9*amp - nd.x)*0.08;
-          nd.y += (bhy + acy*1.35*amp + wob - nd.y)*0.08;
+          nd.x += (bhx + asway + acx*1.2*amp - nd.x)*0.08;
+          nd.y += (bhy + acy*1.0*amp + wob - nd.y)*0.08;
           continue;
         }
         // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
         const fx=vnoise(nd.seed+T2,nd.hy*FS,T2)-0.5, fy=vnoise(nd.hx*FS,nd.seed+9.4+T2,T2)-0.5;
-        const tx=bhx + swayX + cx*1.9*amp + fx*amp*1.15, ty=bhy + cy*1.35*amp + fy*amp*1.15;
+        const tx=bhx + swayX + cx*1.2*amp + fx*amp*0.55, ty=bhy + cy*1.0*amp + fy*amp*0.55;
         const vx=(nd.x-nd.ox)*damp, vy=(nd.y-nd.oy)*damp; nd.ox=nd.x; nd.oy=nd.y;   // Verlet velocity
         nd.x += vx + (tx-nd.x)*K;
         nd.y += vy + (ty-nd.y)*K;
@@ -483,18 +492,15 @@
     function draw(){
       ctx.clearRect(0,0,W,H);
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      const fam='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
-      for(const strand of strands){
-        for(let i=0;i<strand.length;i++){ const nd=strand[i];
-          const p=strand[Math.max(0,i-1)], q=strand[Math.min(strand.length-1,i+1)];
-          const ang=Math.atan2(q.y-p.y,q.x-p.x)*0.35 + nd.rot;   // rides the wave + its own organic tilt
-          if(nd.hero){   // the information — colourful (same size/weight as the field), stringed together
-            ctx.font=`${(P.size*nd.sz).toFixed(1)}px ${fam}`; ctx.fillStyle=nd.col;
-          } else {       // the feeling-field — all black (white at night so it stays legible)
-            const dark=OC.lumAt(clamp(nd.y/H,0,1))>0.52;
-            ctx.font=`${(P.size*nd.sz).toFixed(1)}px ${fam}`; ctx.fillStyle=dark?'#0b0b0e':'#f5f7fb';
-          }
-          ctx.save(); ctx.translate(nd.x,nd.y); ctx.rotate(ang); ctx.fillText(nd.ch,0,0); ctx.restore(); }
+      // field ink: usually the whole sky is uniformly light or dark, so resolve it once (skip per-glyph lumAt)
+      const darkTop=OC.lumAt(0)>0.52, darkBot=OC.lumAt(1)>0.52, uniform=(darkTop===darkBot);
+      const inkD='#0b0b0e', inkL='#f5f7fb';
+      let curFont='';
+      for(const nd of drawOrder){
+        if(nd.font!==curFont){ ctx.font=nd.font; curFont=nd.font; }   // font set ~once per size, not per glyph
+        ctx.fillStyle = nd.hero ? nd.col : ((uniform?darkTop:(OC.lumAt(nd.y/H)>0.52)) ? inkD : inkL);
+        if(nd.rot){ ctx.save(); ctx.translate(nd.x,nd.y); ctx.rotate(nd.rot); ctx.fillText(nd.ch,0,0); ctx.restore(); }
+        else ctx.fillText(nd.ch, nd.x, nd.y);
       }
       // keep the identity layer's ink in step with the sky behind it (centre band)
       const centreDark=OC.lumAt(0.5)>0.52;
