@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OP/EN — OP/AL</title>
+  <link rel="canonical" href="https://more-than.design/projects/open-archive.html">
+  <meta property="og:type"        content="website">
+  <meta property="og:site_name"   content="OP/AL">
+  <meta property="og:title"       content="OP/EN — OP/AL">
+  <meta property="og:description" content="Most design education teaches you what to make. This teaches you who is making it.">
+  <meta property="og:image"       content="https://more-than.design/images/opal-open-graph.webp">
+  <meta property="og:url"         content="https://more-than.design/projects/open-archive.html">
+  <meta name="twitter:card"        content="summary_large_image">
+  <meta name="twitter:title"       content="OP/EN — OP/AL">
+  <meta name="twitter:description" content="Most design education teaches you what to make. This teaches you who is making it.">
+  <meta name="twitter:image"       content="https://more-than.design/images/opal-open-graph.webp">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+  </style>
+  <style>
+    body.project { background: #fff !important; }
+    body.project #hero h1,
+    body.project #hero h2,
+    body.project #hero p { color: #000 !important; }
+    body.project #credits p { color: #000 !important; }
+    body.project .label { color: rgba(0,0,0,0.55) !important; }
+    body.project .text-mid { color: #000 !important; }
+    body.project #open-sessions p { color: #000 !important; }
+    body.project #open-sessions h2 { color: #000 !important; }
+    body.project #open-sessions .open-facilitators p,
+    body.project #open-sessions .open-facilitators h3 { color: #fff !important; }
+    /* Footer — override white text from project.js inProject detection */
+    body.project footer div[style] { color: var(--color-ink) !important; }
+    /* Application orb panel */
+    .open-orb-panel { position: relative; overflow: hidden; }
+    /* Now Enrolling indicator */
+    @keyframes enrolling-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .open-enrolling {
+      display: block; position: relative;
+      margin-bottom: var(--space-4);
+    }
+    .open-enrolling__dot {
+      position: absolute; left: -0.85em; top: 10%;
+      width: 8px; height: 8px; border-radius: 50%; background: #e02020;
+      animation: enrolling-blink 1.2s ease-in-out infinite;
+    }
+    @media (max-width: 768px) {
+      .open-enrolling__dot { left: -0.85em; top: 10%; }
+    }
+    .open-enrolling__label {
+      display: block; font-size: var(--label); letter-spacing: var(--tracking-wide);
+      text-transform: uppercase; color: #e02020;
+    }
+  </style>
+</head>
+<body>
+
+  <script>
+    const PROJECT = {
+      title:       "OP/EN",
+      description: "A four-week course that invites you to turn the tools you already have back on yourself — so that the work you send into the world carries something real. Through conversation, contemplative practice, and creative exercise, each session creates the conditions for a different kind of awareness to emerge. One that doesn't replace you, but roots you in something more honest, more durable, and more alive.",
+      body: "This is not a leadership seminar or a branding course or a creativity hack. It is something school never offered you and no job will ever assign you — a dedicated space to work on the questions that shape everything else.<br><br>Ten participants. Four Thursdays. In person only. Through group and facilitated conversation, we hold each other accountable, learn from one another, and explore ways to bring more authenticity and care into what we do.<br><br><span style='display:block;line-height:1.9;color:#000'>Begins August 8, 2026<br>6 pm – 7:30 pm<br>Oak Park, IL<br>4 Sessions<br>$240</span>",
+      client:      "World",
+      medium:      "Curriculum / Process / Systems Thinking",
+      year:        "2026",
+      credits: [
+        { name: "Christian Solorzano", title: "Co-Facilitator" },
+        { name: "Brian Morris", title: "Co-Facilitator" }
+      ],
+      role:        "Facilitator",
+      images:      [],
+      next: { title: "Point", url: "point.html" }
+    };
+  </script>
+  <script src="../shared/project.js"></script>
+  <script>
+  (function () {
+    var styleEl = document.createElement('style');
+    styleEl.textContent = [
+      '.open-sessions__label { padding: var(--space-12) 0 var(--space-8); border-bottom: 1px solid rgba(0,0,0,0.1); }',
+      '.open-session { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; min-height: 560px; }',
+      '.open-session__eyebrow { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(0,0,0,0.55); margin-bottom: var(--space-3); }',
+      '.open-session__image { overflow: hidden; }',
+      '.open-session__image img { width: 100%; height: 100%; object-fit: cover; display: block; }',
+      '.open-session__content { display: flex; flex-direction: column; justify-content: center; padding: var(--space-16) var(--grid-padding) var(--space-16) var(--space-12); overflow-y: auto; }',
+      '.open-session__title { font-size: var(--h1); font-weight: var(--weight-regular); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); color: #000; margin-bottom: var(--space-8); }',
+      '.open-session__subtitle { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--color-mid); margin-top: calc(-1 * var(--space-6)); margin-bottom: var(--space-6); }',
+      '.open-session__intro { color: #000; line-height: var(--leading-normal); margin-bottom: var(--space-6); }',
+      '.open-block__label { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(0,0,0,0.45); margin-top: var(--space-6); margin-bottom: var(--space-2); }',
+      '.open-session__title + .open-block__label { margin-top: 0; }',
+      '.open-block__text { color: #000; line-height: var(--leading-normal); }',
+      '.open-block__text + .open-block__text { margin-top: var(--space-3); }',
+      '.open-application-box { background: #fff; padding: var(--space-6); margin-top: var(--space-4); }',
+      '.open-application-box .label { color: rgba(0,0,0,0.55); display: block; margin-bottom: var(--space-2); }',
+      '.open-application__list { list-style: none; }',
+      '.open-application__item { display: flex; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid rgba(0,0,0,0.08); color: #000; line-height: var(--leading-normal); }',
+      '.open-application__item:last-child { border-bottom: none; }',
+      '.open-application__n { flex-shrink: 0; font-size: var(--label); letter-spacing: var(--tracking-wide); color: rgba(0,0,0,0.5); padding-top: 0.15em; min-width: 1.5em; }',
+'.open-apply-btn { display: block; width: fit-content; line-height: 1; margin-top: var(--space-6); background: transparent; color: #393939; border: 1px solid #393939; padding: 0.5em 1em 0.3em 1em; font-size: 1em; letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
+      '.open-apply-btn:hover { background: var(--color-accent); border-color: var(--color-accent); color: #393939; }',
+      '#open-apply-overlay { position: fixed; inset: 0; background: #fff; z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }',
+      '#open-apply-overlay.is-open { opacity: 1; pointer-events: all; }',
+      '.open-apply-inner { max-width: 560px; width: 90%; }',
+      '.open-apply-prompt { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: #000; margin-bottom: var(--space-8); }',
+      '.open-apply-q { font-size: var(--h2); font-weight: var(--weight-regular); color: #000 !important; line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); margin: 0 0 var(--space-6); }',
+      '.open-apply-inner input[type=text], .open-apply-inner input[type=email] { width: 100%; border: none; border-bottom: 1px solid rgba(0,0,0,0.18); padding: var(--space-3) 0; font-size: 1em; font-family: inherit; color: #000; background: transparent; box-sizing: border-box; outline: none; margin-bottom: var(--space-4); }',
+      '.open-apply-inner input::placeholder { color: rgba(0,0,0,0.25); }',
+      '.open-apply-inner textarea { width: 100%; height: 140px; border: none; border-bottom: 1px solid rgba(0,0,0,0.18); padding: var(--space-3) 0; font-size: 1em; font-family: inherit; resize: none; color: #000; background: transparent; box-sizing: border-box; outline: none; line-height: var(--leading-normal); }',
+      '.open-apply-inner textarea::placeholder { color: rgba(0,0,0,0.25); }',
+      '.open-apply-success { display: none; text-align: center; padding: var(--space-8) 0; }',
+      '.open-apply-success.is-visible { display: block; }',
+      '.open-apply-form.is-hidden { display: none; }',
+      '.open-apply-actions { display: flex; align-items: center; gap: var(--space-6); margin-top: var(--space-8); }',
+      '.open-apply-submit { display: inline-block; line-height: 1; background: transparent; color: #393939; border: 1px solid #393939; padding: 0.5em 1em 0.3em 1em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
+      '.open-apply-submit:hover { background: var(--color-accent); border-color: var(--color-accent); }',
+      '.open-apply-close { background: none; border: none; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: #000; cursor: pointer; font-family: inherit; padding: 0; }',
+      '.open-apply-cta { height: 100vh; min-height: 560px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #f2f1ee; gap: var(--space-4); }',
+      '.open-apply-cta .open-session__eyebrow { margin-bottom: 0; }',
+      '.open-apply-cta .open-session__title { font-size: calc(var(--h1) * 2.5); margin-bottom: 0; }',
+      '.open-facilitators { padding: var(--space-16) var(--grid-padding); background: #000; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }',
+      '.open-facilitator__name { font-size: var(--h2); font-weight: var(--weight-regular); letter-spacing: var(--tracking-tight); color: #fff; margin-bottom: var(--space-2); }',
+      '.open-facilitator__title { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: var(--space-6); }',
+      '.open-facilitator__bio { color: #fff; line-height: var(--leading-normal); }',
+      '.open-facilitator__bio p + p { margin-top: var(--space-4); }',
+      '@media (max-width: 768px) { .open-facilitators { grid-template-columns: 1fr; padding: var(--space-16) var(--space-6); } }',
+      '@media (max-width: 768px) {',
+      '  .open-session { grid-template-columns: 1fr; height: auto; }',
+      '  .open-session__image { height: 100vw; }',
+      '  .open-session__content { padding: var(--space-16) var(--space-6); }',
+      '}'
+    ].join('');
+    document.head.appendChild(styleEl);
+
+    var SESSIONS = [
+      {
+        eyebrow: 'Session 1',
+        title: 'Gather',
+        bg: '#f2f1ee',
+        conversation: 'A council circle and one question: why did you become a designer? We begin naming what we\'ve been carrying into every room we enter. We will notice what goes missing — in a meeting, in a conversation, in the work. Just catch it.',
+        activity: 'Twenty minutes of automatic writing, drawing, or thinking. No outcome, no editing. Ten minutes of silence with what came.',
+        takeaway: 'Notice when you go missing this week — in a meeting, in a conversation, in the work. Just catch it.'
+      },
+      {
+        eyebrow: 'Session 2',
+        title: 'The Container and the Lines',
+        bg: '#eceaf4',
+        conversation: 'We look at the expectations that shaped your practice — the lines drawn by family, career, culture, and fear — and ask which ones you actually drew yourself. We\'ll ask when you sit down to work, whose voices are in the room?',
+        activity: 'Each participant maps their container symbolically and marks one line they didn\'t draw.',
+        takeaway: 'Before you sit down to work this week, ask once: whose voice is in the room with me?'
+      },
+      {
+        eyebrow: 'Session 3',
+        title: 'Don\'t Go Missing',
+        bg: '#f5f0e4',
+        conversation: 'We talk about why the answers arrive in the shower and not at the desk — and practice three questions: What am I feeling? What story am I telling myself? What does my body already know? And we\'ll run through questions before your next professional interaction. Then walk in.',
+        activity: 'One sheet of paper, one mark-making tool, twenty minutes. No brief, no audience, no critique.',
+        takeaway: 'Run the three questions before your next professional interaction. Then walk in.'
+      }
+    ];
+
+    var questions = [
+      'Tell us in 500 words or less about a moment when your work asked more of you than you expected.',
+      'Tell us in 500 words or less about a time when you remembered what it felt like to be at the whims of creativity.',
+      'Tell us in 500 works (this is not a spelling error) or less about when you created something for yourself that surprised you.',
+      'Describe the things you do to prepare yourself for a task much bigger than your experience.',
+      'Given unconstrained resources, what would you bring into life for the people around you.'
+    ];
+
+    var html = '';
+
+    SESSIONS.forEach(function (s) {
+      html += '<div class="open-session"' + (s.bg ? ' style="background:' + s.bg + '"' : '') + '>';
+      html += '<div class="open-session__image"></div>';
+      html += '<div class="open-session__content">';
+      html += '<span class="open-session__eyebrow label">' + s.eyebrow + '</span>';
+      html += '<h2 class="open-session__title">' + s.title + '</h2>';
+      if (s.conversation) html += '<p class="open-block__text">' + s.conversation + '</p>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    // Session 4
+    html += '<div class="open-session" style="background:#ede8f0">';
+    html += '<div class="open-session__image"></div>';
+    html += '<div class="open-session__content">';
+    html += '<span class="open-session__eyebrow label">Session 4</span>';
+    html += '<h2 class="open-session__title">Consider &amp; Engage</h2>';
+    html += '<p class="open-block__text">What the work is for, not what it pays. We ask what it looks like to design for people rather than outcomes — and what remains when the title goes away. We\'ll ask — who were we before? Who are we now? And who can we become?</p>';
+    html += '<p class="open-block__text" style="margin-top:var(--space-6)">This only works in a group. Through shared conversation, we hold each other accountable to what we find.</p>';
+    html += '</div>';
+    html += '</div>';
+
+    // Facilitators
+    html += '<div class="open-facilitators">';
+    html += '<div class="open-facilitator">';
+    html += '<h3 class="open-facilitator__name">Christian Solorzano</h3>';
+    html += '<span class="open-facilitator__title">Co-Facilitator</span>';
+    html += '<div class="open-facilitator__bio">';
+    html += '<p>Christian Solorzano asks questions. As a designer, educator, and community builder based in Chicago, his work is oriented around a single belief: that creativity is not a talent but a practice — and a form of social responsibility that belongs to everyone.</p>';
+    html += '<p>He defends creativity the way others defend facts. His practice centers on communication — how it works, what it asks of the people doing it, and what becomes possible when more honesty enters the room. Nearly a decade of contemplative practice, rooted in neuroscience and mindfulness, shapes everything he makes and teaches.</p>';
+    html += '<p>That grounding shows up in a DePaul classroom, across more than 100 conversations on Underscore, and in the community of the Chicago Graphic Design Club. He is also a trained meditation instructor and holds a black belt in Brazilian Jiu-Jitsu.</p>';
+    html += '</div>';
+    html += '</div>';
+    html += '<div class="open-facilitator">';
+    html += '<h3 class="open-facilitator__name">Brian Morris</h3>';
+    html += '<span class="open-facilitator__title">Co-Facilitator</span>';
+    html += '<div class="open-facilitator__bio">';
+    html += '<p>For more than 25 years, Brian Morris helped organizations navigate ambiguity through visual design, creative leadership, and digital experience strategy. His work centered on uncovering patterns, translating complexity, and making meaningful decisions before all the answers were known.</p>';
+    html += '<p>After leaving an Executive Creative Director role in 2021, Brian turned the same skills inward. Drawing from a lifetime of creative practice, he began exploring intuition not as a mystical gift, but as a capacity that can be cultivated through attention, trust, reflection, and daily practice.</p>';
+    html += '<p>Today, Brian helps people reconnect with their own intuitive intelligence and develop practical ways to access it in everyday life.</p>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Apply CTA
+    html += '<div class="open-apply-cta">';
+    html += '<span class="open-session__eyebrow label">OP/EN — 2026</span>';
+    html += '<h2 class="open-session__title">Apply</h2>';
+    html += '<span class="open-session__eyebrow label">10 spots available</span>';
+    html += '<span class="open-session__eyebrow label">Begins August 8, 2026 — 6 pm – 7:30 pm — Oak Park</span>';
+    html += '<button class="open-apply-btn open-apply-cta-btn">Apply Now</button>';
+    html += '</div>';
+
+    var section = document.createElement('section');
+    section.id = 'open-sessions';
+    section.innerHTML = html;
+
+    var images = document.getElementById('images');
+    if (images) {
+      images.insertAdjacentElement('afterend', section);
+    } else {
+      document.body.appendChild(section);
+    }
+
+    // Application overlay
+    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzfsm0I3jq501OdswHr8gw9fhKJXWHPoHByQaCpXiBrDUN2EkxGjqRz0O7vHHkgwmTDUA/exec';
+    var overlay = document.createElement('div');
+    overlay.id = 'open-apply-overlay';
+    overlay.innerHTML = '<div class="open-apply-inner">' +
+      '<div class="open-apply-form">' +
+        '<span class="open-apply-prompt">One Question</span>' +
+        '<p class="open-apply-q">Given unconstrained resources, what would you bring into life for the people around you.</p>' +
+        '<input type="text"  id="open-apply-name"     placeholder="Your name">' +
+        '<input type="email" id="open-apply-email"    placeholder="Your email">' +
+        '<textarea id="open-apply-textarea" placeholder="Write as long as you need to."></textarea>' +
+        '<div class="open-apply-actions">' +
+          '<button class="open-apply-submit" id="open-apply-submit-btn">Submit</button>' +
+          '<button class="open-apply-close" onclick="document.getElementById(\'open-apply-overlay\').classList.remove(\'is-open\')">Close</button>' +
+          '<span style="margin-left:auto;font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">$240</span>' +
+        '</div>' +
+        '<p style="margin-top:var(--space-4);font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">This course is $240 — application does not guarantee enrollment. Somebody will contact you to discuss next steps.</p>' +
+      '</div>' +
+      '<div class="open-apply-success">' +
+        '<p class="open-apply-q">Thank you.</p>' +
+        '<p style="margin-top:var(--space-4);color:#000;line-height:var(--leading-normal)">We\'ll be in touch to discuss next steps.</p>' +
+        '<button class="open-apply-close" style="margin-top:var(--space-6);display:inline-block" onclick="document.getElementById(\'open-apply-overlay\').classList.remove(\'is-open\')">Close</button>' +
+      '</div>' +
+    '</div>';
+    document.body.appendChild(overlay);
+
+    document.getElementById('open-apply-submit-btn').addEventListener('click', function() {
+      var name     = document.getElementById('open-apply-name').value.trim();
+      var email    = document.getElementById('open-apply-email').value.trim();
+      var response = document.getElementById('open-apply-textarea').value.trim();
+      if (!name || !email || !response) { alert('Please fill in all fields.'); return; }
+      var btn = this;
+      btn.textContent = 'Sending…';
+      btn.disabled = true;
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ name: name, email: email, response: response })
+      })
+      .then(function() {
+        overlay.querySelector('.open-apply-form').classList.add('is-hidden');
+        overlay.querySelector('.open-apply-success').classList.add('is-visible');
+      })
+      .catch(function() {
+        btn.textContent = 'Submit';
+        btn.disabled = false;
+        alert('Something went wrong. Please try again.');
+      });
+    });
+    // Close on backdrop click
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.classList.remove('is-open'); });
+    // Close on Escape
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') overlay.classList.remove('is-open'); });
+
+    // Wire CTA apply button
+    var ctaBtn = document.querySelector('.open-apply-cta-btn');
+    if(ctaBtn) ctaBtn.onclick = function(){ overlay.classList.add('is-open'); };
+
+    // Now Enrolling indicator + Apply button injected into hero
+    (function(){
+      var heroContainer = document.querySelector('#hero .container');
+      if(!heroContainer) return;
+
+      var enrolling = document.createElement('div');
+      enrolling.className = 'open-enrolling';
+      enrolling.innerHTML = '<span class="open-enrolling__dot"></span><span class="open-enrolling__label">Now Enrolling</span>';
+      heroContainer.insertBefore(enrolling, heroContainer.firstChild);
+
+      var heroBtn = document.createElement('button');
+      heroBtn.className = 'open-apply-btn';
+      heroBtn.textContent = 'Apply';
+      heroBtn.onclick = function(){ overlay.classList.add('is-open'); };
+      heroContainer.appendChild(heroBtn);
+    })();
+
+    // ── Session illustrations ─────────────────────────────────────────────
+    // Each image panel gets a canvas animation using the orb as motif
+    (function(){
+      var t0 = performance.now();
+      var fns = [];
+
+      function init(){
+        var els = document.querySelectorAll('#open-sessions .open-session__image');
+        for(var i=0;i<els.length;i++){
+          (function(el,idx){
+            var cv = document.createElement('canvas');
+            cv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:block;';
+            el.style.position = 'relative';
+            el.appendChild(cv);
+            var ctx = cv.getContext('2d');
+            function sz(){
+              var dpr = window.devicePixelRatio||1;
+              cv.width  = (el.offsetWidth  || window.innerWidth/2) * dpr;
+              cv.height = (el.offsetHeight || window.innerHeight)  * dpr;
+            }
+            sz();
+            window.addEventListener('resize', sz);
+            if(idx===0) fns.push(mkGather(cv,ctx));
+            else if(idx===1) fns.push(mkContainer(cv,ctx));
+            else if(idx===2) fns.push(mkMissing(cv,ctx));
+            else             fns.push(mkEngage(cv,ctx));
+          })(els[i], i);
+        }
+        (function loop(){
+          var t = (performance.now()-t0)/1000;
+          for(var f=0;f<fns.length;f++) fns[f](t);
+          requestAnimationFrame(loop);
+        })();
+      }
+
+      // Two frames so DOM layout settles before reading offsetWidth/Height
+      requestAnimationFrame(function(){ requestAnimationFrame(init); });
+
+      // Session 1 — Gather
+      // Almost monochrome: dark particles with the faintest cool-blue tint as they land
+      function mkGather(cv,ctx){
+        var N=38, pts=[];
+        for(var i=0;i<N;i++){
+          var a=(i/N)*Math.PI*2;
+          var sr=0.45+Math.random()*0.9, sa=Math.random()*Math.PI*2;
+          pts.push({ a:a, sx:Math.cos(sa)*sr, sy:Math.sin(sa)*sr });
+        }
+        return function(t){
+          var W=cv.width, H=cv.height, dpr=window.devicePixelRatio||1;
+          ctx.clearRect(0,0,W,H);
+          var cx=W/2, cy=H/2, r=Math.min(W,H)*0.28;
+          var ph=(t%9)/9, g;
+          if(ph<0.42)      g = ph/0.42;
+          else if(ph<0.65) g = 1;
+          else             g = 1-(ph-0.65)/0.35;
+          g = g<0.5 ? 4*g*g*g : 1-Math.pow(-2*g+2,3)/2;
+          for(var i=0;i<N;i++){
+            var p=pts[i];
+            var x=cx+(p.sx*(1-g)+Math.cos(p.a)*g)*r;
+            var y=cy+(p.sy*(1-g)+Math.sin(p.a)*g)*r;
+            // Faint blue tint only at the moment of landing
+            var blu = Math.round(g*18);
+            ctx.beginPath();
+            ctx.arc(x,y,(1.4+g*1.3)*dpr,0,Math.PI*2);
+            ctx.fillStyle='rgba('+blu+','+blu+','+Math.round(20+g*60)+','+(0.18+g*0.62)+')';
+            ctx.fill();
+          }
+        };
+      }
+
+      // Session 2 — The Container and the Lines
+      // Each wall is a geometric half-plane constraint. Dots clip to the nearest wall —
+      // they literally sit at the wall surface. Lines stay thin throughout.
+      function mkContainer(cv,ctx){
+        var N=54;
+        var baseAngles=[0,Math.PI,Math.PI/2,-Math.PI/2,Math.PI/4,-Math.PI*3/4,-Math.PI/4,Math.PI*3/4];
+        var walls=baseAngles.map(function(dir,k){
+          return { dir:dir, ph:k*0.83, spd:0.55+k*0.07 };
+        });
+
+        return function(t){
+          var W=cv.width,H=cv.height,dpr=window.devicePixelRatio||1;
+          ctx.clearRect(0,0,W,H);
+          var r=Math.min(W,H)*0.30;
+          var diag=Math.sqrt(W*W+H*H)*0.75;
+
+          var cx=W/2, cy=H/2;
+
+          // Whole cage spins with a subtle wobble
+          var spin=t*0.16+Math.sin(t*0.09)*0.35;
+
+          // Pressure cycle — squeeze and release
+          var cycle=(t%9)/9;
+          var pressure;
+          if(cycle<0.35)      pressure=cycle/0.35;
+          else if(cycle<0.68) pressure=1.0;
+          else                pressure=1-(cycle-0.68)/0.32;
+          pressure=pressure<0.5?2*pressure*pressure:1-Math.pow(-2*pressure+2,2)/2;
+
+          // Each wall breathes slightly out of phase with the others
+          var wDist=[], wAp=[];
+          for(var j=0;j<walls.length;j++){
+            wAp[j]=Math.min(Math.max((t-j*0.38)/0.50,0),1);
+            var wobble=Math.sin(t*walls[j].spd+walls[j].ph)*0.09;
+            wDist[j]=r*(1.45-(pressure+wobble)*0.87*wAp[j]);
+          }
+
+          ctx.save();
+          // Rotate the whole cage around the drifting center
+          ctx.translate(cx,cy);
+          ctx.rotate(spin);
+          ctx.translate(-cx,-cy);
+
+          var dotSz=1.8*dpr;
+          for(var i=0;i<N;i++){
+            var a=(i/N)*Math.PI*2;
+            var dotR=r;
+            for(var j=0;j<walls.length;j++){
+              if(wAp[j]<=0) continue;
+              var cosA=Math.cos(a-walls[j].dir);
+              if(cosA>0.005){
+                var reach=wDist[j]/cosA;
+                if(reach<dotR) dotR=reach;
+              }
+            }
+            dotR=Math.max(dotR,r*0.07);
+
+            // Indigo → crimson, with a faint hue pulse
+            var hPulse=Math.sin(spin*1.4+i/N*Math.PI)*0.12;
+            var dr=Math.round(14+pressure*58+hPulse*30);
+            var dg=Math.round(18-pressure*10);
+            var db=Math.round(82-pressure*70);
+            ctx.beginPath();
+            ctx.arc(cx+Math.cos(a)*dotR,cy+Math.sin(a)*dotR,dotSz,0,Math.PI*2);
+            ctx.fillStyle='rgba('+dr+','+dg+','+db+',0.85)';
+            ctx.fill();
+          }
+
+          // Walls — thin lines, fade at ends
+          ctx.lineWidth=1*dpr;
+          for(var j=0;j<walls.length;j++){
+            if(wAp[j]<=0) continue;
+            var d=wDist[j];
+            var wx=cx+Math.cos(walls[j].dir)*d;
+            var wy=cy+Math.sin(walls[j].dir)*d;
+            var px=Math.cos(walls[j].dir+Math.PI/2);
+            var py=Math.sin(walls[j].dir+Math.PI/2);
+            var lx0=wx-px*diag, ly0=wy-py*diag;
+            var lx1=wx+px*diag, ly1=wy+py*diag;
+            var op=wAp[j]*(0.20+pressure*0.30);
+            var lg=ctx.createLinearGradient(lx0,ly0,lx1,ly1);
+            lg.addColorStop(0,   'rgba(60,80,190,0)');
+            lg.addColorStop(0.16,'rgba(60,80,190,'+op+')');
+            lg.addColorStop(0.84,'rgba(60,80,190,'+op+')');
+            lg.addColorStop(1,   'rgba(60,80,190,0)');
+            ctx.beginPath();
+            ctx.moveTo(lx0,ly0);
+            ctx.lineTo(lx1,ly1);
+            ctx.strokeStyle=lg;
+            ctx.stroke();
+          }
+          ctx.restore();
+        };
+      }
+
+      // Session 3 — Don't Go Missing
+      // Dense phyllotaxis field — each dot drifts on its own frequency,
+      // the whole cluster breathes and rotates, several amber dots glow and switch.
+      function mkMissing(cv,ctx){
+        var N=96, pts=[];
+        for(var i=0;i<N;i++){
+          var angle=i*2.39996;
+          var rad=Math.sqrt(i/N)*0.42;
+          pts.push({
+            x:  Math.cos(angle)*rad,
+            y:  Math.sin(angle)*rad,
+            sz: 0.5+Math.sqrt(i/N)*2.0,
+            ph: Math.random()*Math.PI*2,
+            spd:0.30+Math.random()*0.55
+          });
+        }
+        var specials=new Set(), nextSwitch=1.8;
+        function pickSpecials(){
+          specials.clear();
+          var count=2+Math.floor(Math.random()*3);
+          while(specials.size<count) specials.add(Math.floor(Math.random()*N));
+        }
+        pickSpecials();
+        return function(t){
+          var W=cv.width,H=cv.height,dpr=window.devicePixelRatio||1;
+          ctx.clearRect(0,0,W,H);
+          var cx=W/2,cy=H/2,scale=Math.min(W,H)*0.33;
+          if(t>nextSwitch){ pickSpecials(); nextSwitch=t+1.6+Math.random()*2.0; }
+          // Two-harmonic breath — feels alive, not mechanical
+          var breath=1+Math.sin(t*0.55)*0.06+Math.sin(t*1.4)*0.022;
+          // Slow drift rotation
+          var rot=t*0.055;
+          var cr=Math.cos(rot), sr=Math.sin(rot);
+          for(var i=0;i<N;i++){
+            var p=pts[i];
+            // Each dot wanders around its spiral position
+            var wx=Math.sin(t*p.spd+p.ph)*0.032;
+            var wy=Math.cos(t*p.spd*0.79+p.ph+1.1)*0.032;
+            var bx=(p.x+wx)*scale*breath;
+            var by=(p.y+wy)*scale*breath;
+            // Rotate the whole field
+            var x=cx+bx*cr-by*sr;
+            var y=cy+bx*sr+by*cr;
+            if(specials.has(i)){
+              var lp=0.5+0.5*Math.sin(t*2.6+i*0.9);
+              var glowR=(p.sz*1.1+lp*3.2)*dpr;
+              var grd=ctx.createRadialGradient(x,y,0,x,y,glowR*3.8);
+              grd.addColorStop(0,'rgba(220,135,10,'+(0.7+lp*0.3)+')');
+              grd.addColorStop(0.35,'rgba(200,100,0,'+(0.25*lp)+')');
+              grd.addColorStop(1,'rgba(190,70,0,0)');
+              ctx.beginPath();
+              ctx.arc(x,y,glowR*3.8,0,Math.PI*2);
+              ctx.fillStyle=grd;
+              ctx.fill();
+              ctx.beginPath();
+              ctx.arc(x,y,glowR,0,Math.PI*2);
+              ctx.fillStyle='rgba(228,148,12,'+(0.82+lp*0.18)+')';
+              ctx.fill();
+            } else {
+              var flicker=0.28+0.22*Math.sin(t*p.spd*0.6+p.ph);
+              ctx.beginPath();
+              ctx.arc(x,y,p.sz*dpr,0,Math.PI*2);
+              ctx.fillStyle='rgba(18,20,50,'+flicker+')';
+              ctx.fill();
+            }
+          }
+        };
+      }
+
+      // Session 4 — Consider & Engage
+      // Organic sunburst — each ray has its own life: speed, length, width, phase
+      function mkEngage(cv,ctx){
+        var NR=56, rays=[];
+        for(var i=0;i<NR;i++){
+          rays.push({
+            ang: (i/NR)*Math.PI*2+(Math.random()-0.5)*0.08,
+            spd: 0.14+Math.random()*0.32,
+            ph:  Math.random()*Math.PI*2,
+            ph2: Math.random()*Math.PI*2,
+            base:0.30+Math.random()*0.58,
+            w:   0.5+Math.random()*1.4
+          });
+        }
+        return function(t){
+          var W=cv.width,H=cv.height,dpr=window.devicePixelRatio||1;
+          ctx.clearRect(0,0,W,H);
+          var cx=W/2,cy=H/2,maxR=Math.min(W,H)*0.46;
+          ctx.save();
+          for(var i=0;i<NR;i++){
+            var ray=rays[i];
+            // Two harmonics — makes motion feel alive, not mechanical
+            var p1=0.5+0.5*Math.sin(t*ray.spd*Math.PI*2+ray.ph);
+            var p2=0.5+0.5*Math.sin(t*ray.spd*6.1+ray.ph2);
+            var pulse=Math.max(0,Math.min(1,p1*0.75+p2*0.25));
+            var rayLen=maxR*ray.base*(0.35+pulse*0.65);
+            var hueT=((ray.ang/(Math.PI*2))+(t*0.022))%1;
+            var rr,gg,bb,s;
+            if(hueT<0.33){
+              s=hueT/0.33;
+              rr=Math.round(5+s*210);gg=Math.round(90+s*50);bb=220;
+            } else if(hueT<0.66){
+              s=(hueT-0.33)/0.33;
+              rr=215;gg=Math.round(140-s*120);bb=Math.round(220-s*210);
+            } else {
+              s=(hueT-0.66)/0.34;
+              rr=Math.round(215-s*210);gg=Math.round(20+s*70);bb=Math.round(10+s*210);
+            }
+            ctx.beginPath();
+            ctx.moveTo(cx,cy);
+            ctx.lineTo(cx+Math.cos(ray.ang)*rayLen,cy+Math.sin(ray.ang)*rayLen);
+            ctx.strokeStyle='rgba('+rr+','+gg+','+bb+','+(0.08+pulse*0.80)+')';
+            ctx.lineWidth=ray.w*(0.4+pulse*0.9)*dpr;
+            ctx.stroke();
+          }
+          // Warm center glow
+          var g=ctx.createRadialGradient(cx,cy,0,cx,cy,maxR*0.14);
+          g.addColorStop(0,'rgba(255,255,255,0.98)');
+          g.addColorStop(0.35,'rgba(255,245,210,0.60)');
+          g.addColorStop(1,'rgba(255,220,150,0)');
+          ctx.fillStyle=g;
+          ctx.beginPath();
+          ctx.arc(cx,cy,maxR*0.14,0,Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+        };
+      }
+
+    })();
+
+  })();
+  </script>
+
+<script>
+(function(){
+  function initOrb(){
+    var panel=document.getElementById('open-orb-panel');
+    var bgCv=document.getElementById('appBgCv');
+    var glCv=document.getElementById('appGlCv');
+    if(!panel||!bgCv||!glCv){ return; } // panel removed, bail silently
+    var bgCtx=bgCv.getContext('2d');
+    var PW=0, PH=0;
+    function resizeAll(){
+      var r=panel.getBoundingClientRect();
+      PW=r.width; PH=r.height;
+      bgCv.width=PW; bgCv.height=PH;
+      renderer.setSize(PW,PH);
+      camera.aspect=PW/PH;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize',resizeAll);
+    var mouseRaw={x:0,y:-0.2};
+    var mouseSmooth={x:0,y:-0.2};
+    var idleTime=0;
+    panel.addEventListener('mousemove',function(e){
+      var r=panel.getBoundingClientRect();
+      mouseRaw.x=((e.clientX-r.left)/PW)*2-1;
+      mouseRaw.y=-(((e.clientY-r.top)/PH)*2-1);
+      idleTime=0;
+    });
+    panel.addEventListener('touchmove',function(e){
+      e.preventDefault();
+      var r=panel.getBoundingClientRect();
+      var t=e.touches[0];
+      mouseRaw.x=((t.clientX-r.left)/PW)*2-1;
+      mouseRaw.y=-(((t.clientY-r.top)/PH)*2-1);
+      idleTime=0;
+    },{passive:false});
+    var renderer=new THREE.WebGLRenderer({canvas:glCv,alpha:true,antialias:true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    var scene_3d=new THREE.Scene();
+    var camera=new THREE.PerspectiveCamera(40,1,0.1,100);
+    camera.position.set(0,0,3.5);
+    var bgTex=new THREE.CanvasTexture(bgCv);
+
+var VS=`
+varying vec3 vNormal,vViewDir,vWorldPos;
+varying vec4 vScreenPos;
+varying vec3 vLocalPos;
+void main(){
+  vec4 wp=modelMatrix*vec4(position,1.0);
+  vWorldPos=wp.xyz; vLocalPos=position;
+  vNormal=normalize(normalMatrix*normal);
+  vViewDir=normalize(cameraPosition-wp.xyz);
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+  vScreenPos=gl_Position;
+}`;
+
+var FS=`
+precision highp float;
+uniform sampler2D uBgTex;
+uniform vec3 uLightPos;
+uniform float uTime;
+varying vec3 vNormal,vViewDir,vWorldPos;
+varying vec4 vScreenPos;
+varying vec3 vLocalPos;
+
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 p){
+  vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+}
+float fbm(vec2 p){return noise(p)*0.5+noise(p*2.1+1.3)*0.25+noise(p*4.3+2.7)*0.125;}
+
+void main(){
+  vec3 N=normalize(vNormal);
+  vec3 V=normalize(vViewDir);
+  vec3 L=normalize(uLightPos-vWorldPos);
+  vec3 H=normalize(L+V);
+
+  float NdotV=max(dot(N,V),0.0);
+  float NdotL=max(dot(N,L),0.0);
+  float NdotH=max(dot(N,H),0.0);
+  float thickness=NdotV; // 1 at front pole, 0 at silhouette
+
+  // Schlick fresnel — very strong at edges for glass
+  float fresnel=0.04+0.96*pow(1.0-NdotV,5.0);
+
+  // Screen UV for background sampling
+  vec2 screenUV=(vScreenPos.xy/vScreenPos.w)*0.5+0.5;
+
+  // Crystal IOR — 2.1 bends light dramatically (vs 1.55 = water)
+  float ior=2.1;
+  vec3 refrDir=refract(-V,N,1.0/ior);
+  vec2 refrOff=refrDir.xy*(ior-1.0)*0.13;
+
+  // Strong chromatic aberration — crystal splits white light into spectrum
+  float chromMag=1.1*fresnel+0.3*(1.0-thickness);
+  vec2 chromR=N.xy*chromMag*0.09;
+  vec2 chromB=N.xy*chromMag*0.065;
+
+  float bgR=texture2D(uBgTex,clamp(screenUV+refrOff+chromR,0.0,1.0)).r;
+  float bgG=texture2D(uBgTex,clamp(screenUV+refrOff,0.0,1.0)).g;
+  float bgB=texture2D(uBgTex,clamp(screenUV+refrOff-chromB,0.0,1.0)).b;
+  vec3 bgColor=vec3(bgR,bgG,bgB);
+
+  // Back-surface transmission — inverted background visible through the glass
+  // This is the classic "upside-down world inside a glass ball" effect
+  vec2 backUV=vec2(1.0-(screenUV.x+refrOff.x*2.2), screenUV.y+refrOff.y*2.2);
+  backUV=clamp(backUV,0.0,1.0);
+  vec3 backColor=texture2D(uBgTex,backUV).rgb;
+  float transmitMask=thickness*(1.0-fresnel);
+  vec3 color=mix(bgColor, backColor, transmitMask*0.55);
+
+  // Slight crystal tint — not pure clear, has a faint blue-gray hue internally
+  color=mix(color, vec3(0.90,0.93,1.0), 0.06*(1.0-thickness*0.6));
+
+  // Dark silhouette edges — critical for 3D depth illusion
+  float edgeDark=pow(1.0-thickness,2.5);
+  color=mix(color,vec3(0.02,0.03,0.06),edgeDark*0.82);
+
+  // Body zone for internal color contributions
+  float body=smoothstep(0.0,0.32,thickness)*smoothstep(1.0,0.18,thickness);
+
+  // Internal colored light sources — vivid, move with cursor
+  // BLUE — upper, fixed anchor
+  vec3 Lblue=normalize(vec3(-uLightPos.x*0.35+0.15, uLightPos.y*0.45+1.3, 1.0));
+  float blueBlob=pow(max(dot(N,Lblue),0.0),1.6)*body;
+  color+=vec3(0.02,0.12,0.98)*blueBlob*0.90;
+
+  // YELLOW/GOLD — cursor-driven, warmest
+  float yBlob=pow(NdotL,1.4)*body;
+  color+=vec3(1.0,0.80,0.0)*yBlob*0.95;
+
+  // RED — lower counter-light
+  vec3 Lred=normalize(vec3(-uLightPos.x*0.45,-uLightPos.y*0.35-0.65,0.85));
+  float redBlob=pow(max(dot(N,Lred),0.0),2.0)*body;
+  color+=vec3(0.95,0.03,0.02)*redBlob*0.75;
+
+  // Animated internal caustic shimmer — light interference patterns
+  vec2 causticUV=vLocalPos.xy*3.5+uLightPos.xy*0.8;
+  float caustic=fbm(causticUV+uTime*0.25)*fbm(causticUV*1.4-uTime*0.18);
+  color+=vec3(0.9,0.95,1.0)*caustic*body*0.18;
+
+  // Shadow — unlit side goes very dark for strong 3D form
+  float shadow=smoothstep(-0.4,0.6,NdotL);
+  color*=mix(0.04,1.0,shadow);
+
+  // PRIMARY specular — hard bright core (the main catchlight)
+  float shineCore=pow(NdotH,400.0)*1.8;
+  float shineMid =pow(NdotH,80.0)*0.65;
+  float shineSoft=pow(NdotH,22.0)*0.28;
+  color+=vec3(1.0)*shineCore;
+  color+=vec3(1.0,0.99,0.97)*shineMid;
+  color+=vec3(1.0,0.98,0.95)*shineSoft;
+
+  // SECONDARY specular — offset catchlight (real glass has two highlights)
+  vec3 L2=normalize(uLightPos*vec3(0.52,0.58,1.12)-vWorldPos);
+  float spec2=pow(max(dot(N,normalize(L2+V)),0.0),200.0)*0.7;
+  color+=vec3(0.96,0.98,1.0)*spec2;
+
+  // Back-lit specular — glow from opposite side of light (internal bounce)
+  vec3 Lback=normalize(-uLightPos*vec3(0.6,0.6,1.0));
+  float specBack=pow(max(dot(N,normalize(Lback+V)),0.0),120.0)*0.35;
+  color+=vec3(0.7,0.8,1.0)*specBack;
+
+  // Prismatic rim — colored spectrum at the silhouette edge
+  float rimMask=pow(1.0-NdotV,4.0);
+  float prismAngle=atan(vLocalPos.y,vLocalPos.x)+uTime*0.04;
+  vec3 prismCol=vec3(
+    0.5+0.5*sin(prismAngle*3.0+uLightPos.x*1.5),
+    0.5+0.5*sin(prismAngle*3.0+2.094+uLightPos.y*1.5),
+    0.5+0.5*sin(prismAngle*3.0+4.189)
+  );
+  color+=prismCol*rimMask*0.50;
+  color+=vec3(0.85,0.90,1.0)*rimMask*smoothstep(0.5,0.0,NdotL)*0.12;
+
+  gl_FragColor=vec4(clamp(color,0.0,4.0),1.0);
+}`;
+
+var mat=new THREE.ShaderMaterial({
+  uniforms:{
+    uBgTex:{value:bgTex},
+    uLightPos:{value:new THREE.Vector3(0,0.25,2.5)},
+    uTime:{value:0.0},
+  },
+  vertexShader:VS,fragmentShader:FS,
+  transparent:true,side:THREE.FrontSide,
+});
+var geo=new THREE.SphereGeometry(1,128,96);
+var mesh=new THREE.Mesh(geo,mat);
+mesh.scale.set(0.46,0.64,0.62);
+scene_3d.add(mesh);
+
+    function drawBackground(lx,ly,orbX,orbY){
+      bgCtx.clearRect(0,0,PW,PH);
+      var grad=bgCtx.createRadialGradient(PW/2,PH/2,0,PW/2,PH/2,PH*0.65);
+      grad.addColorStop(0,'#e2e2e2');
+      grad.addColorStop(0.45,'#f0f0f0');
+      grad.addColorStop(1,'#ffffff');
+      bgCtx.fillStyle=grad;
+      bgCtx.fillRect(0,0,PW,PH);
+      var fovScale=PH/(2*Math.tan(20*Math.PI/180)*3.5);
+      var rx=0.46*fovScale, ry=0.64*fovScale;
+      var osx=PW/2+orbX*fovScale;
+      var osy=PH/2-orbY*fovScale;
+      var shadowX=osx-lx*rx*0.28;
+      var shadowY=osy+ry;
+      bgCtx.save();
+      bgCtx.filter='blur(24px)';
+      bgCtx.save(); bgCtx.translate(shadowX,shadowY); bgCtx.scale(1,0.11);
+      bgCtx.beginPath(); bgCtx.arc(0,0,rx,0,Math.PI*2);
+      bgCtx.fillStyle='rgba(0,0,0,0.30)'; bgCtx.fill(); bgCtx.restore();
+      bgCtx.filter='blur(44px)';
+      bgCtx.save(); bgCtx.translate(shadowX,shadowY); bgCtx.scale(1,0.19);
+      bgCtx.beginPath(); bgCtx.arc(0,0,rx*1.25,0,Math.PI*2);
+      bgCtx.fillStyle='rgba(0,0,0,0.12)'; bgCtx.fill(); bgCtx.restore();
+      bgCtx.filter='none';
+      bgCtx.restore();
+    }
+
+    var clock=new THREE.Clock();
+    var time=0;
+    function idleDrift(t){
+      return {
+        x:Math.sin(t*0.16)*0.22+Math.sin(t*0.09)*0.10,
+        y:Math.cos(t*0.12)*0.18+Math.cos(t*0.07)*0.08
+      };
+    }
+    function lerp(a,b,t){return a+(b-a)*t;}
+    function animate(){
+      requestAnimationFrame(animate);
+      var dt=Math.min(clock.getDelta(),0.05);
+      time+=dt;
+      idleTime+=dt;
+      var idleFac=Math.min(Math.max(idleTime-4,0)/2.5,1);
+      var idle=idleDrift(time);
+      var tx=lerp(mouseRaw.x,idle.x,idleFac);
+      var ty=lerp(mouseRaw.y,idle.y,idleFac);
+      mouseSmooth.x=lerp(mouseSmooth.x,tx,0.06);
+      mouseSmooth.y=lerp(mouseSmooth.y,ty,0.06);
+      var lx=mouseSmooth.x,ly=mouseSmooth.y;
+      mat.uniforms.uLightPos.value.set(lx*4.5,ly*4.5,2.5);
+      mat.uniforms.uTime.value=time;
+      mesh.rotation.x=lerp(mesh.rotation.x,-ly*0.45,0.04);
+      mesh.rotation.y=lerp(mesh.rotation.y,lx*0.45,0.04);
+      mesh.rotation.z=0;
+      mesh.position.x=lerp(mesh.position.x,lx*0.45,0.06);
+      mesh.position.y=lerp(mesh.position.y,ly*0.35,0.06);
+      drawBackground(lx,ly,mesh.position.x,mesh.position.y);
+      bgTex.needsUpdate=true;
+      renderer.render(scene_3d,camera);
+    }
+    resizeAll();
+    animate();
+  }
+  initOrb();
+})();
+</script>
+</body>
+</html>

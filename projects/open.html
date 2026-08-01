@@ -5,860 +5,387 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OP/EN — OP/AL</title>
   <link rel="canonical" href="https://more-than.design/projects/open.html">
+  <meta name="description" content="OP/EN — Original Practice / Everyday Noticing. A window onto a weekly hour of stillness, held Friday. The sky is Chicago's, right now.">
   <meta property="og:type"        content="website">
   <meta property="og:site_name"   content="OP/AL">
   <meta property="og:title"       content="OP/EN — OP/AL">
-  <meta property="og:description" content="Most design education teaches you what to make. This teaches you who is making it.">
-  <meta property="og:image"       content="https://more-than.design/images/opal-open-graph.webp">
-  <meta property="og:url"         content="https://more-than.design/projects/open.html">
-  <meta name="twitter:card"        content="summary_large_image">
-  <meta name="twitter:title"       content="OP/EN — OP/AL">
-  <meta name="twitter:description" content="Most design education teaches you what to make. This teaches you who is making it.">
-  <meta name="twitter:image"       content="https://more-than.design/images/opal-open-graph.webp">
+  <meta property="og:description" content="Original Practice / Everyday Noticing. A weekly hour: 20 minutes of stillness, then 30 of conversation. The sky is Chicago's, right now.">
   <link rel="stylesheet" href="../shared/styles.css">
   <style>
-  </style>
-  <style>
-    body.project { background: #fff !important; }
-    body.project #hero h1,
-    body.project #hero h2,
-    body.project #hero p { color: #000 !important; }
-    body.project #credits p { color: #000 !important; }
-    body.project .label { color: rgba(0,0,0,0.55) !important; }
-    body.project .text-mid { color: #000 !important; }
-    body.project #open-sessions p { color: #000 !important; }
-    body.project #open-sessions h2 { color: #000 !important; }
-    body.project #open-sessions .open-facilitators p,
-    body.project #open-sessions .open-facilitators h3 { color: #fff !important; }
-    /* Footer — override white text from project.js inProject detection */
-    body.project footer div[style] { color: var(--color-ink) !important; }
-    /* Application orb panel */
-    .open-orb-panel { position: relative; overflow: hidden; }
-    /* Now Enrolling indicator */
-    @keyframes enrolling-blink { 0%,100%{opacity:1} 50%{opacity:0} }
-    .open-enrolling {
-      display: block; position: relative;
-      margin-bottom: var(--space-4);
-    }
-    .open-enrolling__dot {
-      position: absolute; left: -0.85em; top: 10%;
-      width: 8px; height: 8px; border-radius: 50%; background: #e02020;
-      animation: enrolling-blink 1.2s ease-in-out infinite;
-    }
-    @media (max-width: 768px) {
-      .open-enrolling__dot { left: -0.85em; top: 10%; }
-    }
-    .open-enrolling__label {
-      display: block; font-size: var(--label); letter-spacing: var(--tracking-wide);
-      text-transform: uppercase; color: #e02020;
-    }
+    /* OP/EN — a window. Chicago's live sky behind, a curtain of the page's own words in front,
+       swaying in Chicago's real wind. The whole thing is the Letter Strings tool, in application. */
+    body.project{ background:#8fb6da; color:#000; }
+    body.project p, body.project .body{ color:#000000; }
+    #sky, #curtain{ position:fixed; inset:0; width:100%; height:100%; display:block; }
+    #sky{ z-index:0; }
+    #curtain{ z-index:1; }
+    /* let the shared nav keep its site-wide mix-blend-mode:difference (colour-inverts over the sky) */
+    nav{ z-index:3; }
+    /* soft scrim layer sits between the curtain and the identity block so fine text reads */
+    .oc-scrim{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:2; pointer-events:none;
+      width:min(820px,95vw); height:min(580px,80vh); border-radius:50%;
+      background:radial-gradient(ellipse at center, var(--oc-scrim, rgba(248,249,252,.94)) 0%, var(--oc-scrim, rgba(248,249,252,.94)) 42%, transparent 74%);
+      transition:background 1.2s ease; }
+
+    /* the quiet identity layer, floating in the middle of the window */
+    .oc-frame{ position:fixed; inset:0; z-index:2; pointer-events:none;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 24px; }
+    .oc-frame > *{ white-space:nowrap; max-width:100vw; }
+    /* soft scrim so the identity block reads clearly over the busy curtain */
+    .oc-scrim{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:-1; pointer-events:none;
+      width:min(880px,96vw); height:min(560px,76vh); border-radius:50%;
+      background:radial-gradient(ellipse at center, var(--oc-scrim, rgba(248,249,252,.82)) 0%, transparent 70%);
+      transition:background 1.2s ease; }
+    /* fine text sits on a solid highlighter plate so it stays legible over the busy curtain */
+    .oc-eyebrow, .oc-expand, .oc-sched{ background:var(--oc-plate,#fff); border-radius:4px; transition:background 1.2s ease; }
+    .oc-eyebrow{ font-size:10px; letter-spacing:.24em; text-transform:uppercase; opacity:1; margin:0 0 20px;
+      display:inline-flex; align-items:center; gap:8px; font-weight:600; color:var(--oc-platetext,#000);
+      padding:.6em .9em; transition:color 1.2s ease; }
+    .oc-eyebrow .dot{ width:5px; height:5px; border-radius:50%; background:var(--color-accent2); }
+    .oc-mark{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(56px,11vw,132px);
+      line-height:.9; margin:0; letter-spacing:.01em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
+      text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6)); }
+    .oc-mark .sl{ color:var(--color-accent2); }
+    .oc-expand{ margin:22px 0 0; font-size:11px; letter-spacing:.22em; text-transform:uppercase; opacity:1; font-weight:600;
+      color:var(--oc-platetext,#000); padding:.62em .9em; transition:color 1.2s ease; }
+    .oc-sched{ margin:24px 0 0; font-size:clamp(11px,1.2vw,14px); letter-spacing:.03em; opacity:1; font-weight:500;
+      color:var(--oc-platetext,#000); padding:.62em 1em; transition:color 1.2s ease; }
+    .oc-join{ pointer-events:auto; margin-top:28px; display:inline-block; font-size:10.5px; letter-spacing:.2em;
+      text-transform:uppercase; text-decoration:none; color:var(--oc-ink,#141414); font-weight:500;
+      border:1.5px solid currentColor; border-radius:999px; padding:13px 28px; opacity:1;
+      background:var(--oc-scrim,rgba(248,249,252,.96));
+      transition:color 1.2s ease, background-color .3s ease, border-color .3s ease; }
+    .oc-join:hover{ background:var(--color-accent2); border-color:var(--color-accent2); color:#141414; opacity:1; }
   </style>
 </head>
-<body>
+<body class="project">
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <canvas id="curtain" aria-hidden="true"></canvas>
+
+  <div class="oc-frame">
+    <span class="oc-scrim" aria-hidden="true"></span>
+    <p class="oc-eyebrow"><span class="dot"></span>Ongoing</p>
+    <h1 class="oc-mark">OP<span class="sl">/</span>EN</h1>
+    <p class="oc-expand">Original Practice / Everyday Noticing</p>
+    <p class="oc-sched">Friday · 6–7am · 20 minutes of stillness · 30 minutes of conversation</p>
+    <a class="oc-join" href="https://us02web.zoom.us/j/82545325852" target="_blank" rel="noopener">Join Friday</a>
+  </div>
+
+  <script src="../shared/nav.js"></script>
+  <script src="../shared/cursor.js"></script>
 
   <script>
-    const PROJECT = {
-      title:       "OP/EN",
-      description: "A four-week course that invites you to turn the tools you already have back on yourself — so that the work you send into the world carries something real. Through conversation, contemplative practice, and creative exercise, each session creates the conditions for a different kind of awareness to emerge. One that doesn't replace you, but roots you in something more honest, more durable, and more alive.",
-      body: "This is not a leadership seminar or a branding course or a creativity hack. It is something school never offered you and no job will ever assign you — a dedicated space to work on the questions that shape everything else.<br><br>Ten participants. Four Thursdays. In person only. Through group and facilitated conversation, we hold each other accountable, learn from one another, and explore ways to bring more authenticity and care into what we do.<br><br><span style='display:block;line-height:1.9;color:#000'>Begins August 8, 2026<br>6 pm – 7:30 pm<br>Oak Park, IL<br>4 Sessions<br>$240</span>",
-      client:      "World",
-      medium:      "Curriculum / Process / Systems Thinking",
-      year:        "2026",
-      credits: [
-        { name: "Christian Solorzano", title: "Co-Facilitator" },
-        { name: "Brian Morris", title: "Co-Facilitator" }
-      ],
-      role:        "Facilitator",
-      images:      [],
-      next: { title: "Point", url: "point.html" }
+  /* ─────────────────────────────────────────────────────────────────────────
+     1) THE SKY — Chicago's live weather drives colour (time of day + cloud cover)
+        and drifting procedural clouds. Wind speed feeds the curtain below.
+     ───────────────────────────────────────────────────────────────────────── */
+  const OC = (function () {
+    const sky = document.getElementById('sky'), sx = sky.getContext('2d');
+    const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>v<a?a:v>b?b:v;
+    let W=0,H=0,DPR=1;
+
+    // palettes as [r,g,b]; a phase blends its clear + overcast ends by cloud cover
+    const PAL = {
+      dayClear:{ top:[92,158,226], hor:[196,226,250], cloud:[255,255,255] },
+      dayCloud:{ top:[150,166,180], hor:[206,214,221], cloud:[240,242,244] },
+      dawn:    { top:[54,78,140],  hor:[242,172,120], cloud:[255,224,204] },
+      dawnCl:  { top:[120,132,158],hor:[214,190,186], cloud:[236,224,222] },
+      dusk:    { top:[40,50,104],  hor:[233,138,92],  cloud:[250,204,182] },
+      duskCl:  { top:[92,98,128],  hor:[176,150,150], cloud:[210,196,196] },
+      night:   { top:[7,11,30],    hor:[22,30,58],    cloud:[46,54,82] },
+      nightCl: { top:[24,30,50],   hor:[44,52,74],    cloud:[70,78,100] },
     };
-  </script>
-  <script src="../shared/project.js"></script>
-  <script>
-  (function () {
-    var styleEl = document.createElement('style');
-    styleEl.textContent = [
-      '.open-sessions__label { padding: var(--space-12) 0 var(--space-8); border-bottom: 1px solid rgba(0,0,0,0.1); }',
-      '.open-session { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; min-height: 560px; }',
-      '.open-session__eyebrow { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(0,0,0,0.55); margin-bottom: var(--space-3); }',
-      '.open-session__image { overflow: hidden; }',
-      '.open-session__image img { width: 100%; height: 100%; object-fit: cover; display: block; }',
-      '.open-session__content { display: flex; flex-direction: column; justify-content: center; padding: var(--space-16) var(--grid-padding) var(--space-16) var(--space-12); overflow-y: auto; }',
-      '.open-session__title { font-size: var(--h1); font-weight: var(--weight-regular); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); color: #000; margin-bottom: var(--space-8); }',
-      '.open-session__subtitle { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--color-mid); margin-top: calc(-1 * var(--space-6)); margin-bottom: var(--space-6); }',
-      '.open-session__intro { color: #000; line-height: var(--leading-normal); margin-bottom: var(--space-6); }',
-      '.open-block__label { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(0,0,0,0.45); margin-top: var(--space-6); margin-bottom: var(--space-2); }',
-      '.open-session__title + .open-block__label { margin-top: 0; }',
-      '.open-block__text { color: #000; line-height: var(--leading-normal); }',
-      '.open-block__text + .open-block__text { margin-top: var(--space-3); }',
-      '.open-application-box { background: #fff; padding: var(--space-6); margin-top: var(--space-4); }',
-      '.open-application-box .label { color: rgba(0,0,0,0.55); display: block; margin-bottom: var(--space-2); }',
-      '.open-application__list { list-style: none; }',
-      '.open-application__item { display: flex; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid rgba(0,0,0,0.08); color: #000; line-height: var(--leading-normal); }',
-      '.open-application__item:last-child { border-bottom: none; }',
-      '.open-application__n { flex-shrink: 0; font-size: var(--label); letter-spacing: var(--tracking-wide); color: rgba(0,0,0,0.5); padding-top: 0.15em; min-width: 1.5em; }',
-'.open-apply-btn { display: block; width: fit-content; line-height: 1; margin-top: var(--space-6); background: transparent; color: #393939; border: 1px solid #393939; padding: 0.5em 1em 0.3em 1em; font-size: 1em; letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
-      '.open-apply-btn:hover { background: var(--color-accent); border-color: var(--color-accent); color: #393939; }',
-      '#open-apply-overlay { position: fixed; inset: 0; background: #fff; z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }',
-      '#open-apply-overlay.is-open { opacity: 1; pointer-events: all; }',
-      '.open-apply-inner { max-width: 560px; width: 90%; }',
-      '.open-apply-prompt { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: #000; margin-bottom: var(--space-8); }',
-      '.open-apply-q { font-size: var(--h2); font-weight: var(--weight-regular); color: #000 !important; line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); margin: 0 0 var(--space-6); }',
-      '.open-apply-inner input[type=text], .open-apply-inner input[type=email] { width: 100%; border: none; border-bottom: 1px solid rgba(0,0,0,0.18); padding: var(--space-3) 0; font-size: 1em; font-family: inherit; color: #000; background: transparent; box-sizing: border-box; outline: none; margin-bottom: var(--space-4); }',
-      '.open-apply-inner input::placeholder { color: rgba(0,0,0,0.25); }',
-      '.open-apply-inner textarea { width: 100%; height: 140px; border: none; border-bottom: 1px solid rgba(0,0,0,0.18); padding: var(--space-3) 0; font-size: 1em; font-family: inherit; resize: none; color: #000; background: transparent; box-sizing: border-box; outline: none; line-height: var(--leading-normal); }',
-      '.open-apply-inner textarea::placeholder { color: rgba(0,0,0,0.25); }',
-      '.open-apply-success { display: none; text-align: center; padding: var(--space-8) 0; }',
-      '.open-apply-success.is-visible { display: block; }',
-      '.open-apply-form.is-hidden { display: none; }',
-      '.open-apply-actions { display: flex; align-items: center; gap: var(--space-6); margin-top: var(--space-8); }',
-      '.open-apply-submit { display: inline-block; line-height: 1; background: transparent; color: #393939; border: 1px solid #393939; padding: 0.5em 1em 0.3em 1em; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; cursor: pointer; font-family: inherit; }',
-      '.open-apply-submit:hover { background: var(--color-accent); border-color: var(--color-accent); }',
-      '.open-apply-close { background: none; border: none; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: #000; cursor: pointer; font-family: inherit; padding: 0; }',
-      '.open-apply-cta { height: 100vh; min-height: 560px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #f2f1ee; gap: var(--space-4); }',
-      '.open-apply-cta .open-session__eyebrow { margin-bottom: 0; }',
-      '.open-apply-cta .open-session__title { font-size: calc(var(--h1) * 2.5); margin-bottom: 0; }',
-      '.open-facilitators { padding: var(--space-16) var(--grid-padding); background: #000; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }',
-      '.open-facilitator__name { font-size: var(--h2); font-weight: var(--weight-regular); letter-spacing: var(--tracking-tight); color: #fff; margin-bottom: var(--space-2); }',
-      '.open-facilitator__title { display: block; font-size: var(--label); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: var(--space-6); }',
-      '.open-facilitator__bio { color: #fff; line-height: var(--leading-normal); }',
-      '.open-facilitator__bio p + p { margin-top: var(--space-4); }',
-      '@media (max-width: 768px) { .open-facilitators { grid-template-columns: 1fr; padding: var(--space-16) var(--space-6); } }',
-      '@media (max-width: 768px) {',
-      '  .open-session { grid-template-columns: 1fr; height: auto; }',
-      '  .open-session__image { height: 100vw; }',
-      '  .open-session__content { padding: var(--space-16) var(--space-6); }',
-      '}'
-    ].join('');
-    document.head.appendChild(styleEl);
+    function mix(a,b,t){ return { top:a.top.map((v,i)=>lerp(v,b.top[i],t)),
+      hor:a.hor.map((v,i)=>lerp(v,b.hor[i],t)), cloud:a.cloud.map((v,i)=>lerp(v,b.cloud[i],t)) }; }
 
-    var SESSIONS = [
-      {
-        eyebrow: 'Session 1',
-        title: 'Gather',
-        bg: '#f2f1ee',
-        conversation: 'A council circle and one question: why did you become a designer? We begin naming what we\'ve been carrying into every room we enter. We will notice what goes missing — in a meeting, in a conversation, in the work. Just catch it.',
-        activity: 'Twenty minutes of automatic writing, drawing, or thinking. No outcome, no editing. Ten minutes of silence with what came.',
-        takeaway: 'Notice when you go missing this week — in a meeting, in a conversation, in the work. Just catch it.'
-      },
-      {
-        eyebrow: 'Session 2',
-        title: 'The Container and the Lines',
-        bg: '#eceaf4',
-        conversation: 'We look at the expectations that shaped your practice — the lines drawn by family, career, culture, and fear — and ask which ones you actually drew yourself. We\'ll ask when you sit down to work, whose voices are in the room?',
-        activity: 'Each participant maps their container symbolically and marks one line they didn\'t draw.',
-        takeaway: 'Before you sit down to work this week, ask once: whose voice is in the room with me?'
-      },
-      {
-        eyebrow: 'Session 3',
-        title: 'Don\'t Go Missing',
-        bg: '#f5f0e4',
-        conversation: 'We talk about why the answers arrive in the shower and not at the desk — and practice three questions: What am I feeling? What story am I telling myself? What does my body already know? And we\'ll run through questions before your next professional interaction. Then walk in.',
-        activity: 'One sheet of paper, one mark-making tool, twenty minutes. No brief, no audience, no critique.',
-        takeaway: 'Run the three questions before your next professional interaction. Then walk in.'
-      }
-    ];
+    // current + target palettes; we ease current → target so weather changes glide in
+    let cur = { top:[140,180,220], hor:[210,230,245], cloud:[255,255,255] };
+    let tgt = cur;
+    let cloudCover = 0.45, driftScale = 0.4, isNight = false;
 
-    var questions = [
-      'Tell us in 500 words or less about a moment when your work asked more of you than you expected.',
-      'Tell us in 500 words or less about a time when you remembered what it felt like to be at the whims of creativity.',
-      'Tell us in 500 works (this is not a spelling error) or less about when you created something for yourself that surprised you.',
-      'Describe the things you do to prepare yourself for a task much bigger than your experience.',
-      'Given unconstrained resources, what would you bring into life for the people around you.'
-    ];
-
-    var html = '';
-
-    SESSIONS.forEach(function (s) {
-      html += '<div class="open-session"' + (s.bg ? ' style="background:' + s.bg + '"' : '') + '>';
-      html += '<div class="open-session__image"></div>';
-      html += '<div class="open-session__content">';
-      html += '<span class="open-session__eyebrow label">' + s.eyebrow + '</span>';
-      html += '<h2 class="open-session__title">' + s.title + '</h2>';
-      if (s.conversation) html += '<p class="open-block__text">' + s.conversation + '</p>';
-      html += '</div>';
-      html += '</div>';
-    });
-
-    // Session 4
-    html += '<div class="open-session" style="background:#ede8f0">';
-    html += '<div class="open-session__image"></div>';
-    html += '<div class="open-session__content">';
-    html += '<span class="open-session__eyebrow label">Session 4</span>';
-    html += '<h2 class="open-session__title">Consider &amp; Engage</h2>';
-    html += '<p class="open-block__text">What the work is for, not what it pays. We ask what it looks like to design for people rather than outcomes — and what remains when the title goes away. We\'ll ask — who were we before? Who are we now? And who can we become?</p>';
-    html += '<p class="open-block__text" style="margin-top:var(--space-6)">This only works in a group. Through shared conversation, we hold each other accountable to what we find.</p>';
-    html += '</div>';
-    html += '</div>';
-
-    // Facilitators
-    html += '<div class="open-facilitators">';
-    html += '<div class="open-facilitator">';
-    html += '<h3 class="open-facilitator__name">Christian Solorzano</h3>';
-    html += '<span class="open-facilitator__title">Co-Facilitator</span>';
-    html += '<div class="open-facilitator__bio">';
-    html += '<p>Christian Solorzano asks questions. As a designer, educator, and community builder based in Chicago, his work is oriented around a single belief: that creativity is not a talent but a practice — and a form of social responsibility that belongs to everyone.</p>';
-    html += '<p>He defends creativity the way others defend facts. His practice centers on communication — how it works, what it asks of the people doing it, and what becomes possible when more honesty enters the room. Nearly a decade of contemplative practice, rooted in neuroscience and mindfulness, shapes everything he makes and teaches.</p>';
-    html += '<p>That grounding shows up in a DePaul classroom, across more than 100 conversations on Underscore, and in the community of the Chicago Graphic Design Club. He is also a trained meditation instructor and holds a black belt in Brazilian Jiu-Jitsu.</p>';
-    html += '</div>';
-    html += '</div>';
-    html += '<div class="open-facilitator">';
-    html += '<h3 class="open-facilitator__name">Brian Morris</h3>';
-    html += '<span class="open-facilitator__title">Co-Facilitator</span>';
-    html += '<div class="open-facilitator__bio">';
-    html += '<p>For more than 25 years, Brian Morris helped organizations navigate ambiguity through visual design, creative leadership, and digital experience strategy. His work centered on uncovering patterns, translating complexity, and making meaningful decisions before all the answers were known.</p>';
-    html += '<p>After leaving an Executive Creative Director role in 2021, Brian turned the same skills inward. Drawing from a lifetime of creative practice, he began exploring intuition not as a mystical gift, but as a capacity that can be cultivated through attention, trust, reflection, and daily practice.</p>';
-    html += '<p>Today, Brian helps people reconnect with their own intuitive intelligence and develop practical ways to access it in everyday life.</p>';
-    html += '</div>';
-    html += '</div>';
-    html += '</div>';
-
-    // Apply CTA
-    html += '<div class="open-apply-cta">';
-    html += '<span class="open-session__eyebrow label">OP/EN — 2026</span>';
-    html += '<h2 class="open-session__title">Apply</h2>';
-    html += '<span class="open-session__eyebrow label">10 spots available</span>';
-    html += '<span class="open-session__eyebrow label">Begins August 8, 2026 — 6 pm – 7:30 pm — Oak Park</span>';
-    html += '<button class="open-apply-btn open-apply-cta-btn">Apply Now</button>';
-    html += '</div>';
-
-    var section = document.createElement('section');
-    section.id = 'open-sessions';
-    section.innerHTML = html;
-
-    var images = document.getElementById('images');
-    if (images) {
-      images.insertAdjacentElement('afterend', section);
-    } else {
-      document.body.appendChild(section);
+    function setWeather(phase, cc, windKmh, night){
+      cloudCover = clamp(cc,0,1); isNight = night;
+      driftScale = clamp(0.15 + windKmh/40, 0.15, 1.1);
+      let a,b,t;
+      if(phase==='night'){ a=PAL.night; b=PAL.nightCl; t=Math.min(1,cc*0.9); }
+      else if(phase==='dawn'){ a=PAL.dawn; b=PAL.dawnCl; t=cc*0.75; }
+      else if(phase==='dusk'){ a=PAL.dusk; b=PAL.duskCl; t=cc*0.75; }
+      else { a=PAL.dayClear; b=PAL.dayCloud; t=cc*0.9; }
+      tgt = mix(a,b,t);
+      seedClouds();
     }
 
-    // Application overlay
-    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzfsm0I3jq501OdswHr8gw9fhKJXWHPoHByQaCpXiBrDUN2EkxGjqRz0O7vHHkgwmTDUA/exec';
-    var overlay = document.createElement('div');
-    overlay.id = 'open-apply-overlay';
-    overlay.innerHTML = '<div class="open-apply-inner">' +
-      '<div class="open-apply-form">' +
-        '<span class="open-apply-prompt">One Question</span>' +
-        '<p class="open-apply-q">Given unconstrained resources, what would you bring into life for the people around you.</p>' +
-        '<input type="text"  id="open-apply-name"     placeholder="Your name">' +
-        '<input type="email" id="open-apply-email"    placeholder="Your email">' +
-        '<textarea id="open-apply-textarea" placeholder="Write as long as you need to."></textarea>' +
-        '<div class="open-apply-actions">' +
-          '<button class="open-apply-submit" id="open-apply-submit-btn">Submit</button>' +
-          '<button class="open-apply-close" onclick="document.getElementById(\'open-apply-overlay\').classList.remove(\'is-open\')">Close</button>' +
-          '<span style="margin-left:auto;font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">$240</span>' +
-        '</div>' +
-        '<p style="margin-top:var(--space-4);font-size:var(--label);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#000">This course is $240 — application does not guarantee enrollment. Somebody will contact you to discuss next steps.</p>' +
-      '</div>' +
-      '<div class="open-apply-success">' +
-        '<p class="open-apply-q">Thank you.</p>' +
-        '<p style="margin-top:var(--space-4);color:#000;line-height:var(--leading-normal)">We\'ll be in touch to discuss next steps.</p>' +
-        '<button class="open-apply-close" style="margin-top:var(--space-6);display:inline-block" onclick="document.getElementById(\'open-apply-overlay\').classList.remove(\'is-open\')">Close</button>' +
-      '</div>' +
-    '</div>';
-    document.body.appendChild(overlay);
+    // luminance of the sky at a vertical fraction f (0 top → 1 horizon)
+    function lumAt(f){ const c=[lerp(cur.top[0],cur.hor[0],f),lerp(cur.top[1],cur.hor[1],f),lerp(cur.top[2],cur.hor[2],f)];
+      return (0.299*c[0]+0.587*c[1]+0.114*c[2])/255; }
 
-    document.getElementById('open-apply-submit-btn').addEventListener('click', function() {
-      var name     = document.getElementById('open-apply-name').value.trim();
-      var email    = document.getElementById('open-apply-email').value.trim();
-      var response = document.getElementById('open-apply-textarea').value.trim();
-      if (!name || !email || !response) { alert('Please fill in all fields.'); return; }
-      var btn = this;
-      btn.textContent = 'Sending…';
-      btn.disabled = true;
-      fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({ name: name, email: email, response: response })
-      })
-      .then(function() {
-        overlay.querySelector('.open-apply-form').classList.add('is-hidden');
-        overlay.querySelector('.open-apply-success').classList.add('is-visible');
-      })
-      .catch(function() {
-        btn.textContent = 'Submit';
-        btn.disabled = false;
-        alert('Something went wrong. Please try again.');
-      });
-    });
-    // Close on backdrop click
-    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.classList.remove('is-open'); });
-    // Close on Escape
-    document.addEventListener('keydown', function(e){ if(e.key==='Escape') overlay.classList.remove('is-open'); });
+    // clouds: a handful of soft puffs drifting across the upper sky
+    let puffs=[];
+    function seedClouds(){ const n=Math.round(3+cloudCover*15); puffs=[];
+      for(let i=0;i<n;i++){ puffs.push({ x:Math.random(), y:0.05+Math.random()*0.62,
+        s:0.6+Math.random()*1.5, spd:0.2+Math.random()*0.6, seed:Math.random()*10 }); } }
 
-    // Wire CTA apply button
-    var ctaBtn = document.querySelector('.open-apply-cta-btn');
-    if(ctaBtn) ctaBtn.onclick = function(){ overlay.classList.add('is-open'); };
+    // precipitation — rain streaks or snow, falling outside the glass
+    let precip={kind:'none',rate:0}, drops=[];
+    function mkDrop(){ if(precip.kind==='snow')
+        return { x:Math.random()*W, y:Math.random()*H, r:1+Math.random()*2.6, spd:0.4+Math.random()*0.9, drift:Math.random()*6.28, sway:0.4+Math.random()*1.0 };
+      // rain: layered depth (0 far → 1 near) drives length, speed, thickness, opacity → real-drop parallax
+      const layer=Math.random();
+      return { x:Math.random()*W, y:Math.random()*H, layer, len:11+layer*24, spd:8+layer*13, w:0.7+layer*1.5, a:0.16+layer*0.4 }; }
+    function seedPrecip(){ drops=[]; if(precip.kind==='none') return;
+      const n=Math.round((precip.kind==='snow'?110:200)*precip.rate); for(let i=0;i<n;i++) drops.push(mkDrop()); }
+    function setPrecip(kind,rate){ precip={kind:kind||'none',rate:clamp(rate||0,0,1)}; seedPrecip(); }
+    function drawPrecip(){
+      if(precip.kind==='none'||!drops.length) return;
+      const slant=clamp((driftScale-0.3)*1.4,-0.1,1.3);
+      if(precip.kind==='rain'){
+        const base=isNight?'205,218,238':'184,202,228', head=isNight?'234,241,253':'247,251,255';
+        sx.lineCap='round';
+        for(const d of drops){ const hx=d.x, hy=d.y, tx=hx-d.len*slant*0.5, ty=hy-d.len;
+          const g=sx.createLinearGradient(tx,ty,hx,hy);   // glassy teardrop: faint tail → bright head
+          g.addColorStop(0,`rgba(${base},0)`); g.addColorStop(1,`rgba(${base},${d.a})`);
+          sx.strokeStyle=g; sx.lineWidth=d.w; sx.beginPath(); sx.moveTo(tx,ty); sx.lineTo(hx,hy); sx.stroke();
+          sx.fillStyle=`rgba(${head},${Math.min(1,d.a*1.7)})`;
+          sx.beginPath(); sx.arc(hx,hy,d.w*0.95,0,6.2832); sx.fill();
+          d.y+=d.spd; d.x-=slant*d.spd*0.16;
+          if(d.y-d.len>H){ d.y=-Math.random()*40; d.x=Math.random()*W; } if(d.x<-4)d.x+=W; if(d.x>W+4)d.x-=W; }
+      } else {
+        sx.fillStyle=isNight?'rgba(230,236,246,0.7)':'rgba(255,255,255,0.82)';
+        for(const d of drops){ d.y+=d.spd; d.x+=Math.sin(d.drift+d.y*0.01)*d.sway*0.6 - slant*0.6; d.drift+=0.01;
+          if(d.y>H){ d.y=-4; d.x=Math.random()*W; } if(d.x<-4)d.x+=W; if(d.x>W+4)d.x-=W;
+          sx.beginPath(); sx.arc(d.x,d.y,d.r,0,6.2832); sx.fill(); } }
+    }
 
-    // Now Enrolling indicator + Apply button injected into hero
-    (function(){
-      var heroContainer = document.querySelector('#hero .container');
-      if(!heroContainer) return;
+    function resize(){ DPR=Math.min(devicePixelRatio||1,2); W=innerWidth; H=innerHeight;
+      sky.width=W*DPR; sky.height=H*DPR; sx.setTransform(DPR,0,0,DPR,0,0); }
+    addEventListener('resize', resize);
 
-      var enrolling = document.createElement('div');
-      enrolling.className = 'open-enrolling';
-      enrolling.innerHTML = '<span class="open-enrolling__dot"></span><span class="open-enrolling__label">Now Enrolling</span>';
-      heroContainer.insertBefore(enrolling, heroContainer.firstChild);
+    let t=0;
+    function frame(){
+      // ease palette toward target
+      for(const k of ['top','hor','cloud']) for(let i=0;i<3;i++) cur[k][i]=lerp(cur[k][i],tgt[k][i],0.03);
+      t += 0.0016;
 
-      var heroBtn = document.createElement('button');
-      heroBtn.className = 'open-apply-btn';
-      heroBtn.textContent = 'Apply';
-      heroBtn.onclick = function(){ overlay.classList.add('is-open'); };
-      heroContainer.appendChild(heroBtn);
-    })();
+      // sky gradient
+      const g=sx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0, `rgb(${cur.top.map(Math.round).join(',')})`);
+      g.addColorStop(1, `rgb(${cur.hor.map(Math.round).join(',')})`);
+      sx.fillStyle=g; sx.fillRect(0,0,W,H);
 
-    // ── Session illustrations ─────────────────────────────────────────────
-    // Each image panel gets a canvas animation using the orb as motif
-    (function(){
-      var t0 = performance.now();
-      var fns = [];
+      // clouds
+      const cc=cur.cloud.map(Math.round);
+      for(const p of puffs){ p.x += (p.spd*driftScale*0.0006); if(p.x>1.25) p.x-=1.5;
+        const cx=p.x*W, cy=p.y*H, base=Math.min(W,H)*0.16*p.s;
+        const alpha=(0.10+cloudCover*0.5);
+        // a cluster of soft blobs makes one fluffy mass
+        for(let b=0;b<5;b++){ const off=(b-2), ox=cx+off*base*0.55+Math.sin(t*2+p.seed+b)*base*0.15,
+          oy=cy+Math.cos(b*1.6+p.seed)*base*0.28, r=base*(1-Math.abs(off)*0.16);
+          const rg=sx.createRadialGradient(ox,oy,0,ox,oy,r);
+          rg.addColorStop(0,`rgba(${cc[0]},${cc[1]},${cc[2]},${alpha})`);
+          rg.addColorStop(1,`rgba(${cc[0]},${cc[1]},${cc[2]},0)`);
+          sx.fillStyle=rg; sx.beginPath(); sx.arc(ox,oy,r,0,6.2832); sx.fill(); } }
 
-      function init(){
-        var els = document.querySelectorAll('#open-sessions .open-session__image');
-        for(var i=0;i<els.length;i++){
-          (function(el,idx){
-            var cv = document.createElement('canvas');
-            cv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:block;';
-            el.style.position = 'relative';
-            el.appendChild(cv);
-            var ctx = cv.getContext('2d');
-            function sz(){
-              var dpr = window.devicePixelRatio||1;
-              cv.width  = (el.offsetWidth  || window.innerWidth/2) * dpr;
-              cv.height = (el.offsetHeight || window.innerHeight)  * dpr;
-            }
-            sz();
-            window.addEventListener('resize', sz);
-            if(idx===0) fns.push(mkGather(cv,ctx));
-            else if(idx===1) fns.push(mkContainer(cv,ctx));
-            else if(idx===2) fns.push(mkMissing(cv,ctx));
-            else             fns.push(mkEngage(cv,ctx));
-          })(els[i], i);
-        }
-        (function loop(){
-          var t = (performance.now()-t0)/1000;
-          for(var f=0;f<fns.length;f++) fns[f](t);
-          requestAnimationFrame(loop);
-        })();
+      drawPrecip();
+      requestAnimationFrame(frame);
+    }
+    resize(); seedClouds(); requestAnimationFrame(frame);
+
+    return { lumAt, setWeather, setPrecip, get isNight(){return isNight;}, get windScale(){return driftScale;} };
+  })();
+
+  /* ── fetch Chicago weather; fall back to a time-based sky if it fails.
+        preview overrides: ?phase=night|dawn|dusk|day  ?precip=rain|snow  ?cloud=0..1 ── */
+  (function () {
+    const q=new URLSearchParams(location.search);
+    const fPhase=q.get('phase'), fPrecip=q.get('precip'), fCloud=q.get('cloud');
+    function phaseFromClock(h){ if(h<5||h>=21) return 'night'; if(h<8) return 'dawn'; if(h>=18) return 'dusk'; return 'day'; }
+    // Open-Meteo weather_code → precipitation {kind,rate}
+    function precipFor(code){
+      if(code>=71 && code<=77) return {kind:'snow',rate:0.7};
+      if(code===85||code===86) return {kind:'snow',rate:0.85};
+      if(code>=51 && code<=57) return {kind:'rain',rate:0.45};
+      if(code>=61 && code<=67) return {kind:'rain',rate:code>=65?0.9:0.6};
+      if(code>=80 && code<=82) return {kind:'rain',rate:code>=82?1:0.7};
+      if(code>=95) return {kind:'rain',rate:1};
+      return {kind:'none',rate:0};
+    }
+    function apply(phase, cc, wind, precip){
+      phase = fPhase || phase;
+      if(fCloud!=null) cc=+fCloud;
+      if(fPrecip){ precip={kind:fPrecip, rate:fPrecip==='snow'?0.75:0.85}; }
+      if(precip.kind!=='none') cc=Math.max(cc,0.8);   // it's overcast when it's precipitating
+      OC.setWeather(phase, cc, wind, phase==='night');
+      OC.setPrecip(precip.kind, precip.rate);
+      window.dispatchEvent(new CustomEvent('oc-wind',{detail:{scale:OC.windScale}}));
+      document.body.dataset.wx='1';
+    }
+    function fallback(){
+      const h=+new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'2-digit',hour12:false}).format(new Date());
+      apply(phaseFromClock(h), 0.45, 12, {kind:'none',rate:0});
+    }
+
+    // Oak Park, IL — 60302
+    const url='https://api.open-meteo.com/v1/forecast?latitude=41.8850&longitude=-87.7845'
+      +'&current=temperature_2m,is_day,weather_code,cloud_cover,wind_speed_10m'
+      +'&daily=sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FChicago&forecast_days=1';
+
+    fetch(url).then(r=>r.json()).then(d=>{
+      const c=d.current; if(!c) return fallback();
+      const cc=(c.cloud_cover??45)/100, wind=c.wind_speed_10m??10, code=c.weather_code??2;
+      const toMin=s=>{ const t=s.split('T')[1]; const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
+      const now=toMin(c.time), sr=toMin(d.daily.sunrise[0]), ss=toMin(d.daily.sunset[0]);
+      let ph; if(now<sr-20||now>ss+20) ph='night';
+        else if(now<sr+70) ph='dawn'; else if(now>ss-70) ph='dusk'; else ph='day';
+      apply(ph, cc, wind, precipFor(code));
+    }).catch(fallback);
+    if(fPhase||fPrecip||fCloud) apply('day',0.45,12,{kind:'none',rate:0});   // instant preview
+    setTimeout(()=>{ if(!document.body.dataset.wx) fallback(); }, 4000);
+  })();
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     2) THE CURTAIN — Letter Strings (wind · curtain · horizontal), full-bleed,
+        transparent so the sky shows through. Per-row ink keeps it legible on any
+        sky. Highlighted words glow in brand yellow.
+     ───────────────────────────────────────────────────────────────────────── */
+  (function () {
+    const stage=document.getElementById('curtain'); if(!stage) return;
+    const ctx=stage.getContext('2d');
+    const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+    const reduce=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // the curtain is a drifting field of feelings, states + sensations — everyday noticing, made decorative
+    const EMOTIONS=['calm','restless','tender','grateful','wonder','awe','joy','grief','hope','doubt','ease',
+      'ache','longing','content','curious','weary','alive','still','present','open','raw','quiet','patience',
+      'delight','sorrow','gratitude','boredom','clarity','confusion','peace','warmth','fear','courage','softness',
+      'gladness','melancholy','serenity','wistful','unease','comfort','tenderness','yearning','stillness','elation',
+      'sadness','nervous','hopeful','gentle','heavy','light','bright','tired','rested','held','seen','alone',
+      'together','loved','lonely','afraid','brave','soft','tense','easeful','aching','glowing','wandering','settled',
+      'unsettled','curiosity','reverence','humility','luminous','spacious','grounded','adrift','bittersweet',
+      'nostalgia','relief','surrender','acceptance','resistance','restlessness','wonderment','peaceful','patient',
+      'openness',
+      // states + sensations
+      'pensive','alert','watchful','attentive','absorbed','rapt','entranced','keen','dreamy','hazy','drowsy',
+      'sleepy','languid','mellow','buoyant','weightless','tingling','buzzing','humming','prickling','breathless',
+      'shivery','feverish','tremulous','quivering','jittery','antsy','wired','restive','sharp','numb','electric',
+      'floaty','aglow','hushed','brimming','radiant','tingly','simmering','porous','melting','awake'];
+    const P={
+      text:'  '+EMOTIONS.join('   ')+'   ',
+      size:20, spacing:15, rowGap:56,
+      swayAmp:60, windSway:46, swayFreq:0.012, spring:0.02, damp:0.9, collIter:3, collPush:0.5, restitution:0.5, accent:'#efe000', margin:40
+    };
+    const HL=new Set(['STILL','OPEN','PRESENT','AWE','ALIVE','WONDER','STILLNESS']);
+    // per-letter colours — mostly black & white, with pops pulled from the studio screensaver palette
+    const PAL=['#111111','#111111','#111111','#111111','#111111','#ffffff','#ffffff','#ffffff',
+      '#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
+      '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c'];
+    let W=0,H=0,DPR=1, strands=[], nodes=[], clock=0;
+
+    // Chicago wind sets how far the curtain leans
+    addEventListener('oc-wind', e=>{ const s=e.detail.scale;
+      P.swayAmp = clamp(52 + s*70, 52, 128); P.windSway = clamp(30 + s*80, 30, 108); });
+
+    function resize(){ DPR=Math.min(devicePixelRatio||1,2); W=innerWidth; H=innerHeight;
+      stage.width=W*DPR; stage.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); build(); }
+    addEventListener('resize', resize);
+
+    function hash(x,y,z){ const n=Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453; return n-Math.floor(n); }
+    function vnoise(x,y,z){ const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z),xf=x-xi,yf=y-yi,zf=z-zi;
+      const u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf),w=zf*zf*(3-2*zf);
+      const x00=lerp(hash(xi,yi,zi),hash(xi+1,yi,zi),u), x10=lerp(hash(xi,yi+1,zi),hash(xi+1,yi+1,zi),u);
+      const x01=lerp(hash(xi,yi,zi+1),hash(xi+1,yi,zi+1),u), x11=lerp(hash(xi,yi+1,zi+1),hash(xi+1,yi+1,zi+1),u);
+      return lerp(lerp(x00,x10,v),lerp(x01,x11,v),w); }
+
+    function tokenize(t){ t=(t||' ').replace(/\n/g,' '); const isW=c=>/[A-Za-z0-9]/.test(c); const segs=[]; let i=0;
+      while(i<t.length){ const w=isW(t[i]); let j=i; while(j<t.length && isW(t[j])===w) j++; segs.push({w,s:t.slice(i,j)}); i=j; }
+      return segs.length?segs:[{w:false,s:' '}]; }
+    function buildStream(need){ const segs=tokenize(P.text), out=[]; let ti=0;
+      while(out.length<need){ const seg=segs[ti%segs.length]; const hot=seg.w && HL.has(seg.s.toUpperCase());
+        for(const ch of [...seg.s]){ if(out.length<need) out.push({ch,hot}); } ti++; } return out; }
+
+    function build(){
+      strands=[]; nodes=[]; const m=P.margin, mainSpan=W-2*m;
+      const count=Math.max(2,Math.floor((H-2*m)/P.rowGap)+1), nPer=Math.max(2,Math.floor(mainSpan/P.spacing)+1);
+      // one long stream; each row starts at a different offset so the same words never stack vertically
+      const OFF=37, master=buildStream(nPer + count*OFF + 8);
+      const rnd=(a,b)=>a+Math.random()*(b-a);
+      for(let s=0;s<count;s++){ const cpos=m+(H-2*m)*(count===1?0.5:s/(count-1)); const strand=[]; const start=s*OFF; let wid=0;
+        for(let j=0;j<nPer;j++){ const g=master[start+j]; if(g.ch===' ') wid++;
+          // organic home jitter — break the grid
+          const jx=rnd(-P.spacing*0.34,P.spacing*0.34), jy=rnd(-P.rowGap*0.32,P.rowGap*0.32);
+          const x=m+j*P.spacing+jx, y=cpos+jy;
+          const sz=rnd(0.82,1.3);
+          const nd={x,y,ox:x,oy:y,hx:x,hy:y, sz, r:P.size*sz*0.46, rot:rnd(-0.28,0.28), seed:rnd(0,900),
+            col:PAL[(Math.random()*PAL.length)|0], ch:g.ch, hot:g.hot};
+          strand.push(nd); nodes.push(nd); }
+        strands.push(strand); }
+      for(let i=0;i<nodes.length;i++) nodes[i].id=i;
+    }
+
+    // collision: a spatial grid so nearby letters push apart; Verlet turns each push into momentum
+    function collide(){
+      const cell=P.size*1.1, INV=1/cell, grid=new Map();
+      const key=(cx,cy)=>((cx+2048)<<13)^(cy+2048);
+      for(const nd of nodes){ const k=key((nd.x*INV)|0,(nd.y*INV)|0); let a=grid.get(k); if(!a){a=[];grid.set(k,a);} a.push(nd); }
+      for(const nd of nodes){ const cx=(nd.x*INV)|0, cy=(nd.y*INV)|0;
+        for(let gx=cx-1;gx<=cx+1;gx++) for(let gy=cy-1;gy<=cy+1;gy++){ const a=grid.get(key(gx,gy)); if(!a) continue;
+          for(const o of a){ if(o.id<=nd.id) continue;      // each pair once
+            let dx=o.x-nd.x, dy=o.y-nd.y, d2=dx*dx+dy*dy; const rr=nd.r+o.r;
+            if(d2<rr*rr && d2>1e-4){ const d=Math.sqrt(d2), push=(rr-d)/d*0.5*P.collPush;
+              const px=dx*push, py=dy*push, b=P.restitution;
+              nd.x-=px; nd.y-=py; o.x+=px; o.y+=py;          // separate so glyph bodies just touch
+              nd.ox+=px*b; nd.oy+=py*b; o.ox-=px*b; o.oy-=py*b; } } } }   // restitution → they bounce off
+    }
+
+    function step(){ const t=clock, amp=P.swayAmp, K=P.spring, damp=P.damp;
+      // ambient flow field (coarse noise swirls regions; no linear phase → no bands)
+      const CS=0.0026, FS=0.021, T1=t*0.006, T2=t*0.019;
+      // global wind: the whole curtain leans left↔right together (nearly uniform → wind, not bands)
+      const swayBase=Math.sin(t*P.swayFreq)*P.windSway;
+      for(const nd of nodes){
+        const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
+        // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
+        const fx=vnoise(nd.seed+T2,nd.hy*FS,T2)-0.5, fy=vnoise(nd.hx*FS,nd.seed+9.4+T2,T2)-0.5;
+        const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
+        const tx=nd.hx + swayX + cx*1.9*amp + fx*amp*1.15, ty=nd.hy + cy*1.35*amp + fy*amp*1.15;
+        const vx=(nd.x-nd.ox)*damp, vy=(nd.y-nd.oy)*damp; nd.ox=nd.x; nd.oy=nd.y;   // Verlet velocity
+        nd.x += vx + (tx-nd.x)*K;
+        nd.y += vy + (ty-nd.y)*K;
       }
+      for(let k=0;k<P.collIter;k++) collide();
+      // keep every letter inside the canvas; hitting a wall kills the inward velocity (no sticking)
+      for(const nd of nodes){ const pad=nd.r+1;
+        if(nd.x<pad){ nd.x=pad; nd.ox=nd.x; } else if(nd.x>W-pad){ nd.x=W-pad; nd.ox=nd.x; }
+        if(nd.y<pad){ nd.y=pad; nd.oy=nd.y; } else if(nd.y>H-pad){ nd.y=H-pad; nd.oy=nd.y; } }
+      clock++;
+    }
 
-      // Two frames so DOM layout settles before reading offsetWidth/Height
-      requestAnimationFrame(function(){ requestAnimationFrame(init); });
-
-      // Session 1 — Gather
-      // Almost monochrome: dark particles with the faintest cool-blue tint as they land
-      function mkGather(cv,ctx){
-        var N=38, pts=[];
-        for(var i=0;i<N;i++){
-          var a=(i/N)*Math.PI*2;
-          var sr=0.45+Math.random()*0.9, sa=Math.random()*Math.PI*2;
-          pts.push({ a:a, sx:Math.cos(sa)*sr, sy:Math.sin(sa)*sr });
-        }
-        return function(t){
-          var W=cv.width, H=cv.height, dpr=window.devicePixelRatio||1;
-          ctx.clearRect(0,0,W,H);
-          var cx=W/2, cy=H/2, r=Math.min(W,H)*0.28;
-          var ph=(t%9)/9, g;
-          if(ph<0.42)      g = ph/0.42;
-          else if(ph<0.65) g = 1;
-          else             g = 1-(ph-0.65)/0.35;
-          g = g<0.5 ? 4*g*g*g : 1-Math.pow(-2*g+2,3)/2;
-          for(var i=0;i<N;i++){
-            var p=pts[i];
-            var x=cx+(p.sx*(1-g)+Math.cos(p.a)*g)*r;
-            var y=cy+(p.sy*(1-g)+Math.sin(p.a)*g)*r;
-            // Faint blue tint only at the moment of landing
-            var blu = Math.round(g*18);
-            ctx.beginPath();
-            ctx.arc(x,y,(1.4+g*1.3)*dpr,0,Math.PI*2);
-            ctx.fillStyle='rgba('+blu+','+blu+','+Math.round(20+g*60)+','+(0.18+g*0.62)+')';
-            ctx.fill();
-          }
-        };
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      const fam='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
+      for(const strand of strands){
+        for(let i=0;i<strand.length;i++){ const nd=strand[i];
+          const p=strand[Math.max(0,i-1)], q=strand[Math.min(strand.length-1,i+1)];
+          const ang=Math.atan2(q.y-p.y,q.x-p.x)*0.35 + nd.rot;   // rides the wave + its own organic tilt
+          ctx.font=`${(P.size*nd.sz).toFixed(1)}px ${fam}`;
+          ctx.fillStyle=nd.col;
+          ctx.save(); ctx.translate(nd.x,nd.y); ctx.rotate(ang); ctx.fillText(nd.ch,0,0); ctx.restore(); }
       }
+      // keep the identity layer's ink in step with the sky behind it (centre band)
+      const centreDark=OC.lumAt(0.5)>0.52;
+      const st=document.body.style;
+      st.setProperty('--oc-ink', centreDark?'#141414':'#f3f5f9');
+      st.setProperty('--oc-glow', centreDark?'0 2px 46px rgba(255,255,255,.55)':'0 2px 46px rgba(0,0,0,.5)');
+      st.setProperty('--oc-scrim', centreDark?'rgba(248,249,252,.86)':'rgba(9,11,20,.78)');
+      st.setProperty('--oc-plate', 'rgba(247,248,250,.97)');   // always light so the black band text reads
+      st.setProperty('--oc-platetext', '#000');
+    }
 
-      // Session 2 — The Container and the Lines
-      // Each wall is a geometric half-plane constraint. Dots clip to the nearest wall —
-      // they literally sit at the wall surface. Lines stay thin throughout.
-      function mkContainer(cv,ctx){
-        var N=54;
-        var baseAngles=[0,Math.PI,Math.PI/2,-Math.PI/2,Math.PI/4,-Math.PI*3/4,-Math.PI/4,Math.PI*3/4];
-        var walls=baseAngles.map(function(dir,k){
-          return { dir:dir, ph:k*0.83, spd:0.55+k*0.07 };
-        });
-
-        return function(t){
-          var W=cv.width,H=cv.height,dpr=window.devicePixelRatio||1;
-          ctx.clearRect(0,0,W,H);
-          var r=Math.min(W,H)*0.30;
-          var diag=Math.sqrt(W*W+H*H)*0.75;
-
-          var cx=W/2, cy=H/2;
-
-          // Whole cage spins with a subtle wobble
-          var spin=t*0.16+Math.sin(t*0.09)*0.35;
-
-          // Pressure cycle — squeeze and release
-          var cycle=(t%9)/9;
-          var pressure;
-          if(cycle<0.35)      pressure=cycle/0.35;
-          else if(cycle<0.68) pressure=1.0;
-          else                pressure=1-(cycle-0.68)/0.32;
-          pressure=pressure<0.5?2*pressure*pressure:1-Math.pow(-2*pressure+2,2)/2;
-
-          // Each wall breathes slightly out of phase with the others
-          var wDist=[], wAp=[];
-          for(var j=0;j<walls.length;j++){
-            wAp[j]=Math.min(Math.max((t-j*0.38)/0.50,0),1);
-            var wobble=Math.sin(t*walls[j].spd+walls[j].ph)*0.09;
-            wDist[j]=r*(1.45-(pressure+wobble)*0.87*wAp[j]);
-          }
-
-          ctx.save();
-          // Rotate the whole cage around the drifting center
-          ctx.translate(cx,cy);
-          ctx.rotate(spin);
-          ctx.translate(-cx,-cy);
-
-          var dotSz=1.8*dpr;
-          for(var i=0;i<N;i++){
-            var a=(i/N)*Math.PI*2;
-            var dotR=r;
-            for(var j=0;j<walls.length;j++){
-              if(wAp[j]<=0) continue;
-              var cosA=Math.cos(a-walls[j].dir);
-              if(cosA>0.005){
-                var reach=wDist[j]/cosA;
-                if(reach<dotR) dotR=reach;
-              }
-            }
-            dotR=Math.max(dotR,r*0.07);
-
-            // Indigo → crimson, with a faint hue pulse
-            var hPulse=Math.sin(spin*1.4+i/N*Math.PI)*0.12;
-            var dr=Math.round(14+pressure*58+hPulse*30);
-            var dg=Math.round(18-pressure*10);
-            var db=Math.round(82-pressure*70);
-            ctx.beginPath();
-            ctx.arc(cx+Math.cos(a)*dotR,cy+Math.sin(a)*dotR,dotSz,0,Math.PI*2);
-            ctx.fillStyle='rgba('+dr+','+dg+','+db+',0.85)';
-            ctx.fill();
-          }
-
-          // Walls — thin lines, fade at ends
-          ctx.lineWidth=1*dpr;
-          for(var j=0;j<walls.length;j++){
-            if(wAp[j]<=0) continue;
-            var d=wDist[j];
-            var wx=cx+Math.cos(walls[j].dir)*d;
-            var wy=cy+Math.sin(walls[j].dir)*d;
-            var px=Math.cos(walls[j].dir+Math.PI/2);
-            var py=Math.sin(walls[j].dir+Math.PI/2);
-            var lx0=wx-px*diag, ly0=wy-py*diag;
-            var lx1=wx+px*diag, ly1=wy+py*diag;
-            var op=wAp[j]*(0.20+pressure*0.30);
-            var lg=ctx.createLinearGradient(lx0,ly0,lx1,ly1);
-            lg.addColorStop(0,   'rgba(60,80,190,0)');
-            lg.addColorStop(0.16,'rgba(60,80,190,'+op+')');
-            lg.addColorStop(0.84,'rgba(60,80,190,'+op+')');
-            lg.addColorStop(1,   'rgba(60,80,190,0)');
-            ctx.beginPath();
-            ctx.moveTo(lx0,ly0);
-            ctx.lineTo(lx1,ly1);
-            ctx.strokeStyle=lg;
-            ctx.stroke();
-          }
-          ctx.restore();
-        };
-      }
-
-      // Session 3 — Don't Go Missing
-      // Dense phyllotaxis field — each dot drifts on its own frequency,
-      // the whole cluster breathes and rotates, several amber dots glow and switch.
-      function mkMissing(cv,ctx){
-        var N=96, pts=[];
-        for(var i=0;i<N;i++){
-          var angle=i*2.39996;
-          var rad=Math.sqrt(i/N)*0.42;
-          pts.push({
-            x:  Math.cos(angle)*rad,
-            y:  Math.sin(angle)*rad,
-            sz: 0.5+Math.sqrt(i/N)*2.0,
-            ph: Math.random()*Math.PI*2,
-            spd:0.30+Math.random()*0.55
-          });
-        }
-        var specials=new Set(), nextSwitch=1.8;
-        function pickSpecials(){
-          specials.clear();
-          var count=2+Math.floor(Math.random()*3);
-          while(specials.size<count) specials.add(Math.floor(Math.random()*N));
-        }
-        pickSpecials();
-        return function(t){
-          var W=cv.width,H=cv.height,dpr=window.devicePixelRatio||1;
-          ctx.clearRect(0,0,W,H);
-          var cx=W/2,cy=H/2,scale=Math.min(W,H)*0.33;
-          if(t>nextSwitch){ pickSpecials(); nextSwitch=t+1.6+Math.random()*2.0; }
-          // Two-harmonic breath — feels alive, not mechanical
-          var breath=1+Math.sin(t*0.55)*0.06+Math.sin(t*1.4)*0.022;
-          // Slow drift rotation
-          var rot=t*0.055;
-          var cr=Math.cos(rot), sr=Math.sin(rot);
-          for(var i=0;i<N;i++){
-            var p=pts[i];
-            // Each dot wanders around its spiral position
-            var wx=Math.sin(t*p.spd+p.ph)*0.032;
-            var wy=Math.cos(t*p.spd*0.79+p.ph+1.1)*0.032;
-            var bx=(p.x+wx)*scale*breath;
-            var by=(p.y+wy)*scale*breath;
-            // Rotate the whole field
-            var x=cx+bx*cr-by*sr;
-            var y=cy+bx*sr+by*cr;
-            if(specials.has(i)){
-              var lp=0.5+0.5*Math.sin(t*2.6+i*0.9);
-              var glowR=(p.sz*1.1+lp*3.2)*dpr;
-              var grd=ctx.createRadialGradient(x,y,0,x,y,glowR*3.8);
-              grd.addColorStop(0,'rgba(220,135,10,'+(0.7+lp*0.3)+')');
-              grd.addColorStop(0.35,'rgba(200,100,0,'+(0.25*lp)+')');
-              grd.addColorStop(1,'rgba(190,70,0,0)');
-              ctx.beginPath();
-              ctx.arc(x,y,glowR*3.8,0,Math.PI*2);
-              ctx.fillStyle=grd;
-              ctx.fill();
-              ctx.beginPath();
-              ctx.arc(x,y,glowR,0,Math.PI*2);
-              ctx.fillStyle='rgba(228,148,12,'+(0.82+lp*0.18)+')';
-              ctx.fill();
-            } else {
-              var flicker=0.28+0.22*Math.sin(t*p.spd*0.6+p.ph);
-              ctx.beginPath();
-              ctx.arc(x,y,p.sz*dpr,0,Math.PI*2);
-              ctx.fillStyle='rgba(18,20,50,'+flicker+')';
-              ctx.fill();
-            }
-          }
-        };
-      }
-
-      // Session 4 — Consider & Engage
-      // Organic sunburst — each ray has its own life: speed, length, width, phase
-      function mkEngage(cv,ctx){
-        var NR=56, rays=[];
-        for(var i=0;i<NR;i++){
-          rays.push({
-            ang: (i/NR)*Math.PI*2+(Math.random()-0.5)*0.08,
-            spd: 0.14+Math.random()*0.32,
-            ph:  Math.random()*Math.PI*2,
-            ph2: Math.random()*Math.PI*2,
-            base:0.30+Math.random()*0.58,
-            w:   0.5+Math.random()*1.4
-          });
-        }
-        return function(t){
-          var W=cv.width,H=cv.height,dpr=window.devicePixelRatio||1;
-          ctx.clearRect(0,0,W,H);
-          var cx=W/2,cy=H/2,maxR=Math.min(W,H)*0.46;
-          ctx.save();
-          for(var i=0;i<NR;i++){
-            var ray=rays[i];
-            // Two harmonics — makes motion feel alive, not mechanical
-            var p1=0.5+0.5*Math.sin(t*ray.spd*Math.PI*2+ray.ph);
-            var p2=0.5+0.5*Math.sin(t*ray.spd*6.1+ray.ph2);
-            var pulse=Math.max(0,Math.min(1,p1*0.75+p2*0.25));
-            var rayLen=maxR*ray.base*(0.35+pulse*0.65);
-            var hueT=((ray.ang/(Math.PI*2))+(t*0.022))%1;
-            var rr,gg,bb,s;
-            if(hueT<0.33){
-              s=hueT/0.33;
-              rr=Math.round(5+s*210);gg=Math.round(90+s*50);bb=220;
-            } else if(hueT<0.66){
-              s=(hueT-0.33)/0.33;
-              rr=215;gg=Math.round(140-s*120);bb=Math.round(220-s*210);
-            } else {
-              s=(hueT-0.66)/0.34;
-              rr=Math.round(215-s*210);gg=Math.round(20+s*70);bb=Math.round(10+s*210);
-            }
-            ctx.beginPath();
-            ctx.moveTo(cx,cy);
-            ctx.lineTo(cx+Math.cos(ray.ang)*rayLen,cy+Math.sin(ray.ang)*rayLen);
-            ctx.strokeStyle='rgba('+rr+','+gg+','+bb+','+(0.08+pulse*0.80)+')';
-            ctx.lineWidth=ray.w*(0.4+pulse*0.9)*dpr;
-            ctx.stroke();
-          }
-          // Warm center glow
-          var g=ctx.createRadialGradient(cx,cy,0,cx,cy,maxR*0.14);
-          g.addColorStop(0,'rgba(255,255,255,0.98)');
-          g.addColorStop(0.35,'rgba(255,245,210,0.60)');
-          g.addColorStop(1,'rgba(255,220,150,0)');
-          ctx.fillStyle=g;
-          ctx.beginPath();
-          ctx.arc(cx,cy,maxR*0.14,0,Math.PI*2);
-          ctx.fill();
-          ctx.restore();
-        };
-      }
-
-    })();
-
+    function tick(){ if(!reduce) step(); draw(); requestAnimationFrame(tick); }
+    // make sure the canvas renders in Sidepiece (web fonts must be loaded before canvas can use them)
+    if(document.fonts && document.fonts.load){ document.fonts.load('20px "Sidepiece-HoneyPie"').catch(()=>{}); }
+    resize(); if(reduce){ draw(); } else requestAnimationFrame(tick);
   })();
   </script>
-
-<script>
-(function(){
-  function initOrb(){
-    var panel=document.getElementById('open-orb-panel');
-    var bgCv=document.getElementById('appBgCv');
-    var glCv=document.getElementById('appGlCv');
-    if(!panel||!bgCv||!glCv){ return; } // panel removed, bail silently
-    var bgCtx=bgCv.getContext('2d');
-    var PW=0, PH=0;
-    function resizeAll(){
-      var r=panel.getBoundingClientRect();
-      PW=r.width; PH=r.height;
-      bgCv.width=PW; bgCv.height=PH;
-      renderer.setSize(PW,PH);
-      camera.aspect=PW/PH;
-      camera.updateProjectionMatrix();
-    }
-    window.addEventListener('resize',resizeAll);
-    var mouseRaw={x:0,y:-0.2};
-    var mouseSmooth={x:0,y:-0.2};
-    var idleTime=0;
-    panel.addEventListener('mousemove',function(e){
-      var r=panel.getBoundingClientRect();
-      mouseRaw.x=((e.clientX-r.left)/PW)*2-1;
-      mouseRaw.y=-(((e.clientY-r.top)/PH)*2-1);
-      idleTime=0;
-    });
-    panel.addEventListener('touchmove',function(e){
-      e.preventDefault();
-      var r=panel.getBoundingClientRect();
-      var t=e.touches[0];
-      mouseRaw.x=((t.clientX-r.left)/PW)*2-1;
-      mouseRaw.y=-(((t.clientY-r.top)/PH)*2-1);
-      idleTime=0;
-    },{passive:false});
-    var renderer=new THREE.WebGLRenderer({canvas:glCv,alpha:true,antialias:true});
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    var scene_3d=new THREE.Scene();
-    var camera=new THREE.PerspectiveCamera(40,1,0.1,100);
-    camera.position.set(0,0,3.5);
-    var bgTex=new THREE.CanvasTexture(bgCv);
-
-var VS=`
-varying vec3 vNormal,vViewDir,vWorldPos;
-varying vec4 vScreenPos;
-varying vec3 vLocalPos;
-void main(){
-  vec4 wp=modelMatrix*vec4(position,1.0);
-  vWorldPos=wp.xyz; vLocalPos=position;
-  vNormal=normalize(normalMatrix*normal);
-  vViewDir=normalize(cameraPosition-wp.xyz);
-  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
-  vScreenPos=gl_Position;
-}`;
-
-var FS=`
-precision highp float;
-uniform sampler2D uBgTex;
-uniform vec3 uLightPos;
-uniform float uTime;
-varying vec3 vNormal,vViewDir,vWorldPos;
-varying vec4 vScreenPos;
-varying vec3 vLocalPos;
-
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-float noise(vec2 p){
-  vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
-  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
-}
-float fbm(vec2 p){return noise(p)*0.5+noise(p*2.1+1.3)*0.25+noise(p*4.3+2.7)*0.125;}
-
-void main(){
-  vec3 N=normalize(vNormal);
-  vec3 V=normalize(vViewDir);
-  vec3 L=normalize(uLightPos-vWorldPos);
-  vec3 H=normalize(L+V);
-
-  float NdotV=max(dot(N,V),0.0);
-  float NdotL=max(dot(N,L),0.0);
-  float NdotH=max(dot(N,H),0.0);
-  float thickness=NdotV; // 1 at front pole, 0 at silhouette
-
-  // Schlick fresnel — very strong at edges for glass
-  float fresnel=0.04+0.96*pow(1.0-NdotV,5.0);
-
-  // Screen UV for background sampling
-  vec2 screenUV=(vScreenPos.xy/vScreenPos.w)*0.5+0.5;
-
-  // Crystal IOR — 2.1 bends light dramatically (vs 1.55 = water)
-  float ior=2.1;
-  vec3 refrDir=refract(-V,N,1.0/ior);
-  vec2 refrOff=refrDir.xy*(ior-1.0)*0.13;
-
-  // Strong chromatic aberration — crystal splits white light into spectrum
-  float chromMag=1.1*fresnel+0.3*(1.0-thickness);
-  vec2 chromR=N.xy*chromMag*0.09;
-  vec2 chromB=N.xy*chromMag*0.065;
-
-  float bgR=texture2D(uBgTex,clamp(screenUV+refrOff+chromR,0.0,1.0)).r;
-  float bgG=texture2D(uBgTex,clamp(screenUV+refrOff,0.0,1.0)).g;
-  float bgB=texture2D(uBgTex,clamp(screenUV+refrOff-chromB,0.0,1.0)).b;
-  vec3 bgColor=vec3(bgR,bgG,bgB);
-
-  // Back-surface transmission — inverted background visible through the glass
-  // This is the classic "upside-down world inside a glass ball" effect
-  vec2 backUV=vec2(1.0-(screenUV.x+refrOff.x*2.2), screenUV.y+refrOff.y*2.2);
-  backUV=clamp(backUV,0.0,1.0);
-  vec3 backColor=texture2D(uBgTex,backUV).rgb;
-  float transmitMask=thickness*(1.0-fresnel);
-  vec3 color=mix(bgColor, backColor, transmitMask*0.55);
-
-  // Slight crystal tint — not pure clear, has a faint blue-gray hue internally
-  color=mix(color, vec3(0.90,0.93,1.0), 0.06*(1.0-thickness*0.6));
-
-  // Dark silhouette edges — critical for 3D depth illusion
-  float edgeDark=pow(1.0-thickness,2.5);
-  color=mix(color,vec3(0.02,0.03,0.06),edgeDark*0.82);
-
-  // Body zone for internal color contributions
-  float body=smoothstep(0.0,0.32,thickness)*smoothstep(1.0,0.18,thickness);
-
-  // Internal colored light sources — vivid, move with cursor
-  // BLUE — upper, fixed anchor
-  vec3 Lblue=normalize(vec3(-uLightPos.x*0.35+0.15, uLightPos.y*0.45+1.3, 1.0));
-  float blueBlob=pow(max(dot(N,Lblue),0.0),1.6)*body;
-  color+=vec3(0.02,0.12,0.98)*blueBlob*0.90;
-
-  // YELLOW/GOLD — cursor-driven, warmest
-  float yBlob=pow(NdotL,1.4)*body;
-  color+=vec3(1.0,0.80,0.0)*yBlob*0.95;
-
-  // RED — lower counter-light
-  vec3 Lred=normalize(vec3(-uLightPos.x*0.45,-uLightPos.y*0.35-0.65,0.85));
-  float redBlob=pow(max(dot(N,Lred),0.0),2.0)*body;
-  color+=vec3(0.95,0.03,0.02)*redBlob*0.75;
-
-  // Animated internal caustic shimmer — light interference patterns
-  vec2 causticUV=vLocalPos.xy*3.5+uLightPos.xy*0.8;
-  float caustic=fbm(causticUV+uTime*0.25)*fbm(causticUV*1.4-uTime*0.18);
-  color+=vec3(0.9,0.95,1.0)*caustic*body*0.18;
-
-  // Shadow — unlit side goes very dark for strong 3D form
-  float shadow=smoothstep(-0.4,0.6,NdotL);
-  color*=mix(0.04,1.0,shadow);
-
-  // PRIMARY specular — hard bright core (the main catchlight)
-  float shineCore=pow(NdotH,400.0)*1.8;
-  float shineMid =pow(NdotH,80.0)*0.65;
-  float shineSoft=pow(NdotH,22.0)*0.28;
-  color+=vec3(1.0)*shineCore;
-  color+=vec3(1.0,0.99,0.97)*shineMid;
-  color+=vec3(1.0,0.98,0.95)*shineSoft;
-
-  // SECONDARY specular — offset catchlight (real glass has two highlights)
-  vec3 L2=normalize(uLightPos*vec3(0.52,0.58,1.12)-vWorldPos);
-  float spec2=pow(max(dot(N,normalize(L2+V)),0.0),200.0)*0.7;
-  color+=vec3(0.96,0.98,1.0)*spec2;
-
-  // Back-lit specular — glow from opposite side of light (internal bounce)
-  vec3 Lback=normalize(-uLightPos*vec3(0.6,0.6,1.0));
-  float specBack=pow(max(dot(N,normalize(Lback+V)),0.0),120.0)*0.35;
-  color+=vec3(0.7,0.8,1.0)*specBack;
-
-  // Prismatic rim — colored spectrum at the silhouette edge
-  float rimMask=pow(1.0-NdotV,4.0);
-  float prismAngle=atan(vLocalPos.y,vLocalPos.x)+uTime*0.04;
-  vec3 prismCol=vec3(
-    0.5+0.5*sin(prismAngle*3.0+uLightPos.x*1.5),
-    0.5+0.5*sin(prismAngle*3.0+2.094+uLightPos.y*1.5),
-    0.5+0.5*sin(prismAngle*3.0+4.189)
-  );
-  color+=prismCol*rimMask*0.50;
-  color+=vec3(0.85,0.90,1.0)*rimMask*smoothstep(0.5,0.0,NdotL)*0.12;
-
-  gl_FragColor=vec4(clamp(color,0.0,4.0),1.0);
-}`;
-
-var mat=new THREE.ShaderMaterial({
-  uniforms:{
-    uBgTex:{value:bgTex},
-    uLightPos:{value:new THREE.Vector3(0,0.25,2.5)},
-    uTime:{value:0.0},
-  },
-  vertexShader:VS,fragmentShader:FS,
-  transparent:true,side:THREE.FrontSide,
-});
-var geo=new THREE.SphereGeometry(1,128,96);
-var mesh=new THREE.Mesh(geo,mat);
-mesh.scale.set(0.46,0.64,0.62);
-scene_3d.add(mesh);
-
-    function drawBackground(lx,ly,orbX,orbY){
-      bgCtx.clearRect(0,0,PW,PH);
-      var grad=bgCtx.createRadialGradient(PW/2,PH/2,0,PW/2,PH/2,PH*0.65);
-      grad.addColorStop(0,'#e2e2e2');
-      grad.addColorStop(0.45,'#f0f0f0');
-      grad.addColorStop(1,'#ffffff');
-      bgCtx.fillStyle=grad;
-      bgCtx.fillRect(0,0,PW,PH);
-      var fovScale=PH/(2*Math.tan(20*Math.PI/180)*3.5);
-      var rx=0.46*fovScale, ry=0.64*fovScale;
-      var osx=PW/2+orbX*fovScale;
-      var osy=PH/2-orbY*fovScale;
-      var shadowX=osx-lx*rx*0.28;
-      var shadowY=osy+ry;
-      bgCtx.save();
-      bgCtx.filter='blur(24px)';
-      bgCtx.save(); bgCtx.translate(shadowX,shadowY); bgCtx.scale(1,0.11);
-      bgCtx.beginPath(); bgCtx.arc(0,0,rx,0,Math.PI*2);
-      bgCtx.fillStyle='rgba(0,0,0,0.30)'; bgCtx.fill(); bgCtx.restore();
-      bgCtx.filter='blur(44px)';
-      bgCtx.save(); bgCtx.translate(shadowX,shadowY); bgCtx.scale(1,0.19);
-      bgCtx.beginPath(); bgCtx.arc(0,0,rx*1.25,0,Math.PI*2);
-      bgCtx.fillStyle='rgba(0,0,0,0.12)'; bgCtx.fill(); bgCtx.restore();
-      bgCtx.filter='none';
-      bgCtx.restore();
-    }
-
-    var clock=new THREE.Clock();
-    var time=0;
-    function idleDrift(t){
-      return {
-        x:Math.sin(t*0.16)*0.22+Math.sin(t*0.09)*0.10,
-        y:Math.cos(t*0.12)*0.18+Math.cos(t*0.07)*0.08
-      };
-    }
-    function lerp(a,b,t){return a+(b-a)*t;}
-    function animate(){
-      requestAnimationFrame(animate);
-      var dt=Math.min(clock.getDelta(),0.05);
-      time+=dt;
-      idleTime+=dt;
-      var idleFac=Math.min(Math.max(idleTime-4,0)/2.5,1);
-      var idle=idleDrift(time);
-      var tx=lerp(mouseRaw.x,idle.x,idleFac);
-      var ty=lerp(mouseRaw.y,idle.y,idleFac);
-      mouseSmooth.x=lerp(mouseSmooth.x,tx,0.06);
-      mouseSmooth.y=lerp(mouseSmooth.y,ty,0.06);
-      var lx=mouseSmooth.x,ly=mouseSmooth.y;
-      mat.uniforms.uLightPos.value.set(lx*4.5,ly*4.5,2.5);
-      mat.uniforms.uTime.value=time;
-      mesh.rotation.x=lerp(mesh.rotation.x,-ly*0.45,0.04);
-      mesh.rotation.y=lerp(mesh.rotation.y,lx*0.45,0.04);
-      mesh.rotation.z=0;
-      mesh.position.x=lerp(mesh.position.x,lx*0.45,0.06);
-      mesh.position.y=lerp(mesh.position.y,ly*0.35,0.06);
-      drawBackground(lx,ly,mesh.position.x,mesh.position.y);
-      bgTex.needsUpdate=true;
-      renderer.render(scene_3d,camera);
-    }
-    resizeAll();
-    animate();
-  }
-  initOrb();
-})();
-</script>
 </body>
 </html>
