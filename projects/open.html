@@ -495,7 +495,7 @@
     // vibrant screensaver colours — reserved for the information phrases (the field stays black)
     const VIB=['#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
       '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c','#0e5c5b','#4a2c4d'];
-    let W=0,H=0,DPR=1, strands=[], nodes=[], drawOrder=[], clock=0;
+    let W=0,H=0,DPR=1, strands=[], nodes=[], drawOrder=[], clock=0, warmT=0;
     const FAM='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
     const EB1=1.70158, EB3=EB1+1, easeOutBack=k=>1+EB3*Math.pow(k-1,3)+EB1*Math.pow(k-1,2);
     function breathEnv(p){ const s=0.5-0.5*Math.cos(p*6.2831853); return s*s*(3-2*s); }   // smooth, deep swell (no abrupt burst)
@@ -523,7 +523,7 @@
         for(const ch of [...seg.s]){ if(out.length<need) out.push({ch,hot}); } ti++; } return out; }
 
     function build(){
-      strands=[]; nodes=[]; const m=P.margin, mainSpan=W-2*m;
+      strands=[]; nodes=[]; warmT=0; const m=P.margin, mainSpan=W-2*m;   // restart the breath warm-up on (re)build
       const count=Math.max(2,Math.floor((H-2*m)/P.rowGap)+1), nPer=Math.max(2,Math.floor(mainSpan/P.spacing)+1);
       // one long stream; each row starts at a different offset so the same words never stack vertically
       const OFF=37, master=buildStream(nPer + count*OFF + 8);
@@ -598,6 +598,7 @@
       const bE=breathEnv(bp);                      // 0..1 swell — still drives OPEN, the phrases + capture
       const fB=-Math.cos(bp*6.2831853);            // signed breath: -1 gathered (inhale) → +1 spread (exhale)
       const spreadAmp=0.6, Rg=Math.min(W,H)*0.40;  // Rg = radius of the gathered disc
+      const warm=warmT<180?warmT/180:1;            // ease the breath in over ~3s so first load doesn't lurch/bounce
       for(const nd of nodes){
         const dxn=nd.hx-cx0, dyn=nd.hy-cy0;
         let bhx, bhy;
@@ -606,15 +607,15 @@
           const ux=dxn/halfW, uy=dyn/halfH;        // square→disc map so it gathers round, never a rectangle
           const gx=cx0 + ux*Math.sqrt(Math.max(0,1-uy*uy*0.5))*Rg;
           const gy=cy0 + uy*Math.sqrt(Math.max(0,1-ux*ux*0.5))*Rg;
-          bhx=nd.hx+(gx-nd.hx)*t2; bhy=nd.hy+(gy-nd.hy)*t2;
+          bhx=nd.hx+(gx-nd.hx)*t2*warm; bhy=nd.hy+(gy-nd.hy)*t2*warm;
         } else {                                   // exhale — push the field back out toward the edges
-          const gw=Math.exp(-(dxn*dxn+dyn*dyn)/sig2), s=1+gw*fB*spreadAmp;
+          const gw=Math.exp(-(dxn*dxn+dyn*dyn)/sig2), s=1+gw*fB*spreadAmp*warm;
           bhx=cx0+dxn*s; bhy=cy0+dyn*s;
         }
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
         if(nd.hero){   // readable at rest, then deconstructs on the breath and reconstructs (like the field)
-          const ex=bE*bE*88;                     // bE² holds it tidy longer, then bursts apart
+          const ex=bE*bE*88*warm;                // bE² holds it tidy longer, then bursts apart
           nd.x += (nd.hx + nd.exx*ex - nd.x)*0.085;
           nd.y += (nd.hy + nd.exy*ex - nd.y)*0.085;
           continue;
@@ -634,7 +635,7 @@
       for(const nd of nodes){ const pad=nd.r+1;
         if(nd.x<pad){ nd.x=pad; nd.ox=nd.x; } else if(nd.x>W-pad){ nd.x=W-pad; nd.ox=nd.x; }
         if(nd.y<pad){ nd.y=pad; nd.oy=nd.y; } else if(nd.y>H-pad){ nd.y=H-pad; nd.oy=nd.y; } }
-      clock++;
+      clock++; if(warmT<180) warmT++;
     }
 
     function draw(){
