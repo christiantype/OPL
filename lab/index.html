@@ -31,16 +31,15 @@
       max-width: 30em; line-height: 1.5; color: #ffffff;
     }
 
-    .tool-grid { margin-top: var(--space-4); }
+    .tool-grid { margin-top: var(--space-4); display: flex; flex-direction: column-reverse; counter-reset: lab; }
     .tool-tile {
-      position: relative; display: flex; flex-direction: column; justify-content: space-between;
-      aspect-ratio: 1 / 1; padding: var(--space-6);
-      border-radius: 12px; text-decoration: none; color: var(--color-ink);
-      overflow: hidden; isolation: isolate;
-      background-size: 340% 340%;
-      animation: row-in 0.5s ease both, tileFlow 6s ease-in-out infinite, tileHue 9s linear infinite;
-      transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.35s ease;
+      position: relative; display: flex; align-items: center; gap: var(--space-4);
+      padding: 20px 6px; text-decoration: none; color: #ffffff;
+      border-top: 1px solid rgba(255,255,255,.16); counter-increment: lab;
+      animation: row-in 0.5s ease both;
+      transition: padding-left 0.2s ease, opacity 0.2s ease;
     }
+    .tool-tile:last-child { border-top: none; }
     /* the gradient races around a circular path */
     @keyframes tileFlow {
       0%   { background-position: 0% 50%; }
@@ -55,14 +54,7 @@
       to   { filter: saturate(1.5) hue-rotate(360deg); }
     }
     /* a soft light bloom that drifts around the tile, out of phase — keeps it feeling alive */
-    .tool-tile::before {
-      content: ''; position: absolute; inset: -30%; z-index: -1; pointer-events: none;
-      background:
-        radial-gradient(38% 38% at 50% 50%, rgba(255,255,255,0.5), rgba(255,255,255,0) 70%),
-        radial-gradient(30% 30% at 50% 50%, rgba(255,255,255,0.28), rgba(255,255,255,0) 72%);
-      mix-blend-mode: soft-light;
-      animation: tileSheen 17s linear infinite;
-    }
+    .tool-tile::before { content: none; }
     @keyframes tileSheen {
       0%   { transform: translate(-18%, -12%) scale(1.05); }
       33%  { transform: translate(16%, 10%)  scale(1.25); }
@@ -84,33 +76,35 @@
     .tool-grid .tool-tile:nth-child(13) { animation-duration: 0.5s, 5.5s, 6s;  } .tool-grid .tool-tile:nth-child(13)::before { animation-duration: 8s; animation-delay: -3s; }
     .tool-grid .tool-tile:nth-child(14) { animation-duration: 0.5s, 6s, 13.5s; } .tool-grid .tool-tile:nth-child(14)::before { animation-duration: 11s; animation-delay: -7s; }
     @media (prefers-reduced-motion: reduce) { .tool-tile { animation: row-in 0.5s ease both; } .tool-tile::before { animation: none; } }
-    .tool-tile:hover { transform: translateY(-6px); box-shadow: 0 24px 50px -22px rgba(0, 0, 0, 0.4); }
+    .tool-tile:hover { padding-left: 14px; opacity: .82; }
     .tool-tile:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 3px; }
+    /* Factory-Records catalogue number */
     .tool-tile__ver {
-      align-self: flex-end;
+      order: 1; flex: none; align-self: center;
       font-size: var(--label); letter-spacing: 2px; text-transform: uppercase;
-      color: var(--color-ink);
+      color: #ffffff; opacity: .5; font-variant-numeric: tabular-nums;
     }
-    .tool-tile__foot { display: flex; flex-direction: column; gap: var(--space-2); }
-    .tool-tile__desc {
-      font-size: var(--label); letter-spacing: 2px; text-transform: uppercase;
-      color: var(--color-ink);
-    }
+    .tool-tile__foot { order: 2; display: flex; align-items: baseline; gap: var(--space-4); flex: 1; min-width: 0; }
     .tool-tile__title {
+      order: 1; flex: none;
       font-family: "Sidepiece-HoneyPie", sans-serif;
       font-size: var(--body); line-height: 1.1;
       letter-spacing: 2px; text-transform: uppercase;
     }
+    .tool-tile__desc {
+      order: 2; margin-left: auto; font-size: var(--label); letter-spacing: 2px; text-transform: uppercase;
+      color: #ffffff; opacity: .48; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
 
     /* One unique gradient per tile — OP/AL brand palette. Three stops so the flow shifts colour. */
-    .g-1 { background-image: linear-gradient(135deg, #ff94c9 0%, #ffd36e 50%, #79c7f1 100%); }
-    .g-2 { background-image: linear-gradient(135deg, #79c7f1 0%, #bbff34 50%, #ffed00 100%); }
-    .g-3 { background-image: linear-gradient(135deg, #ffed00 0%, #ff94c9 50%, #c9b8ff 100%); }
-    .g-4 { background-image: linear-gradient(135deg, #fcc1b8 0%, #79c7f1 50%, #bbff34 100%); }
-    .g-5 { background-image: linear-gradient(135deg, #bbff34 0%, #79c7f1 50%, #c9b8ff 100%); }
-    .g-6 { background-image: linear-gradient(135deg, #c9b8ff 0%, #ff94c9 50%, #ffd36e 100%); }
+    .g-1 { --grad: linear-gradient(135deg, #ff94c9 0%, #ffd36e 50%, #79c7f1 100%); }
+    .g-2 { --grad: linear-gradient(135deg, #79c7f1 0%, #bbff34 50%, #ffed00 100%); }
+    .g-3 { --grad: linear-gradient(135deg, #ffed00 0%, #ff94c9 50%, #c9b8ff 100%); }
+    .g-4 { --grad: linear-gradient(135deg, #fcc1b8 0%, #79c7f1 50%, #bbff34 100%); }
+    .g-5 { --grad: linear-gradient(135deg, #bbff34 0%, #79c7f1 50%, #c9b8ff 100%); }
+    .g-6 { --grad: linear-gradient(135deg, #c9b8ff 0%, #ff94c9 50%, #ffd36e 100%); }
 
-    @media (max-width: 40em) { .tool-tile { aspect-ratio: 4 / 3; } }
+    @media (max-width: 40em) { .tool-tile__desc { display: none; } }
   </style>
 </head>
 <body>
@@ -135,165 +129,151 @@
       </div>
 
       <div class="grid tool-grid">
-        <a class="tool-tile col-4 g-2" href="/lab/lake-opeka/" style="animation-delay:0s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-2" href="/lab/lake-opeka/" style="animation-delay:0.00s">
+          <span class="tool-tile__ver">OP-LAB-001</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Photo composition studio</span>
             <span class="tool-tile__title">Lake Opeka</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-3" href="/lab/static/" style="animation-delay:0.07s">
-          <span class="tool-tile__ver">v1</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Broken signal · lose your subject</span>
-            <span class="tool-tile__title">Static</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-3" href="/lab/flux/" style="animation-delay:0.07s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-3" href="/lab/flux/" style="animation-delay:0.04s">
+          <span class="tool-tile__ver">OP-LAB-002</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Experimental type instrument</span>
             <span class="tool-tile__title">Flux</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-1" href="/lab/angel/" style="animation-delay:0.14s">
-          <span class="tool-tile__ver">v1</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Playable colour &amp; sound field</span>
-            <span class="tool-tile__title">Angel</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-2" href="/lab/putty/" style="animation-delay:0.14s">
-          <span class="tool-tile__ver">v1</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Warp your face &#183; funhouse mirror</span>
-            <span class="tool-tile__title">Putty</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-5" href="/lab/fence/" style="animation-delay:0.14s">
-          <span class="tool-tile__ver">v2</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Draw the line, then bend it</span>
-            <span class="tool-tile__title">Fence</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-3" href="/lab/sequins/" style="animation-delay:0.14s">
-          <span class="tool-tile__ver">v1</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">An image, sewn in glittering sequins</span>
-            <span class="tool-tile__title">Sequins</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-4" href="/lab/mask/" style="animation-delay:0.14s">
-          <span class="tool-tile__ver">v1</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">One image masks the next, inside the next</span>
-            <span class="tool-tile__title">Mask</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-4" href="/lab/tape/" style="animation-delay:0.21s">
-          <span class="tool-tile__ver">v1</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Disintegrating loop machine</span>
-            <span class="tool-tile__title">Tape</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-6" href="/lab/ships-in-the-night/" style="animation-delay:0.28s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-6" href="/lab/ships-in-the-night/" style="animation-delay:0.08s">
+          <span class="tool-tile__ver">OP-LAB-003</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Audio-reactive video maker</span>
             <span class="tool-tile__title">Ships in the Night</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-3" href="/lab/halftone/" style="animation-delay:0.28s">
-          <span class="tool-tile__ver">v1</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Print screen · your own marks</span>
-            <span class="tool-tile__title">Halftone</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-5" href="/lab/garden-variety/" style="animation-delay:0.35s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-5" href="/lab/garden-variety/" style="animation-delay:0.12s">
+          <span class="tool-tile__ver">OP-LAB-004</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Generative watercolor garden</span>
             <span class="tool-tile__title">Garden Variety</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-5" href="/lab/pattern/" style="animation-delay:0.35s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-1" href="/lab/angel/" style="animation-delay:0.16s">
+          <span class="tool-tile__ver">OP-LAB-005</span>
           <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Pattern system · your own marks</span>
-            <span class="tool-tile__title">Pattern</span>
+            <span class="tool-tile__desc">Playable colour &amp; sound field</span>
+            <span class="tool-tile__title">Angel</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-1" href="/lab/double-negative/" style="animation-delay:0.42s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-4" href="/lab/tape/" style="animation-delay:0.20s">
+          <span class="tool-tile__ver">OP-LAB-006</span>
+          <span class="tool-tile__foot">
+            <span class="tool-tile__desc">Disintegrating loop machine</span>
+            <span class="tool-tile__title">Tape</span>
+          </span>
+        </a>
+        <a class="tool-tile g-3" href="/lab/static/" style="animation-delay:0.24s">
+          <span class="tool-tile__ver">OP-LAB-007</span>
+          <span class="tool-tile__foot">
+            <span class="tool-tile__desc">Broken signal · lose your subject</span>
+            <span class="tool-tile__title">Static</span>
+          </span>
+        </a>
+        <a class="tool-tile g-3" href="/lab/halftone/" style="animation-delay:0.28s">
+          <span class="tool-tile__ver">OP-LAB-008</span>
+          <span class="tool-tile__foot">
+            <span class="tool-tile__desc">Print screen · your own marks</span>
+            <span class="tool-tile__title">Halftone</span>
+          </span>
+        </a>
+        <a class="tool-tile g-1" href="/lab/double-negative/" style="animation-delay:0.32s">
+          <span class="tool-tile__ver">OP-LAB-009</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Layered image compositor</span>
             <span class="tool-tile__title">Double Negative</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-5" href="/lab/aura-maxing/" style="animation-delay:0.49s">
-          <span class="tool-tile__ver">v1</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Masked subject · gradient aura</span>
-            <span class="tool-tile__title">Aura Maxing</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-3" href="/lab/image-train/" style="animation-delay:0.56s">
-          <span class="tool-tile__ver">v1</span>
-          <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Sliced bands in motion</span>
-            <span class="tool-tile__title">Image Train</span>
-          </span>
-        </a>
-        <a class="tool-tile col-4 g-6" href="/lab/spectral-smear/" style="animation-delay:0.56s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-6" href="/lab/spectral-smear/" style="animation-delay:0.36s">
+          <span class="tool-tile__ver">OP-LAB-010</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Flow-warped spectral smear · shader</span>
             <span class="tool-tile__title">Spectral Smear</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-1" href="/lab/fractal/" style="animation-delay:0.63s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-3" href="/lab/image-train/" style="animation-delay:0.40s">
+          <span class="tool-tile__ver">OP-LAB-011</span>
           <span class="tool-tile__foot">
-            <span class="tool-tile__desc">Reflective raymarched fractals · WebGL2</span>
-            <span class="tool-tile__title">Fractal</span>
+            <span class="tool-tile__desc">Sliced bands in motion</span>
+            <span class="tool-tile__title">Image Train</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-2" href="/lab/ash/" style="animation-delay:0.70s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-5" href="/lab/aura-maxing/" style="animation-delay:0.44s">
+          <span class="tool-tile__ver">OP-LAB-012</span>
+          <span class="tool-tile__foot">
+            <span class="tool-tile__desc">Masked subject · gradient aura</span>
+            <span class="tool-tile__title">Aura Maxing</span>
+          </span>
+        </a>
+        <a class="tool-tile g-2" href="/lab/ash/" style="animation-delay:0.48s">
+          <span class="tool-tile__ver">OP-LAB-013</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Disperse an image into rising particles</span>
             <span class="tool-tile__title">Ash</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-3" href="/lab/kirlian/" style="animation-delay:0.77s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-3" href="/lab/kirlian/" style="animation-delay:0.52s">
+          <span class="tool-tile__ver">OP-LAB-014</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Corona-discharge aura from any image</span>
             <span class="tool-tile__title">Kirlian</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-4" href="/lab/second-thought/" style="animation-delay:0.84s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-4" href="/lab/second-thought/" style="animation-delay:0.56s">
+          <span class="tool-tile__ver">OP-LAB-015</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Words read clear, go wild, then resolve</span>
             <span class="tool-tile__title">Second Thought</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-5" href="/lab/letter-strings/" style="animation-delay:0.91s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-5" href="/lab/letter-strings/" style="animation-delay:0.60s">
+          <span class="tool-tile__ver">OP-LAB-016</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">Strings of characters, blown by wind</span>
             <span class="tool-tile__title">Letter Strings</span>
           </span>
         </a>
-        <a class="tool-tile col-4 g-6" href="/lab/scanner/" style="animation-delay:0.98s">
-          <span class="tool-tile__ver">v1</span>
+        <a class="tool-tile g-6" href="/lab/scanner/" style="animation-delay:0.64s">
+          <span class="tool-tile__ver">OP-LAB-017</span>
           <span class="tool-tile__foot">
             <span class="tool-tile__desc">A photocopier bed that scans your motion</span>
             <span class="tool-tile__title">Scanner</span>
+          </span>
+        </a>
+        <a class="tool-tile g-5" href="/lab/fence/" style="animation-delay:0.68s">
+          <span class="tool-tile__ver">OP-LAB-018</span>
+          <span class="tool-tile__foot">
+            <span class="tool-tile__desc">Draw the line, then bend it</span>
+            <span class="tool-tile__title">Fence</span>
+          </span>
+        </a>
+        <a class="tool-tile g-4" href="/lab/mask/" style="animation-delay:0.72s">
+          <span class="tool-tile__ver">OP-LAB-019</span>
+          <span class="tool-tile__foot">
+            <span class="tool-tile__desc">One image masks the next, inside the next</span>
+            <span class="tool-tile__title">Mask</span>
+          </span>
+        </a>
+        <a class="tool-tile g-2" href="/lab/putty/" style="animation-delay:0.76s">
+          <span class="tool-tile__ver">OP-LAB-020</span>
+          <span class="tool-tile__foot">
+            <span class="tool-tile__desc">Warp your face &#183; funhouse mirror</span>
+            <span class="tool-tile__title">Putty</span>
+          </span>
+        </a>
+        <a class="tool-tile g-3" href="/lab/sequins/" style="animation-delay:0.80s">
+          <span class="tool-tile__ver">OP-LAB-021</span>
+          <span class="tool-tile__foot">
+            <span class="tool-tile__desc">An image, sewn in glittering sequins</span>
+            <span class="tool-tile__title">Sequins</span>
           </span>
         </a>
       </div>
