@@ -487,8 +487,8 @@
     const P={
       text:'  '+EMOTIONS.join('   ')+'   ',
       size:15, spacing:21, rowGap:78,
-      swayAmp:34, windSway:20, swayFreq:0.008, breathFreq:0.00092, breathAmp:0.62,
-      spring:0.02, damp:0.9, collIter:3, collPush:0.9, restitution:0.4, accent:'#efe000', margin:40
+      swayAmp:34, windSway:20, swayFreq:0.008, breathFreq:0.00139, breathAmp:0.62,
+      spring:0.02, damp:0.9, collIter:3, collPush:1.0, restitution:0.4, accent:'#efe000', margin:40
     };
     const HL=new Set(['STILL','OPEN','PRESENT','AWE','ALIVE','WONDER','STILLNESS']);
     // per-letter colours — mostly black & white, with pops pulled from the studio screensaver palette
@@ -538,14 +538,14 @@
           const jx=rnd(-P.spacing*0.34,P.spacing*0.34), jy=rnd(-P.rowGap*0.32,P.rowGap*0.32);
           const x=m+j*P.spacing+jx, y=cpos+jy;
           const sz=rnd(0.82,1.3), fs=Math.round(P.size*sz);
-          const nd={x,y,ox:x,oy:y,hx:x,hy:y, sz, r:P.size*sz*0.46, rot:rnd(-0.28,0.28), seed:rnd(0,900),
+          const nd={x,y,ox:x,oy:y,hx:x,hy:y, sz, r:P.size*sz*0.38, rot:rnd(-0.28,0.28), seed:rnd(0,900),
             phx:rnd(0,6.283), phy:rnd(0,6.283), fspd:rnd(0.5,1.7), dm:rnd(0.6,1.55),
             fsize:fs, font:fs+'px '+FAM, col:wc, ch:g.ch, hot:g.hot};
           strand.push(nd); nodes.push(nd); }
         strands.push(strand); }
       buildHero(m);
       // start ON the circle: seat every field letter at its gathered-disc position so the page opens as the circle
-      { const cx0=W/2, cy0=H/2, hW=W/2, hH=H/2, Rg=Math.min(W,H)*0.40;
+      { const cx0=W/2, cy0=H/2, hW=W/2, hH=H/2, Rg=Math.sqrt(nodes.length)*P.size*0.45;
         for(const nd of nodes){ if(nd.hero) continue;
           const ux=(nd.hx-cx0)/hW, uy=(nd.hy-cy0)/hH;
           nd.x=nd.ox=cx0+ux*Math.sqrt(Math.max(0,1-uy*uy*0.5))*Rg;
@@ -608,7 +608,7 @@
       const cx0=W/2, cy0=H/2, halfW=W/2, halfH=H/2;
       const bp=(t*P.breathFreq)%1;
       const u = 0.5 - 0.5*Math.cos(bp*6.2831853);  // 0 = gathered circle (start) → 1 = expanded outward → back
-      const Rg=Math.min(W,H)*0.40, expandAmt=1.12; // circle radius · how far the out-breath reaches past the resting field
+      const Rg=Math.sqrt(nodes.length)*P.size*0.45, expandAmt=1.12; // disc sized to the letters so they gather into full contact
       const warm=ss(warmT/180);                    // eases the ambient drift/sway in on load (the breath itself starts matched)
       for(const nd of nodes){
         const dxn=nd.hx-cx0, dyn=nd.hy-cy0;
