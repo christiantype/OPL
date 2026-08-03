@@ -48,9 +48,9 @@
       display:inline-flex; align-items:center; gap:8px; font-weight:600; color:var(--oc-platetext,#000);
       padding:.6em .9em; transition:color 1.2s ease; }
     .oc-eyebrow .dot{ width:5px; height:5px; border-radius:50%; background:var(--color-accent2); }
-    .oc-mark{ font-family:"Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(27px,4.7vw,56px);
-      line-height:.9; margin:0; letter-spacing:.01em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
-      text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6));
+    .oc-mark{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:15px; text-transform:uppercase;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      line-height:1; margin:0; letter-spacing:.04em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
       display:inline-flex; transform-origin:left center; }
     /* OPEN breathes + deconstructs, driven in sync with the field's breath (see the sync loop in JS) */
     .oc-mark span{ display:inline-block; will-change:transform; }
@@ -102,9 +102,12 @@
       border-bottom:1px solid rgba(0,0,0,.3); padding-bottom:4px; transition:border-color .25s ease; }
     .oc-panel .ov-cal:hover{ border-color:var(--color-accent2); }
     .oc-close{ position:absolute; top:14px; right:16px; width:34px; height:34px; border-radius:50%;
-      border:1px solid rgba(0,0,0,.18); background:transparent; color:#141414; font-size:20px; line-height:1;
-      cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
-      transition:background .2s ease; }
+      border:1px solid rgba(0,0,0,.18); background:transparent; color:#141414; font-size:0;
+      cursor:pointer; padding:0; transition:background .2s ease; }
+    .oc-close::before, .oc-close::after{ content:''; position:absolute; top:50%; left:50%;
+      width:13px; height:1.5px; background:currentColor; border-radius:1px; }
+    .oc-close::before{ transform:translate(-50%,-50%) rotate(45deg); }
+    .oc-close::after{  transform:translate(-50%,-50%) rotate(-45deg); }
     .oc-close:hover{ background:rgba(0,0,0,.06); }
     /* buttons that reuse link styling need the inherited font */
     .oc-join, .oc-panel .ov-join{ font-family:inherit; cursor:pointer; }
@@ -193,11 +196,6 @@
       if(el){ const r=el.getBoundingClientRect(); if(r.width) document.body.style.setProperty('--oc-inset', Math.max(18,Math.round(r.left))+'px'); }
       const svg=document.querySelector('nav .nav-wordmark'), path=svg&&svg.querySelector('path'), tl=document.querySelector('.oc-tl'), mark=document.querySelector('.oc-mark');
       if(svg&&path&&tl&&mark){ try{
-        // match OPEN's cap height to the OP/AL wordmark height
-        const cxh=document.createElement('canvas').getContext('2d');
-        cxh.font='100px "Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif';
-        const asc=cxh.measureText('OPEN').actualBoundingBoxAscent||70;
-        mark.style.fontSize=(svg.getBoundingClientRect().height*100/asc).toFixed(1)+'px';
         tl.style.marginLeft='0px';
         const sr=svg.getBoundingClientRect(), vb=svg.viewBox.baseVal, bb=path.getBBox();
         const logoInk=sr.left+(bb.x-vb.x)/vb.width*sr.width;                 // OP/AL leftmost ink, in px
