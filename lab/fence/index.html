@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Fence — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --ink:#f2f3f7; --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.14); }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; background:#0b0c14; color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; overscroll-behavior:none; }
+  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
+  body.dark .opal-subhead__name{ color:var(--ink); }
+  body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+
+  #wrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:14px 14px 150px; }
+  #art{ background:#fff; box-shadow:0 10px 40px rgba(0,0,0,.5); max-width:100%; max-height:100%; display:block; touch-action:none; cursor:crosshair; }
+  #hint{ position:fixed; top:64px; left:50%; transform:translateX(-50%); font-size:13px; color:var(--dim);
+    background:rgba(11,12,20,.7); padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .3s; }
+
+  #dock{ position:fixed; left:0; right:0; bottom:0; padding:12px 14px calc(env(safe-area-inset-bottom,0) + 12px);
+    background:linear-gradient(to top, rgba(11,12,20,.97), rgba(11,12,20,.78) 70%, transparent);
+    display:flex; flex-direction:column; gap:10px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; }
+  .btn{ appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--ink);
+    font:inherit; font-size:13px; padding:8px 13px; border-radius:999px; cursor:pointer; transition:.15s; white-space:nowrap; }
+  .btn:hover{ background:rgba(255,255,255,.1); }
+  .btn[aria-pressed="true"]{ background:var(--ink); color:#0b0c14; border-color:var(--ink); }
+  .btn.primary{ background:var(--ink); color:#0b0c14; border-color:var(--ink); font-weight:600; }
+  .chip{ font-size:12px; padding:7px 12px; }
+  .sep{ width:1px; align-self:stretch; background:var(--line); margin:2px 4px; }
+  #sliders{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px 18px; max-width:860px; width:100%; margin:0 auto; }
+  @media (max-width:640px){ #sliders{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  #sliders.locked{ opacity:.35; pointer-events:none; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .knob label{ display:flex; justify-content:space-between; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); }
+  .knob b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:20px; background:transparent; cursor:pointer; }
+  input[type=range]::-webkit-slider-runnable-track{ height:2px; background:var(--line); border-radius:2px; }
+  input[type=range]::-moz-range-track{ height:2px; background:var(--line); border-radius:2px; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; margin-top:-6px; border-radius:50%; background:var(--ink); }
+  input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
+</style>
+</head>
+<body class="dark">
+  <div id="wrap"><canvas id="art"></canvas></div>
+  <div id="hint">Draw your lines — as many as you like</div>
+
+  <div id="dock">
+    <div id="sliders" class="locked">
+      <div class="knob"><label>Chains <b id="densityR">10</b></label><input id="density" type="range" min="1" max="40" value="10" /></div>
+      <div class="knob"><label>Length <b id="lengthR">55</b></label><input id="length" type="range" min="5" max="100" value="55" /></div>
+      <div class="knob"><label>Flow <b id="flowR">45</b></label><input id="flow" type="range" min="0" max="100" value="45" /></div>
+      <div class="knob"><label>Spiral <b id="spiralR">30</b></label><input id="spiral" type="range" min="0" max="100" value="30" /></div>
+      <div class="knob"><label>Weight <b id="weightR">35</b></label><input id="weight" type="range" min="5" max="100" value="35" /></div>
+      <div class="knob"><label>Ink <b id="inkR">35</b></label><input id="ink" type="range" min="5" max="100" value="35" /></div>
+      <div class="knob"><label>Speed <b id="speedR">50</b></label><input id="speed" type="range" min="5" max="100" value="50" /></div>
+      <div class="knob"><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="doneBtn">Done — bend it</button>
+      <button class="btn chip" id="editBtn" style="display:none">Edit lines</button>
+      <div class="sep"></div>
+      <button class="btn chip" id="undoBtn">Undo</button>
+      <button class="btn chip" id="clearBtn">Clear</button>
+      <button class="btn chip" id="restartBtn" style="display:none">Redraw</button>
+      <button class="btn chip" id="recBtn" aria-pressed="false">Record</button>
+      <button class="btn chip" id="saveBtn">Save</button>
+    </div>
+  </div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'Fence', desc:'Draw the line, then bend it',
+  about:"Draw your own strokes, then hit Done: each one becomes the path a trailing chain travels, swinging soft ink behind it and building into flowing, spiralling line work. The knobs bend your lines rather than re-rolling them. Record the drawing-in or save a frame.",
+  version:'v2' });</script>
+
+<script>
+(() => {
+  const cv=document.getElementById('art'); let ctx=cv.getContext('2d');
+  const $=id=>document.getElementById(id);
+  const ASPECT=1240/1650;
+  let W=0,H=0,dpr=1, mode='draw';
+  let strokes=[], cur=null, walkers=[], raf=0, F=0;
+  const P={ density:10, length:55, flow:45, spiral:30, weight:35, ink:35, speed:50, color:0 };
+
+  function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  function makeNoise(seed){ const rand=mulberry32(seed);
+    const p=new Uint8Array(256); for(let i=0;i<256;i++)p[i]=i;
+    for(let i=255;i>0;i--){ const j=(rand()*(i+1))|0, t=p[i]; p[i]=p[j]; p[j]=t; }
+    const perm=new Uint8Array(512); for(let i=0;i<512;i++)perm[i]=p[i&255];
+    const fade=t=>t*t*t*(t*(t*6-15)+10), lerp=(a,b,t)=>a+(b-a)*t;
+    const grad=(h,x,y)=>((h&1)?x:-x)+((h&2)?y:-y);
+    return (x,y)=>{ const X=Math.floor(x)&255,Y=Math.floor(y)&255; x-=Math.floor(x); y-=Math.floor(y);
+      const u=fade(x),v=fade(y);
+      const aa=perm[perm[X]+Y],ab=perm[perm[X]+Y+1],ba=perm[perm[X+1]+Y],bb=perm[perm[X+1]+Y+1];
+      return lerp(lerp(grad(aa,x,y),grad(ba,x-1,y),u), lerp(grad(ab,x,y-1),grad(bb,x-1,y-1),u), v); }; }
+  const noise=makeNoise(1337);
+
+  function fit(){ const availH=innerHeight-168, availW=innerWidth-28;
+    let h=Math.min(availH,1650), w=h*ASPECT; if(w>availW){ w=availW; h=w/ASPECT; }
+    dpr=Math.min(devicePixelRatio||1,2); W=Math.round(w); H=Math.round(h);
+    cv.style.width=W+'px'; cv.style.height=H+'px'; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0); }
+
+  function pos(e){ const r=cv.getBoundingClientRect(); return { x:(e.clientX-r.left)/r.width, y:(e.clientY-r.top)/r.height }; }
+
+  // smooth + resample a raw stroke into an even polyline (0..1 space)
+  function prep(stroke){ if(stroke.length<2) return stroke.slice();
+    const sm=[]; for(let i=0;i<stroke.length;i++){ const a=stroke[Math.max(0,i-1)], b=stroke[i], c=stroke[Math.min(stroke.length-1,i+1)];
+      sm.push({x:(a.x+2*b.x+c.x)/4, y:(a.y+2*b.y+c.y)/4}); }
+    let len=0; for(let i=1;i<sm.length;i++) len+=Math.hypot(sm[i].x-sm[i-1].x, sm[i].y-sm[i-1].y);
+    const step=Math.max(0.006, len/Math.max(20,len/0.008)); const out=[sm[0]]; let acc=0,i=1,prev=sm[0];
+    while(i<sm.length){ const d=Math.hypot(sm[i].x-prev.x, sm[i].y-prev.y);
+      if(acc+d>=step){ const t=(step-acc)/d; prev={x:prev.x+(sm[i].x-prev.x)*t, y:prev.y+(sm[i].y-prev.y)*t}; out.push(prev); acc=0; }
+      else { acc+=d; prev=sm[i]; i++; } }
+    if(out.length<2) out.push(sm[sm.length-1]); return out; }
+
+  function strokePoint(path,t){ const n=path.length; if(n<2) return {x:path[0].x, y:path[0].y};
+    const f=((t%1)+1)%1*(n-1), i=Math.floor(f), fr=f-i, a=path[i], b=path[Math.min(n-1,i+1)];
+    return {x:a.x+(b.x-a.x)*fr, y:a.y+(b.y-a.y)*fr}; }
+
+  const HUES=['#e0483c','#e6902a','#e8c020','#4f9d69','#2f7fd0','#6a4fb0','#c0468f'];
+  function hueFor(t){ return HUES[Math.floor(((t%1)+1)%1*HUES.length)%HUES.length]; }
+  function rgba(hex,a){ const n=parseInt(hex.slice(1),16); return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+Math.min(1,a).toFixed(3)+')'; }
+
+  function buildWalkers(){ walkers=[]; const scale=Math.min(W,H);
+    strokes.forEach((s,si)=>{ const path=prep(s.map(p=>({x:p.x,y:p.y}))); const rand=mulberry32((si*131+7)>>>0);
+      for(let e=0;e<P.density;e++){
+        const nodeCount=6+Math.round((P.length/100)*38);
+        const nodeLen=(0.005+(P.length/100)*0.012)*scale*(0.7+rand()*0.6);
+        const h=strokePoint(path, rand()); const nodes=[];
+        for(let i=0;i<nodeCount;i++) nodes.push({x:h.x*W, y:h.y*H+i*nodeLen});
+        walkers.push({ path, t:rand(), phase:rand()*1000,
+          speed:(0.0007+(P.speed/100)*0.0045)*(0.6+rand()*0.9),
+          nodeCount, nodeLen, nodes, last:nodes.map(n=>({x:n.x,y:n.y})),
+          brushW:0.4+rand()*1.2, ink:0.5+rand()*0.6, hue:rand(), spin:rand()<0.5?1:-1,
+          wander:0.4+rand()*1.0, spiraler:rand()<(P.spiral/100)*0.5 }); } }); }
+
+  function drawRaw(s){ if(s.length<2){ if(s.length){ ctx.beginPath(); ctx.arc(s[0].x*W,s[0].y*H,1.6,0,6.28); ctx.fillStyle='#141414'; ctx.fill(); } return; }
+    ctx.beginPath(); ctx.moveTo(s[0].x*W,s[0].y*H); for(let i=1;i<s.length;i++) ctx.lineTo(s[i].x*W,s[i].y*H); ctx.stroke(); }
+  function renderDraw(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.strokeStyle='rgba(20,20,26,.85)'; ctx.lineWidth=1.6; for(const s of strokes) drawRaw(s); if(cur) drawRaw(cur); }
+
+  function startSim(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); buildWalkers(); cancelAnimationFrame(raf); step(); }
+  function step(){ raf=requestAnimationFrame(step); F++;
+    const flow=P.flow/100, spiral=P.spiral/100, colAmt=P.color/100, scale=Math.min(W,H);
+    const ink=0.015+(P.ink/100)*0.13, wBase=0.3+(P.weight/100)*3.0;
+    for(const w of walkers){
+      // head drifts in 2D via noise, centred on a slowly-advancing point of the drawn stroke —
+      // the chain then swings behind it into curves (cheyuwu's wandering head, pinned to your line)
+      w.t+=w.speed; const base=strokePoint(w.path,w.t);
+      const rad=(0.02+flow*0.17)*scale*w.wander;
+      const nx=noise(w.phase + F*0.012*(0.5+w.wander), 0.5), ny=noise(w.phase+70 + F*0.012*(0.5+w.wander), 9.1);
+      let hx=base.x*W + nx*rad, hy=base.y*H + ny*rad;
+      if(w.spiraler && spiral>0.02){ const r=spiral*0.05*scale, a=F*0.05*w.spin+w.phase; hx+=Math.cos(a)*r; hy+=Math.sin(a)*r; }
+      w.last=w.nodes.map(n=>({x:n.x,y:n.y}));
+      w.nodes[0].x=hx; w.nodes[0].y=hy;
+      for(let i=1;i<w.nodes.length;i++){ const p=w.nodes[i-1], n=w.nodes[i];
+        let dx=n.x-p.x, dy=n.y-p.y; const d=Math.hypot(dx,dy)||1; n.x=p.x+dx/d*w.nodeLen; n.y=p.y+dy/d*w.nodeLen; }
+      ctx.fillStyle = colAmt>0 ? rgba(hueFor(w.hue+colAmt*0.5), ink*w.ink*1.3) : 'rgba(12,12,16,'+(ink*w.ink).toFixed(3)+')';
+      for(let i=0;i<w.nodes.length;i++){ const a=w.last[i], b=w.nodes[i];
+        for(let o=0;o<5;o++){ const px=a.x+(b.x-a.x)*o/5, py=a.y+(b.y-a.y)*o/5;
+          ctx.beginPath(); ctx.arc(px+(Math.random()-0.5)*wBase, py+(Math.random()-0.5)*wBase, Math.random()*wBase*w.brushW, 0, 6.2832); ctx.fill(); } }
+    }
+  }
+
+  let deb=0;
+  Object.keys(P).forEach(k=>{ const inp=$(k), out=$(k+'R'); if(!inp) return;
+    inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=inp.value;
+      if(mode==='modify'){ clearTimeout(deb); deb=setTimeout(startSim,140); } }); });
+
+  cv.addEventListener('pointerdown', e=>{ if(mode!=='draw') return; e.preventDefault(); cv.setPointerCapture&&cv.setPointerCapture(e.pointerId); cur=[pos(e)]; });
+  cv.addEventListener('pointermove', e=>{ if(mode!=='draw'||!cur) return; e.preventDefault(); const p=pos(e);
+    const last=cur[cur.length-1]; if(Math.hypot(p.x-last.x,p.y-last.y)>0.003){ cur.push(p); renderDraw(); } });
+  cv.addEventListener('pointerup', ()=>{ if(cur){ if(cur.length>1) strokes.push(cur); cur=null; renderDraw(); } });
+
+  function toDraw(){ mode='draw'; cancelAnimationFrame(raf); $('sliders').classList.add('locked');
+    $('doneBtn').style.display=''; $('editBtn').style.display='none'; $('restartBtn').style.display='none';
+    $('hint').textContent='Draw your lines — as many as you like'; $('hint').style.opacity=1; renderDraw(); }
+  function toModify(){ if(!strokes.length){ $('hint').textContent='Draw a line first'; $('hint').style.opacity=1; return; }
+    mode='modify'; $('sliders').classList.remove('locked'); $('doneBtn').style.display='none';
+    $('editBtn').style.display=''; $('restartBtn').style.display=''; $('hint').style.opacity=0; startSim(); }
+  $('doneBtn').addEventListener('click', toModify);
+  $('editBtn').addEventListener('click', toDraw);
+  $('restartBtn').addEventListener('click', ()=>{ if(mode==='modify') startSim(); });
+  $('undoBtn').addEventListener('click', ()=>{ strokes.pop(); if(mode==='modify') startSim(); else renderDraw(); });
+  $('clearBtn').addEventListener('click', ()=>{ strokes=[]; cur=null; toDraw(); });
+
+  let rec=null, chunks=[];
+  $('recBtn').addEventListener('click', ()=>{ if(rec && rec.state==='recording'){ rec.stop(); return; }
+    const stream=cv.captureStream(30); const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m));
+    rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:12000000}); chunks=[];
+    rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{ const blob=new Blob(chunks,{type:'video/webm'}); const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download='fence.webm'; a.click(); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); };
+    rec.start(); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
+
+  $('saveBtn').addEventListener('click', ()=>{ const a=document.createElement('a'); a.download='fence.png'; a.href=cv.toDataURL('image/png'); a.click(); });
+
+  fit(); renderDraw(); window.__fenceReady=true;
+  addEventListener('resize', ()=>{ const wasMod=mode==='modify'; fit(); if(wasMod) startSim(); else renderDraw(); });
+})();
+</script>
+</body>
+</html>

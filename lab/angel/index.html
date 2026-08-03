@@ -333,16 +333,12 @@
       <div class="seg" id="holdSeg"></div></div>
     <div class="grp" data-tip="The voice this ring plays. Drone and Air are built to be held. Synth voices are short and bright; sampled ones are recordings of real instruments and load on first use."><label>Instrument</label>
       <select id="instrSel">
-        <optgroup label="Sustained">
-          <option value="drone">Drone</option><option value="air">Air</option>
-          <option value="bloom">Bloom</option><option value="glass">Glass</option>
+        <optgroup label="Pads">
+          <option value="air">Air</option><option value="drone">Drift</option>
+          <option value="bloom">Halo</option><option value="glass">Prism</option>
         </optgroup>
         <optgroup label="Struck">
           <option value="bell">Bell</option><option value="mallet">Mallet</option>
-          <option value="pluck">Pluck</option><option value="chip">Chip</option>
-        </optgroup>
-        <optgroup label="Bass &amp; lead">
-          <option value="sub">Sub</option><option value="acid">Acid</option><option value="neon">Neon</option>
         </optgroup>
         <optgroup label="Recorded &#183; downloads on first use">
           <option value="piano">Grand Piano</option><option value="harp">Harp</option>
@@ -557,7 +553,7 @@
       <div class="grp" data-tip="Output volume."><label>Level <b id="levelR">78</b></label><input id="level" type="range" min="0" max="100" value="78" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Puts the sound in a room. Right for a large, distant, washed space; left for dry and close."><label>Reverb <b id="revR">18</b></label><input id="revWet" type="range" min="0" max="100" value="18" /></div>
+      <div class="grp" data-tip="Puts the sound in a room. Right for a large, distant, washed space; left for dry and close."><label>Reverb <b id="revR">30</b></label><input id="revWet" type="range" min="0" max="100" value="30" /></div>
       <div class="grp" data-tip="Echoes that repeat and fade. Off means none at all."><label>Delay <b id="delR">off</b></label><input id="delFb" type="range" min="0" max="72" value="0" /></div>
     </div>
   </div>
@@ -581,16 +577,12 @@
     <div class="grp" data-tip="The voice a new orb is given. Change it between taps and each orb keeps the sound it was born with, so you can build a mix of different-voiced orbs."><label>Voice</label>
       <select id="orbVoice">
         <option value="cycle">Cycle through all</option>
-        <optgroup label="Sustained">
-          <option value="drone">Drone</option><option value="air">Air</option>
-          <option value="bloom">Bloom</option><option value="glass">Glass</option>
+        <optgroup label="Pads">
+          <option value="air">Air</option><option value="drone">Drift</option>
+          <option value="bloom">Halo</option><option value="glass">Prism</option>
         </optgroup>
         <optgroup label="Struck">
           <option value="bell">Bell</option><option value="mallet">Mallet</option>
-          <option value="pluck">Pluck</option><option value="chip">Chip</option>
-        </optgroup>
-        <optgroup label="Bass &amp; lead">
-          <option value="sub">Sub</option><option value="acid">Acid</option><option value="neon">Neon</option>
         </optgroup>
         <optgroup label="Recorded &#183; downloads on first use">
           <option value="piano">Grand Piano</option><option value="harp">Harp</option>
@@ -1020,18 +1012,18 @@
     return (x*60+360)%360; };
   const SCALES={ Pentatonic:[0,2,4,7,9], MinorPenta:[0,3,5,7,10], Dorian:[0,2,3,5,7,9,10], Lydian:[0,2,4,6,7,9,11] };
   const INSTR_NAMES={ piano:'Grand Piano', neon:'Neon', acid:'Acid', chip:'Chip', sub:'Sub',
-    drone:'Drone', air:'Air',
-    bloom:'Bloom', glass:'Glass', pluck:'Pluck', bell:'Bell', mallet:'Mallet' };
+    drone:'Drift', air:'Air',
+    bloom:'Halo', glass:'Prism', pluck:'Pluck', bell:'Bell', mallet:'Mallet' };
   const SIZES={ RL:[1080,1920], PT:[1080,1350], SQ:[1080,1080] };
 
   // four lanes (rings). each: instrument, steps, speed multiplier, octave, pattern, own playhead.
   // pattern cells: null = off, 'auto' = pitch from the scale, <number> = that exact MIDI note.
   // cut/vol are per-lane and feed each lane's own filter+gain before the master chain.
   const lanes=[
-    { instr:'acid', steps:8,  speed:6.00, oct:-1, mute:false, drone:false, res:8.0, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:62, vol:80, env:{a:0.004,d:0.18,s:0.00,r:0.14} },
-    { instr:'neon', steps:16, speed:3.00, oct:0,  mute:false, drone:false, res:4.5, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:78, vol:66, env:{a:0.004,d:0.20,s:0.00,r:0.16} },
-    { instr:'chip', steps:24, speed:2.00, oct:1,  mute:false, drone:false, res:2.2, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:88, vol:44, env:{a:0.001,d:0.11,s:0.00,r:0.08} },
-    { instr:'sub',  steps:12, speed:2.00, oct:-2, mute:false, drone:false, res:1.4, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:46, vol:72, env:{a:0.006,d:0.34,s:0.35,r:0.30} },
+    { instr:'air',   steps:6,  speed:0.50, oct:-1, mute:false, drone:false, res:0.9, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:58, vol:70, env:{a:4.0,  d:3.0, s:1.00, r:9.0} },
+    { instr:'bloom', steps:8,  speed:0.90, oct:0,  mute:false, drone:false, res:0.9, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:66, vol:60, env:{a:1.6,  d:2.4, s:0.55, r:8.0} },
+    { instr:'bell',  steps:12, speed:1.80, oct:1,  mute:false, drone:false, res:1.0, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:82, vol:62, env:{a:0.004,d:2.2, s:0.00, r:2.6} },
+    { instr:'mallet',steps:8,  speed:1.50, oct:0,  mute:false, drone:false, res:1.0, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:78, vol:64, env:{a:0.002,d:0.8, s:0.00, r:1.0} },
   ];
   lanes.forEach(l=>l.pattern=Array(l.steps).fill(null));
   let editLane=0, selStep=-1;
@@ -1074,7 +1066,10 @@
   function makeInstr(name,dest){
     let n;
     if(name==='bloom'){ n=new Tone.PolySynth(Tone.Synth); n.maxPolyphony=10;
-      n.set({oscillator:{type:'triangle'},envelope:{attack:1.1,decay:1.2,sustain:.5,release:6.0}}); }
+      // Halo — a gauzy Budd bloom. Fat triangles keep it warm but never dull; the slow swell
+      // and long tail let notes overlap into soft-focus clouds.
+      n.set({oscillator:{type:'fattriangle',count:3,spread:26},
+        envelope:{attack:1.6,decay:2.4,sustain:.55,release:8.0}}); }
     // Synth voices. Ambient patches can afford long tails; an arpeggio can't — every note
     // has to clear before the next one lands or the run turns into a chord. These are all
     // short, bright and filtered so fast sequences stay articulate.
@@ -1089,29 +1084,35 @@
       envelope:{attack:.004,decay:.20,sustain:.02,release:.16},
       filterEnvelope:{attack:.003,decay:.16,sustain:.08,release:.20,baseFrequency:190,octaves:3.4} }); }
     else if(name==='drone'){ n=new Tone.PolySynth(Tone.Synth); n.maxPolyphony=8;
-      // Four saws spread wide: the beating between them is the whole sound. Sustain is 1,
-      // so the note never decays on its own — it stops when you stop it.
-      n.set({oscillator:{type:'fatsawtooth',count:4,spread:52},
-        envelope:{attack:3.2,decay:2.0,sustain:1.0,release:7.0}}); }
+      // Drift — a warm evolving bed. Four detuned triangles beat gently against each other
+      // (not buzzy saws), sustain held at 1 so it never decays on its own.
+      n.set({oscillator:{type:'fattriangle',count:4,spread:40},
+        envelope:{attack:4.0,decay:3.0,sustain:1.0,release:9.0}}); }
     else if(name==='air'){ n=new Tone.PolySynth(Tone.AMSynth); n.maxPolyphony=6;
       // Harmonicity just off 1:1, so the two oscillators drift in and out of phase over
       // several seconds. That slow breathing is what keeps a long tone from going dead.
-      n.set({harmonicity:1.004, oscillator:{type:'fatsine',count:3,spread:22},
+      n.set({harmonicity:1.002, oscillator:{type:'fatsine',count:3,spread:26},
         modulation:{type:'sine'},
-        envelope:{attack:4.0,decay:3.0,sustain:1.0,release:9.0},
-        modulationEnvelope:{attack:6.0,decay:2.0,sustain:1.0,release:8.0}}); }
+        envelope:{attack:4.5,decay:3.0,sustain:1.0,release:10.0},
+        modulationEnvelope:{attack:7.0,decay:2.0,sustain:1.0,release:9.0}}); }
     else if(name==='chip'){ n=new Tone.PolySynth(Tone.Synth); n.maxPolyphony=10;
       n.set({oscillator:{type:'square'}, envelope:{attack:.001,decay:.12,sustain:0,release:.09}}); }
     else if(name==='sub'){ n=new Tone.PolySynth(Tone.Synth); n.maxPolyphony=4;
       n.set({oscillator:{type:'triangle'}, envelope:{attack:.006,decay:.30,sustain:.45,release:.40}}); }
-    else if(name==='glass'){ n=new Tone.PolySynth(Tone.AMSynth); n.maxPolyphony=8;
-      n.set({harmonicity:1.5,oscillator:{type:'sine'},envelope:{attack:.5,decay:1.4,sustain:.3,release:5.0}}); }
+    else if(name==='glass'){ n=new Tone.PolySynth(Tone.FMSynth); n.maxPolyphony=8;
+      // Prism — crystalline shimmer. A slightly inharmonic ratio (3.01) gives the glassy,
+      // bell-like overtones that catch the light the way the Jansen/Barbieri record does.
+      n.set({harmonicity:3.01,modulationIndex:1.4,oscillator:{type:'sine'},
+        envelope:{attack:.4,decay:2.2,sustain:.32,release:6.5},
+        modulation:{type:'sine'},modulationEnvelope:{attack:.6,decay:2.0,sustain:.3,release:5.0}}); }
     else if(name==='bell'){ n=new Tone.PolySynth(Tone.FMSynth); n.maxPolyphony=8;
-      n.set({harmonicity:2,modulationIndex:2.6,oscillator:{type:'sine'},envelope:{attack:.005,decay:1.4,sustain:0,release:1.8},
-        modulation:{type:'sine'},modulationEnvelope:{attack:.02,decay:1.0,sustain:0,release:1.0}}); }
+      // Celeste-soft: lower modulation index for a purer, glassier strike and a long, elegant ring.
+      n.set({harmonicity:2,modulationIndex:1.8,oscillator:{type:'sine'},envelope:{attack:.004,decay:2.2,sustain:0,release:2.6},
+        modulation:{type:'sine'},modulationEnvelope:{attack:.01,decay:1.2,sustain:0,release:1.2}}); }
     else if(name==='mallet'){ n=new Tone.PolySynth(Tone.FMSynth); n.maxPolyphony=8;
-      n.set({harmonicity:1,modulationIndex:1.4,oscillator:{type:'sine'},envelope:{attack:.001,decay:.5,sustain:0,release:.7},
-        modulation:{type:'sine'},modulationEnvelope:{attack:.001,decay:.2,sustain:0,release:.2}}); }
+      // Soft marimba/xylophone — gentle strike, longer resonant tail so it sings rather than clicks.
+      n.set({harmonicity:1,modulationIndex:1.1,oscillator:{type:'sine'},envelope:{attack:.002,decay:.8,sustain:0,release:1.0},
+        modulation:{type:'sine'},modulationEnvelope:{attack:.002,decay:.3,sustain:0,release:.3}}); }
     else if(name==='pluck'){ n=new Tone.PluckSynth({attackNoise:1.2,dampening:2400,resonance:.94}); }
     else if(name==='sample'){
       if(!sampleBuf) return null;                       // nothing recorded yet — stays silent
@@ -1168,9 +1169,9 @@
     const limiter=new Tone.Limiter(-2).toDestination();
     const vol=new Tone.Volume(dbFor(state.level)).connect(limiter);
     const comp=new Tone.Compressor({threshold:-26,ratio:2.4,attack:.15,release:.7}).connect(vol);
-    const air=new Tone.Filter({type:'highshelf',frequency:2400,gain:-6}).connect(comp);
-    const ceiling=new Tone.Filter({type:'lowpass',frequency:9000,Q:.4}).connect(air);
-    const reverb=new Tone.Reverb({decay:8,preDelay:.02,wet:.18}).connect(ceiling);
+    const air=new Tone.Filter({type:'highshelf',frequency:2400,gain:-3}).connect(comp);
+    const ceiling=new Tone.Filter({type:'lowpass',frequency:10500,Q:.4}).connect(air);
+    const reverb=new Tone.Reverb({decay:11,preDelay:.02,wet:.30}).connect(ceiling);
     // An eighth-note delay locks to the run; a whole-note one just smeared it.
     const delay=new Tone.FeedbackDelay({delayTime:'8n',feedback:state.delayFb,wet:delayWet(state.delayFb)}).connect(reverb);
     // master filter — the global one, after every lane has had its own say
