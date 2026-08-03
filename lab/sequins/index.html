@@ -7,19 +7,21 @@
 <title>Sequins — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css" />
 <style>
-  :root{ --ink:#f2f3f7; --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.14); }
+  :root{ --ink:#f2f3f7; --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.14); --rail:300px; --top:100px; }
+  @media (max-width:560px){ :root{ --top:92px; } }
   *{ box-sizing:border-box; }
   html,body{ height:100%; margin:0; background:#07070c; color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; overscroll-behavior:none; }
   body.dark .opal-topbar, body.dark .opal-subhead{ background:#07070c; border-bottom-color:rgba(255,255,255,.1); }
   body.dark .opal-subhead__name{ color:var(--ink); }
   body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
-  #wrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:14px 14px 150px; }
+  #wrap{ position:fixed; top:var(--top); left:0; right:var(--rail); bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
   #art{ max-width:100%; max-height:100%; display:block; border-radius:2px; box-shadow:0 10px 50px rgba(0,0,0,.6); }
-  #dock{ position:fixed; left:0; right:0; bottom:0; padding:12px 14px calc(env(safe-area-inset-bottom,0) + 12px);
-    background:linear-gradient(to top, rgba(7,7,12,.97), rgba(7,7,12,.78) 70%, transparent);
-    display:flex; flex-direction:column; gap:10px; }
-  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; }
+  #dock{ position:fixed; top:var(--top); right:0; bottom:0; width:var(--rail); z-index:6;
+    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:rgba(11,11,18,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
+    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:16px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; }
   .btn{ appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--ink);
     font:inherit; font-size:13px; padding:8px 13px; border-radius:999px; cursor:pointer; transition:.15s; white-space:nowrap; }
   .btn:hover{ background:rgba(255,255,255,.1); }
@@ -27,8 +29,7 @@
   .btn.primary{ background:var(--ink); color:#07070c; border-color:var(--ink); font-weight:600; }
   .chip{ font-size:12px; padding:7px 12px; }
   .sep{ width:1px; align-self:stretch; background:var(--line); margin:2px 4px; }
-  #sliders{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px 18px; max-width:860px; width:100%; margin:0 auto; }
-  @media (max-width:640px){ #sliders{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  #sliders{ display:flex; flex-direction:column; gap:14px; width:100%; }
   .knob{ display:flex; flex-direction:column; gap:2px; }
   .knob label{ display:flex; justify-content:space-between; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); }
   .knob b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
