@@ -50,7 +50,10 @@
     .oc-eyebrow .dot{ width:5px; height:5px; border-radius:50%; background:var(--color-accent2); }
     .oc-mark{ font-family:"Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(27px,4.7vw,56px);
       line-height:.9; margin:0; letter-spacing:.01em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
-      text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6)); }
+      text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6));
+      display:inline-block; transform-origin:left center; animation:oc-breathe 11.1s ease-in-out infinite; }
+    @keyframes oc-breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.055); } }
+    @media (prefers-reduced-motion:reduce){ .oc-mark{ animation:none; } }
     .oc-mark .sl{ color:var(--color-accent2); }
     .oc-expand{ margin:22px 0 0; font-size:11px; letter-spacing:.22em; text-transform:uppercase; opacity:1; font-weight:600;
       color:var(--oc-platetext,#000); padding:.62em .9em; transition:color 1.2s ease; }
@@ -106,10 +109,10 @@
     /* buttons that reuse link styling need the inherited font */
     .oc-join, .oc-panel .ov-join{ font-family:inherit; cursor:pointer; }
     /* request-invite form */
-    .req-panel .req-title{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:400;
-      font-size:clamp(28px,4.5vw,40px); line-height:1; margin:34px 0 8px; color:#141414;
-      border-top:1px solid rgba(0,0,0,.12); padding-top:30px; }
-    .req-panel .req-sub{ font-size:14px; line-height:1.6; margin:0 0 26px; color:#141414; opacity:.65; }
+    .req-panel .req-title{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:600;
+      font-size:15px; line-height:1.4; margin:0 0 4px; color:#141414; }
+    .req-panel .req-sub{ font-size:14px; line-height:1.6; margin:0 0 24px; color:#141414; opacity:.65; }
+    .req-panel .req-about{ margin-top:30px; padding-top:26px; border-top:1px solid rgba(0,0,0,.12); }
     .req-form{ display:flex; flex-direction:column; gap:18px; }
     .req-field{ display:flex; flex-direction:column; gap:8px; font-size:10.5px; letter-spacing:.14em;
       text-transform:uppercase; color:#141414; opacity:.7; }
@@ -135,9 +138,7 @@
   <div class="oc-ui">
     <div class="oc-tl">
       <h1 class="oc-mark">OPEN</h1>
-      <p class="oc-when">Fridays · 6–7am CST · on Zoom</p>
     </div>
-    <button class="oc-info" id="oc-info" aria-label="About OPEN" title="About">i</button>
     <button class="oc-join" id="oc-request" type="button">Request Invite</button>
   </div>
 
@@ -145,9 +146,6 @@
   <div class="oc-overlay" id="req-overlay" hidden>
     <div class="oc-panel req-panel" role="dialog" aria-modal="true" aria-label="Request an invite">
       <button class="oc-close" id="req-close" aria-label="Close">×</button>
-      <p>OPEN is a practice-based gathering. We sit in silence for twenty minutes, then talk — each week around a theme like process, groundedness, craft, creativity, or technology. A timer holds the silence; a prompt closes it.</p>
-      <p>It borrows from council practice — a circle where you listen and speak from the heart — and from Suzuki's <em>Zen Mind, Beginner's Mind</em>.</p>
-      <p>No experience needed. Free, every week, never recorded.</p>
       <h2 class="req-title">Request an invite</h2>
       <p class="req-sub">Fridays, 6–7am CST. Virtual, on Zoom.<br>Tell us a little and we'll send you the link.</p>
       <form id="req-form" class="req-form" novalidate>
@@ -164,6 +162,11 @@
         <button type="submit" class="req-submit">Request invite →</button>
         <p class="req-msg" id="req-msg" role="status" aria-live="polite"></p>
       </form>
+      <div class="req-about">
+        <p>OPEN is a practice-based gathering. We sit in silence for twenty minutes, then talk — each week around a theme like process, groundedness, craft, creativity, or technology. A timer holds the silence; a prompt closes it.</p>
+        <p>It borrows from council practice — a circle where you listen and speak from the heart — and from Suzuki's <em>Zen Mind, Beginner's Mind</em>.</p>
+        <p>No experience needed. Free, every week, never recorded.</p>
+      </div>
     </div>
   </div>
 
@@ -185,13 +188,26 @@
       addEventListener('keydown', e=>{ if(e.key==='Escape' && !ov.hidden) shut(); });
       return {open, shut};
     }
-    // align the corner UI to the header's OP/AL logo inset (apply on first frame → no flash)
-    function setInset(){ const el=document.querySelector('nav .nav-logo-link'); if(el){ const r=el.getBoundingClientRect(); if(r.width) document.body.style.setProperty('--oc-inset', Math.max(18,Math.round(r.left))+'px'); } }
+    // align the corner UI to the header, and optically align OPEN's ink to the OP/AL wordmark's ink
+    function setInset(){
+      const el=document.querySelector('nav .nav-logo-link');
+      if(el){ const r=el.getBoundingClientRect(); if(r.width) document.body.style.setProperty('--oc-inset', Math.max(18,Math.round(r.left))+'px'); }
+      const svg=document.querySelector('nav .nav-wordmark'), path=svg&&svg.querySelector('path'), tl=document.querySelector('.oc-tl'), mark=document.querySelector('.oc-mark');
+      if(svg&&path&&tl&&mark){ try{
+        tl.style.marginLeft='0px';
+        const sr=svg.getBoundingClientRect(), vb=svg.viewBox.baseVal, bb=path.getBBox();
+        const logoInk=sr.left+(bb.x-vb.x)/vb.width*sr.width;                 // OP/AL leftmost ink, in px
+        const cs=getComputedStyle(mark), cx=document.createElement('canvas').getContext('2d');
+        cx.font=cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
+        const abl=cx.measureText('OPEN').actualBoundingBoxLeft||0;           // OPEN left side bearing
+        const markInk=mark.getBoundingClientRect().left-abl;
+        tl.style.marginLeft=(logoInk-markInk).toFixed(1)+'px';               // shift OPEN so the inks line up
+      }catch(e){} }
+    }
     setInset(); requestAnimationFrame(setInset); addEventListener('resize', setInset); setTimeout(setInset, 400);
 
     const req = wire(document.getElementById('req-overlay'), document.getElementById('req-close'));
-    // both the info icon and Request Invite open the same modal (about + form)
-    ['oc-info','oc-request'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', req.open); });
+    { const el=document.getElementById('oc-request'); if(el) el.addEventListener('click', req.open); }
 
     // request form → Google Sheet (via Apps Script)
     const form=document.getElementById('req-form'), msg=document.getElementById('req-msg');
@@ -496,14 +512,14 @@
             fsize:fs, font:fs+'px '+FAM, col:wc, ch:g.ch, hot:g.hot};
           strand.push(nd); nodes.push(nd); }
         strands.push(strand); }
+      buildHero(m);
       for(let i=0;i<nodes.length;i++) nodes[i].id=i;
       // draw in size-grouped order (heroes last, on top) so ctx.font is set ~once per size, not per glyph
       drawOrder = nodes.slice().sort((a,b)=> a.hero===b.hero ? a.fsize-b.fsize : (a.hero?1:-1));
     }
     // the real message, as discrete bold phrases scattered through the field (natural breaks, no run-on)
     // the four colour phrases, pinned to the four corners with identical margins (symmetric top/bottom)
-    const HERO=[['ongoing',0.0,0.15],['friday 6–7am',1.0,0.15],
-      ['20 mins stillness',0.0,0.85],['30 mins conversation',1.0,0.85]];
+    const HERO=[['fridays · 6–7am cst · on zoom',0.0,0.86],['weekly meditation community',1.0,0.17]];
     function buildHero(m){
       const sp=P.size*0.6;                          // same letter size as the field
       // match the header: left edge = OP/AL logo, right edge = info icon
@@ -551,10 +567,14 @@
         const bhx=cx0+dxn*bs, bhy=cy0+dyn*bs;   // breathed home (circular)
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
-        if(nd.hero){   // tidy at rest, but the letters explode apart on the breath and come back together
-          const ex=bE*bE*118;                    // eased so it holds tidy longer, then bursts
-          nd.x += (nd.hx + nd.exx*ex - nd.x)*0.07;
-          nd.y += (nd.hy + nd.exy*ex - nd.y)*0.07;
+        if(nd.hero){   // the phrase breathes gently in its corner, sampled rigidly at its anchor (stays legible)
+          const adx=nd.ax-cx0, ady=nd.ay-cy0, hb=breath*0.22*Math.exp(-(adx*adx+ady*ady)/sig2);
+          const acx=vnoise(nd.ax*CS,nd.ay*CS,T1)-0.5, acy=vnoise(nd.ax*CS+31.7,nd.ay*CS+11.3,T1)-0.5;
+          const asway=swayBase*Math.cos(nd.ay*0.0011)*0.8;
+          const ox=adx*hb + asway + acx*0.6*amp, oy=ady*hb + acy*0.45*amp;
+          const wob=Math.sin(nd.hx*0.02 + t*0.02)*(P.size*0.2);
+          nd.x += (nd.hx+ox - nd.x)*0.09;
+          nd.y += (nd.hy+oy+wob - nd.y)*0.09;
           continue;
         }
         // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
@@ -575,10 +595,11 @@
     function draw(){
       ctx.clearRect(0,0,W,H);
       ctx.textAlign='center'; ctx.textBaseline='middle';
+      const heroInk = OC.lumAt(0.5)>0.52 ? '#111' : '#f3f4f6';   // black on bright skies, light on dark
       let curFont='';
       for(const nd of drawOrder){
         if(nd.font!==curFont){ ctx.font=nd.font; curFont=nd.font; }   // font set ~once per size, not per glyph
-        ctx.fillStyle = nd.col;   // each word its own colour
+        ctx.fillStyle = nd.hero ? heroInk : nd.col;   // phrases in black; field words each their own colour
         ctx.fillText(nd.ch, nd.x, nd.y);   // upright — no per-glyph save/rotate (big perf win)
       }
       // keep the identity layer's ink in step with the sky behind it (centre band)
