@@ -232,13 +232,13 @@ const BAYER=[0,32,8,40,2,34,10,42,48,16,56,24,50,18,58,26,12,44,4,36,14,46,6,38,
 
 const P={
   aspect:'4:5', longEdge:1200,
-  scanSpeed:5, scanDir:'down',
+  scanSpeed:4, scanDir:'down', playMode:'once',
   scale:1.0, rotation:0,
   threshold:128, dither:'bayer', contrast:1.35, grain:0.18, invert:0,
   ink:'#141410', bg:'#f4f2e8', showBar:1, transparent:0, play:true,
 };
 let img=null, subX=0, subY=0;
-let raw=null, bed=null, bedCtx=null, scanY=0, t0=performance.now(), drag=null;
+let raw=null, bed=null, bedCtx=null, scanY=0, t0=performance.now(), drag=null, done=false;
 let compRect={ox:0,oy:0,sc:1};
 
 function aspectWH(){ const [a,b]=P.aspect.split(':').map(Number), L=P.longEdge; return a>=b?[L,Math.round(L*b/a)]:[Math.round(L*a/b),L]; }
@@ -248,7 +248,7 @@ addEventListener('resize',resize);
 
 function ensureBuffers(){ const W=CW(),H=CH(); if(comp.width!==W||comp.height!==H){ comp.width=W; comp.height=H; raw=null; }
   if(!raw){ raw=new Uint8ClampedArray(W*H); raw.fill(255); bed=document.createElement('canvas'); bed.width=W; bed.height=H; bedCtx=bed.getContext('2d',{willReadFrequently:true}); scanY=0; if(subX===0){ subX=W/2; subY=H/2; } } }
-function resetScan(){ ensureBuffers(); raw.fill(255); scanY = P.scanDir==='up' ? comp.height : 0; }
+function resetScan(){ ensureBuffers(); raw.fill(255); scanY = P.scanDir==='up' ? comp.height : 0; done=false; }
 
 // default subject so it works before an upload
 function makeDefaultSubject(){ const c=document.createElement('canvas'); c.width=560; c.height=560; const x=c.getContext('2d');
@@ -269,9 +269,13 @@ function captureStrip(y0,y1){ const W=comp.width,H=comp.height; y0=clamp(y0|0,0,
       let v=(lum-128)*con+128 + (Math.random()*2-1)*gr; raw[rr+x]=clamp(v,0,255); } } }
 
 function step(){ ensureBuffers(); if(!img) return; renderBed();
-  const H=comp.height, sp=Math.max(1,P.scanSpeed|0);
-  if(P.scanDir==='down'){ let prev=scanY, ny=scanY+sp; if(ny>=H){ captureStrip(prev,H); ny-=H; captureStrip(0,ny); } else captureStrip(prev,ny); scanY=ny%H; }
-  else { let prev=scanY, ny=scanY-sp; if(ny<=0){ captureStrip(0,prev); ny+=H; captureStrip(ny,H); } else captureStrip(ny,prev); scanY=(ny+H)%H; } }
+  const H=comp.height, sp=Math.max(0.12, P.scanSpeed*0.35), loop=P.playMode==='repeat';
+  if(P.scanDir==='down'){ let prev=scanY, ny=scanY+sp;
+    if(ny>=H){ captureStrip(prev,H); if(loop){ ny-=H; captureStrip(0,ny); scanY=ny; } else { scanY=H; done=true; } }
+    else { captureStrip(prev,ny); scanY=ny; } }
+  else { let prev=scanY, ny=scanY-sp;
+    if(ny<=0){ captureStrip(0,prev); if(loop){ ny+=H; captureStrip(ny,H); scanY=ny; } else { scanY=0; done=true; } }
+    else { captureStrip(ny,prev); scanY=ny; } } }
 
 let disp=null;
 function display(){ const W=comp.width,H=comp.height; if(!disp||disp.width!==W){ disp=cctx.createImageData(W,H); }
@@ -289,7 +293,7 @@ function blit(){ const sw=stage.width,sh=stage.height; sctx.setTransform(1,0,0,1
 
 let fps=0,fa=0,fn=0;
 function tick(){ const now=performance.now(),dt=Math.min(0.05,(now-t0)/1000); t0=now;
-  if(P.play) step(); ensureBuffers(); display(); blit();
+  if(P.play && !done) step(); ensureBuffers(); display(); blit();
   fa+=dt; fn++; if(fa>=0.5){ fps=fn/fa; fa=0; fn=0; const h=document.getElementById('hint'); if(h) h.innerHTML= img?`scan y=<b>${scanY|0}</b> &#183; <b>${fps.toFixed(0)}</b> fps &#183; ${comp.width}&#215;${comp.height}`:''; }
   requestAnimationFrame(tick); }
 
@@ -326,8 +330,9 @@ function buildPanel(){
   const gS=grp('Scan','The bed sweeps across the canvas capturing each line as it passes.');
   slider(gS,'scanSpeed','Speed',1,30,1,v=>v|0);
   seg(gS,'scanDir','Direction',[{t:'Down',v:'down'},{t:'Up',v:'up'}],resetScan);
+  seg(gS,'playMode','When it finishes',[{t:'Stop',v:'once'},{t:'Repeat',v:'repeat'}],()=>{ if(P.playMode==='repeat') done=false; });
   seg(gS,'showBar','Show bar',[{t:'On',v:1},{t:'Off',v:0}]);
-  button(gS,'Clear scan',resetScan);
+  button(gS,'Scan again',resetScan);
 
   const gL=grp('Xerox','Threshold + ordered dither — the photocopier look.');
   slider(gL,'threshold','Threshold',20,235,1,v=>v|0);
