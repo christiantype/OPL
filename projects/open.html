@@ -487,7 +487,7 @@
     const P={
       text:'  '+EMOTIONS.join('   ')+'   ',
       size:15, spacing:21, rowGap:78,
-      swayAmp:34, windSway:20, swayFreq:0.012, breathFreq:0.0015, breathAmp:0.62,
+      swayAmp:34, windSway:20, swayFreq:0.008, breathFreq:0.00092, breathAmp:0.62,
       spring:0.02, damp:0.9, collIter:1, collPush:0.5, restitution:0.4, accent:'#efe000', margin:40
     };
     const HL=new Set(['STILL','OPEN','PRESENT','AWE','ALIVE','WONDER','STILLNESS']);
@@ -587,21 +587,30 @@
 
     function step(){ const t=clock, amp=P.swayAmp, K=P.spring, damp=P.damp;
       // ambient flow field (coarse noise swirls regions; no linear phase → no bands)
-      const CS=0.0026, T1=t*0.006;
+      const CS=0.0026, T1=t*0.004;
       // global wind: the whole curtain leans left↔right together (nearly uniform → wind, not bands)
       const swayBase=Math.sin(t*P.swayFreq)*P.windSway;
       // slow breath about the centre (tantien): the field GATHERS inward on the inhale — everything
       // draws toward the centre point, closer together — then the exhale pushes it out to the edges.
       // a wide radial window keeps it round and lets the pull/push reach all the way to the corners.
-      const cx0=W/2, cy0=H/2, sig2=2*Math.pow(Math.min(W,H)*1.15,2);
+      const cx0=W/2, cy0=H/2, halfW=W/2, halfH=H/2, sig2=2*Math.pow(Math.min(W,H)*1.15,2);
       const bp=(t*P.breathFreq)%1;
       const bE=breathEnv(bp);                      // 0..1 swell — still drives OPEN, the phrases + capture
       const fB=-Math.cos(bp*6.2831853);            // signed breath: -1 gathered (inhale) → +1 spread (exhale)
-      const gatherAmp=0.58, spreadAmp=0.6;
+      const spreadAmp=0.6, Rg=Math.min(W,H)*0.40;  // Rg = radius of the gathered disc
       for(const nd of nodes){
-        const dxn=nd.hx-cx0, dyn=nd.hy-cy0, gw=Math.exp(-(dxn*dxn+dyn*dyn)/sig2);
-        const bs=1 + gw*(fB>=0 ? fB*spreadAmp : fB*gatherAmp);   // <1 inhale: toward centre · >1 exhale: to edges
-        const bhx=cx0+dxn*bs, bhy=cy0+dyn*bs;   // breathed home (circular)
+        const dxn=nd.hx-cx0, dyn=nd.hy-cy0;
+        let bhx, bhy;
+        if(fB<0){                                  // inhale — draw the rectangle into an organic disc at centre
+          const t2=-fB;                            // 0..1 gather amount
+          const ux=dxn/halfW, uy=dyn/halfH;        // square→disc map so it gathers round, never a rectangle
+          const gx=cx0 + ux*Math.sqrt(Math.max(0,1-uy*uy*0.5))*Rg;
+          const gy=cy0 + uy*Math.sqrt(Math.max(0,1-ux*ux*0.5))*Rg;
+          bhx=nd.hx+(gx-nd.hx)*t2; bhy=nd.hy+(gy-nd.hy)*t2;
+        } else {                                   // exhale — push the field back out toward the edges
+          const gw=Math.exp(-(dxn*dxn+dyn*dyn)/sig2), s=1+gw*fB*spreadAmp;
+          bhx=cx0+dxn*s; bhy=cy0+dyn*s;
+        }
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
         if(nd.hero){   // readable at rest, then deconstructs on the breath and reconstructs (like the field)
@@ -612,7 +621,7 @@
         }
         // each letter wanders on its own — independent phase, speed and reach in x and y (different
         // frequencies) → sporadic, erratic paths; no two trace the same zigzag
-        const dr=t*0.02;
+        const dr=t*0.013;
         const fx=vnoise(nd.seed*3.1+nd.phx+dr*nd.fspd,      nd.seed*0.7,      0)-0.5;
         const fy=vnoise(nd.seed*1.7+nd.phy+dr*nd.fspd*0.68, nd.seed*2.3+50.0, 0)-0.5;
         const tx=bhx + swayX + cx*0.85*amp + fx*amp*0.95*nd.dm, ty=bhy + cy*0.7*amp + fy*amp*0.95*nd.dm;
