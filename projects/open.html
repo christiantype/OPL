@@ -473,6 +473,12 @@
       'rooted','rueful','sacred','safe','searching','secure','sensitive','sheltered','soothed','sorrowful','spent',
       'steady','stirred','suspended','sweet','tearful','thankful','thoughtful','tranquil','trust','unburdened',
       'unhurried','unmoored','untethered','vast','vulnerable','welcoming','whole','willing','yielding',
+      // the whole spectrum — bright and dark held together
+      'abundant','wholesome','flourishing','thriving','vibrant','exuberant','triumphant','blessed','boundless',
+      'overjoyed','ecstatic','generous','free',
+      'broken','shattered','ashamed','hopeless','helpless','terrified','bitter','resentful','defeated','abandoned',
+      'betrayed','anxious','furious','lost','trapped','exhausted','gutted','jealous',
+      'conflicted','ambivalent','torn','indifferent',
       // states + sensations
       'pensive','alert','watchful','attentive','absorbed','rapt','entranced','keen','dreamy','hazy','drowsy',
       'sleepy','languid','mellow','buoyant','weightless','tingling','buzzing','humming','prickling','breathless',
@@ -530,6 +536,7 @@
           const x=m+j*P.spacing+jx, y=cpos+jy;
           const sz=rnd(0.82,1.3), fs=Math.round(P.size*sz);
           const nd={x,y,ox:x,oy:y,hx:x,hy:y, sz, r:P.size*sz*0.46, rot:rnd(-0.28,0.28), seed:rnd(0,900),
+            phx:rnd(0,6.283), phy:rnd(0,6.283), fspd:rnd(0.5,1.7), dm:rnd(0.6,1.55),
             fsize:fs, font:fs+'px '+FAM, col:wc, ch:g.ch, hot:g.hot};
           strand.push(nd); nodes.push(nd); }
         strands.push(strand); }
@@ -580,15 +587,20 @@
 
     function step(){ const t=clock, amp=P.swayAmp, K=P.spring, damp=P.damp;
       // ambient flow field (coarse noise swirls regions; no linear phase → no bands)
-      const CS=0.0026, FS=0.021, T1=t*0.006, T2=t*0.019;
+      const CS=0.0026, T1=t*0.006;
       // global wind: the whole curtain leans left↔right together (nearly uniform → wind, not bands)
       const swayBase=Math.sin(t*P.swayFreq)*P.windSway;
-      // slow breath: a circular pulse from the centre (tantien). a radial Gaussian window keeps the
-      // expansion round rather than scaling the whole rectangle (which reads square)
-      const cx0=W/2, cy0=H/2, sig2=2*Math.pow(Math.min(W,H)*0.85,2);
-      const bE=breathEnv((t*P.breathFreq)%1), breath=bE*P.breathAmp;   // smooth swell (0..1 → displacement)
+      // slow breath about the centre (tantien): the field GATHERS inward on the inhale — everything
+      // draws toward the centre point, closer together — then the exhale pushes it out to the edges.
+      // a wide radial window keeps it round and lets the pull/push reach all the way to the corners.
+      const cx0=W/2, cy0=H/2, sig2=2*Math.pow(Math.min(W,H)*1.15,2);
+      const bp=(t*P.breathFreq)%1;
+      const bE=breathEnv(bp);                      // 0..1 swell — still drives OPEN, the phrases + capture
+      const fB=-Math.cos(bp*6.2831853);            // signed breath: -1 gathered (inhale) → +1 spread (exhale)
+      const gatherAmp=0.58, spreadAmp=0.6;
       for(const nd of nodes){
-        const dxn=nd.hx-cx0, dyn=nd.hy-cy0, bs=1+breath*Math.exp(-(dxn*dxn+dyn*dyn)/sig2);
+        const dxn=nd.hx-cx0, dyn=nd.hy-cy0, gw=Math.exp(-(dxn*dxn+dyn*dyn)/sig2);
+        const bs=1 + gw*(fB>=0 ? fB*spreadAmp : fB*gatherAmp);   // <1 inhale: toward centre · >1 exhale: to edges
         const bhx=cx0+dxn*bs, bhy=cy0+dyn*bs;   // breathed home (circular)
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
@@ -598,9 +610,12 @@
           nd.y += (nd.hy + nd.exy*ex - nd.y)*0.085;
           continue;
         }
-        // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
-        const fx=vnoise(nd.seed+T2,nd.hy*FS,T2)-0.5, fy=vnoise(nd.hx*FS,nd.seed+9.4+T2,T2)-0.5;
-        const tx=bhx + swayX + cx*1.2*amp + fx*amp*0.55, ty=bhy + cy*1.0*amp + fy*amp*0.55;
+        // each letter wanders on its own — independent phase, speed and reach in x and y (different
+        // frequencies) → sporadic, erratic paths; no two trace the same zigzag
+        const dr=t*0.02;
+        const fx=vnoise(nd.seed*3.1+nd.phx+dr*nd.fspd,      nd.seed*0.7,      0)-0.5;
+        const fy=vnoise(nd.seed*1.7+nd.phy+dr*nd.fspd*0.68, nd.seed*2.3+50.0, 0)-0.5;
+        const tx=bhx + swayX + cx*0.85*amp + fx*amp*0.95*nd.dm, ty=bhy + cy*0.7*amp + fy*amp*0.95*nd.dm;
         const vx=(nd.x-nd.ox)*damp, vy=(nd.y-nd.oy)*damp; nd.ox=nd.x; nd.oy=nd.y;   // Verlet velocity
         nd.x += vx + (tx-nd.x)*K;
         nd.y += vy + (ty-nd.y)*K;
