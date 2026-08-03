@@ -13,11 +13,15 @@ const Opal = (() => {
     if (!document.getElementById('opal-shell-css')) {
       const st = document.createElement('style'); st.id = 'opal-shell-css';
       st.textContent = `
-        /* Lock the mark's geometry so it never shifts between tools or the gallery. */
-        .opal-topbar{ height:56px; box-sizing:border-box; }
-        .opal-brand svg{ height:26px; width:auto; display:block; }
-        .opal-subhead{ position:relative; z-index:9; }
-        .opal-subhead__id{ display:flex; align-items:center; gap:11px; }
+        /* Site-style nav — one row, big wordmark, 10em inset: matches more-than.design everywhere. */
+        .opal-topbar{ position:fixed; top:0; left:0; right:0; z-index:10; height:82px; box-sizing:border-box;
+          display:flex; align-items:center; justify-content:space-between; gap:16px;
+          padding:0 160px; background:transparent; border:none; }
+        @media (max-width:900px){ .opal-topbar{ padding:0 64px; } }
+        @media (max-width:560px){ .opal-topbar{ padding:0 20px; height:74px; } }
+        .opal-brand{ display:flex; align-items:center; text-decoration:none; }
+        .opal-brand svg{ height:33px; width:auto; display:block; }
+        .opal-topid{ display:flex; align-items:baseline; gap:14px; min-width:0; }
         .opal-info{ appearance:none; width:15px; height:15px; border-radius:50%; border:1px solid currentColor;
           background:none; color:inherit; opacity:.5; font:italic 600 9px/1 ui-serif,Georgia,serif;
           cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; flex:none; }
@@ -28,41 +32,32 @@ const Opal = (() => {
           -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }`;
       document.head.appendChild(st);
     }
-    const WORDMARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="154.5 212.9 1274.6 186.2" fill="currentColor" style="display:block;height:26px;width:auto;"><path d="M1356.2,353.2h72.1v-13h-59.1v-100.6h-13v113.5ZM1077.3,313.7l13.5-61.1h10.6l13.3,61.1h-37.5ZM1055.3,353.2h13.3l5.8-26.5h43.3l5.8,26.5h13.3l-25.2-113.5h-30.6l-25.6,113.5ZM723.6,398.3h37.2l111.9-184.5h-37.2l-111.9,184.5ZM478.1,296.2v-43.6h28.1c5.9,0,8.3.9,13,4.7,5.2,4.3,5.9,6.1,5.9,10.6v13c0,4.5-.7,6.3-5.9,10.6-4.7,3.8-7,4.7-13,4.7h-28.1ZM465.1,353.2h13v-44h28.1c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-14.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-41.1v113.5ZM199.1,340.2h-11.9c-5.9,0-8.3-.9-13-4.7-5.2-4.3-5.9-6.1-5.9-10.6v-57c0-4.5.7-6.3,5.9-10.6,4.7-3.8,7-4.7,13-4.7h11.9c5.9,0,8.5.9,13.2,4.7,5,4.1,5.8,6.1,5.8,10.6v57c0,4.5-.7,6.5-5.8,10.6-4.7,3.8-7.2,4.7-13.2,4.7M187.2,353.2h11.9c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-58.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-11.9c-9.4,0-14.2,2-22.5,9-8.3,7-9.4,10.3-9.4,18.6v58.4c0,8.3,1.1,11.5,9.4,18.6,8.3,7,13.2,9,22.5,9"/></svg>`;
+    const WORDMARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="154.5 212.9 1274.6 186.2" fill="currentColor" style="display:block;height:33px;width:auto;"><path d="M1356.2,353.2h72.1v-13h-59.1v-100.6h-13v113.5ZM1077.3,313.7l13.5-61.1h10.6l13.3,61.1h-37.5ZM1055.3,353.2h13.3l5.8-26.5h43.3l5.8,26.5h13.3l-25.2-113.5h-30.6l-25.6,113.5ZM723.6,398.3h37.2l111.9-184.5h-37.2l-111.9,184.5ZM478.1,296.2v-43.6h28.1c5.9,0,8.3.9,13,4.7,5.2,4.3,5.9,6.1,5.9,10.6v13c0,4.5-.7,6.3-5.9,10.6-4.7,3.8-7,4.7-13,4.7h-28.1ZM465.1,353.2h13v-44h28.1c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-14.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-41.1v113.5ZM199.1,340.2h-11.9c-5.9,0-8.3-.9-13-4.7-5.2-4.3-5.9-6.1-5.9-10.6v-57c0-4.5.7-6.3,5.9-10.6,4.7-3.8,7-4.7,13-4.7h11.9c5.9,0,8.5.9,13.2,4.7,5,4.1,5.8,6.1,5.8,10.6v57c0,4.5-.7,6.5-5.8,10.6-4.7,3.8-7.2,4.7-13.2,4.7M187.2,353.2h11.9c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-58.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-11.9c-9.4,0-14.2,2-22.5,9-8.3,7-9.4,10.3-9.4,18.6v58.4c0,8.3,1.1,11.5,9.4,18.6,8.3,7,13.2,9,22.5,9"/></svg>`;
     const MENU_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 79.7 72" width="17" height="17" fill="currentColor"><path d="M29.3,72h22c16.1,0,28.4-13.1,28.4-28.8v-14.4C79.7,13.1,67.4,0,51.3,0h-22C13.2,0,0,13.1,0,28.8v14.4c0,15.7,13.1,28.8,29.2,28.8h0Z"/></svg>`;
     const bar = document.createElement('header');
     bar.className = 'opal-topbar';
     bar.innerHTML = `
-      <a href="/lab/" class="opal-brand" aria-label="Tools home" style="color:#1a1a1a;text-decoration:none;display:flex;align-items:center;gap:14px;">
-        ${WORDMARK}
-        ${product ? `<span class="opal-divider"></span><span class="opal-product" style="color:#8a8a8a;font-size:12px;letter-spacing:.14em;text-transform:uppercase;">${product}</span>` : ''}
-      </a>
-    `;
-    // Sub-header band: tool name · brief description · version. Same on every tool.
-    let sub = null;
-    if (name || desc || version) {
-      sub = document.createElement('div');
-      sub.className = 'opal-subhead';
-      sub.innerHTML = `
-        <div class="opal-subhead__id">
-          ${name ? `<span class="opal-subhead__name">${name}</span>` : ''}
-          ${desc ? `<span class="opal-subhead__desc">${desc}</span>` : ''}
-        </div>
+      <a href="/lab/" class="opal-brand" aria-label="Tools home" style="color:inherit;text-decoration:none;">${WORDMARK}</a>
+      <div class="opal-topid">
+        ${name ? `<span class="opal-subhead__name">${name}</span>` : ''}
+        ${desc ? `<span class="opal-subhead__desc">${desc}</span>` : ''}
         ${version ? `<span class="opal-subhead__ver">${version}</span>` : ''}
-      `;
-    }
-    // Info tooltip next to the tool name in the sub-header. Shows on hover, pins on click.
-    if (sub && (about || desc)) {
-      const idRow = sub.querySelector('.opal-subhead__id');
+      </div>
+    `;
+    // Info tooltip beside the tool name — hover to show, click to pin.
+    const idRow = bar.querySelector('.opal-topid');
+    if (idRow && (about || desc)) {
       const btn = document.createElement('button');
       btn.className = 'opal-info'; btn.type = 'button'; btn.textContent = 'i';
       btn.setAttribute('aria-label', 'About this tool'); btn.setAttribute('aria-expanded', 'false');
       const pop = document.createElement('div');
       pop.className = 'opal-about'; pop.hidden = true; pop.textContent = about || desc;
-      idRow.appendChild(btn); document.body.appendChild(pop);
+      const ver = idRow.querySelector('.opal-subhead__ver');
+      ver ? idRow.insertBefore(btn, ver) : idRow.appendChild(btn);
+      document.body.appendChild(pop);
       let pinned = false;
       const place = () => { const r = btn.getBoundingClientRect();
-        pop.style.left = Math.max(12, r.left) + 'px'; pop.style.top = (r.bottom + 8) + 'px'; };
+        pop.style.right = Math.max(12, window.innerWidth - r.right) + 'px'; pop.style.left = 'auto'; pop.style.top = (r.bottom + 8) + 'px'; };
       const show = () => { place(); pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); };
       const hide = () => { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
       btn.addEventListener('pointerenter', show);
@@ -72,8 +67,7 @@ const Opal = (() => {
       window.addEventListener('keydown', e => { if (e.key === 'Escape') { pinned = false; hide(); } });
       window.addEventListener('scroll', () => { pinned = false; hide(); }, true);
     }
-    if (sub) document.body.prepend(sub);
-    document.body.prepend(bar);   // prepend last so the topbar ends up on top
+    document.body.prepend(bar);
   }
 
   // Image utilities for tools that render to canvas.
