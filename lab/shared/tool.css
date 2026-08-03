@@ -1,0 +1,48 @@
+/* Shared control language for the lab tools — matches the established look
+   (Angel / Scanner / Halftone / Flux): sharp 2px corners, uppercase 11px labels,
+   the --ink / --hair / --paper token palette on a #07080f ground.
+   Loaded AFTER a tool's own <style>, so it overrides bespoke control styling
+   while leaving each tool's layout (canvas, docks, panels) intact. */
+
+:root{
+  --ink:#f2f4f8; --hair:rgba(255,255,255,.24); --mute:rgba(255,255,255,.60);
+  --paper:#07080f; --cell:rgba(255,255,255,.05); --track:rgba(255,255,255,.20);
+  --line:rgba(255,255,255,.24); --dim:rgba(255,255,255,.60);
+}
+html, body{ background:var(--paper); color:var(--ink); }
+body.dark .opal-topbar, body.dark .opal-subhead{ background:var(--paper); border-bottom-color:rgba(255,255,255,.1); }
+body.dark .opal-subhead__name{ color:var(--ink); }
+body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+
+/* docks + side panels share one ground */
+#dock{ background:linear-gradient(to top, var(--paper), rgba(7,8,15,.82) 72%, transparent); }
+#panel{ background:var(--paper); border-left-color:var(--hair); }
+
+/* buttons — sharp, uppercase, letter-spaced (Angel's .btn) */
+.btn{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+  font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+  padding:8px 12px; border-radius:2px; cursor:pointer; transition:background .15s; white-space:nowrap; }
+.btn:hover{ background:rgba(255,255,255,.11); }
+.btn[aria-pressed="true"], .btn.primary, .btn.on{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+.btn.on{ outline:none; }
+.chip{ font-size:11px; padding:7px 10px; }
+.sep{ background:var(--hair); }
+
+/* segmented rows */
+.seg{ border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
+.seg button{ font-size:11px; letter-spacing:.04em; text-transform:uppercase; }
+.seg button[aria-pressed="true"]{ background:var(--ink); color:var(--paper); }
+
+/* selects */
+select{ background:var(--cell); color:var(--ink); border:1px solid var(--hair); border-radius:2px;
+  font:inherit; font-size:11px; letter-spacing:.04em; text-transform:uppercase; padding:7px 8px; }
+
+/* labels */
+.knob label, .warp label, h4{ font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--mute); }
+.knob b, .warp b{ color:var(--ink); }
+
+/* sliders — thin track, small square ink thumb */
+input[type=range]::-webkit-slider-runnable-track{ background:var(--track); }
+input[type=range]::-moz-range-track{ background:var(--track); }
+input[type=range]::-webkit-slider-thumb{ background:var(--ink); border-radius:1px; width:12px; height:12px; margin-top:-5px; }
+input[type=range]::-moz-range-thumb{ background:var(--ink); border-radius:1px; width:12px; height:12px; }

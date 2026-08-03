@@ -43,6 +43,7 @@
   input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; margin-top:-6px; border-radius:50%; background:var(--ink); }
   input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
 </style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
 </head>
 <body class="dark">
   <div id="wrap"><canvas id="art"></canvas></div>
@@ -126,18 +127,19 @@
   function hueFor(t){ return HUES[Math.floor(((t%1)+1)%1*HUES.length)%HUES.length]; }
   function rgba(hex,a){ const n=parseInt(hex.slice(1),16); return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+Math.min(1,a).toFixed(3)+')'; }
 
-  function buildWalkers(){ walkers=[]; const scale=Math.min(W,H);
-    strokes.forEach((s,si)=>{ const path=prep(s.map(p=>({x:p.x,y:p.y}))); const rand=mulberry32((si*131+7)>>>0);
-      for(let e=0;e<P.density;e++){
-        const nodeCount=6+Math.round((P.length/100)*38);
-        const nodeLen=(0.005+(P.length/100)*0.012)*scale*(0.7+rand()*0.6);
-        const h=strokePoint(path, rand()); const nodes=[];
-        for(let i=0;i<nodeCount;i++) nodes.push({x:h.x*W, y:h.y*H+i*nodeLen});
-        walkers.push({ path, t:rand(), phase:rand()*1000,
-          speed:(0.0007+(P.speed/100)*0.0045)*(0.6+rand()*0.9),
-          nodeCount, nodeLen, nodes, last:nodes.map(n=>({x:n.x,y:n.y})),
-          brushW:0.4+rand()*1.2, ink:0.5+rand()*0.6, hue:rand(), spin:rand()<0.5?1:-1,
-          wander:0.4+rand()*1.0, spiraler:rand()<(P.spiral/100)*0.5 }); } }); }
+  function walkersFor(path, si){ const scale=Math.min(W,H); const rand=mulberry32((si*131+7)>>>0); const out=[];
+    for(let e=0;e<P.density;e++){
+      const nodeCount=6+Math.round((P.length/100)*38);
+      const nodeLen=(0.005+(P.length/100)*0.012)*scale*(0.7+rand()*0.6);
+      const h=strokePoint(path, rand()); const nodes=[];
+      for(let i=0;i<nodeCount;i++) nodes.push({x:h.x*W, y:h.y*H+i*nodeLen});
+      out.push({ path, t:rand(), phase:rand()*1000,
+        speed:(0.0007+(P.speed/100)*0.0045)*(0.6+rand()*0.9),
+        nodeCount, nodeLen, nodes, last:nodes.map(n=>({x:n.x,y:n.y})),
+        brushW:0.4+rand()*1.2, ink:0.5+rand()*0.6, hue:rand(), spin:rand()<0.5?1:-1,
+        wander:0.4+rand()*1.0, spiraler:rand()<(P.spiral/100)*0.5 }); }
+    return out; }
+  function buildWalkers(){ walkers=[]; strokes.forEach((s,si)=>{ walkersFor(prep(s.map(p=>({x:p.x,y:p.y}))), si).forEach(w=>walkers.push(w)); }); }
 
   function drawRaw(s){ if(s.length<2){ if(s.length){ ctx.beginPath(); ctx.arc(s[0].x*W,s[0].y*H,1.6,0,6.28); ctx.fillStyle='#141414'; ctx.fill(); } return; }
     ctx.beginPath(); ctx.moveTo(s[0].x*W,s[0].y*H); for(let i=1;i<s.length;i++) ctx.lineTo(s[i].x*W,s[i].y*H); ctx.stroke(); }
@@ -172,17 +174,27 @@
     inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=inp.value;
       if(mode==='modify'){ clearTimeout(deb); deb=setTimeout(startSim,140); } }); });
 
-  cv.addEventListener('pointerdown', e=>{ if(mode!=='draw') return; e.preventDefault(); cv.setPointerCapture&&cv.setPointerCapture(e.pointerId); cur=[pos(e)]; });
-  cv.addEventListener('pointermove', e=>{ if(mode!=='draw'||!cur) return; e.preventDefault(); const p=pos(e);
-    const last=cur[cur.length-1]; if(Math.hypot(p.x-last.x,p.y-last.y)>0.003){ cur.push(p); renderDraw(); } });
-  cv.addEventListener('pointerup', ()=>{ if(cur){ if(cur.length>1) strokes.push(cur); cur=null; renderDraw(); } });
+  // Draw in EITHER mode. In modify, new strokes spawn live chains into the running animation
+  // (and the recording) without clearing what's there — keep drawing while it moves.
+  cv.addEventListener('pointerdown', e=>{ e.preventDefault(); cv.setPointerCapture&&cv.setPointerCapture(e.pointerId); cur=[pos(e)]; });
+  cv.addEventListener('pointermove', e=>{ if(!cur) return; e.preventDefault(); const p=pos(e);
+    const last=cur[cur.length-1]; if(Math.hypot(p.x-last.x,p.y-last.y)>0.003){ cur.push(p);
+      if(mode==='draw') renderDraw();
+      else { ctx.strokeStyle='rgba(120,122,132,.55)'; ctx.lineWidth=1; ctx.lineCap='round'; ctx.beginPath();
+        ctx.moveTo(last.x*W,last.y*H); ctx.lineTo(p.x*W,p.y*H); ctx.stroke(); } } });
+  cv.addEventListener('pointerup', ()=>{ if(!cur) return;
+    if(cur.length>1){ strokes.push(cur);
+      if(mode==='modify') walkersFor(prep(cur.map(p=>({x:p.x,y:p.y}))), strokes.length-1).forEach(w=>walkers.push(w)); }
+    const wasDraw=mode==='draw'; cur=null; if(wasDraw) renderDraw(); });
 
   function toDraw(){ mode='draw'; cancelAnimationFrame(raf); $('sliders').classList.add('locked');
     $('doneBtn').style.display=''; $('editBtn').style.display='none'; $('restartBtn').style.display='none';
     $('hint').textContent='Draw your lines — as many as you like'; $('hint').style.opacity=1; renderDraw(); }
   function toModify(){ if(!strokes.length){ $('hint').textContent='Draw a line first'; $('hint').style.opacity=1; return; }
     mode='modify'; $('sliders').classList.remove('locked'); $('doneBtn').style.display='none';
-    $('editBtn').style.display=''; $('restartBtn').style.display=''; $('hint').style.opacity=0; startSim(); }
+    $('editBtn').style.display=''; $('restartBtn').style.display='';
+    $('hint').textContent='Now it moves — keep drawing to add more, live'; $('hint').style.opacity=1;
+    setTimeout(()=>{ if(mode==='modify') $('hint').style.opacity=0; }, 3800); startSim(); }
   $('doneBtn').addEventListener('click', toModify);
   $('editBtn').addEventListener('click', toDraw);
   $('restartBtn').addEventListener('click', ()=>{ if(mode==='modify') startSim(); });
