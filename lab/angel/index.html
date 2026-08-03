@@ -335,7 +335,6 @@
       <select id="instrSel">
         <optgroup label="Pads">
           <option value="air">Air</option><option value="drone">Drift</option>
-          <option value="bloom">Halo</option><option value="glass">Prism</option>
         </optgroup>
         <optgroup label="Struck">
           <option value="bell">Bell</option><option value="mallet">Mallet</option>
@@ -579,7 +578,6 @@
         <option value="cycle">Cycle through all</option>
         <optgroup label="Pads">
           <option value="air">Air</option><option value="drone">Drift</option>
-          <option value="bloom">Halo</option><option value="glass">Prism</option>
         </optgroup>
         <optgroup label="Struck">
           <option value="bell">Bell</option><option value="mallet">Mallet</option>
@@ -1021,7 +1019,7 @@
   // cut/vol are per-lane and feed each lane's own filter+gain before the master chain.
   const lanes=[
     { instr:'air',   steps:6,  speed:0.50, oct:-1, mute:false, drone:false, res:0.9, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:58, vol:70, env:{a:4.0,  d:3.0, s:1.00, r:9.0} },
-    { instr:'bloom', steps:8,  speed:0.90, oct:0,  mute:false, drone:false, res:0.9, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:66, vol:60, env:{a:1.6,  d:2.4, s:0.55, r:8.0} },
+    { instr:'harp',  steps:8,  speed:0.90, oct:0,  mute:false, drone:false, res:0.9, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:66, vol:60, env:{a:0.006,d:2.4, s:0.20, r:6.0} },
     { instr:'bell',  steps:12, speed:1.80, oct:1,  mute:false, drone:false, res:1.0, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:82, vol:62, env:{a:0.004,d:2.2, s:0.00, r:2.6} },
     { instr:'mallet',steps:8,  speed:1.50, oct:0,  mute:false, drone:false, res:1.0, pattern:[], stepBuf:{}, ang:-Math.PI/2, lastStep:-1, cut:78, vol:64, env:{a:0.002,d:0.8, s:0.00, r:1.0} },
   ];
@@ -1367,8 +1365,8 @@
 
   // ---------- orbs + shards ----------
   const orbs=[], shards=[], rings=[], MAXO=14, BASE=64; let orbCount=0;
-  const ORB_INSTR=['bloom','glass','pluck','bell','mallet'];
-  const ALL_INSTR=['piano','bloom','glass','pluck','bell','mallet','sample'];
+  const ORB_INSTR=['air','harp','bell','mallet','flute'];
+  const ALL_INSTR=['piano','air','harp','bell','mallet','sample'];
   function addOrb(x,y,fromArr){
     if(!fromArr && typeof ARR!=='undefined') arrPush({k:'orb', x:x/innerWidth, y:y/innerHeight}); if(orbs.length>=MAXO) orbs.shift();
     const r=14+Math.random()*26,a=Math.random()*6.283,s=.5+Math.random()*.7, vi=orbCount++%ORB_INSTR.length;
@@ -2738,60 +2736,60 @@
       lanes:[['drone',5,0.60,-1,{a:4.0,d:2.5,s:1.0,r:8.0},[0,2],48,72,1.0,1],
              ['air',7,0.42,0,{a:6.0,d:3.0,s:1.0,r:10.0},[0,3,5],56,58,0.9,1],
              ['drone',3,0.30,1,{a:5.0,d:3.0,s:1.0,r:9.0},[1],62,40,1.6,1],
-             ['sub',4,0.24,-2,{a:3.0,d:2.0,s:0.9,r:6.0},[0],40,66,1.2,1]],
+             ['air',4,0.24,-2,{a:3.0,d:2.0,s:0.9,r:6.0},[0],40,66,1.2,1]],
       mods:[['sine',14,42,'lcut',[1,1,1,0]]] },
     { name:'Sunday', pal:'OCEAN', scale:'Lydian', tempo:30, pitch:48, rev:54, del:0, cut:64, trail:0,
       lanes:[['mallet',12,2.20,0,{a:.001,d:.42,s:0,r:.70},[0,3,5,7,10],74,72,1.2],
-             ['pluck',8,3.30,1,{a:.001,d:.34,s:0,r:.55},[0,3,6],80,54,0.7],
-             ['sub',6,2.20,-2,{a:.008,d:.40,s:.42,r:.50},[0,3],44,70,1.4],
-             ['bloom',16,1.65,0,{a:1.30,d:1.60,s:.48,r:4.00},[0,6,11],58,40,0.9]],
+             ['harp',8,3.30,1,{a:.001,d:.34,s:0,r:.55},[0,3,6],80,54,0.7],
+             ['air',6,2.20,-2,{a:.008,d:.40,s:.42,r:.50},[0,3],44,70,1.4],
+             ['bell',16,1.65,0,{a:1.30,d:1.60,s:.48,r:4.00},[0,6,11],58,40,0.9]],
       mods:[['sine',52,6,'pitch',[1,1,0,0]]] },
     { name:'Arp', pal:'PRISM', scale:'MinorPenta', tempo:40, pitch:48, rev:18, del:0, cut:72, trail:0,
       lanes:[['acid',8,6.00,-1,{a:.004,d:.18,s:0,r:.14},[0,2,3,5,6],62,80,8.0],
              ['neon',16,3.00,0,{a:.004,d:.20,s:0,r:.16},[0,2,4,6,8,10,12,14],78,64,4.5],
-             ['chip',24,2.00,1,{a:.001,d:.11,s:0,r:.08},[0,6,12,18],88,42,2.2],
-             ['sub',12,2.00,-2,{a:.006,d:.34,s:.35,r:.30},[0,6],46,72,1.4]],
+             ['mallet',24,2.00,1,{a:.001,d:.11,s:0,r:.08},[0,6,12,18],88,42,2.2],
+             ['air',12,2.00,-2,{a:.006,d:.34,s:.35,r:.30},[0,6],46,72,1.4]],
       mods:[['sqr',72,46,'lcut',[0,1,1,0]]] },
     { name:'Neon', pal:'AURORA', scale:'Dorian', tempo:52, pitch:50, rev:24, del:0, cut:66, trail:0,
       lanes:[['acid',8,6.00,-1,{a:.004,d:.16,s:0,r:.12},[0,3,5],60,78,9.0],
              ['neon',12,4.00,0,{a:.006,d:.26,s:.10,r:.22},[0,2,4,5,7,9],72,68,6.0],
-             ['chip',16,3.00,1,{a:.001,d:.10,s:0,r:.08},[0,4,8,12],86,44,2.6],
-             ['sub',24,1.00,-2,{a:.006,d:.36,s:.40,r:.34},[0,12],44,70,1.4]],
+             ['mallet',16,3.00,1,{a:.001,d:.10,s:0,r:.08},[0,4,8,12],86,44,2.6],
+             ['air',24,1.00,-2,{a:.006,d:.36,s:.40,r:.34},[0,12],44,70,1.4]],
       mods:[['tri',80,54,'lcut',[0,1,1,0]]] },
     { name:'Bloom', pal:'AURORA', scale:'Pentatonic', tempo:9, pitch:46, rev:72, del:44, cut:40, trail:0,
-      lanes:[['bloom',5,1.9000,-1,{a:2.4,d:2.2,s:.62,r:9.0},[0,3],52,76],
-             ['glass',7,1.1742,0,{a:1.6,d:2.4,s:.42,r:8.0},[0,4],64,58],
+      lanes:[['bell',5,1.9000,-1,{a:2.4,d:2.2,s:.62,r:9.0},[0,3],52,76],
+             ['harp',7,1.1742,0,{a:1.6,d:2.4,s:.42,r:8.0},[0,4],64,58],
              ['bell',11,0.7258,1,{a:.02,d:2.6,s:0,r:6.5},[6],80,38],
-             ['bloom',13,0.4484,1,{a:3.0,d:2.4,s:.55,r:10.0},[9],72,32]],
+             ['bell',13,0.4484,1,{a:3.0,d:2.4,s:.55,r:10.0},[9],72,32]],
       mods:[['sine',12,44,'lcut',[1,1,0,0]]] },
     { name:'Drift', pal:'OCEAN', scale:'Lydian', tempo:6, pitch:42, rev:78, del:48, cut:34, trail:0,
-      lanes:[['bloom',4,1.7500,-1,{a:3.6,d:3.0,s:.72,r:12.0},[0],46,72],
-             ['bloom',6,1.0815,0,{a:3.2,d:2.8,s:.68,r:11.0},[3],56,56],
-             ['glass',9,0.6685,1,{a:2.2,d:3.2,s:.55,r:11.0},[5],68,42],
+      lanes:[['bell',4,1.7500,-1,{a:3.6,d:3.0,s:.72,r:12.0},[0],46,72],
+             ['bell',6,1.0815,0,{a:3.2,d:2.8,s:.68,r:11.0},[3],56,56],
+             ['harp',9,0.6685,1,{a:2.2,d:3.2,s:.55,r:11.0},[5],68,42],
              ['bell',14,0.4130,2,{a:.03,d:3.2,s:0,r:9.0},[11],82,26]],
       mods:[['sine',8,52,'lcut',[1,1,1,1]]] },
     { name:'Rain', pal:'PRISM', scale:'MinorPenta', tempo:22, pitch:50, rev:60, del:38, cut:56, trail:0,
-      lanes:[['pluck',12,2.6000,0,{a:.001,d:.34,s:0,r:.55},[0,7],72,64],
+      lanes:[['harp',12,2.6000,0,{a:.001,d:.34,s:0,r:.55},[0,7],72,64],
              ['mallet',17,1.6068,1,{a:.001,d:.42,s:0,r:.70},[0,9],82,46],
-             ['pluck',7,0.9932,-1,{a:.001,d:.40,s:0,r:.60},[3],66,52],
+             ['harp',7,0.9932,-1,{a:.001,d:.40,s:0,r:.60},[3],66,52],
              ['bell',23,0.6136,2,{a:.004,d:1.3,s:0,r:2.0},[14],88,28]],
       mods:[['sh',26,50,'lcut',[1,1,0,0]]] },
     { name:'Chapel', pal:'EMBER', scale:'Dorian', tempo:7, pitch:44, rev:80, del:50, cut:36, trail:0,
       lanes:[['piano',6,2.2000,-1,{a:.006,d:1.4,s:0,r:5.0},[0],58,70],
-             ['bloom',9,1.3596,0,{a:3.0,d:2.6,s:.66,r:11.0},[4],52,54],
-             ['glass',13,0.8404,1,{a:1.8,d:2.6,s:.5,r:9.0},[7],70,40],
+             ['bell',9,1.3596,0,{a:3.0,d:2.6,s:.66,r:11.0},[4],52,54],
+             ['harp',13,0.8404,1,{a:1.8,d:2.6,s:.5,r:9.0},[7],70,40],
              ['piano',19,0.5192,1,{a:.006,d:1.8,s:0,r:6.0},[12],80,26]],
       mods:[['tri',10,40,'lcut',[0,0,1,1]]] },
     { name:'Dusk', pal:'EMBER', scale:'MinorPenta', tempo:12, pitch:40, rev:70, del:44, cut:44, trail:0,
       lanes:[['bell',7,1.8500,-1,{a:.02,d:2.6,s:0,r:7.0},[0],54,68],
-             ['bloom',11,1.1433,0,{a:2.2,d:2.4,s:.58,r:9.5},[5],62,54],
+             ['bell',11,1.1433,0,{a:2.2,d:2.4,s:.58,r:9.5},[5],62,54],
              ['mallet',17,0.7067,1,{a:.001,d:.9,s:0,r:1.6},[9],76,38],
-             ['glass',5,0.4366,1,{a:1.8,d:2.4,s:.5,r:8.5},[2],70,30]],
+             ['harp',5,0.4366,1,{a:1.8,d:2.4,s:.5,r:8.5},[2],70,30]],
       mods:[['tri',14,44,'lcut',[1,1,0,0]]] },
     { name:'Static', pal:'AURORA', scale:'Lydian', tempo:16, pitch:48, rev:64, del:40, cut:50, trail:0,
-      lanes:[['glass',5,1.9500,0,{a:.7,d:1.6,s:.3,r:5.0},[0],66,62],
+      lanes:[['harp',5,1.9500,0,{a:.7,d:1.6,s:.3,r:5.0},[0],66,62],
              ['mallet',8,1.2051,1,{a:.001,d:.7,s:0,r:1.2},[3],78,48],
-             ['pluck',13,0.7449,0,{a:.001,d:.35,s:0,r:.5},[7],72,44],
+             ['harp',13,0.7449,0,{a:.001,d:.35,s:0,r:.5},[7],72,44],
              ['bell',21,0.4602,2,{a:.02,d:1.6,s:0,r:3.4},[16],86,26]],
       mods:[['sh',30,46,'res',[0,0,1,1]]] },
   ];

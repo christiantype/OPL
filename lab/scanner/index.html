@@ -284,7 +284,7 @@ function display(){ const W=comp.width,H=comp.height; if(!disp||disp.width!==W){
     for(let x=0;x<W;x++){ const v=raw[rr+x]; let t=th; if(useB) t=th+(BAYER[yb+(x&7)]-31.5)*3.6;
       let black = v<t; if(inv) black=!black; const o=(rr+x)*4, c=black?ink:pap; d[o]=c[0]; d[o+1]=c[1]; d[o+2]=c[2]; d[o+3]=255; } }
   cctx.putImageData(disp,0,0);
-  if(P.showBar && img){ cctx.fillStyle='rgba(255,64,64,0.55)'; cctx.fillRect(0,scanY-1,W,2); } }
+  if(P.showBar && img && !done){ cctx.fillStyle='rgba(255,64,64,0.55)'; cctx.fillRect(0,scanY-1,W,2); } }
 
 function blit(){ const sw=stage.width,sh=stage.height; sctx.setTransform(1,0,0,1,0,0);
   const paper=getComputedStyle(document.body).getPropertyValue('--paper').trim()||'#111'; sctx.fillStyle=paper; sctx.fillRect(0,0,sw,sh); if(!comp.width) return;
