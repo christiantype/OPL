@@ -51,6 +51,7 @@
       <div class="knob"><label>Shimmer <b id="shimmerR">55</b></label><input id="shimmer" type="range" min="0" max="100" value="55" /></div>
       <div class="knob"><label>Glow <b id="glowR">60</b></label><input id="glow" type="range" min="0" max="100" value="60" /></div>
       <div class="knob"><label>Iridescence <b id="iridR">45</b></label><input id="irid" type="range" min="0" max="100" value="45" /></div>
+      <div class="knob"><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="0" max="100" value="0" /></div>
       <div class="knob"><label>Saturation <b id="satR">55</b></label><input id="sat" type="range" min="0" max="100" value="55" /></div>
       <div class="knob"><label>Round <b id="roundR">100</b></label><input id="round" type="range" min="0" max="100" value="100" /></div>
       <div class="knob"><label>Density <b id="densityR">100</b></label><input id="density" type="range" min="30" max="100" value="100" /></div>
@@ -75,7 +76,7 @@
   const $=id=>document.getElementById(id);
   const sample=document.createElement('canvas'), sctx=sample.getContext('2d',{willReadFrequency:true});
   let img=null, cells=[], W=0, H=0, dpr=1, dark=true, F=0, need=true;
-  const P={ size:18, gap:14, shimmer:55, glow:60, irid:45, sat:55, round:100, density:100 };
+  const P={ size:18, gap:14, shimmer:55, glow:60, irid:45, sat:55, round:100, density:100, hue:0 };
 
   /* default demo image — a few vivid overlapping blooms so it shows immediately */
   function demo(){ const c=document.createElement('canvas'); c.width=900; c.height=1120; const x=c.getContext('2d');
@@ -123,7 +124,7 @@
     const R=P.size*0.5, sh=P.shimmer/100, glow=P.glow/100, irid=P.irid/100, satB=P.sat/100, round=P.round/100;
     // base discs
     for(const c of cells){
-      const hue=(c.h + Math.sin(t*0.5*c.freq + c.seed)*0.12*irid + 0.02);
+      const hue=(c.h + P.hue/100 + Math.sin(t*0.5*c.freq + c.seed)*(0.10+0.24*irid));
       const s=Math.min(1, c.s*0.5 + satB*0.7);
       const l=0.18 + c.bright*0.5;
       const rr=R*(0.72 + c.bright*0.28);
@@ -144,11 +145,14 @@
       const gx=c.x - rr*0.34, gy=c.y - rr*0.34;
       const a=Math.min(1, tw*glow*(0.5+c.bright));
       if(a<0.02) continue;
-      const g=ctx.createRadialGradient(gx,gy,0, gx,gy, rr*0.9);
-      g.addColorStop(0,'rgba(255,255,255,'+a.toFixed(3)+')');
-      g.addColorStop(0.4,'rgba(255,250,235,'+(a*0.5).toFixed(3)+')');
+      // holographic foil: a rainbow that travels across the scales and shifts as they twinkle
+      const holo=(t*0.11 + c.seed*0.5 + (c.x+c.y)*0.0016 + P.hue/100);
+      const g=ctx.createRadialGradient(gx,gy,0, gx,gy, rr*0.98);
+      g.addColorStop(0,'rgba(255,255,255,'+a.toFixed(3)+')');                     // white specular core
+      g.addColorStop(0.32, hsl(holo,        1, 0.62, a*(0.45+0.55*irid)));        // rainbow ring
+      g.addColorStop(0.62, hsl(holo+0.14,   1, 0.55, a*0.4*(0.4+0.6*irid)));
       g.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(gx,gy,rr*0.9,0,6.2832); ctx.fill();
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(gx,gy,rr*0.98,0,6.2832); ctx.fill();
     }
     ctx.globalCompositeOperation='source-over';
     window.__seqReady=true;
