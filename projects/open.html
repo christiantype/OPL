@@ -495,7 +495,7 @@
     // vibrant screensaver colours — reserved for the information phrases (the field stays black)
     const VIB=['#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
       '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c','#0e5c5b','#4a2c4d'];
-    let W=0,H=0,DPR=1, strands=[], nodes=[], drawOrder=[], clock=0, warmT=0;
+    let W=0,H=0,DPR=1, strands=[], nodes=[], drawOrder=[], clock=Math.round(0.75/P.breathFreq), warmT=0;   // start at rest, first gather ~4–5s in
     const FAM='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
     const EB1=1.70158, EB3=EB1+1, easeOutBack=k=>1+EB3*Math.pow(k-1,3)+EB1*Math.pow(k-1,2);
     function breathEnv(p){ const s=0.5-0.5*Math.cos(p*6.2831853); return s*s*(3-2*s); }   // smooth, deep swell (no abrupt burst)
@@ -504,8 +504,10 @@
     addEventListener('oc-wind', e=>{ const s=e.detail.scale;
       P.swayAmp = clamp(28 + s*28, 28, 60); P.windSway = clamp(14 + s*24, 14, 42); });
 
+    let lastW=-1;
     function resize(){ DPR=Math.min(devicePixelRatio||1,1.35); W=innerWidth; H=innerHeight;
-      stage.width=W*DPR; stage.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); build(); }
+      stage.width=W*DPR; stage.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+      if(W!==lastW){ lastW=W; build(); } }   // only rebuild on a real width change — ignore mobile URL-bar height jitter
     addEventListener('resize', resize);
 
     function hash(x,y,z){ const n=Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453; return n-Math.floor(n); }
@@ -596,7 +598,8 @@
       const cx0=W/2, cy0=H/2, halfW=W/2, halfH=H/2, sig2=2*Math.pow(Math.min(W,H)*1.15,2);
       const bp=(t*P.breathFreq)%1;
       const bE=breathEnv(bp);                      // 0..1 swell — still drives OPEN, the phrases + capture
-      const fB=-Math.cos(bp*6.2831853);            // signed breath: -1 gathered (inhale) → +1 spread (exhale)
+      let fB=-Math.cos(bp*6.2831853);              // signed breath: -1 gathered (inhale) → +1 spread (exhale)
+      fB=Math.sign(fB)*Math.pow(Math.abs(fB),0.6); // dwell (hold) at each extreme so the gathered circle lingers, not a flicker
       const spreadAmp=0.6, Rg=Math.min(W,H)*0.40;  // Rg = radius of the gathered disc
       const warm=warmT<180?warmT/180:1;            // ease the breath in over ~3s so first load doesn't lurch/bounce
       for(const nd of nodes){
