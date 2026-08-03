@@ -51,16 +51,9 @@
     .oc-mark{ font-family:"Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(27px,4.7vw,56px);
       line-height:.9; margin:0; letter-spacing:.01em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
       text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6));
-      display:inline-flex; transform-origin:left center; animation:oc-breathe 11.1s ease-in-out infinite; }
-    @keyframes oc-breathe{ 0%,14%,86%,100%{ transform:scale(1); } 50%{ transform:scale(1.07); } }
-    /* OPEN deconstructs on the breath and reconstructs — each letter scatters, then returns (while the whole word breathes) */
-    .oc-mark span{ display:inline-block; will-change:transform; animation:oc-deco 11.1s ease-in-out infinite; }
-    .oc-mark span:nth-child(1){ --dx:-.55em; --dy:-1.1em; --r:-22deg; }
-    .oc-mark span:nth-child(2){ --dx:.45em;  --dy:.95em;  --r:16deg; }
-    .oc-mark span:nth-child(3){ --dx:-.35em; --dy:.8em;   --r:22deg; }
-    .oc-mark span:nth-child(4){ --dx:.7em;   --dy:-.6em;  --r:-14deg; }
-    @keyframes oc-deco{ 0%,14%,86%,100%{ transform:none; } 50%{ transform:translate(var(--dx),var(--dy)) rotate(var(--r)); } }
-    @media (prefers-reduced-motion:reduce){ .oc-mark span{ animation:none; } }
+      display:inline-flex; transform-origin:left center; }
+    /* OPEN breathes + deconstructs, driven in sync with the field's breath (see the sync loop in JS) */
+    .oc-mark span{ display:inline-block; will-change:transform; }
     .oc-mark .sl{ color:var(--color-accent2); }
     .oc-expand{ margin:22px 0 0; font-size:11px; letter-spacing:.22em; text-transform:uppercase; opacity:1; font-weight:600;
       color:var(--oc-platetext,#000); padding:.62em .9em; transition:color 1.2s ease; }
@@ -119,7 +112,7 @@
     .req-panel .req-title{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:600;
       font-size:15px; line-height:1.4; margin:0 0 4px; color:#141414; }
     .req-panel .req-sub{ font-size:14px; line-height:1.6; margin:0 0 24px; color:#141414; opacity:.65; }
-    .req-panel .req-about{ margin-top:30px; padding-top:26px; border-top:1px solid rgba(0,0,0,.12); }
+    .req-panel .req-about{ margin:12px 0 24px; }
     .req-form{ display:flex; flex-direction:column; gap:18px; }
     .req-field{ display:flex; flex-direction:column; gap:8px; font-size:10.5px; letter-spacing:.14em;
       text-transform:uppercase; color:#141414; opacity:.7; }
@@ -154,6 +147,10 @@
     <div class="oc-panel req-panel" role="dialog" aria-modal="true" aria-label="Request an invite">
       <button class="oc-close" id="req-close" aria-label="Close">×</button>
       <h2 class="req-title">Request an invite</h2>
+      <div class="req-about">
+        <p>OPEN is a practice-based gathering. We sit in silence for twenty minutes, then talk — each week around a theme like process, groundedness, craft, creativity, or technology. A timer holds the silence; a prompt closes it.</p>
+        <p>No experience needed.</p>
+      </div>
       <p class="req-sub">Fridays, 6–7am CST. Virtual, on Zoom.<br>Tell us a little and we'll send you the link.</p>
       <form id="req-form" class="req-form" novalidate>
         <label class="req-field"><span>Name</span><input type="text" name="name" autocomplete="name" required></label>
@@ -169,11 +166,6 @@
         <button type="submit" class="req-submit">Request invite →</button>
         <p class="req-msg" id="req-msg" role="status" aria-live="polite"></p>
       </form>
-      <div class="req-about">
-        <p>OPEN is a practice-based gathering. We sit in silence for twenty minutes, then talk — each week around a theme like process, groundedness, craft, creativity, or technology. A timer holds the silence; a prompt closes it.</p>
-        <p>It borrows from council practice — a circle where you listen and speak from the heart — and from Suzuki's <em>Zen Mind, Beginner's Mind</em>.</p>
-        <p>No experience needed. Free, every week, never recorded.</p>
-      </div>
     </div>
   </div>
 
@@ -217,6 +209,21 @@
       }catch(e){} }
     }
     setInset(); requestAnimationFrame(setInset); addEventListener('resize', setInset); setTimeout(setInset, 400);
+
+    // OPEN breathes + deconstructs in sync with the field's breath value
+    (function(){
+      const mark=document.querySelector('.oc-mark'); if(!mark) return;
+      const spans=[...mark.querySelectorAll('span')];
+      const dirs=[[-.55,-1.1,-22],[.45,.95,16],[-.35,.8,22],[.7,-.6,-14]];   // per-letter scatter (em) + rotation
+      if(window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+      (function tick(){
+        const bE = window.__breathE ? window.__breathE() : 0, ex=bE*bE;
+        mark.style.transform='scale('+(1+bE*0.06).toFixed(4)+')';
+        for(let i=0;i<spans.length;i++){ const d=dirs[i]||[0,0,0];
+          spans[i].style.transform='translate('+(d[0]*ex).toFixed(3)+'em,'+(d[1]*ex).toFixed(3)+'em) rotate('+(d[2]*ex).toFixed(2)+'deg)'; }
+        requestAnimationFrame(tick);
+      })();
+    })();
 
     const req = wire(document.getElementById('req-overlay'), document.getElementById('req-close'));
     { const el=document.getElementById('oc-request'); if(el) el.addEventListener('click', req.open); }
@@ -629,9 +636,10 @@
     // make sure the canvas renders in Sidepiece (web fonts must be loaded before canvas can use them)
     if(document.fonts && document.fonts.load){ document.fonts.load('20px "Sidepiece-HoneyPie"').catch(()=>{}); }
     resize(); if(reduce){ draw(); } else requestAnimationFrame(tick);
-    // breath phase (0..1) for syncing external audio in captures
+    // breath phase/value for syncing external audio in captures and the OPEN wordmark
     window.__breathPhase = ()=> (clock * P.breathFreq) % 1;
     window.__breathPeriodSec = ()=> 1 / (P.breathFreq * 60);
+    window.__breathE = ()=> breathEnv((clock * P.breathFreq) % 1);
   })();
   </script>
 </body>
