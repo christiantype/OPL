@@ -67,6 +67,13 @@
       <button class="btn chip" id="undoBtn">Undo</button>
       <button class="btn chip" id="clearBtn">Clear</button>
       <button class="btn chip" id="restartBtn" style="display:none">Redraw</button>
+      <select id="aspect" class="btn chip" title="Canvas size">
+        <option value="1240/1650">Portrait</option>
+        <option value="1/1">Square</option>
+        <option value="1650/1240">Landscape</option>
+        <option value="1080/1920">9:16</option>
+        <option value="1920/1080">16:9</option>
+      </select>
       <button class="btn chip" id="recBtn" aria-pressed="false">Record</button>
       <button class="btn chip" id="saveBtn">Save</button>
     </div>
@@ -81,7 +88,7 @@
 (() => {
   const cv=document.getElementById('art'); let ctx=cv.getContext('2d');
   const $=id=>document.getElementById(id);
-  const ASPECT=1240/1650;
+  let ASPECT=1240/1650;
   let W=0,H=0,dpr=1, mode='draw';
   let strokes=[], cur=null, walkers=[], raf=0, F=0;
   const P={ density:10, length:55, flow:45, spiral:30, weight:35, ink:35, speed:50, color:0 };
@@ -130,14 +137,14 @@
   function walkersFor(path, si){ const scale=Math.min(W,H); const rand=mulberry32((si*131+7)>>>0); const out=[];
     for(let e=0;e<P.density;e++){
       const nodeCount=6+Math.round((P.length/100)*38);
-      const nodeLen=(0.005+(P.length/100)*0.012)*scale*(0.7+rand()*0.6);
+      const lenJit=0.7+rand()*0.6, nodeLen=(0.005+(P.length/100)*0.012)*scale*lenJit;
       const h=strokePoint(path, rand()); const nodes=[];
       for(let i=0;i<nodeCount;i++) nodes.push({x:h.x*W, y:h.y*H+i*nodeLen});
-      out.push({ path, t:rand(), phase:rand()*1000,
-        speed:(0.0007+(P.speed/100)*0.0045)*(0.6+rand()*0.9),
+      out.push({ path, si, t:rand(), phase:rand()*1000,
+        speedMul:0.6+rand()*0.9, lenJit, spiralRand:rand(),   // dynamics read live so knobs never reset the run
         nodeCount, nodeLen, nodes, last:nodes.map(n=>({x:n.x,y:n.y})),
         brushW:0.4+rand()*1.2, ink:0.5+rand()*0.6, hue:rand(), spin:rand()<0.5?1:-1,
-        wander:0.4+rand()*1.0, spiraler:rand()<(P.spiral/100)*0.5 }); }
+        wander:0.4+rand()*1.0 }); }
     return out; }
   function buildWalkers(){ walkers=[]; strokes.forEach((s,si)=>{ walkersFor(prep(s.map(p=>({x:p.x,y:p.y}))), si).forEach(w=>walkers.push(w)); }); }
 
@@ -153,11 +160,11 @@
     for(const w of walkers){
       // head drifts in 2D via noise, centred on a slowly-advancing point of the drawn stroke —
       // the chain then swings behind it into curves (cheyuwu's wandering head, pinned to your line)
-      w.t+=w.speed; const base=strokePoint(w.path,w.t);
+      w.t+=(0.0007+(P.speed/100)*0.0045)*w.speedMul; const base=strokePoint(w.path,w.t);
       const rad=(0.02+flow*0.17)*scale*w.wander;
       const nx=noise(w.phase + F*0.012*(0.5+w.wander), 0.5), ny=noise(w.phase+70 + F*0.012*(0.5+w.wander), 9.1);
       let hx=base.x*W + nx*rad, hy=base.y*H + ny*rad;
-      if(w.spiraler && spiral>0.02){ const r=spiral*0.05*scale, a=F*0.05*w.spin+w.phase; hx+=Math.cos(a)*r; hy+=Math.sin(a)*r; }
+      if(w.spiralRand < spiral*0.5 && spiral>0.02){ const r=spiral*0.05*scale, a=F*0.05*w.spin+w.phase; hx+=Math.cos(a)*r; hy+=Math.sin(a)*r; }
       w.last=w.nodes.map(n=>({x:n.x,y:n.y}));
       w.nodes[0].x=hx; w.nodes[0].y=hy;
       for(let i=1;i<w.nodes.length;i++){ const p=w.nodes[i-1], n=w.nodes[i];
@@ -169,10 +176,18 @@
     }
   }
 
-  let deb=0;
+  // Keep each stroke stocked with P.density chains, adding/removing live (never clears the canvas)
+  function syncDensity(){ const by={}; walkers.forEach(w=>{ (by[w.si]=by[w.si]||[]).push(w); });
+    strokes.forEach((s,si)=>{ const have=by[si]||[];
+      if(have.length>P.density){ const rm=new Set(have.slice(P.density)); walkers=walkers.filter(w=>!rm.has(w)); }
+      else if(have.length<P.density){ walkersFor(prep(s.map(p=>({x:p.x,y:p.y}))), si).slice(have.length).forEach(w=>walkers.push(w)); } }); }
   Object.keys(P).forEach(k=>{ const inp=$(k), out=$(k+'R'); if(!inp) return;
     inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=inp.value;
-      if(mode==='modify'){ clearTimeout(deb); deb=setTimeout(startSim,140); } }); });
+      if(mode!=='modify') return;
+      // Flow, Spiral, Weight, Ink, Speed, Colour are all read live in step() — they never reset.
+      if(k==='density') syncDensity();
+      else if(k==='length'){ const scale=Math.min(W,H); walkers.forEach(w=>{ w.nodeLen=(0.005+(P.length/100)*0.012)*scale*w.lenJit; }); }
+    }); });
 
   // Draw in EITHER mode. In modify, new strokes spawn live chains into the running animation
   // (and the recording) without clearing what's there — keep drawing while it moves.
@@ -195,6 +210,8 @@
     $('editBtn').style.display=''; $('restartBtn').style.display='';
     $('hint').textContent='Now it moves — keep drawing to add more, live'; $('hint').style.opacity=1;
     setTimeout(()=>{ if(mode==='modify') $('hint').style.opacity=0; }, 3800); startSim(); }
+  $('aspect').addEventListener('change', e=>{ const [a,b]=e.target.value.split('/').map(Number); ASPECT=a/b; fit();
+    if(mode==='modify') startSim(); else renderDraw(); });
   $('doneBtn').addEventListener('click', toModify);
   $('editBtn').addEventListener('click', toDraw);
   $('restartBtn').addEventListener('click', ()=>{ if(mode==='modify') startSim(); });
