@@ -499,6 +499,7 @@
     const FAM='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
     const EB1=1.70158, EB3=EB1+1, easeOutBack=k=>1+EB3*Math.pow(k-1,3)+EB1*Math.pow(k-1,2);
     function breathEnv(p){ const s=0.5-0.5*Math.cos(p*6.2831853); return s*s*(3-2*s); }   // smooth, deep swell (no abrupt burst)
+    const ss=x=>{ x=x<0?0:x>1?1:x; return x*x*x*(x*(x*6-15)+10); };   // smootherstep 0..1 — zero 1st+2nd deriv at both ends
 
     // Chicago wind sets how far the curtain leans (kept gentle)
     addEventListener('oc-wind', e=>{ const s=e.detail.scale;
@@ -598,21 +599,20 @@
       const cx0=W/2, cy0=H/2, halfW=W/2, halfH=H/2, sig2=2*Math.pow(Math.min(W,H)*1.15,2);
       const bp=(t*P.breathFreq)%1;
       const bE=breathEnv(bp);                      // 0..1 swell — still drives OPEN, the phrases + capture
-      let fB=-Math.cos(bp*6.2831853);              // signed breath: -1 gathered (inhale) → +1 spread (exhale)
-      fB=Math.sign(fB)*Math.pow(Math.abs(fB),0.6); // dwell (hold) at each extreme so the gathered circle lingers, not a flicker
+      const fB=-Math.cos(bp*6.2831853);            // signed breath: -1 gathered (inhale) → +1 spread (exhale)
+      const gA=ss(-fB), sA=ss(fB);                 // smootherstep amounts: dwell at each extreme, zero-velocity through home → no whip
       const spreadAmp=0.6, Rg=Math.min(W,H)*0.40;  // Rg = radius of the gathered disc
-      const warm=warmT<180?warmT/180:1;            // ease the breath in over ~3s so first load doesn't lurch/bounce
+      const warm=ss(warmT/180);                    // smooth ease-in over ~3s so first load doesn't lurch/bounce
       for(const nd of nodes){
         const dxn=nd.hx-cx0, dyn=nd.hy-cy0;
         let bhx, bhy;
         if(fB<0){                                  // inhale — draw the rectangle into an organic disc at centre
-          const t2=-fB;                            // 0..1 gather amount
           const ux=dxn/halfW, uy=dyn/halfH;        // square→disc map so it gathers round, never a rectangle
           const gx=cx0 + ux*Math.sqrt(Math.max(0,1-uy*uy*0.5))*Rg;
           const gy=cy0 + uy*Math.sqrt(Math.max(0,1-ux*ux*0.5))*Rg;
-          bhx=nd.hx+(gx-nd.hx)*t2*warm; bhy=nd.hy+(gy-nd.hy)*t2*warm;
+          bhx=nd.hx+(gx-nd.hx)*gA*warm; bhy=nd.hy+(gy-nd.hy)*gA*warm;
         } else {                                   // exhale — push the field back out toward the edges
-          const gw=Math.exp(-(dxn*dxn+dyn*dyn)/sig2), s=1+gw*fB*spreadAmp*warm;
+          const gw=Math.exp(-(dxn*dxn+dyn*dyn)/sig2), s=1+gw*sA*spreadAmp*warm;
           bhx=cx0+dxn*s; bhy=cy0+dyn*s;
         }
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
