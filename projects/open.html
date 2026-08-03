@@ -51,9 +51,16 @@
     .oc-mark{ font-family:"Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(27px,4.7vw,56px);
       line-height:.9; margin:0; letter-spacing:.01em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
       text-shadow:var(--oc-glow, 0 2px 40px rgba(255,255,255,.6));
-      display:inline-block; transform-origin:left center; animation:oc-breathe 11.1s ease-in-out infinite; }
-    @keyframes oc-breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.055); } }
-    @media (prefers-reduced-motion:reduce){ .oc-mark{ animation:none; } }
+      display:inline-flex; transform-origin:left center; animation:oc-breathe 11.1s ease-in-out infinite; }
+    @keyframes oc-breathe{ 0%,14%,86%,100%{ transform:scale(1); } 50%{ transform:scale(1.07); } }
+    /* OPEN deconstructs on the breath and reconstructs — each letter scatters, then returns (while the whole word breathes) */
+    .oc-mark span{ display:inline-block; will-change:transform; animation:oc-deco 11.1s ease-in-out infinite; }
+    .oc-mark span:nth-child(1){ --dx:-.55em; --dy:-1.1em; --r:-22deg; }
+    .oc-mark span:nth-child(2){ --dx:.45em;  --dy:.95em;  --r:16deg; }
+    .oc-mark span:nth-child(3){ --dx:-.35em; --dy:.8em;   --r:22deg; }
+    .oc-mark span:nth-child(4){ --dx:.7em;   --dy:-.6em;  --r:-14deg; }
+    @keyframes oc-deco{ 0%,14%,86%,100%{ transform:none; } 50%{ transform:translate(var(--dx),var(--dy)) rotate(var(--r)); } }
+    @media (prefers-reduced-motion:reduce){ .oc-mark span{ animation:none; } }
     .oc-mark .sl{ color:var(--color-accent2); }
     .oc-expand{ margin:22px 0 0; font-size:11px; letter-spacing:.22em; text-transform:uppercase; opacity:1; font-weight:600;
       color:var(--oc-platetext,#000); padding:.62em .9em; transition:color 1.2s ease; }
@@ -137,7 +144,7 @@
 
   <div class="oc-ui">
     <div class="oc-tl">
-      <h1 class="oc-mark">OPEN</h1>
+      <h1 class="oc-mark" aria-label="OPEN"><span>O</span><span>P</span><span>E</span><span>N</span></h1>
     </div>
     <button class="oc-join" id="oc-request" type="button">Request Invite</button>
   </div>
@@ -194,6 +201,11 @@
       if(el){ const r=el.getBoundingClientRect(); if(r.width) document.body.style.setProperty('--oc-inset', Math.max(18,Math.round(r.left))+'px'); }
       const svg=document.querySelector('nav .nav-wordmark'), path=svg&&svg.querySelector('path'), tl=document.querySelector('.oc-tl'), mark=document.querySelector('.oc-mark');
       if(svg&&path&&tl&&mark){ try{
+        // match OPEN's cap height to the OP/AL wordmark height
+        const cxh=document.createElement('canvas').getContext('2d');
+        cxh.font='100px "Sidepiece-HoneyGhost","Sidepiece-HoneyPie",sans-serif';
+        const asc=cxh.measureText('OPEN').actualBoundingBoxAscent||70;
+        mark.style.fontSize=(svg.getBoundingClientRect().height*100/asc).toFixed(1)+'px';
         tl.style.marginLeft='0px';
         const sr=svg.getBoundingClientRect(), vb=svg.viewBox.baseVal, bb=path.getBBox();
         const logoInk=sr.left+(bb.x-vb.x)/vb.width*sr.width;                 // OP/AL leftmost ink, in px
@@ -519,7 +531,7 @@
     }
     // the real message, as discrete bold phrases scattered through the field (natural breaks, no run-on)
     // the four colour phrases, pinned to the four corners with identical margins (symmetric top/bottom)
-    const HERO=[['fridays · 6–7am cst · on zoom',0.0,0.86],['weekly meditation community',1.0,0.17]];
+    const HERO=[['friday 6–7am cst',0.0,0.86],['weekly meditation',1.0,0.17]];
     function buildHero(m){
       const sp=P.size*0.6;                          // same letter size as the field
       // match the header: left edge = OP/AL logo, right edge = info icon
@@ -527,8 +539,12 @@
       const logoEl=document.querySelector('nav .nav-logo-link'), menuEl=document.querySelector('nav .nav-menu-btn');
       if(logoEl){ const r=logoEl.getBoundingClientRect(); if(r.width) padL=Math.max(6, r.left); }
       if(menuEl){ const r=menuEl.getBoundingClientRect(); if(r.width) padR=Math.max(6, W-r.right); }
+      const joinEl=document.querySelector('.oc-join'); let btnY=null;   // the Request Invite CTA's vertical centre
+      if(joinEl){ const r=joinEl.getBoundingClientRect(); if(r.height) btnY=r.top+r.height/2; }
       HERO.forEach(([t,fx,fy])=>{ const chars=[...t], width=chars.length*sp;
-        const x0 = fx<0.5 ? padL : Math.max(padL, W-padR-width), y=Math.round(H*fy), strand=[];
+        const x0 = fx<0.5 ? padL : Math.max(padL, W-padR-width);
+        const y = (fy>0.5 && btnY!=null) ? Math.round(btnY) : Math.round(H*fy);   // bottom phrase shares the CTA baseline
+        const strand=[];
         const ax=x0+width/2, ay=y;                 // one anchor for the whole phrase → it moves rigidly
         const fs=Math.round(P.size);
         for(let j=0;j<chars.length;j++){ const x=x0+j*sp, ch=chars[j];
@@ -567,14 +583,10 @@
         const bhx=cx0+dxn*bs, bhy=cy0+dyn*bs;   // breathed home (circular)
         const cx=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cy=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
         const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
-        if(nd.hero){   // the phrase breathes gently in its corner, sampled rigidly at its anchor (stays legible)
-          const adx=nd.ax-cx0, ady=nd.ay-cy0, hb=breath*0.22*Math.exp(-(adx*adx+ady*ady)/sig2);
-          const acx=vnoise(nd.ax*CS,nd.ay*CS,T1)-0.5, acy=vnoise(nd.ax*CS+31.7,nd.ay*CS+11.3,T1)-0.5;
-          const asway=swayBase*Math.cos(nd.ay*0.0011)*0.8;
-          const ox=adx*hb + asway + acx*0.6*amp, oy=ady*hb + acy*0.45*amp;
-          const wob=Math.sin(nd.hx*0.02 + t*0.02)*(P.size*0.2);
-          nd.x += (nd.hx+ox - nd.x)*0.09;
-          nd.y += (nd.hy+oy+wob - nd.y)*0.09;
+        if(nd.hero){   // readable at rest, then deconstructs on the breath and reconstructs (like the field)
+          const ex=bE*bE*88;                     // bE² holds it tidy longer, then bursts apart
+          nd.x += (nd.hx + nd.exx*ex - nd.x)*0.085;
+          nd.y += (nd.hy + nd.exy*ex - nd.y)*0.085;
           continue;
         }
         // per-letter seed decorrelates the fine drift → letters scatter, words only half-resolve
