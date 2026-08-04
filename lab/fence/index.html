@@ -55,7 +55,7 @@
   <div id="hint">Draw your lines — or add a photo for Fence to trace</div>
 
   <div id="dock">
-    <div id="sliders" class="locked">
+    <div id="sliders">
       <div class="knob"><label>Chains <b id="densityR">39</b></label><input id="density" type="range" min="1" max="40" value="39" /></div>
       <div class="knob"><label>Length <b id="lengthR">89</b></label><input id="length" type="range" min="5" max="100" value="89" /></div>
       <div class="knob"><label>Flow <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
@@ -155,11 +155,11 @@
 
   function drawRaw(s){ if(s.length<2){ if(s.length){ ctx.beginPath(); ctx.arc(s[0].x*W,s[0].y*H,1.6,0,6.28); ctx.fillStyle='#141414'; ctx.fill(); } return; }
     ctx.beginPath(); ctx.moveTo(s[0].x*W,s[0].y*H); for(let i=1;i<s.length;i++) ctx.lineTo(s[i].x*W,s[i].y*H); ctx.stroke(); }
-  function renderDraw(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); drawRef(0.38); ctx.lineCap='round'; ctx.lineJoin='round';
+  function renderDraw(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); drawRef(0.36); ctx.lineCap='round'; ctx.lineJoin='round';
     ctx.strokeStyle='rgba(20,20,26,.85)'; ctx.lineWidth=1.6; for(const s of strokes) drawRaw(s); if(cur) drawRaw(cur); }
 
   function drawRef(a){ if(!traceRef) return; ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef,0,0,W,H); ctx.restore(); }
-  function startSim(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); drawRef(0.20); buildWalkers(); cancelAnimationFrame(raf); step(); }
+  function startSim(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); drawRef(0.32); buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
     const flow=P.flow/100, spiral=P.spiral/100, colAmt=P.color/100, scale=Math.min(W,H);
@@ -209,7 +209,7 @@
       if(mode==='modify') walkersFor(prep(cur.map(p=>({x:p.x,y:p.y}))), strokes.length-1).forEach(w=>walkers.push(w)); }
     const wasDraw=mode==='draw'; cur=null; if(wasDraw) renderDraw(); });
 
-  function toDraw(){ mode='draw'; cancelAnimationFrame(raf); $('sliders').classList.add('locked');
+  function toDraw(){ mode='draw'; cancelAnimationFrame(raf);
     $('doneBtn').style.display=''; $('editBtn').style.display='none'; $('restartBtn').style.display='none';
     $('hint').textContent='Draw your lines — as many as you like'; $('hint').style.opacity=1; renderDraw(); }
   function toModify(){ if(!strokes.length){ $('hint').textContent='Draw a line first'; $('hint').style.opacity=1; return; }
