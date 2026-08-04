@@ -260,9 +260,7 @@
   cv.addEventListener('pointerdown', e=>{ e.preventDefault(); cv.setPointerCapture&&cv.setPointerCapture(e.pointerId); cur=[pos(e)]; });
   cv.addEventListener('pointermove', e=>{ if(!cur) return; e.preventDefault(); const p=pos(e);
     const last=cur[cur.length-1]; if(Math.hypot(p.x-last.x,p.y-last.y)>0.0015){ cur.push(p);
-      if(mode==='draw') renderDraw();
-      else { ctx.strokeStyle='rgba(120,122,132,.55)'; ctx.lineWidth=1; ctx.lineCap='round'; ctx.beginPath();
-        ctx.moveTo(last.x*W,last.y*H); ctx.lineTo(p.x*W,p.y*H); ctx.stroke(); } } });
+      if(mode==='draw') renderDraw(); } });   // in bloom, draw blind — the bloom traces your line, no guide path left behind
   cv.addEventListener('pointerup', ()=>{ if(!cur) return;
     if(cur.length>1){ strokes.push(cur); strokeCol.push(inkColor);   // each line remembers the colour it was drawn in
       if(mode==='modify') walkersFor(prep(cur.map(p=>({x:p.x,y:p.y}))), strokes.length-1).forEach(w=>walkers.push(w)); }
