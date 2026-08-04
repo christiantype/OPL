@@ -107,7 +107,7 @@
   const $=id=>document.getElementById(id);
   let ASPECT=1080/1350;
   let W=0,H=0,dpr=1, mode='draw';
-  let strokes=[], cur=null, walkers=[], raf=0, F=0, lastTs=0, aT=0, traceRef=null;
+  let strokes=[], cur=null, walkers=[], raf=0, F=0, lastTs=0, aT=0, gT=0, traceRef=null;
   const P={ density:39, length:89, flow:100, spiral:100, weight:20, ink:86, time:20, color:0 };
 
   function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
@@ -177,10 +177,13 @@
     ctx.strokeStyle='rgba(20,20,26,.85)'; ctx.lineWidth=1.6; for(const s of strokes) drawRaw(s); if(cur) drawRaw(cur); }
 
   function drawRef(a){ if(!traceRef) return; ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef,0,0,W,H); ctx.restore(); }
-  function startSim(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
+  function startSim(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); aT=0; gT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
     aT += dt/Math.max(0.5,P.time);   // shared motion clock — advances ~1 per pass, so Time slows the whole thing
+    gT += dt;                         // real-time grow-in clock (~2.5s to full, independent of Time)
+    // grow-in: the piece starts concentrated at the centre and expands out to full size
+    let gu=gT/2.5; gu=gu<0?0:gu>1?1:gu; const grow=0.06+0.94*(gu*gu*(3-2*gu)); const gcx=W/2, gcy=H/2;
     const flow=P.flow/100, spiral=P.spiral/100, colAmt=P.color/100, scale=Math.min(W,H);
     const ink=0.015+(P.ink/100)*0.13, wBase=0.3+(P.weight/100)*3.0;
     for(const w of walkers){
@@ -192,10 +195,11 @@
       const nx=noise(w.phase + aT*4*(0.5+w.wander), 0.5), ny=noise(w.phase+70 + aT*4*(0.5+w.wander), 9.1);
       let hx=base.x*W + nx*rad, hy=base.y*H + ny*rad;
       if(w.spiralRand < spiral*0.5 && spiral>0.02){ const r=spiral*0.05*scale, a=aT*7*w.spin+w.phase; hx+=Math.cos(a)*r; hy+=Math.sin(a)*r; }
+      hx=gcx+(hx-gcx)*grow; hy=gcy+(hy-gcy)*grow;   // expand from the centre as it grows in
       w.last=w.nodes.map(n=>({x:n.x,y:n.y}));
       w.nodes[0].x=hx; w.nodes[0].y=hy;
       for(let i=1;i<w.nodes.length;i++){ const p=w.nodes[i-1], n=w.nodes[i];
-        let dx=n.x-p.x, dy=n.y-p.y; const d=Math.hypot(dx,dy)||1; n.x=p.x+dx/d*w.nodeLen; n.y=p.y+dy/d*w.nodeLen; }
+        let dx=n.x-p.x, dy=n.y-p.y; const d=Math.hypot(dx,dy)||1; n.x=p.x+dx/d*w.nodeLen*grow; n.y=p.y+dy/d*w.nodeLen*grow; }
       // blend smoothly from black ink toward the chain's colour as Colour rises (not an on/off jump)
       const cn=parseInt(hueFor(w.hue+colAmt*0.5).slice(1),16);
       const cr=Math.round((cn>>16&255)*colAmt + 12*(1-colAmt)), cg=Math.round((cn>>8&255)*colAmt + 12*(1-colAmt)), cb=Math.round((cn&255)*colAmt + 16*(1-colAmt));
