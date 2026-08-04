@@ -46,6 +46,13 @@
   input[type=range]::-moz-range-track{ height:2px; background:var(--line); border-radius:2px; }
   input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; margin-top:-6px; border-radius:50%; background:var(--ink); }
   input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
+  /* hover tooltips on the controls — matches the other tools */
+  .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
+    background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
+    -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.6);
+    font-size:11px; line-height:1.5; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
 </style>
 <link rel="stylesheet" href="/lab/shared/tool.css" />
 </head>
@@ -56,14 +63,14 @@
 
   <div id="dock">
     <div id="sliders">
-      <div class="knob"><label>Chains <b id="densityR">39</b></label><input id="density" type="range" min="1" max="40" value="39" /></div>
-      <div class="knob"><label>Length <b id="lengthR">89</b></label><input id="length" type="range" min="5" max="100" value="89" /></div>
-      <div class="knob"><label>Flow <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
-      <div class="knob"><label>Spiral <b id="spiralR">100</b></label><input id="spiral" type="range" min="0" max="100" value="100" /></div>
-      <div class="knob"><label>Weight <b id="weightR">20</b></label><input id="weight" type="range" min="5" max="100" value="20" /></div>
-      <div class="knob"><label>Ink <b id="inkR">86</b></label><input id="ink" type="range" min="5" max="100" value="86" /></div>
-      <div class="knob"><label>Time <b id="timeR">20s</b></label><input id="time" type="range" min="2" max="180" value="20" /></div>
-      <div class="knob"><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
+      <div class="knob" data-tip="How many inky chains trail along each line you drew. More chains build up denser, richer line work."><label>Chains <b id="densityR">39</b></label><input id="density" type="range" min="1" max="40" value="39" /></div>
+      <div class="knob" data-tip="The length of each chain's tail — short flicks on the left, long sweeping ribbons on the right."><label>Trail length <b id="lengthR">89</b></label><input id="length" type="range" min="5" max="100" value="89" /></div>
+      <div class="knob" data-tip="How far the chains stray from your line. Low hugs your stroke; high sends them looping and wandering off it."><label>Wander <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
+      <div class="knob" data-tip="Adds a circular swirl to each chain's motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">100</b></label><input id="spiral" type="range" min="0" max="100" value="100" /></div>
+      <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">20</b></label><input id="weight" type="range" min="5" max="100" value="20" /></div>
+      <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and faster."><label>Ink <b id="inkR">86</b></label><input id="ink" type="range" min="5" max="100" value="86" /></div>
+      <div class="knob" data-tip="How long one full pass along your line takes, in seconds. Higher is slower and more meditative."><label>Time <b id="timeR">20s</b></label><input id="time" type="range" min="2" max="180" value="20" /></div>
+      <div class="knob" data-tip="Blends the ink from plain black toward shifting colour."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
     </div>
     <div class="row">
       <button class="btn primary" id="doneBtn">Done — bend it</button>
@@ -251,6 +258,19 @@
 
   fit(); renderDraw(); window.__fenceReady=true;
   addEventListener('resize', ()=>{ const wasMod=mode==='modify'; fit(); if(wasMod) startSim(); else renderDraw(); });
+
+  /* hover tooltips on any [data-tip] control — same behaviour as the other tools */
+  let tipEl=null, tipT=null, tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return;
+    if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0';
+    const r=host.getBoundingClientRect(), t=tipEl.getBoundingClientRect();
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8, r.bottom+8);
+    tipEl.style.left=Math.max(8,Math.min(r.left, innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+  addEventListener('pointerover', e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return;
+    clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown', hideTip); addEventListener('scroll', hideTip, true);
 })();
 </script>
 </body>
