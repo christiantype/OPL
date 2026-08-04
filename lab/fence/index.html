@@ -72,6 +72,11 @@
       <div class="knob" data-tip="How long one full pass along your line takes, in seconds. Higher is slower and more meditative."><label>Time <b id="timeR">20s</b></label><input id="time" type="range" min="2" max="180" value="20" /></div>
       <div class="knob" data-tip="Blends the ink from plain black toward shifting colour."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
     </div>
+    <div class="row" style="flex-direction:column; align-items:stretch;" data-tip="Type words and the chains draw them out as letterforms — the text pours itself down the canvas.">
+      <input id="textIn" type="text" placeholder="Type words to pour…" autocomplete="off"
+        style="width:100%; background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--ink); font:inherit; font-size:12px; letter-spacing:.02em; padding:9px 10px; border-radius:2px; box-sizing:border-box;" />
+      <button class="btn" id="textBtn">Pour text</button>
+    </div>
     <div class="row">
       <button class="btn primary" id="doneBtn">Done — bend it</button>
       <button class="btn chip" id="editBtn" style="display:none">Edit lines</button>
@@ -240,6 +245,55 @@
       if(mode!=='draw') toDraw(); else renderDraw();
       $('hint').textContent='Trace over the photo, then hit “Done — bend it”'; $('hint').style.opacity=1; };
     im.src=url; e.target.value=''; });
+
+  /* ---- typography: render typed words, trace their letterforms into vector paths, and let the
+         chains draw the text itself, pouring down the canvas ---- */
+  function traceContours(img, w, h){
+    const d=img.data, lum=new Float32Array(w*h);
+    for(let i=0;i<w*h;i++) lum[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
+    const at=(xx,yy)=>lum[Math.min(h-1,Math.max(0,yy))*w+Math.min(w-1,Math.max(0,xx))];
+    const gx=new Float32Array(w*h), gy=new Float32Array(w*h), mag=new Float32Array(w*h); let mx=1e-3;
+    for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){
+      const a=(at(xx+1,yy-1)+2*at(xx+1,yy)+at(xx+1,yy+1))-(at(xx-1,yy-1)+2*at(xx-1,yy)+at(xx-1,yy+1));
+      const b=(at(xx-1,yy+1)+2*at(xx,yy+1)+at(xx+1,yy+1))-(at(xx-1,yy-1)+2*at(xx,yy-1)+at(xx+1,yy-1));
+      const i=yy*w+xx; gx[i]=a; gy[i]=b; mag[i]=Math.hypot(a,b); if(mag[i]>mx) mx=mag[i]; }
+    const T=mx*0.24, visited=new Uint8Array(w*h), out=[];
+    function walk(sx,sy,dir){ const pts=[{x:sx,y:sy}]; let px=sx,py=sy;
+      let i0=(py|0)*w+(px|0), tx=-gy[i0]*dir, ty=gx[i0]*dir; { const m=Math.hypot(tx,ty)||1; tx/=m; ty/=m; }
+      for(let s=0;s<500;s++){ px+=tx*1.15; py+=ty*1.15; const ix=px|0, iy=py|0;
+        if(ix<1||iy<1||ix>=w-1||iy>=h-1) break; const i=iy*w+ix; if(mag[i]<T) break;
+        visited[i]=1; visited[i+1]=1; visited[i-1]=1; visited[i+w]=1; visited[i-w]=1;
+        pts.push({x:px,y:py}); let nx=-gy[i], ny=gx[i]; const m=Math.hypot(nx,ny)||1; nx/=m; ny/=m;
+        if(nx*tx+ny*ty<0){ nx=-nx; ny=-ny; } tx=nx; ty=ny; } return pts; }
+    const seeds=[]; for(let i=0;i<w*h;i++) if(mag[i]>T) seeds.push(i);
+    seeds.sort((a,b)=>mag[b]-mag[a]);
+    for(const seed of seeds){ if(out.length>=500) break; if(visited[seed]) continue;
+      const sx=seed%w, sy=(seed/w)|0; const fwd=walk(sx,sy,1), bwd=walk(sx,sy,-1); bwd.reverse();
+      const path=bwd.concat(fwd.slice(1));
+      if(path.length>=5) out.push(path.map(p=>({x:p.x/w, y:p.y/h}))); }
+    return out;
+  }
+  function textToStrokes(str){
+    str=(str||'').trim(); if(!str) return [];
+    const W0=640, H0=Math.max(160,Math.round(W0/ASPECT));
+    const c=document.createElement('canvas'); c.width=W0; c.height=H0; const x=c.getContext('2d');
+    x.fillStyle='#fff'; x.fillRect(0,0,W0,H0); x.fillStyle='#000'; x.textBaseline='alphabetic';
+    const words=str.split(/\s+/);
+    // pick a font size that lets the words stack and pour down the canvas
+    let fs=Math.round(H0*0.2/Math.max(1,Math.sqrt(words.length))); fs=Math.max(28,Math.min(fs, Math.round(H0*0.26)));
+    const font=w=>('800 '+w+'px Georgia, "Times New Roman", serif');
+    x.font=font(fs);
+    const maxW=W0*0.9, lines=[]; let line='';
+    for(const w of words){ const test=line?line+' '+w:w; if(x.measureText(test).width>maxW && line){ lines.push(line); line=w; } else line=test; }
+    if(line) lines.push(line);
+    const lineH=fs*1.12, totalH=lines.length*lineH; let y=(H0-totalH)/2 + fs;
+    for(const ln of lines){ const w=x.measureText(ln).width; x.fillText(ln, (W0-Math.min(w,maxW))/2, y); y+=lineH; }
+    return traceContours(x.getImageData(0,0,W0,H0), W0, H0);
+  }
+  function pourText(){ const s=textToStrokes($('textIn').value); if(!s.length){ $('hint').textContent='Type some words first'; $('hint').style.opacity=1; return; }
+    strokes=s; cur=null; traceRef=null; toModify(); }
+  $('textBtn').addEventListener('click', pourText);
+  $('textIn').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); pourText(); } });
 
   $('doneBtn').addEventListener('click', toModify);
   $('editBtn').addEventListener('click', toDraw);
