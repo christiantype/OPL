@@ -177,14 +177,13 @@
 
   const STAGGER=0.5;   // how much of a pass the pour-in spreads across (top stroke first, last stroke +STAGGER)
   function walkersFor(path, si, startAt){ const scale=Math.min(W,H); const rand=mulberry32((si*131+7)>>>0); const out=[];
-    // the chain trails back along the direction your line was drawn, not straight down
-    const h=strokePoint(path,0), hn=strokePoint(path, Math.min(0.999, 2/Math.max(2,path.length)));
-    let dx=(hn.x-h.x)*W, dy=(hn.y-h.y)*H; const dm=Math.hypot(dx,dy)||1; const ux=dx/dm, uy=dy/dm;
+    // the chain starts collapsed at the line's first point and grows out along your path as the head advances
+    const h=strokePoint(path,0);
     for(let e=0;e<P.density;e++){
       const nodeCount=6+Math.round((P.length/100)*38);
       const lenJit=0.7+rand()*0.6, nodeLen=(0.005+(P.length/100)*0.012)*scale*lenJit;
       const nodes=[];
-      for(let i=0;i<nodeCount;i++) nodes.push({x:h.x*W - ux*i*nodeLen, y:h.y*H - uy*i*nodeLen});
+      for(let i=0;i<nodeCount;i++) nodes.push({x:h.x*W, y:h.y*H});
       out.push({ path, si, t:0, startAt:startAt||0, born:RT, col:(strokeCol[si]!==undefined?strokeCol[si]:inkColor), phase:rand()*1000,
         speedMul:0.6+rand()*0.9, lenJit, spiralRand:rand(),   // dynamics read live so knobs never reset the run
         nodeCount, nodeLen, nodes, last:nodes.map(n=>({x:n.x,y:n.y})),
