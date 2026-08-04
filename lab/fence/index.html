@@ -151,19 +151,25 @@
   function hueFor(t){ return HUES[Math.floor(((t%1)+1)%1*HUES.length)%HUES.length]; }
   function rgba(hex,a){ const n=parseInt(hex.slice(1),16); return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+Math.min(1,a).toFixed(3)+')'; }
 
-  function walkersFor(path, si){ const scale=Math.min(W,H); const rand=mulberry32((si*131+7)>>>0); const out=[];
+  const STAGGER=0.5;   // how much of a pass the pour-in spreads across (top stroke first, last stroke +STAGGER)
+  function walkersFor(path, si, startAt){ const scale=Math.min(W,H); const rand=mulberry32((si*131+7)>>>0); const out=[];
     for(let e=0;e<P.density;e++){
       const nodeCount=6+Math.round((P.length/100)*38);
       const lenJit=0.7+rand()*0.6, nodeLen=(0.005+(P.length/100)*0.012)*scale*lenJit;
       const h=strokePoint(path, 0); const nodes=[];
       for(let i=0;i<nodeCount;i++) nodes.push({x:h.x*W, y:h.y*H+i*nodeLen});
-      out.push({ path, si, t:0, phase:rand()*1000,
+      out.push({ path, si, t:0, startAt:startAt||0, phase:rand()*1000,
         speedMul:0.6+rand()*0.9, lenJit, spiralRand:rand(),   // dynamics read live so knobs never reset the run
         nodeCount, nodeLen, nodes, last:nodes.map(n=>({x:n.x,y:n.y})),
         brushW:0.4+rand()*1.2, ink:0.5+rand()*0.6, hue:rand(), spin:rand()<0.5?1:-1,
         wander:0.4+rand()*1.0 }); }
     return out; }
-  function buildWalkers(){ walkers=[]; strokes.forEach((s,si)=>{ walkersFor(prep(s.map(p=>({x:p.x,y:p.y}))), si).forEach(w=>walkers.push(w)); }); }
+  function buildWalkers(){ walkers=[];
+    const prepped=strokes.map(s=>prep(s.map(p=>({x:p.x,y:p.y}))));
+    // reading order per stroke — top-to-bottom, then left-to-right — so the drawing pours in, in sequence
+    const ord=prepped.map(path=>{ let sx=0,sy=0; for(const p of path){ sx+=p.x; sy+=p.y; } const n=path.length||1; return (sy/n)*0.82+(sx/n)*0.18; });
+    const mn=Math.min(...ord), mx=Math.max(...ord), rng=(mx-mn)||1;
+    prepped.forEach((path,si)=>{ walkersFor(path, si, ((ord[si]-mn)/rng)*STAGGER).forEach(w=>walkers.push(w)); }); }
 
   function drawRaw(s){ if(s.length<2){ if(s.length){ ctx.beginPath(); ctx.arc(s[0].x*W,s[0].y*H,1.6,0,6.28); ctx.fillStyle='#141414'; ctx.fill(); } return; }
     ctx.beginPath(); ctx.moveTo(s[0].x*W,s[0].y*H); for(let i=1;i<s.length;i++) ctx.lineTo(s[i].x*W,s[i].y*H); ctx.stroke(); }
@@ -171,13 +177,14 @@
     ctx.strokeStyle='rgba(20,20,26,.85)'; ctx.lineWidth=1.6; for(const s of strokes) drawRaw(s); if(cur) drawRaw(cur); }
 
   function drawRef(a){ if(!traceRef) return; ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef,0,0,W,H); ctx.restore(); }
-  function startSim(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); buildWalkers(); cancelAnimationFrame(raf); step(); }
+  function startSim(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
     aT += dt/Math.max(0.5,P.time);   // shared motion clock — advances ~1 per pass, so Time slows the whole thing
     const flow=P.flow/100, spiral=P.spiral/100, colAmt=P.color/100, scale=Math.min(W,H);
     const ink=0.015+(P.ink/100)*0.13, wBase=0.3+(P.weight/100)*3.0;
     for(const w of walkers){
+      if(aT < w.startAt) continue;   // pour-in stagger: this stroke hasn't begun yet
       // head drifts in 2D via noise, centred on a slowly-advancing point of the drawn stroke —
       // the chain then swings behind it into curves (cheyuwu's wandering head, pinned to your line)
       w.t+=(dt/Math.max(0.5,P.time))*w.speedMul; const base=strokePoint(w.path,w.t);   // one pass ≈ P.time seconds
