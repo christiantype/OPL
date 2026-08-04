@@ -91,6 +91,7 @@
         <option value="1/1">Square 1:1</option>
         <option value="1920/1080">Landscape 16:9</option>
       </select>
+      <button class="btn chip" id="chromeBtn" aria-pressed="false" data-tip="Render the lines as polished chrome on a dark ground — metallic reflections instead of flat ink.">Chrome</button>
       <button class="btn chip" id="recBtn" aria-pressed="false">Record</button>
       <button class="btn chip" id="saveBtn">Save</button>
     </div>
@@ -150,6 +151,12 @@
   const HUES=['#e0483c','#e6902a','#e8c020','#4f9d69','#2f7fd0','#6a4fb0','#c0468f'];
   function hueFor(t){ return HUES[Math.floor(((t%1)+1)%1*HUES.length)%HUES.length]; }
   function rgba(hex,a){ const n=parseInt(hex.slice(1),16); return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+Math.min(1,a).toFixed(3)+')'; }
+  // chrome: a vertical reflection ramp — cool sky highlight up top, a dark horizon band, warm sheen below
+  let chrome=false;
+  const CHR=[[0,205,222,245],[0.30,120,150,190],[0.47,36,50,76],[0.53,52,44,52],[0.72,192,150,108],[0.90,246,226,182],[1,255,246,228]];
+  function chromeCol(ny,a){ ny=ny<0?0:ny>1?1:ny; let i=0; while(i<CHR.length-1 && ny>CHR[i+1][0]) i++;
+    const s0=CHR[i], s1=CHR[Math.min(CHR.length-1,i+1)], f=(ny-s0[0])/((s1[0]-s0[0])||1);
+    return 'rgba('+Math.round(s0[1]+(s1[1]-s0[1])*f)+','+Math.round(s0[2]+(s1[2]-s0[2])*f)+','+Math.round(s0[3]+(s1[3]-s0[3])*f)+','+Math.min(1,a).toFixed(3)+')'; }
 
   const STAGGER=0.5;   // how much of a pass the pour-in spreads across (top stroke first, last stroke +STAGGER)
   function walkersFor(path, si, startAt){ const scale=Math.min(W,H); const rand=mulberry32((si*131+7)>>>0); const out=[];
@@ -177,7 +184,7 @@
     ctx.strokeStyle='rgba(20,20,26,.85)'; ctx.lineWidth=1.6; for(const s of strokes) drawRaw(s); if(cur) drawRaw(cur); }
 
   function drawRef(a){ if(!traceRef) return; ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef,0,0,W,H); ctx.restore(); }
-  function startSim(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); aT=0; gT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
+  function startSim(){ ctx.fillStyle=chrome?'#0b0c12':'#fff'; ctx.fillRect(0,0,W,H); aT=0; gT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
     aT += dt/Math.max(0.5,P.time);   // shared motion clock — advances ~1 per pass, so Time slows the whole thing
@@ -200,13 +207,18 @@
       w.nodes[0].x=hx; w.nodes[0].y=hy;
       for(let i=1;i<w.nodes.length;i++){ const p=w.nodes[i-1], n=w.nodes[i];
         let dx=n.x-p.x, dy=n.y-p.y; const d=Math.hypot(dx,dy)||1; n.x=p.x+dx/d*w.nodeLen*grow; n.y=p.y+dy/d*w.nodeLen*grow; }
-      // blend smoothly from black ink toward the chain's colour as Colour rises (not an on/off jump)
-      const cn=parseInt(hueFor(w.hue+colAmt*0.5).slice(1),16);
-      const cr=Math.round((cn>>16&255)*colAmt + 12*(1-colAmt)), cg=Math.round((cn>>8&255)*colAmt + 12*(1-colAmt)), cb=Math.round((cn&255)*colAmt + 16*(1-colAmt));
-      ctx.fillStyle = 'rgba('+cr+','+cg+','+cb+','+(ink*w.ink*(1+0.3*colAmt)).toFixed(3)+')';
+      if(chrome){ ctx.globalCompositeOperation='lighter'; }
+      else {
+        // blend smoothly from black ink toward the chain's colour as Colour rises (not an on/off jump)
+        const cn=parseInt(hueFor(w.hue+colAmt*0.5).slice(1),16);
+        const cr=Math.round((cn>>16&255)*colAmt + 12*(1-colAmt)), cg=Math.round((cn>>8&255)*colAmt + 12*(1-colAmt)), cb=Math.round((cn&255)*colAmt + 16*(1-colAmt));
+        ctx.fillStyle = 'rgba('+cr+','+cg+','+cb+','+(ink*w.ink*(1+0.3*colAmt)).toFixed(3)+')';
+      }
       for(let i=0;i<w.nodes.length;i++){ const a=w.last[i], b=w.nodes[i];
         for(let o=0;o<5;o++){ const px=a.x+(b.x-a.x)*o/5, py=a.y+(b.y-a.y)*o/5;
+          if(chrome) ctx.fillStyle=chromeCol(py/H, ink*w.ink*1.6*(0.5+Math.random()*0.8));   // metallic sheen, jittered
           ctx.beginPath(); ctx.arc(px+(Math.random()-0.5)*wBase, py+(Math.random()-0.5)*wBase, Math.random()*wBase*w.brushW, 0, 6.2832); ctx.fill(); } }
+      if(chrome) ctx.globalCompositeOperation='source-over';
     }
   }
 
@@ -323,6 +335,8 @@
       a.href=URL.createObjectURL(blob); a.download='fence.'+ext; a.click(); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); };
     rec.start(); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
 
+  $('chromeBtn').addEventListener('click', ()=>{ chrome=!chrome; $('chromeBtn').setAttribute('aria-pressed', chrome?'true':'false');
+    if(mode==='modify') startSim(); });
   $('saveBtn').addEventListener('click', ()=>{ const a=document.createElement('a'); a.download='fence.png'; a.href=cv.toDataURL('image/png'); a.click(); });
 
   fit(); renderDraw(); window.__fenceReady=true;
