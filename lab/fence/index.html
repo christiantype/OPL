@@ -102,7 +102,7 @@
   const $=id=>document.getElementById(id);
   let ASPECT=1080/1350;
   let W=0,H=0,dpr=1, mode='draw';
-  let strokes=[], cur=null, walkers=[], raf=0, F=0, lastTs=0, traceRef=null;
+  let strokes=[], cur=null, walkers=[], raf=0, F=0, lastTs=0, aT=0, traceRef=null;
   const P={ density:39, length:89, flow:100, spiral:100, weight:20, ink:86, time:20, color:0 };
 
   function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
@@ -169,6 +169,7 @@
   function startSim(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
+    aT += dt/Math.max(0.5,P.time);   // shared motion clock — advances ~1 per pass, so Time slows the whole thing
     const flow=P.flow/100, spiral=P.spiral/100, colAmt=P.color/100, scale=Math.min(W,H);
     const ink=0.015+(P.ink/100)*0.13, wBase=0.3+(P.weight/100)*3.0;
     for(const w of walkers){
@@ -176,9 +177,9 @@
       // the chain then swings behind it into curves (cheyuwu's wandering head, pinned to your line)
       w.t+=(dt/Math.max(0.5,P.time))*w.speedMul; const base=strokePoint(w.path,w.t);   // one pass ≈ P.time seconds
       const rad=(0.004+flow*0.16)*scale*w.wander;
-      const nx=noise(w.phase + F*0.012*(0.5+w.wander), 0.5), ny=noise(w.phase+70 + F*0.012*(0.5+w.wander), 9.1);
+      const nx=noise(w.phase + aT*4*(0.5+w.wander), 0.5), ny=noise(w.phase+70 + aT*4*(0.5+w.wander), 9.1);
       let hx=base.x*W + nx*rad, hy=base.y*H + ny*rad;
-      if(w.spiralRand < spiral*0.5 && spiral>0.02){ const r=spiral*0.05*scale, a=F*0.05*w.spin+w.phase; hx+=Math.cos(a)*r; hy+=Math.sin(a)*r; }
+      if(w.spiralRand < spiral*0.5 && spiral>0.02){ const r=spiral*0.05*scale, a=aT*7*w.spin+w.phase; hx+=Math.cos(a)*r; hy+=Math.sin(a)*r; }
       w.last=w.nodes.map(n=>({x:n.x,y:n.y}));
       w.nodes[0].x=hx; w.nodes[0].y=hy;
       for(let i=1;i<w.nodes.length;i++){ const p=w.nodes[i-1], n=w.nodes[i];
