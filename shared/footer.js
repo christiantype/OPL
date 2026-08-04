@@ -32,8 +32,8 @@ const FOOTER_SVG = 'opl-footer.svg';
     <div class="container">
       <div class="grid" style="align-items:start;">
         <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-ink)'};">${FOOTER_COL1}</div>
-        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-ink)'};">${FOOTER_COL2}</div>
         <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-ink)'};">${FOOTER_COL3}</div>
+        <div class="col-4" style="font-size:var(--body);line-height:var(--leading-loose);color:${inProject ? 'var(--color-light)' : 'var(--color-ink)'};">${FOOTER_COL2}</div>
       </div>
     </div>
   `;
