@@ -4,7 +4,7 @@
 <script src="/lab/shared/gate.js"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Fence — OP/AL</title>
+<title>BLOOM — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css" />
 <style>
   :root{ --ink:#f2f3f7; --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.14); --rail:300px; --top:82px; }
@@ -66,16 +66,15 @@
 <body class="dark">
   <div id="wrap"><canvas id="art"></canvas></div>
   <input id="photoFile" type="file" accept="image/*" hidden />
-  <div id="hint">Draw your lines — or add a photo for Fence to trace</div>
+  <div id="hint">Draw a line — then hit Bloom</div>
 
   <div id="dock">
     <div id="sliders">
-      <div class="knob" data-tip="How many inky chains trail along each line you drew. More chains build up denser, richer line work."><label>Chains <b id="densityR">39</b></label><input id="density" type="range" min="1" max="40" value="39" /></div>
-      <div class="knob" data-tip="The length of each chain's tail — short flicks on the left, long sweeping ribbons on the right."><label>Trail length <b id="lengthR">89</b></label><input id="length" type="range" min="5" max="100" value="89" /></div>
-      <div class="knob" data-tip="How far the chains stray from your line. Low hugs your stroke; high sends them looping and wandering off it."><label>Wander <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
-      <div class="knob" data-tip="Adds a circular swirl to each chain's motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">100</b></label><input id="spiral" type="range" min="0" max="100" value="100" /></div>
+      <div class="knob" data-tip="How many stems of ink trail along each line you drew. More stems build up denser, richer growth."><label>Stems <b id="densityR">39</b></label><input id="density" type="range" min="1" max="40" value="39" /></div>
+      <div class="knob" data-tip="How much the stems bloom outward from your line. Low hugs your stroke; high sends them looping and expanding off it."><label>Expand <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
+      <div class="knob" data-tip="Adds a circular swirl to the stems' motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">100</b></label><input id="spiral" type="range" min="0" max="100" value="100" /></div>
       <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">20</b></label><input id="weight" type="range" min="5" max="100" value="20" /></div>
-      <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and faster."><label>Ink <b id="inkR">86</b></label><input id="ink" type="range" min="5" max="100" value="86" /></div>
+      <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and denser."><label>Ink density <b id="inkR">86</b></label><input id="ink" type="range" min="5" max="100" value="86" /></div>
       <div class="knob" data-tip="How long one full pass along your line takes, in seconds. Higher is slower and more meditative."><label>Time <b id="timeR">20s</b></label><input id="time" type="range" min="2" max="180" value="20" /></div>
       <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
       <div class="swrow" data-tip="Pick the ink colour — the first swatch is the rainbow (every hue), or choose one; the last is a custom picker. Raise Colour to bring it in.">
@@ -95,7 +94,7 @@
       <button class="btn" id="textBtn">Pour text</button>
     </div>
     <div class="row">
-      <button class="btn primary" id="doneBtn">Done — bend it</button>
+      <button class="btn primary" id="doneBtn">Bloom</button>
       <button class="btn chip" id="editBtn" style="display:none">Edit lines</button>
       <div class="sep"></div>
       <button class="btn chip" id="photoBtn">Photo</button>
@@ -115,8 +114,8 @@
   </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name:'Fence', desc:'Draw the line, then bend it',
-  about:"Draw your own strokes, then hit Done: each one becomes the path a trailing chain travels, swinging soft ink behind it and building into flowing, spiralling line work. The knobs bend your lines rather than re-rolling them. Record the drawing-in or save a frame.",
+<script>Opal.mountTopbar({ name:'BLOOM', desc:'Draw a line, then watch it bloom',
+  about:"Draw a line and hit Bloom: it draws itself slowly from its first point, stems of soft ink trailing along your stroke and blooming outward as it goes. Control how much it expands, the ink density and the number of stems. Choose a colour per line, or the rainbow. Record the bloom or save a frame.",
   version:'v2' });</script>
 
 <script>
@@ -125,7 +124,7 @@
   const $=id=>document.getElementById(id);
   let ASPECT=1080/1350;
   let W=0,H=0,dpr=1, mode='draw';
-  let strokes=[], cur=null, walkers=[], raf=0, F=0, lastTs=0, aT=0, gT=0, RT=0, traceRef=null;
+  let strokes=[], strokeCol=[], cur=null, walkers=[], raf=0, F=0, lastTs=0, aT=0, gT=0, RT=0, traceRef=null;
   const P={ density:39, length:89, flow:100, spiral:100, weight:20, ink:86, time:20, color:0 };
 
   function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
@@ -186,7 +185,7 @@
       const lenJit=0.7+rand()*0.6, nodeLen=(0.005+(P.length/100)*0.012)*scale*lenJit;
       const nodes=[];
       for(let i=0;i<nodeCount;i++) nodes.push({x:h.x*W - ux*i*nodeLen, y:h.y*H - uy*i*nodeLen});
-      out.push({ path, si, t:0, startAt:startAt||0, born:RT, phase:rand()*1000,
+      out.push({ path, si, t:0, startAt:startAt||0, born:RT, col:(strokeCol[si]!==undefined?strokeCol[si]:inkColor), phase:rand()*1000,
         speedMul:0.6+rand()*0.9, lenJit, spiralRand:rand(),   // dynamics read live so knobs never reset the run
         nodeCount, nodeLen, nodes, last:nodes.map(n=>({x:n.x,y:n.y})),
         brushW:0.4+rand()*1.2, ink:0.5+rand()*0.6, hue:rand(), spin:rand()<0.5?1:-1,
@@ -201,18 +200,16 @@
 
   function drawRaw(s){ if(s.length<2){ if(s.length){ ctx.beginPath(); ctx.arc(s[0].x*W,s[0].y*H,1.6,0,6.28); ctx.fillStyle='#141414'; ctx.fill(); } return; }
     ctx.beginPath(); ctx.moveTo(s[0].x*W,s[0].y*H); for(let i=1;i<s.length;i++) ctx.lineTo(s[i].x*W,s[i].y*H); ctx.stroke(); }
-  function renderDraw(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); drawRef(0.36); ctx.lineCap='round'; ctx.lineJoin='round';
-    ctx.strokeStyle='rgba(20,20,26,.85)'; ctx.lineWidth=1.6; for(const s of strokes) drawRaw(s); if(cur) drawRaw(cur); }
+  function renderDraw(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); drawRef(0.36); ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=1.6;
+    strokes.forEach((s,si)=>{ const c=strokeCol[si]; ctx.strokeStyle=(c&&c!=='rainbow')?c:'rgba(20,20,26,.85)'; drawRaw(s); });
+    if(cur){ ctx.strokeStyle=(inkColor&&inkColor!=='rainbow')?inkColor:'rgba(20,20,26,.85)'; drawRaw(cur); } }
 
   function drawRef(a){ if(!traceRef) return; ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef,0,0,W,H); ctx.restore(); }
-  function startSim(){ ctx.fillStyle=chrome?'#0b0c12':'#fff'; ctx.fillRect(0,0,W,H); aT=0; gT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
+  function startSim(){ ctx.fillStyle=chrome?'#0b0c12':'#fff'; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
     aT += dt/Math.max(0.5,P.time);   // shared motion clock — advances ~1 per pass, so Time slows the whole thing
-    gT += dt;                         // real-time grow-in clock (~2.5s to full, independent of Time)
     RT += dt;                         // always-running real-time clock, for each chain's slow attack
-    // grow-in: the piece starts concentrated at the centre and expands out to full size
-    let gu=gT/2.5; gu=gu<0?0:gu>1?1:gu; const grow=0.06+0.94*(gu*gu*(3-2*gu)); const gcx=W/2, gcy=H/2;
     const flow=P.flow/100, spiral=P.spiral/100, colAmt=P.color/100, scale=Math.min(W,H);
     const ink=0.015+(P.ink/100)*0.13, wBase=0.3+(P.weight/100)*3.0;
     for(const w of walkers){
@@ -227,15 +224,14 @@
       const nx=noise(w.phase + aT*4*(0.5+w.wander), 0.5), ny=noise(w.phase+70 + aT*4*(0.5+w.wander), 9.1);
       let hx=base.x*W + nx*rad, hy=base.y*H + ny*rad;
       if(w.spiralRand < spiral*0.5 && spiral>0.02){ const r=spiral*0.05*scale*ev, a=aT*7*w.spin+w.phase; hx+=Math.cos(a)*r; hy+=Math.sin(a)*r; }
-      hx=gcx+(hx-gcx)*grow; hy=gcy+(hy-gcy)*grow;   // expand from the centre as it grows in
       w.last=w.nodes.map(n=>({x:n.x,y:n.y}));
       w.nodes[0].x=hx; w.nodes[0].y=hy;
       for(let i=1;i<w.nodes.length;i++){ const p=w.nodes[i-1], n=w.nodes[i];
-        let dx=n.x-p.x, dy=n.y-p.y; const d=Math.hypot(dx,dy)||1; n.x=p.x+dx/d*w.nodeLen*grow; n.y=p.y+dy/d*w.nodeLen*grow; }
+        let dx=n.x-p.x, dy=n.y-p.y; const d=Math.hypot(dx,dy)||1; n.x=p.x+dx/d*w.nodeLen; n.y=p.y+dy/d*w.nodeLen; }
       if(chrome){ ctx.globalCompositeOperation='lighter'; }
       else {
-        // blend smoothly from black ink toward the chosen colour as Colour rises (rainbow = per-chain hue)
-        const cn=parseInt((inkColor==='rainbow'?hueFor(w.hue+colAmt*0.5):inkColor).slice(1),16);
+        // blend smoothly from black ink toward the stroke's colour as Colour rises (rainbow = per-chain hue)
+        const wc=w.col||inkColor; const cn=parseInt((wc==='rainbow'?hueFor(w.hue+colAmt*0.5):wc).slice(1),16);
         const cr=Math.round((cn>>16&255)*colAmt + 12*(1-colAmt)), cg=Math.round((cn>>8&255)*colAmt + 12*(1-colAmt)), cb=Math.round((cn&255)*colAmt + 16*(1-colAmt));
         ctx.fillStyle = 'rgba('+cr+','+cg+','+cb+','+(ink*w.ink*(1+0.3*colAmt)).toFixed(3)+')';
       }
@@ -269,13 +265,21 @@
       else { ctx.strokeStyle='rgba(120,122,132,.55)'; ctx.lineWidth=1; ctx.lineCap='round'; ctx.beginPath();
         ctx.moveTo(last.x*W,last.y*H); ctx.lineTo(p.x*W,p.y*H); ctx.stroke(); } } });
   cv.addEventListener('pointerup', ()=>{ if(!cur) return;
-    if(cur.length>1){ strokes.push(cur);
+    if(cur.length>1){ strokes.push(cur); strokeCol.push(inkColor);   // each line remembers the colour it was drawn in
       if(mode==='modify') walkersFor(prep(cur.map(p=>({x:p.x,y:p.y}))), strokes.length-1).forEach(w=>walkers.push(w)); }
+    else if(cur.length===1){ recolorNearest(cur[0]); }               // a tap (no drag) recolours the nearest line
     const wasDraw=mode==='draw'; cur=null; if(wasDraw) renderDraw(); });
+  // tap a line to repaint it in the current swatch colour — even while it's moving (new ink switches colour live)
+  function recolorNearest(pt){ if(!strokes.length) return; let bi=-1, bd=1e9;
+    strokes.forEach((s,si)=>{ for(const p of s){ const d=(p.x-pt.x)*(p.x-pt.x)+(p.y-pt.y)*(p.y-pt.y); if(d<bd){ bd=d; bi=si; } } });
+    if(bi<0 || bd>0.02) return;
+    strokeCol[bi]=inkColor; walkers.forEach(w=>{ if(w.si===bi) w.col=inkColor; });
+    $('hint').textContent='Recoloured that line'; $('hint').style.opacity=1; setTimeout(()=>{ if(mode==='modify') $('hint').style.opacity=0; }, 1400);
+    if(mode!=='modify') renderDraw(); }
 
   function toDraw(){ mode='draw'; cancelAnimationFrame(raf);
     $('doneBtn').style.display=''; $('editBtn').style.display='none'; $('restartBtn').style.display='none';
-    $('hint').textContent='Draw your lines — as many as you like'; $('hint').style.opacity=1; renderDraw(); }
+    $('hint').textContent='Draw a line — then hit Bloom'; $('hint').style.opacity=1; renderDraw(); }
   function toModify(){ if(!strokes.length){ $('hint').textContent='Draw a line first'; $('hint').style.opacity=1; return; }
     mode='modify'; $('sliders').classList.remove('locked'); $('doneBtn').style.display='none';
     $('editBtn').style.display=''; $('restartBtn').style.display='';
@@ -291,7 +295,7 @@
   $('photoFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const url=URL.createObjectURL(f);
     const im=new Image(); im.onload=()=>{ ASPECT=im.width/im.height; traceRef=im; fit();
       if(mode!=='draw') toDraw(); else renderDraw();
-      $('hint').textContent='Trace over the photo, then hit “Done — bend it”'; $('hint').style.opacity=1; };
+      $('hint').textContent='Trace over the photo, then hit Bloom'; $('hint').style.opacity=1; };
     im.src=url; e.target.value=''; });
 
   /* ---- typography: render typed words, trace their letterforms into vector paths, and let the
@@ -339,15 +343,15 @@
     return traceContours(x.getImageData(0,0,W0,H0), W0, H0);
   }
   function pourText(){ const s=textToStrokes($('textIn').value); if(!s.length){ $('hint').textContent='Type some words first'; $('hint').style.opacity=1; return; }
-    strokes=s; cur=null; traceRef=null; toModify(); }
+    strokes=s; strokeCol=s.map(()=>inkColor); cur=null; traceRef=null; toModify(); }
   $('textBtn').addEventListener('click', pourText);
   $('textIn').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); pourText(); } });
 
   $('doneBtn').addEventListener('click', toModify);
   $('editBtn').addEventListener('click', toDraw);
   $('restartBtn').addEventListener('click', ()=>{ if(mode==='modify') startSim(); });
-  $('undoBtn').addEventListener('click', ()=>{ strokes.pop(); if(mode==='modify') startSim(); else renderDraw(); });
-  $('clearBtn').addEventListener('click', ()=>{ strokes=[]; cur=null; traceRef=null; toDraw(); });
+  $('undoBtn').addEventListener('click', ()=>{ strokes.pop(); strokeCol.pop(); if(mode==='modify') startSim(); else renderDraw(); });
+  $('clearBtn').addEventListener('click', ()=>{ strokes=[]; strokeCol=[]; cur=null; traceRef=null; toDraw(); });
 
   let rec=null, chunks=[];
   $('recBtn').addEventListener('click', ()=>{ if(rec && rec.state==='recording'){ rec.stop(); return; }
