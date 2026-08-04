@@ -53,6 +53,13 @@
     box-shadow:0 16px 40px -20px rgba(0,0,0,.6);
     font-size:11px; line-height:1.5; letter-spacing:.005em; text-transform:none;
     pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* ink colour swatches */
+  .swrow{ display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
+  .sw{ width:22px; height:22px; border-radius:50%; border:1px solid var(--line); cursor:pointer; padding:0; }
+  .sw[aria-pressed="true"]{ outline:2px solid var(--ink); outline-offset:1px; }
+  #inkPick{ -webkit-appearance:none; appearance:none; background:none; }
+  #inkPick::-webkit-color-swatch-wrapper{ padding:0; } #inkPick::-webkit-color-swatch{ border:none; border-radius:50%; }
+  #inkPick::-moz-color-swatch{ border:none; border-radius:50%; }
 </style>
 <link rel="stylesheet" href="/lab/shared/tool.css" />
 </head>
@@ -70,7 +77,17 @@
       <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">20</b></label><input id="weight" type="range" min="5" max="100" value="20" /></div>
       <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and faster."><label>Ink <b id="inkR">86</b></label><input id="ink" type="range" min="5" max="100" value="86" /></div>
       <div class="knob" data-tip="How long one full pass along your line takes, in seconds. Higher is slower and more meditative."><label>Time <b id="timeR">20s</b></label><input id="time" type="range" min="2" max="180" value="20" /></div>
-      <div class="knob" data-tip="Blends the ink from plain black toward shifting colour."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
+      <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
+      <div class="swrow" data-tip="Pick the ink colour — the first swatch is the rainbow (every hue), or choose one; the last is a custom picker. Raise Colour to bring it in.">
+        <button class="sw" data-ink="rainbow" aria-pressed="true" title="Rainbow — every hue" style="background:conic-gradient(from 0deg,#e0483c,#e6902a,#e8c020,#4f9d69,#2f7fd0,#6a4fb0,#c0468f,#e0483c);"></button>
+        <button class="sw" data-ink="#e0483c" title="Red" style="background:#e0483c"></button>
+        <button class="sw" data-ink="#e8c020" title="Gold" style="background:#e8c020"></button>
+        <button class="sw" data-ink="#4f9d69" title="Green" style="background:#4f9d69"></button>
+        <button class="sw" data-ink="#2f7fd0" title="Blue" style="background:#2f7fd0"></button>
+        <button class="sw" data-ink="#6a4fb0" title="Violet" style="background:#6a4fb0"></button>
+        <button class="sw" data-ink="#c0468f" title="Magenta" style="background:#c0468f"></button>
+        <input class="sw" id="inkPick" type="color" value="#ff2d55" title="Custom colour" />
+      </div>
     </div>
     <div class="row" style="flex-direction:column; align-items:stretch;" data-tip="Type words and the chains draw them out as letterforms — the text pours itself down the canvas.">
       <input id="textIn" type="text" placeholder="Type words to pour…" autocomplete="off"
@@ -153,6 +170,7 @@
   function rgba(hex,a){ const n=parseInt(hex.slice(1),16); return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+Math.min(1,a).toFixed(3)+')'; }
   // chrome: a vertical reflection ramp — cool sky highlight up top, a dark horizon band, warm sheen below
   let chrome=false;
+  let inkColor='rainbow';   // 'rainbow' = per-chain multi-hue, or a chosen hex
   const CHR=[[0,205,222,245],[0.30,120,150,190],[0.47,36,50,76],[0.53,52,44,52],[0.72,192,150,108],[0.90,246,226,182],[1,255,246,228]];
   function chromeCol(ny,a){ ny=ny<0?0:ny>1?1:ny; let i=0; while(i<CHR.length-1 && ny>CHR[i+1][0]) i++;
     const s0=CHR[i], s1=CHR[Math.min(CHR.length-1,i+1)], f=(ny-s0[0])/((s1[0]-s0[0])||1);
@@ -216,8 +234,8 @@
         let dx=n.x-p.x, dy=n.y-p.y; const d=Math.hypot(dx,dy)||1; n.x=p.x+dx/d*w.nodeLen*grow; n.y=p.y+dy/d*w.nodeLen*grow; }
       if(chrome){ ctx.globalCompositeOperation='lighter'; }
       else {
-        // blend smoothly from black ink toward the chain's colour as Colour rises (not an on/off jump)
-        const cn=parseInt(hueFor(w.hue+colAmt*0.5).slice(1),16);
+        // blend smoothly from black ink toward the chosen colour as Colour rises (rainbow = per-chain hue)
+        const cn=parseInt((inkColor==='rainbow'?hueFor(w.hue+colAmt*0.5):inkColor).slice(1),16);
         const cr=Math.round((cn>>16&255)*colAmt + 12*(1-colAmt)), cg=Math.round((cn>>8&255)*colAmt + 12*(1-colAmt)), cb=Math.round((cn&255)*colAmt + 16*(1-colAmt));
         ctx.fillStyle = 'rgba('+cr+','+cg+','+cb+','+(ink*w.ink*(1+0.3*colAmt)).toFixed(3)+')';
       }
@@ -341,6 +359,13 @@
     rec.onstop=()=>{ const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a');
       a.href=URL.createObjectURL(blob); a.download='fence.'+ext; a.click(); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); };
     rec.start(); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
+
+  function setInk(val, isCustom){ inkColor=val;
+    document.querySelectorAll('.sw[data-ink]').forEach(s=>s.setAttribute('aria-pressed', (!isCustom && s.getAttribute('data-ink')===val)?'true':'false'));
+    if(+$('color').value===0){ const c=$('color'); c.value=80; c.dispatchEvent(new Event('input',{bubbles:true})); }   // bring colour in on first pick
+  }
+  document.querySelectorAll('.sw[data-ink]').forEach(btn=>btn.addEventListener('click', ()=> setInk(btn.getAttribute('data-ink'), false)));
+  $('inkPick').addEventListener('input', ()=> setInk($('inkPick').value, true));
 
   $('chromeBtn').addEventListener('click', ()=>{ chrome=!chrome; $('chromeBtn').setAttribute('aria-pressed', chrome?'true':'false');
     if(mode==='modify') startSim(); });
