@@ -130,7 +130,7 @@
         <option value="1/1">Square 1:1</option>
         <option value="1920/1080">Landscape 16:9</option>
       </select>
-      <button class="btn chip" id="chromeBtn" aria-pressed="false" data-tip="Render the lines as polished chrome on a dark ground — metallic reflections instead of flat ink.">Chrome</button>
+      <button class="btn chip" id="chromeBtn" aria-pressed="false" data-tip="Render the lines as polished chrome — adapts to your paper: a metallic glow on dark paper, shiny liquid chrome on light paper.">Chrome</button>
       <button class="btn chip" id="recBtn" aria-pressed="false">Record</button>
       <button class="btn chip" id="saveBtn">Save</button>
     </div>
@@ -200,9 +200,13 @@
   let bgColor='#ffffff';    // paper colour behind the ink
   const bgLuma = ()=>{ const n=parseInt(bgColor.slice(1),16); return (0.299*(n>>16&255)+0.587*(n>>8&255)+0.114*(n&255))/255; };
   const CHR=[[0,205,222,245],[0.30,120,150,190],[0.47,36,50,76],[0.53,52,44,52],[0.72,192,150,108],[0.90,246,226,182],[1,255,246,228]];
-  function chromeCol(ny,a){ ny=ny<0?0:ny>1?1:ny; let i=0; while(i<CHR.length-1 && ny>CHR[i+1][0]) i++;
-    const s0=CHR[i], s1=CHR[Math.min(CHR.length-1,i+1)], f=(ny-s0[0])/((s1[0]-s0[0])||1);
+  // liquid-chrome ramp for LIGHT paper: dark reflection bands (so it reads on white) with a bright specular horizon
+  const CHRL=[[0,64,72,86],[0.26,150,164,184],[0.44,24,29,40],[0.50,206,218,232],[0.55,248,250,253],[0.68,52,60,74],[0.84,150,162,180],[1,26,31,42]];
+  function rampCol(R,ny,a){ ny=ny<0?0:ny>1?1:ny; let i=0; while(i<R.length-1 && ny>R[i+1][0]) i++;
+    const s0=R[i], s1=R[Math.min(R.length-1,i+1)], f=(ny-s0[0])/((s1[0]-s0[0])||1);
     return 'rgba('+Math.round(s0[1]+(s1[1]-s0[1])*f)+','+Math.round(s0[2]+(s1[2]-s0[2])*f)+','+Math.round(s0[3]+(s1[3]-s0[3])*f)+','+Math.min(1,a).toFixed(3)+')'; }
+  const chromeCol =(ny,a)=>rampCol(CHR,ny,a);    // metallic sheen for dark paper (additive)
+  const chromeColL=(ny,a)=>rampCol(CHRL,ny,a);   // liquid chrome for light paper (source-over)
 
   // every slider is a plain 0–100; these map the count / duration ones onto their real ranges
   const stemCount = ()=> Math.max(1, Math.round(1 + (P.density/100)*39));   // 0→1, 50→~20, 100→40 stems
@@ -244,7 +248,7 @@
     return { dw, dh, x0:imgT.x*W-dw/2, y0:imgT.y*H-dh/2 }; }
   function drawRef(a){ if(!traceRef) return; const d=refDims();
     ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef, d.x0, d.y0, d.dw, d.dh); ctx.restore(); }
-  function startSim(){ ctx.fillStyle=chrome?'#0b0c12':bgColor; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
+  function startSim(){ ctx.fillStyle=bgColor; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
     const secs=secsFor();
@@ -252,7 +256,8 @@
     RT += dt;                         // always-running real-time clock, for each chain's slow attack
     const flow=P.flow/100, spiral=P.spiral/100, colAmt=P.color/100, scale=Math.min(W,H);
     const ink=0.015+(P.ink/100)*0.13, wBase=0.3+(P.weight/100)*3.0;
-    const baseInk = bgLuma()<0.5 ? 236 : 13;   // plain-ink endpoint (Colour=0): light on dark paper, near-black on light paper
+    const darkPaper = bgLuma()<0.5;
+    const baseInk = darkPaper ? 236 : 13;   // plain-ink endpoint (Colour=0): light on dark paper, near-black on light paper
     for(const w of walkers){
       if(aT < w.startAt) continue;   // pour-in stagger: this stroke hasn't begun yet
       // head drifts in 2D via noise, centred on a slowly-advancing point of the drawn stroke —
@@ -273,7 +278,7 @@
       w.nodes[0].x=hx; w.nodes[0].y=hy;
       for(let i=1;i<w.nodes.length;i++){ const p=w.nodes[i-1], n=w.nodes[i];
         let dx=n.x-p.x, dy=n.y-p.y; const d=Math.hypot(dx,dy)||1; n.x=p.x+dx/d*w.nodeLen; n.y=p.y+dy/d*w.nodeLen; }
-      if(chrome){ ctx.globalCompositeOperation='lighter'; }
+      if(chrome){ if(darkPaper) ctx.globalCompositeOperation='lighter'; }   // dark paper: additive glow; light paper: normal (source-over)
       else {
         // blend smoothly from black ink toward the stroke's colour as Colour rises (rainbow = per-chain hue)
         const wc=w.col||inkColor; const cn=parseInt((wc==='rainbow'?hueFor(w.hue+colAmt*0.5):wc).slice(1),16);
@@ -282,9 +287,10 @@
       }
       for(let i=0;i<w.nodes.length;i++){ const a=w.last[i], b=w.nodes[i];
         for(let o=0;o<5;o++){ const px=a.x+(b.x-a.x)*o/5, py=a.y+(b.y-a.y)*o/5;
-          if(chrome) ctx.fillStyle=chromeCol(py/H, ink*w.ink*1.6*(0.5+Math.random()*0.8)*born);   // metallic sheen, jittered
+          if(chrome) ctx.fillStyle = darkPaper ? chromeCol(py/H, ink*w.ink*1.6*(0.5+Math.random()*0.8)*born)                       // metallic sheen, jittered
+                                               : chromeColL(py/H, Math.min(0.55, ink*w.ink*5.2*(0.5+Math.random()*0.7)*born));   // liquid chrome on light paper
           ctx.beginPath(); ctx.arc(px+(Math.random()-0.5)*wBase*grow, py+(Math.random()-0.5)*wBase*grow, Math.random()*wBase*w.brushW*grow, 0, 6.2832); ctx.fill(); } }
-      if(chrome) ctx.globalCompositeOperation='source-over';
+      if(chrome && darkPaper) ctx.globalCompositeOperation='source-over';
     }
   }
 
@@ -450,7 +456,7 @@
     const rw=ev2(ASPECT>=1?long:Math.round(long*ASPECT)), rh=ev2(ASPECT>=1?Math.round(long/ASPECT):long);
     recCv=document.createElement('canvas'); recCv.width=rw; recCv.height=rh; recCtx=recCv.getContext('2d');
     if(mode==='modify') startSim();   // re-seed the bloom so the recording captures the emergence from the first faint dots
-    const drawFrame=()=>{ recCtx.fillStyle=chrome?'#0b0c12':bgColor; recCtx.fillRect(0,0,rw,rh); recCtx.drawImage(cv,0,0,rw,rh); };
+    const drawFrame=()=>{ recCtx.fillStyle=bgColor; recCtx.fillRect(0,0,rw,rh); recCtx.drawImage(cv,0,0,rw,rh); };
     drawFrame();   // seed one frame so the stream has content
     const stream=recCv.captureStream(30);
     const mime=['video/mp4;codecs=avc1.640029','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
