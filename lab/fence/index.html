@@ -250,6 +250,10 @@
       // slow attack: this chain's wander + swirl ease in from zero over its first seconds, so a dropped
       // line first traces your path, then slowly unfurls — no instant burst
       let ev=(RT-w.born)/Math.max(3,secs*0.55); ev=ev<0?0:ev>1?1:ev; ev=ev*ev*(3-2*ev);
+      // birth: each stroke is born as a single, almost-invisible dot at its first point, then the
+      // opacity swells in and the dab grows — so it appears faintly and expands out of that dot
+      let bf=(RT-w.born)/Math.max(1.6,secs*0.9); bf=bf<0?0:bf>1?1:bf; bf=bf*bf*(3-2*bf);
+      const born=0.03+0.97*bf, grow=0.35+0.65*bf;
       const rad=(0.004+flow*0.16)*scale*w.wander*ev;
       const nx=noise(w.phase + aT*4*(0.5+w.wander), 0.5), ny=noise(w.phase+70 + aT*4*(0.5+w.wander), 9.1);
       let hx=base.x*W + nx*rad, hy=base.y*H + ny*rad;
@@ -263,12 +267,12 @@
         // blend smoothly from black ink toward the stroke's colour as Colour rises (rainbow = per-chain hue)
         const wc=w.col||inkColor; const cn=parseInt((wc==='rainbow'?hueFor(w.hue+colAmt*0.5):wc).slice(1),16);
         const cr=Math.round((cn>>16&255)*colAmt + baseInk*(1-colAmt)), cg=Math.round((cn>>8&255)*colAmt + baseInk*(1-colAmt)), cb=Math.round((cn&255)*colAmt + baseInk*(1-colAmt));
-        ctx.fillStyle = 'rgba('+cr+','+cg+','+cb+','+(ink*w.ink*(1+0.3*colAmt)).toFixed(3)+')';
+        ctx.fillStyle = 'rgba('+cr+','+cg+','+cb+','+(ink*w.ink*(1+0.3*colAmt)*born).toFixed(3)+')';
       }
       for(let i=0;i<w.nodes.length;i++){ const a=w.last[i], b=w.nodes[i];
         for(let o=0;o<5;o++){ const px=a.x+(b.x-a.x)*o/5, py=a.y+(b.y-a.y)*o/5;
-          if(chrome) ctx.fillStyle=chromeCol(py/H, ink*w.ink*1.6*(0.5+Math.random()*0.8));   // metallic sheen, jittered
-          ctx.beginPath(); ctx.arc(px+(Math.random()-0.5)*wBase, py+(Math.random()-0.5)*wBase, Math.random()*wBase*w.brushW, 0, 6.2832); ctx.fill(); } }
+          if(chrome) ctx.fillStyle=chromeCol(py/H, ink*w.ink*1.6*(0.5+Math.random()*0.8)*born);   // metallic sheen, jittered
+          ctx.beginPath(); ctx.arc(px+(Math.random()-0.5)*wBase*grow, py+(Math.random()-0.5)*wBase*grow, Math.random()*wBase*w.brushW*grow, 0, 6.2832); ctx.fill(); } }
       if(chrome) ctx.globalCompositeOperation='source-over';
     }
   }
@@ -388,6 +392,7 @@
     // same and never depends on the window/display size. Long edge 1440.
     const long=1440, rw=ASPECT>=1?long:Math.round(long*ASPECT), rh=ASPECT>=1?Math.round(long/ASPECT):long;
     recCv=document.createElement('canvas'); recCv.width=rw; recCv.height=rh; recCtx=recCv.getContext('2d');
+    if(mode==='modify') startSim();   // re-seed the bloom so the recording captures the emergence from the first faint dots
     const drawFrame=()=>{ recCtx.fillStyle=chrome?'#0b0c12':bgColor; recCtx.fillRect(0,0,rw,rh); recCtx.drawImage(cv,0,0,rw,rh); };
     drawFrame();   // seed one frame so the stream has content
     const stream=recCv.captureStream(30);
