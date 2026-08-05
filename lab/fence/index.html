@@ -118,6 +118,8 @@
       <button class="btn chip" id="editBtn" style="display:none">Edit lines</button>
       <div class="sep"></div>
       <button class="btn chip" id="photoBtn">Photo</button>
+      <button class="btn chip" id="adjustBtn" style="display:none" aria-pressed="false" data-tip="Reposition the photo without distorting it — drag to move, scroll or pinch to resize. Toggle off to draw.">Move photo</button>
+      <button class="btn chip" id="eraseBtn" aria-pressed="false" data-tip="Erase mode — drag across your drawn lines to remove them. Toggle off to draw again.">Eraser</button>
       <button class="btn chip" id="undoBtn">Undo</button>
       <button class="btn chip" id="clearBtn">Clear</button>
       <button class="btn chip" id="rndBtn" data-tip="Roll a fresh combination of every control — and a colour — for a new bloom to explore, like a strange attractor searching its space.">Randomize</button>
@@ -193,6 +195,7 @@
   function rgba(hex,a){ const n=parseInt(hex.slice(1),16); return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+Math.min(1,a).toFixed(3)+')'; }
   // chrome: a vertical reflection ramp — cool sky highlight up top, a dark horizon band, warm sheen below
   let chrome=false;
+  let imgT={x:0.5,y:0.5,scale:1}, adjustPhoto=false, erasing=false;   // photo placement (aspect-preserved) + eraser mode
   let inkColor='rainbow';   // 'rainbow' = per-chain multi-hue, or a chosen hex
   let bgColor='#ffffff';    // paper colour behind the ink
   const bgLuma = ()=>{ const n=parseInt(bgColor.slice(1),16); return (0.299*(n>>16&255)+0.587*(n>>8&255)+0.114*(n&255))/255; };
@@ -235,7 +238,12 @@
     strokes.forEach((s,si)=>{ const c=strokeCol[si]; ctx.strokeStyle=(c&&c!=='rainbow')?c:guide; drawRaw(s); });
     if(cur){ ctx.strokeStyle=(inkColor&&inkColor!=='rainbow')?inkColor:guide; drawRaw(cur); } }
 
-  function drawRef(a){ if(!traceRef) return; ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef,0,0,W,H); ctx.restore(); }
+  // draw the photo backdrop preserving its aspect ratio (never stretched), positioned + scaled by imgT
+  function refDims(){ const iw=traceRef.naturalWidth||traceRef.width, ih=traceRef.naturalHeight||traceRef.height;
+    const fs=Math.min(W/iw, H/ih)*imgT.scale, dw=iw*fs, dh=ih*fs;
+    return { dw, dh, x0:imgT.x*W-dw/2, y0:imgT.y*H-dh/2 }; }
+  function drawRef(a){ if(!traceRef) return; const d=refDims();
+    ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef, d.x0, d.y0, d.dw, d.dh); ctx.restore(); }
   function startSim(){ ctx.fillStyle=chrome?'#0b0c12':bgColor; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
@@ -293,17 +301,48 @@
       else if(k==='length'){ const scale=Math.min(W,H); walkers.forEach(w=>{ w.nodeLen=(0.005+(P.length/100)*0.012)*scale*w.lenJit; }); }
     }); });
 
+  // eraser: drag over your drawn lines to delete them (nearest stroke within reach)
+  const ERASE_R=0.045;
+  function eraseAt(pt){ if(!strokes.length) return; let bi=-1,bd=1e9;
+    strokes.forEach((s,si)=>{ for(const p of s){ const dx=p.x-pt.x, dy=p.y-pt.y, d=dx*dx+dy*dy; if(d<bd){bd=d;bi=si;} } });
+    if(bi<0 || bd>ERASE_R*ERASE_R) return;
+    strokes.splice(bi,1); strokeCol.splice(bi,1);
+    walkers=walkers.filter(w=>w.si!==bi); walkers.forEach(w=>{ if(w.si>bi) w.si--; });   // keep walker→stroke indices valid
+    renderDraw(); }
+
   // Draw in EITHER mode. In modify, new strokes spawn live chains into the running animation
   // (and the recording) without clearing what's there — keep drawing while it moves.
-  cv.addEventListener('pointerdown', e=>{ e.preventDefault(); cv.setPointerCapture&&cv.setPointerCapture(e.pointerId); cur=[pos(e)]; });
-  cv.addEventListener('pointermove', e=>{ if(!cur) return; e.preventDefault(); const p=pos(e);
+  // Pointer also serves two other modes: adjusting the photo (drag = move, pinch/scroll = resize) and erasing.
+  const ptrs=new Map(); let panS=null, pinchS=null, eDrag=false;
+  cv.addEventListener('pointerdown', e=>{ e.preventDefault(); cv.setPointerCapture&&cv.setPointerCapture(e.pointerId);
+    if(adjustPhoto && traceRef){ ptrs.set(e.pointerId,{cx:e.clientX,cy:e.clientY});
+      if(ptrs.size===2){ const a=[...ptrs.values()]; pinchS={d:Math.hypot(a[0].cx-a[1].cx,a[0].cy-a[1].cy)||1, s:imgT.scale}; panS=null; }
+      else { const p=pos(e); panS={px:p.x,py:p.y,ix:imgT.x,iy:imgT.y}; }
+      return; }
+    if(erasing){ eDrag=true; eraseAt(pos(e)); return; }
+    cur=[pos(e)]; });
+  cv.addEventListener('pointermove', e=>{ e.preventDefault();
+    if(adjustPhoto && traceRef){ if(!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId,{cx:e.clientX,cy:e.clientY});
+      if(ptrs.size>=2 && pinchS){ const a=[...ptrs.values()]; const d=Math.hypot(a[0].cx-a[1].cx,a[0].cy-a[1].cy)||1;
+        imgT.scale=Math.max(0.1,Math.min(10, pinchS.s*(d/pinchS.d))); }
+      else if(panS){ const p=pos(e); imgT.x=panS.ix+(p.x-panS.px); imgT.y=panS.iy+(p.y-panS.py); }
+      renderDraw(); return; }
+    if(erasing){ if(eDrag) eraseAt(pos(e)); return; }
+    if(!cur) return; const p=pos(e);
     const last=cur[cur.length-1]; if(Math.hypot(p.x-last.x,p.y-last.y)>0.0015){ cur.push(p);
       if(mode==='draw') renderDraw(); } });   // in bloom, draw blind — the bloom traces your line, no guide path left behind
-  cv.addEventListener('pointerup', ()=>{ if(!cur) return;
+  function endPtr(e){
+    if(adjustPhoto){ ptrs.delete(e.pointerId); if(ptrs.size<2) pinchS=null; if(ptrs.size===0) panS=null; return; }
+    if(erasing){ eDrag=false; return; }
+    if(!cur) return;
     if(cur.length>1){ strokes.push(cur); strokeCol.push(inkColor);   // each line remembers the colour it was drawn in
       if(mode==='modify') walkersFor(prep(cur.map(p=>({x:p.x,y:p.y}))), strokes.length-1).forEach(w=>walkers.push(w)); }
     else if(cur.length===1){ recolorNearest(cur[0]); }               // a tap (no drag) recolours the nearest line
-    const wasDraw=mode==='draw'; cur=null; if(wasDraw) renderDraw(); });
+    const wasDraw=mode==='draw'; cur=null; if(wasDraw) renderDraw(); }
+  cv.addEventListener('pointerup', endPtr);
+  cv.addEventListener('pointercancel', endPtr);
+  cv.addEventListener('wheel', e=>{ if(!adjustPhoto||!traceRef) return; e.preventDefault();
+    imgT.scale=Math.max(0.1,Math.min(10, imgT.scale*Math.exp(-e.deltaY*0.0015))); renderDraw(); }, {passive:false});
   // tap a line to repaint it in the current swatch colour — even while it's moving (new ink switches colour live)
   function recolorNearest(pt){ if(!strokes.length) return; let bi=-1, bd=1e9;
     strokes.forEach((s,si)=>{ for(const p of s){ const d=(p.x-pt.x)*(p.x-pt.x)+(p.y-pt.y)*(p.y-pt.y); if(d<bd){ bd=d; bi=si; } } });
@@ -316,6 +355,7 @@
     $('doneBtn').style.display=''; $('editBtn').style.display='none'; $('restartBtn').style.display='none';
     $('hint').textContent='Draw a line — then hit Bloom'; $('hint').style.opacity=1; renderDraw(); }
   function toModify(){ if(!strokes.length){ $('hint').textContent='Draw a line first'; $('hint').style.opacity=1; return; }
+    adjustPhoto=false; $('adjustBtn').setAttribute('aria-pressed','false'); erasing=false; $('eraseBtn').setAttribute('aria-pressed','false'); cv.style.cursor='crosshair';
     mode='modify'; $('sliders').classList.remove('locked'); $('doneBtn').style.display='none';
     $('editBtn').style.display=''; $('restartBtn').style.display='';
     $('hint').textContent='Now it moves — keep drawing to add more, live'; $('hint').style.opacity=1;
@@ -328,9 +368,10 @@
          once it animates, and your raw guide-lines are dropped. ---- */
   $('photoBtn').addEventListener('click', ()=> $('photoFile').click());
   $('photoFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const url=URL.createObjectURL(f);
-    const im=new Image(); im.onload=()=>{ traceRef=im; fit();   // keep the current canvas size — the photo fits into it
+    const im=new Image(); im.onload=()=>{ traceRef=im; imgT={x:0.5,y:0.5,scale:1};   // reset placement; aspect preserved, no stretch
+      $('adjustBtn').style.display=''; fit();   // keep the current canvas size — the photo fits into it, undistorted
       if(mode!=='draw') toDraw(); else renderDraw();
-      $('hint').textContent='Trace over the photo, then hit Bloom'; $('hint').style.opacity=1; };
+      $('hint').textContent='Trace over the photo — or Move photo to reposition & resize it'; $('hint').style.opacity=1; };
     im.src=url; e.target.value=''; });
 
   /* ---- typography: render typed words, trace their letterforms into vector paths, and let the
@@ -386,7 +427,19 @@
   $('editBtn').addEventListener('click', toDraw);
   $('restartBtn').addEventListener('click', ()=>{ if(mode==='modify') startSim(); });
   $('undoBtn').addEventListener('click', ()=>{ strokes.pop(); strokeCol.pop(); if(mode==='modify') startSim(); else renderDraw(); });
-  $('clearBtn').addEventListener('click', ()=>{ strokes=[]; strokeCol=[]; cur=null; traceRef=null; toDraw(); });
+  $('clearBtn').addEventListener('click', ()=>{ strokes=[]; strokeCol=[]; cur=null; traceRef=null;
+    $('adjustBtn').style.display='none'; setAdjust(false); toDraw(); });
+
+  function setAdjust(on){ adjustPhoto=on&&!!traceRef; if(adjustPhoto) setErase(false);
+    $('adjustBtn').setAttribute('aria-pressed', adjustPhoto?'true':'false');
+    cv.style.cursor = adjustPhoto?'move':'crosshair';
+    if(adjustPhoto){ $('hint').textContent='Drag to move · scroll or pinch to resize'; $('hint').style.opacity=1; } }
+  function setErase(on){ erasing=on; if(erasing){ setAdjust(false); if(mode!=='draw') toDraw(); }
+    $('eraseBtn').setAttribute('aria-pressed', erasing?'true':'false');
+    cv.style.cursor = erasing?'cell':(adjustPhoto?'move':'crosshair');
+    if(erasing){ $('hint').textContent='Erase — drag across a line to remove it'; $('hint').style.opacity=1; } }
+  $('adjustBtn').addEventListener('click', ()=> setAdjust(!adjustPhoto));
+  $('eraseBtn').addEventListener('click', ()=> setErase(!erasing));
 
   let rec=null, chunks=[], recCv=null, recCtx=null, recRAF=0, recStart=0, recTimer=0;
   const recFmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
