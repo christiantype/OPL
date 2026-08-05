@@ -79,13 +79,13 @@
 
   <div id="dock">
     <div id="sliders">
-      <div class="knob" data-tip="How many stems of ink trail along each line you drew. More stems build up denser, richer growth."><label>Stems <b id="densityR">39</b></label><input id="density" type="range" min="1" max="40" value="39" /></div>
-      <div class="knob" data-tip="How much the stems bloom outward from your line. Low hugs your stroke; high sends them looping and expanding off it."><label>Expand <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
-      <div class="knob" data-tip="Adds a circular swirl to the stems' motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">100</b></label><input id="spiral" type="range" min="0" max="100" value="100" /></div>
-      <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">20</b></label><input id="weight" type="range" min="5" max="100" value="20" /></div>
-      <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and denser."><label>Ink density <b id="inkR">86</b></label><input id="ink" type="range" min="5" max="100" value="86" /></div>
-      <div class="knob" data-tip="How long one full pass along your line takes, in seconds. Higher is slower and more meditative."><label>Time <b id="timeR">20s</b></label><input id="time" type="range" min="2" max="180" value="20" /></div>
-      <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
+      <div class="knob" data-tip="How many stems of ink trail along each line you drew. More stems build up denser, richer growth."><label>Stems <b id="densityR">50</b></label><input id="density" type="range" min="0" max="100" value="50" /></div>
+      <div class="knob" data-tip="How much the stems bloom outward from your line. Low hugs your stroke; high sends them looping and expanding off it."><label>Expand <b id="flowR">50</b></label><input id="flow" type="range" min="0" max="100" value="50" /></div>
+      <div class="knob" data-tip="Adds a circular swirl to the stems' motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">50</b></label><input id="spiral" type="range" min="0" max="100" value="50" /></div>
+      <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">50</b></label><input id="weight" type="range" min="0" max="100" value="50" /></div>
+      <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and denser."><label>Ink density <b id="inkR">50</b></label><input id="ink" type="range" min="0" max="100" value="50" /></div>
+      <div class="knob" data-tip="How long one full pass along your line takes. Higher is slower and more meditative."><label>Time <b id="timeR">13s</b></label><input id="time" type="range" min="0" max="100" value="50" /></div>
+      <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">50</b></label><input id="color" type="range" min="0" max="100" value="50" /></div>
       <div class="swrow" data-tip="Pick the ink colour — the first swatch is the rainbow (every hue), or choose one; the last is a custom picker. Raise Colour to bring it in.">
         <button class="sw" data-ink="rainbow" aria-pressed="true" title="Rainbow — every hue" style="background:conic-gradient(from 0deg,#e0483c,#e6902a,#e8c020,#4f9d69,#2f7fd0,#6a4fb0,#c0468f,#e0483c);"></button>
         <button class="sw" data-ink="#e0483c" title="Red" style="background:#e0483c"></button>
@@ -109,10 +109,11 @@
       <button class="btn chip" id="photoBtn">Photo</button>
       <button class="btn chip" id="undoBtn">Undo</button>
       <button class="btn chip" id="clearBtn">Clear</button>
+      <button class="btn chip" id="rndBtn" data-tip="Roll a fresh combination of every control — and a colour — for a new bloom to explore, like a strange attractor searching its space.">Randomize</button>
       <button class="btn chip" id="restartBtn" style="display:none">Redraw</button>
       <select id="aspect" class="btn chip" title="Canvas size">
+        <option value="1080/1920" selected>Reel 9:16</option>
         <option value="1080/1350">Portrait 4:5</option>
-        <option value="1080/1920">Story 9:16</option>
         <option value="1/1">Square 1:1</option>
         <option value="1920/1080">Landscape 16:9</option>
       </select>
@@ -131,10 +132,10 @@
 (() => {
   const cv=document.getElementById('art'); let ctx=cv.getContext('2d');
   const $=id=>document.getElementById(id);
-  let ASPECT=1080/1350;
+  let ASPECT=1080/1920;   // default: Instagram Reel (9:16)
   let W=0,H=0,dpr=1, mode='draw';
   let strokes=[], strokeCol=[], cur=null, walkers=[], raf=0, F=0, lastTs=0, aT=0, gT=0, RT=0, traceRef=null;
-  const P={ density:39, length:89, flow:100, spiral:100, weight:20, ink:86, time:20, color:0 };
+  const P={ density:50, length:50, flow:50, spiral:50, weight:50, ink:50, time:50, color:50 };
 
   function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
     t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -184,11 +185,16 @@
     const s0=CHR[i], s1=CHR[Math.min(CHR.length-1,i+1)], f=(ny-s0[0])/((s1[0]-s0[0])||1);
     return 'rgba('+Math.round(s0[1]+(s1[1]-s0[1])*f)+','+Math.round(s0[2]+(s1[2]-s0[2])*f)+','+Math.round(s0[3]+(s1[3]-s0[3])*f)+','+Math.min(1,a).toFixed(3)+')'; }
 
+  // every slider is a plain 0–100; these map the count / duration ones onto their real ranges
+  const stemCount = ()=> Math.max(1, Math.round(1 + (P.density/100)*39));   // 0→1, 50→~20, 100→40 stems
+  const secsFor   = ()=> 3*Math.pow(20, P.time/100);                        // 0→3s, 50→13s, 100→60s per pass
+
   const STAGGER=0.5;   // how much of a pass the pour-in spreads across (top stroke first, last stroke +STAGGER)
   function walkersFor(path, si, startAt){ const scale=Math.min(W,H); const rand=mulberry32((si*131+7)>>>0); const out=[];
     // the chain starts collapsed at the line's first point and grows out along your path as the head advances
     const h=strokePoint(path,0);
-    for(let e=0;e<P.density;e++){
+    const dens=stemCount();
+    for(let e=0;e<dens;e++){
       const nodeCount=6+Math.round((P.length/100)*38);
       const lenJit=0.7+rand()*0.6, nodeLen=(0.005+(P.length/100)*0.012)*scale*lenJit;
       const nodes=[];
@@ -216,7 +222,8 @@
   function startSim(){ ctx.fillStyle=chrome?'#0b0c12':'#fff'; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
-    aT += dt/Math.max(0.5,P.time);   // shared motion clock — advances ~1 per pass, so Time slows the whole thing
+    const secs=secsFor();
+    aT += dt/Math.max(0.5,secs);   // shared motion clock — advances ~1 per pass, so Time slows the whole thing
     RT += dt;                         // always-running real-time clock, for each chain's slow attack
     const flow=P.flow/100, spiral=P.spiral/100, colAmt=P.color/100, scale=Math.min(W,H);
     const ink=0.015+(P.ink/100)*0.13, wBase=0.3+(P.weight/100)*3.0;
@@ -224,10 +231,10 @@
       if(aT < w.startAt) continue;   // pour-in stagger: this stroke hasn't begun yet
       // head drifts in 2D via noise, centred on a slowly-advancing point of the drawn stroke —
       // the chain then swings behind it into curves (cheyuwu's wandering head, pinned to your line)
-      w.t+=(dt/Math.max(0.5,P.time))*w.speedMul; const base=strokePoint(w.path,w.t);   // one pass ≈ P.time seconds
+      w.t+=(dt/Math.max(0.5,secs))*w.speedMul; const base=strokePoint(w.path,w.t);   // one pass ≈ secs seconds
       // slow attack: this chain's wander + swirl ease in from zero over its first seconds, so a dropped
       // line first traces your path, then slowly unfurls — no instant burst
-      let ev=(RT-w.born)/Math.max(3,P.time*0.55); ev=ev<0?0:ev>1?1:ev; ev=ev*ev*(3-2*ev);
+      let ev=(RT-w.born)/Math.max(3,secs*0.55); ev=ev<0?0:ev>1?1:ev; ev=ev*ev*(3-2*ev);
       const rad=(0.004+flow*0.16)*scale*w.wander*ev;
       const nx=noise(w.phase + aT*4*(0.5+w.wander), 0.5), ny=noise(w.phase+70 + aT*4*(0.5+w.wander), 9.1);
       let hx=base.x*W + nx*rad, hy=base.y*H + ny*rad;
@@ -252,12 +259,12 @@
   }
 
   // Keep each stroke stocked with P.density chains, adding/removing live (never clears the canvas)
-  function syncDensity(){ const by={}; walkers.forEach(w=>{ (by[w.si]=by[w.si]||[]).push(w); });
+  function syncDensity(){ const by={}; walkers.forEach(w=>{ (by[w.si]=by[w.si]||[]).push(w); }); const dens=stemCount();
     strokes.forEach((s,si)=>{ const have=by[si]||[];
-      if(have.length>P.density){ const rm=new Set(have.slice(P.density)); walkers=walkers.filter(w=>!rm.has(w)); }
-      else if(have.length<P.density){ walkersFor(prep(s.map(p=>({x:p.x,y:p.y}))), si).slice(have.length).forEach(w=>walkers.push(w)); } }); }
+      if(have.length>dens){ const rm=new Set(have.slice(dens)); walkers=walkers.filter(w=>!rm.has(w)); }
+      else if(have.length<dens){ walkersFor(prep(s.map(p=>({x:p.x,y:p.y}))), si).slice(have.length).forEach(w=>walkers.push(w)); } }); }
   Object.keys(P).forEach(k=>{ const inp=$(k), out=$(k+'R'); if(!inp) return;
-    inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=inp.value+(k==='time'?'s':'');
+    inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=(k==='time')?Math.round(secsFor())+'s':inp.value;
       if(mode!=='modify') return;
       // Flow, Spiral, Weight, Ink, Speed, Colour are all read live in step() — they never reset.
       if(k==='density') syncDensity();
@@ -299,7 +306,7 @@
          once it animates, and your raw guide-lines are dropped. ---- */
   $('photoBtn').addEventListener('click', ()=> $('photoFile').click());
   $('photoFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const url=URL.createObjectURL(f);
-    const im=new Image(); im.onload=()=>{ ASPECT=im.width/im.height; traceRef=im; fit();
+    const im=new Image(); im.onload=()=>{ traceRef=im; fit();   // keep the current canvas size — the photo fits into it
       if(mode!=='draw') toDraw(); else renderDraw();
       $('hint').textContent='Trace over the photo, then hit Bloom'; $('hint').style.opacity=1; };
     im.src=url; e.target.value=''; });
@@ -388,6 +395,18 @@
   }
   document.querySelectorAll('.sw[data-ink]').forEach(btn=>btn.addEventListener('click', ()=> setInk(btn.getAttribute('data-ink'), false)));
   $('inkPick').addEventListener('input', ()=> setInk($('inkPick').value, true));
+
+  // Randomize — borrowed from ATTRACTOR: roll a fresh combination of every control (and a colour),
+  // then re-bloom your drawn line from the start so the whole new look takes at once.
+  function randomizeBloom(){
+    const R=(lo,hi)=>lo+Math.round(Math.random()*(hi-lo));
+    const vals={ density:R(25,90), flow:R(20,90), spiral:R(0,85), weight:R(15,70), ink:R(35,85), time:R(30,80), color:R(35,100) };
+    const sws=[...document.querySelectorAll('.sw[data-ink]')];
+    setInk(sws[(Math.random()*sws.length)|0].getAttribute('data-ink'), false);
+    Object.keys(vals).forEach(k=>{ const i=$(k); if(!i) return; i.value=vals[k]; i.dispatchEvent(new Event('input',{bubbles:true})); });
+    if(mode==='modify') startSim();
+  }
+  $('rndBtn').addEventListener('click', randomizeBloom);
 
   $('chromeBtn').addEventListener('click', ()=>{ chrome=!chrome; $('chromeBtn').setAttribute('aria-pressed', chrome?'true':'false');
     if(mode==='modify') startSim(); });
