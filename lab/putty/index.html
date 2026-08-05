@@ -383,15 +383,16 @@ video.addEventListener('resize', ()=>{ if(video.videoWidth){ canvas.width=video.
 
   // record: composite the warped video + paint into one canvas and capture it
   const recC=document.createElement('canvas'), rctx=recC.getContext('2d');
+  const ev2=n=>n-(n&1);   // even dimensions for H.264 (source video keeps its native resolution)
   let rec=null, chunks=[], recording=false;
   const recBtn=document.getElementById('recBtn');
   recBtn.addEventListener('click', ()=>{
     if(rec && rec.state==='recording'){ rec.stop(); return; }
-    recC.width=gl.width||960; recC.height=gl.height||720;
+    recC.width=ev2(gl.width||960); recC.height=ev2(gl.height||720);
     const stream=recC.captureStream(30);
     const mime=['video/mp4;codecs=avc1.640029','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
     const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
-    rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:12000000}); chunks=[]; recording=true;
+    rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:40000000}); chunks=[]; recording=true;
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop=()=>{ recording=false; const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a');
       a.href=URL.createObjectURL(blob); a.download='putty.'+ext; a.click(); recBtn.textContent='Record'; recBtn.setAttribute('aria-pressed','false'); };
@@ -403,7 +404,7 @@ video.addEventListener('resize', ()=>{ if(video.videoWidth){ canvas.width=video.
     if(dripOn && paint.width){ dripAcc+=1.2; if(dripAcc>=1){ const n=Math.min(3,Math.floor(dripAcc)); dripAcc-=n;
       tctx.clearRect(0,0,tmp.width,tmp.height); tctx.drawImage(paint,0,0);
       pctx.globalAlpha=0.5; pctx.drawImage(tmp,0,n); pctx.globalAlpha=1; } }
-    if(recording && gl.width){ if(recC.width!==gl.width){ recC.width=gl.width; recC.height=gl.height; }
+    if(recording && gl.width){ if(recC.width!==ev2(gl.width)){ recC.width=ev2(gl.width); recC.height=ev2(gl.height); }
       try{ rctx.drawImage(gl,0,0); rctx.drawImage(paint,0,0); }catch(e){} } })();
 
   paint.addEventListener('pointerdown',down);

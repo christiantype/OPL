@@ -91,7 +91,8 @@
 
   function fit(){ const availH=innerHeight-168, availW=innerWidth-28; const ar = img? img.width/img.height : 900/1120;
     let h=Math.min(availH, 1120), w=h*ar; if(w>availW){ w=availW; h=w/ar; }
-    dpr=Math.min(devicePixelRatio||1,2); W=Math.round(w); H=Math.round(h);
+    W=Math.round(w); H=Math.round(h);
+    dpr=Math.max(Math.min(devicePixelRatio||1,2), 2160/Math.max(W,H));   // hi-res backing so Save + Record are crisp
     cv.style.width=W+'px'; cv.style.height=H+'px'; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0); need=true; }
 
@@ -166,16 +167,25 @@
   $('file').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const url=URL.createObjectURL(f);
     const im=new Image(); im.onload=()=>{ img=im; fit(); need=true; URL.revokeObjectURL(url); }; im.src=url; });
 
-  let rec=null, chunks=[];
+  let rec=null, chunks=[], recRAF=0;
   $('recBtn').addEventListener('click', ()=>{ if(rec&&rec.state==='recording'){ rec.stop(); return; }
-    const stream=cv.captureStream(30);
+    // Record from a fixed-size high-res buffer (long edge 2160, even dims) so output is crisp and consistent
+    const ar=W/H, long=2160, ev2=n=>n-(n&1);
+    const rw=ev2(ar>=1?long:Math.round(long*ar)), rh=ev2(ar>=1?Math.round(long/ar):long);
+    const recCv=document.createElement('canvas'); recCv.width=rw; recCv.height=rh; const recCtx=recCv.getContext('2d');
+    recCtx.imageSmoothingEnabled=true; recCtx.imageSmoothingQuality='high';
+    const drawFrame=()=>{ recCtx.drawImage(cv,0,0,rw,rh); };
+    drawFrame();
+    const stream=recCv.captureStream(30);
     const mime=['video/mp4;codecs=avc1.640029','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
     const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
-    rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12000000}); chunks=[];
+    rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:40000000}); chunks=[];
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
-    rec.onstop=()=>{ const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='sequins.'+ext; a.click();
+    rec.onstop=()=>{ cancelAnimationFrame(recRAF); const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='sequins.'+ext; a.click();
       $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); };
-    rec.start(); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
+    rec.start();
+    (function comp(){ drawFrame(); if(rec&&rec.state==='recording') recRAF=requestAnimationFrame(comp); })();
+    $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
 
   $('saveBtn').addEventListener('click', ()=>{ const a=document.createElement('a'); a.download='sequins.png'; a.href=cv.toDataURL('image/png'); a.click(); });
 

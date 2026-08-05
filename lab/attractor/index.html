@@ -104,7 +104,7 @@
   const TAU=Math.PI*2;
 
   // ---- density grid (offscreen), scaled onto the display canvas ----
-  const GLONG=620;
+  const GLONG=900;   // density-grid long edge — higher = finer, crisper detail for hi-res output
   let GW=0,GH=0, dens=null, dcanvas=null, dctx=null, img=null;
   function setupGrid(){
     if(ASPECT>=1){ GW=GLONG; GH=Math.round(GLONG/ASPECT); } else { GH=GLONG; GW=Math.round(GLONG*ASPECT); }
@@ -115,7 +115,8 @@
 
   function fit(){ const availH=innerHeight-168, availW=innerWidth-28;
     let h=Math.min(availH,1650), w=h*ASPECT; if(w>availW){ w=availW; h=w/ASPECT; }
-    dpr=Math.min(devicePixelRatio||1,2); W=Math.round(w); H=Math.round(h);
+    W=Math.round(w); H=Math.round(h);
+    dpr=Math.max(Math.min(devicePixelRatio||1,2), 2160/Math.max(W,H));   // hi-res backing so Save + Record are crisp
     cv.style.width=W+'px'; cv.style.height=H+'px'; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
 
   // ---- the drift path through (a,b) space, in [0, 2π]² ----
@@ -173,7 +174,7 @@
     updateAB();
     const decay=0.55 + (P.trails/100)*0.44;                        // 0.55 .. 0.99
     for(let i=0;i<dens.length;i++) dens[i]*=decay;
-    const N=20000 + Math.round((P.detail/100)*460000);
+    const N=Math.round((20000 + (P.detail/100)*460000)*2.1);   // scaled with the larger grid to keep per-cell density
     let x=px,y=py; const mx=GW-1, my=GH-1;
     const c0=C[0],c1=C[1],c2=C[2],c3=C[3],c4=C[4],c5=C[5],c6=C[6],c7=C[7];
     for(let i=0;i<N;i++){ const nx=Math.sin(c0*x*x+c1*y*y+c2*x*y+c3), ny=Math.cos(c4*x*x+c5*y*y+c6*x*y+c7); x=nx; y=ny;
@@ -239,14 +240,16 @@
   let rec=null, chunks=[], recCv=null, recCtx=null, recRAF=0, recStart=0, recTimer=0;
   const recFmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
   $('recBtn').addEventListener('click', ()=>{ if(rec && rec.state==='recording'){ rec.stop(); return; }
-    const long=1440, rw=ASPECT>=1?long:Math.round(long*ASPECT), rh=ASPECT>=1?Math.round(long/ASPECT):long;
+    const long=2160, ev2=n=>n-(n&1);   // high-res output; even dimensions for H.264
+    const rw=ev2(ASPECT>=1?long:Math.round(long*ASPECT)), rh=ev2(ASPECT>=1?Math.round(long/ASPECT):long);
     recCv=document.createElement('canvas'); recCv.width=rw; recCv.height=rh; recCtx=recCv.getContext('2d');
+    recCtx.imageSmoothingEnabled=true; recCtx.imageSmoothingQuality='high';
     const drawFrame=()=>{ recCtx.drawImage(cv,0,0,rw,rh); };
     drawFrame();
     const stream=recCv.captureStream(30);
     const mime=['video/mp4;codecs=avc1.640029','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
     const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
-    rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:16000000}); chunks=[];
+    rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:40000000}); chunks=[];
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop=()=>{ cancelAnimationFrame(recRAF); clearInterval(recTimer); $('recDot').classList.remove('on');
       const blob=new Blob(chunks,{type:mime}); const a2=document.createElement('a');
