@@ -55,8 +55,8 @@
     pointer-events:none; opacity:0; transition:opacity .14s ease; }
   /* ink colour swatches */
   .swrow{ display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
-  .sw{ width:22px; height:22px; border-radius:50%; border:1px solid var(--line); cursor:pointer; padding:0; }
-  .sw[aria-pressed="true"]{ outline:2px solid var(--ink); outline-offset:1px; }
+  .sw, .bg{ width:22px; height:22px; border-radius:50%; border:1px solid var(--line); cursor:pointer; padding:0; }
+  .sw[aria-pressed="true"], .bg[aria-pressed="true"]{ outline:2px solid var(--ink); outline-offset:1px; }
   #inkPick{ -webkit-appearance:none; appearance:none; background:none; }
   #inkPick::-webkit-color-swatch-wrapper{ padding:0; } #inkPick::-webkit-color-swatch{ border:none; border-radius:50%; }
   #inkPick::-moz-color-swatch{ border:none; border-radius:50%; }
@@ -79,13 +79,14 @@
 
   <div id="dock">
     <div id="sliders">
-      <div class="knob" data-tip="How many stems of ink trail along each line you drew. More stems build up denser, richer growth."><label>Stems <b id="densityR">50</b></label><input id="density" type="range" min="0" max="100" value="50" /></div>
-      <div class="knob" data-tip="How much the stems bloom outward from your line. Low hugs your stroke; high sends them looping and expanding off it."><label>Expand <b id="flowR">50</b></label><input id="flow" type="range" min="0" max="100" value="50" /></div>
-      <div class="knob" data-tip="Adds a circular swirl to the stems' motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">50</b></label><input id="spiral" type="range" min="0" max="100" value="50" /></div>
-      <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">50</b></label><input id="weight" type="range" min="0" max="100" value="50" /></div>
-      <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and denser."><label>Ink density <b id="inkR">50</b></label><input id="ink" type="range" min="0" max="100" value="50" /></div>
-      <div class="knob" data-tip="How long one full pass along your line takes. Higher is slower and more meditative."><label>Time <b id="timeR">13s</b></label><input id="time" type="range" min="0" max="100" value="50" /></div>
-      <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">50</b></label><input id="color" type="range" min="0" max="100" value="50" /></div>
+      <div class="knob" data-tip="How many stems of ink trail along each line you drew. More stems build up denser, richer growth."><label>Stems <b id="densityR">10</b></label><input id="density" type="range" min="0" max="100" value="10" /></div>
+      <div class="knob" data-tip="How much the stems bloom outward from your line. Low hugs your stroke; high sends them looping and expanding off it."><label>Expand <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
+      <div class="knob" data-tip="Adds a circular swirl to the stems' motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">100</b></label><input id="spiral" type="range" min="0" max="100" value="100" /></div>
+      <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">10</b></label><input id="weight" type="range" min="0" max="100" value="10" /></div>
+      <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and denser."><label>Ink density <b id="inkR">10</b></label><input id="ink" type="range" min="0" max="100" value="10" /></div>
+      <div class="knob" data-tip="How long one full pass along your line takes. Higher is slower and more meditative."><label>Time <b id="timeR">5s</b></label><input id="time" type="range" min="0" max="100" value="20" /></div>
+      <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
+      <label style="display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin:2px 0 6px">Ink</label>
       <div class="swrow" data-tip="Pick the ink colour — the first swatch is the rainbow (every hue), or choose one; the last is a custom picker. Raise Colour to bring it in.">
         <button class="sw" data-ink="rainbow" aria-pressed="true" title="Rainbow — every hue" style="background:conic-gradient(from 0deg,#e0483c,#e6902a,#e8c020,#4f9d69,#2f7fd0,#6a4fb0,#c0468f,#e0483c);"></button>
         <button class="sw" data-ink="#e0483c" title="Red" style="background:#e0483c"></button>
@@ -95,6 +96,16 @@
         <button class="sw" data-ink="#6a4fb0" title="Violet" style="background:#6a4fb0"></button>
         <button class="sw" data-ink="#c0468f" title="Magenta" style="background:#c0468f"></button>
         <input class="sw" id="inkPick" type="color" value="#ff2d55" title="Custom colour" />
+      </div>
+      <label style="display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin:12px 0 6px">Paper</label>
+      <div class="swrow" data-tip="The paper colour behind the ink. On a dark paper the ink flips to a light stroke so it always shows.">
+        <button class="bg" data-bg="#ffffff" aria-pressed="true" title="White" style="background:#ffffff"></button>
+        <button class="bg" data-bg="#f7f4e0" title="Cream" style="background:#f7f4e0"></button>
+        <button class="bg" data-bg="#e8e2d0" title="Sand" style="background:#e8e2d0"></button>
+        <button class="bg" data-bg="#0b0c12" title="Ink black" style="background:#0b0c12"></button>
+        <button class="bg" data-bg="#101826" title="Navy" style="background:#101826"></button>
+        <button class="bg" data-bg="#1a1420" title="Aubergine" style="background:#1a1420"></button>
+        <input class="sw" id="bgPick" type="color" value="#ffffff" title="Custom paper colour" />
       </div>
     </div>
     <div class="row" style="flex-direction:column; align-items:stretch;" data-tip="Type words and the chains draw them out as letterforms — the text pours itself down the canvas.">
@@ -135,7 +146,7 @@
   let ASPECT=1080/1920;   // default: Instagram Reel (9:16)
   let W=0,H=0,dpr=1, mode='draw';
   let strokes=[], strokeCol=[], cur=null, walkers=[], raf=0, F=0, lastTs=0, aT=0, gT=0, RT=0, traceRef=null;
-  const P={ density:50, length:50, flow:50, spiral:50, weight:50, ink:50, time:50, color:50 };
+  const P={ density:10, length:50, flow:100, spiral:100, weight:10, ink:10, time:20, color:0 };
 
   function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
     t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -180,6 +191,8 @@
   // chrome: a vertical reflection ramp — cool sky highlight up top, a dark horizon band, warm sheen below
   let chrome=false;
   let inkColor='rainbow';   // 'rainbow' = per-chain multi-hue, or a chosen hex
+  let bgColor='#ffffff';    // paper colour behind the ink
+  const bgLuma = ()=>{ const n=parseInt(bgColor.slice(1),16); return (0.299*(n>>16&255)+0.587*(n>>8&255)+0.114*(n&255))/255; };
   const CHR=[[0,205,222,245],[0.30,120,150,190],[0.47,36,50,76],[0.53,52,44,52],[0.72,192,150,108],[0.90,246,226,182],[1,255,246,228]];
   function chromeCol(ny,a){ ny=ny<0?0:ny>1?1:ny; let i=0; while(i<CHR.length-1 && ny>CHR[i+1][0]) i++;
     const s0=CHR[i], s1=CHR[Math.min(CHR.length-1,i+1)], f=(ny-s0[0])/((s1[0]-s0[0])||1);
@@ -214,12 +227,13 @@
 
   function drawRaw(s){ if(s.length<2){ if(s.length){ ctx.beginPath(); ctx.arc(s[0].x*W,s[0].y*H,1.6,0,6.28); ctx.fillStyle='#141414'; ctx.fill(); } return; }
     ctx.beginPath(); ctx.moveTo(s[0].x*W,s[0].y*H); for(let i=1;i<s.length;i++) ctx.lineTo(s[i].x*W,s[i].y*H); ctx.stroke(); }
-  function renderDraw(){ ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); drawRef(0.36); ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=1.6;
-    strokes.forEach((s,si)=>{ const c=strokeCol[si]; ctx.strokeStyle=(c&&c!=='rainbow')?c:'rgba(20,20,26,.85)'; drawRaw(s); });
-    if(cur){ ctx.strokeStyle=(inkColor&&inkColor!=='rainbow')?inkColor:'rgba(20,20,26,.85)'; drawRaw(cur); } }
+  function renderDraw(){ ctx.fillStyle=bgColor; ctx.fillRect(0,0,W,H); drawRef(0.36); ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=1.6;
+    const guide = bgLuma()<0.5 ? 'rgba(235,236,240,.85)' : 'rgba(20,20,26,.85)';   // the drawn-line preview flips on dark paper
+    strokes.forEach((s,si)=>{ const c=strokeCol[si]; ctx.strokeStyle=(c&&c!=='rainbow')?c:guide; drawRaw(s); });
+    if(cur){ ctx.strokeStyle=(inkColor&&inkColor!=='rainbow')?inkColor:guide; drawRaw(cur); } }
 
   function drawRef(a){ if(!traceRef) return; ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef,0,0,W,H); ctx.restore(); }
-  function startSim(){ ctx.fillStyle=chrome?'#0b0c12':'#fff'; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
+  function startSim(){ ctx.fillStyle=chrome?'#0b0c12':bgColor; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
   function step(ts){ raf=requestAnimationFrame(step); F++;
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
     const secs=secsFor();
@@ -227,6 +241,7 @@
     RT += dt;                         // always-running real-time clock, for each chain's slow attack
     const flow=P.flow/100, spiral=P.spiral/100, colAmt=P.color/100, scale=Math.min(W,H);
     const ink=0.015+(P.ink/100)*0.13, wBase=0.3+(P.weight/100)*3.0;
+    const baseInk = bgLuma()<0.5 ? 236 : 13;   // plain-ink endpoint (Colour=0): light on dark paper, near-black on light paper
     for(const w of walkers){
       if(aT < w.startAt) continue;   // pour-in stagger: this stroke hasn't begun yet
       // head drifts in 2D via noise, centred on a slowly-advancing point of the drawn stroke —
@@ -247,7 +262,7 @@
       else {
         // blend smoothly from black ink toward the stroke's colour as Colour rises (rainbow = per-chain hue)
         const wc=w.col||inkColor; const cn=parseInt((wc==='rainbow'?hueFor(w.hue+colAmt*0.5):wc).slice(1),16);
-        const cr=Math.round((cn>>16&255)*colAmt + 12*(1-colAmt)), cg=Math.round((cn>>8&255)*colAmt + 12*(1-colAmt)), cb=Math.round((cn&255)*colAmt + 16*(1-colAmt));
+        const cr=Math.round((cn>>16&255)*colAmt + baseInk*(1-colAmt)), cg=Math.round((cn>>8&255)*colAmt + baseInk*(1-colAmt)), cb=Math.round((cn&255)*colAmt + baseInk*(1-colAmt));
         ctx.fillStyle = 'rgba('+cr+','+cg+','+cb+','+(ink*w.ink*(1+0.3*colAmt)).toFixed(3)+')';
       }
       for(let i=0;i<w.nodes.length;i++){ const a=w.last[i], b=w.nodes[i];
@@ -373,7 +388,7 @@
     // same and never depends on the window/display size. Long edge 1440.
     const long=1440, rw=ASPECT>=1?long:Math.round(long*ASPECT), rh=ASPECT>=1?Math.round(long/ASPECT):long;
     recCv=document.createElement('canvas'); recCv.width=rw; recCv.height=rh; recCtx=recCv.getContext('2d');
-    const drawFrame=()=>{ recCtx.fillStyle=chrome?'#0b0c12':'#fff'; recCtx.fillRect(0,0,rw,rh); recCtx.drawImage(cv,0,0,rw,rh); };
+    const drawFrame=()=>{ recCtx.fillStyle=chrome?'#0b0c12':bgColor; recCtx.fillRect(0,0,rw,rh); recCtx.drawImage(cv,0,0,rw,rh); };
     drawFrame();   // seed one frame so the stream has content
     const stream=recCv.captureStream(30);
     const mime=['video/mp4;codecs=avc1.640029','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
@@ -395,6 +410,13 @@
   }
   document.querySelectorAll('.sw[data-ink]').forEach(btn=>btn.addEventListener('click', ()=> setInk(btn.getAttribute('data-ink'), false)));
   $('inkPick').addEventListener('input', ()=> setInk($('inkPick').value, true));
+
+  function setBg(val, isPreset){ bgColor=val; if(isPreset) $('bgPick').value=val;
+    document.querySelectorAll('.bg[data-bg]').forEach(s=>s.setAttribute('aria-pressed', s.getAttribute('data-bg')===val?'true':'false'));
+    if(mode==='modify') startSim(); else renderDraw();   // repaint the paper live
+  }
+  document.querySelectorAll('.bg[data-bg]').forEach(btn=>btn.addEventListener('click', ()=> setBg(btn.getAttribute('data-bg'), true)));
+  $('bgPick').addEventListener('input', ()=> setBg($('bgPick').value, false));
 
   // Randomize — borrowed from ATTRACTOR: roll a fresh combination of every control (and a colour),
   // then re-bloom your drawn line from the start so the whole new look takes at once.
