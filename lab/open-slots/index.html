@@ -74,11 +74,10 @@
     const clouds=[]; for(let i=0;i<7;i++) clouds.push({x:Math.random(),y:0.06+Math.random()*0.52,s:0.8+Math.random()*1.5,spd:0.2+Math.random()*0.5,seed:Math.random()*10});
 
     // ── timeline (seconds): each emotion snaps into focus, holds a beat, then the next → invite cards → loop ──
-    const c1=1.70158, c3=c1+1, easeOutBack=x=>1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);   // slight overshoot = a snap
-    const HOLD=0.24, SNAP=0.11, STEP=HOLD+SNAP;       // ~0.35s per word — unhurried
-    const TICKER_END=9.1, ENDING_START=9.45, CARD_DUR=1.6;
+    // emotions flicker fast in place, decelerate to a stop, then the invite lines calm-fade and hold
+    const TICKER_END=9.0, ENDING_START=9.3, CARD_DUR=1.85, TICKS=130;
     const ENDING=['OPEN','FRIDAYS','6AM','MEDITATION & COMMUNITY','OP/AL','MORE THAN DESIGN'];
-    const TOTAL=ENDING_START + ENDING.length*CARD_DUR + 1.4;
+    const TOTAL=ENDING_START + ENDING.length*CARD_DUR + 1.5;
     let start=null, INVITE_SIZE=110;   // one uniform size for every invite line (longest still fits one line)
 
     function drawSky(now){
@@ -93,15 +92,16 @@
           g.fillStyle=rg; g.beginPath(); g.arc(ox,oy,r,0,6.2832); g.fill(); } }
     }
     function drawSlot(t){
-      const i=Math.floor(t/STEP), local=t-i*STEP, wi=i%REEL.length, up=REEL[wi].toUpperCase();
-      const prog = local<SNAP ? local/SNAP : 1;                   // snap-in, then hold in focus
-      const yOff = (1-easeOutBack(prog))*42;                      // rises from just below and snaps to centre
-      const a = Math.min(1, local/(SNAP*0.6));
-      let fs=82; g.font=fs+'px '+FAM;                             // smaller, elegant single word
+      // instant swaps in place; easeOutCubic front-loads the changes so it flickers fast then slows to a stop
+      const idx=Math.floor(easeOutCubic(Math.min(1,t/TICKER_END))*TICKS);
+      const wi=idx%REEL.length, up=REEL[wi].toUpperCase();
+      let a=1; if(t>TICKER_END-0.5) a=Math.max(0,1-(t-(TICKER_END-0.5))/0.5);   // settle + fade out into the invite
+      if(a<=0) return;
+      let fs=82; g.font=fs+'px '+FAM;
       const ww=g.measureText(up).width; if(ww>W*0.86){ fs=Math.floor(fs*W*0.86/ww); g.font=fs+'px '+FAM; }
       g.textAlign='center'; g.textBaseline='middle';
       g.fillStyle=hexA(VIB[wi%VIB.length], a);
-      g.fillText(up, W/2, H*0.5 + yOff);
+      g.fillText(up, W/2, H*0.5);
     }
     // the invite words appear in the SAME slot style — each snaps into focus, holds, then the next —
     // all on one line at one uniform size (INVITE_SIZE), in solid ink
@@ -110,12 +110,11 @@
       INVITE_SIZE = widest>W*0.9 ? Math.floor(BASE*W*0.9/widest) : BASE; }
     function drawEnding(t){
       const local=t-ENDING_START, ci=Math.floor(local/CARD_DUR); if(ci<0||ci>=ENDING.length) return;
-      const word=ENDING[ci], lt=local-ci*CARD_DUR, SNAP2=0.15;
-      const prog = lt<SNAP2 ? lt/SNAP2 : 1;
-      const yOff=(1-easeOutBack(prog))*42, a=Math.min(1, lt/(SNAP2*0.6));   // same snap-in as the emotions
+      const word=ENDING[ci], lt=local-ci*CARD_DUR;
+      const fin=Math.min(1,lt/0.5), fout=Math.min(1,(CARD_DUR-lt)/0.55), a=Math.max(0,Math.min(fin,fout));   // gentle fade in/out, held
       g.textAlign='center'; g.textBaseline='middle';
       g.font=INVITE_SIZE+'px '+FAM; g.fillStyle=hexA('#15171c', a);
-      g.fillText(word, W/2, H*0.5 + yOff);
+      g.fillText(word, W/2, H*0.5);
     }
     function frame(now){ now/=1000; if(start==null){ start=now; }
       let t=now-start;
