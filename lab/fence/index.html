@@ -25,8 +25,18 @@
   #dock{ position:fixed; top:var(--top); right:0; bottom:0; width:var(--rail); z-index:6;
     padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:rgba(15,16,24,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:16px; }
+    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; }
+  /* grouped sections — a clean, labelled stack with dividers */
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--line); }
+  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
+  .grid2 .btn, .grid3 .btn, .btn.full{ width:100%; }
+  .field{ width:100%; background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--ink);
+    font:inherit; font-size:12px; letter-spacing:.02em; padding:9px 10px; border-radius:2px; }
+  .field::placeholder{ color:rgba(255,255,255,.4); }
   .btn{ appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--ink);
     font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
     display:inline-flex; align-items:center; justify-content:center;
@@ -78,15 +88,34 @@
   <div id="recDot"><i></i><b>0:00</b></div>
 
   <div id="dock">
-    <div id="sliders">
-      <div class="knob" data-tip="How many stems of ink trail along each line you drew. More stems build up denser, richer growth."><label>Stems <b id="densityR">10</b></label><input id="density" type="range" min="0" max="100" value="10" /></div>
-      <div class="knob" data-tip="How much the stems bloom outward from your line. Low hugs your stroke; high sends them looping and expanding off it."><label>Expand <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
-      <div class="knob" data-tip="Adds a circular swirl to the stems' motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">100</b></label><input id="spiral" type="range" min="0" max="100" value="100" /></div>
-      <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">10</b></label><input id="weight" type="range" min="0" max="100" value="10" /></div>
-      <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and denser."><label>Ink density <b id="inkR">10</b></label><input id="ink" type="range" min="0" max="100" value="10" /></div>
-      <div class="knob" data-tip="How long one full pass along your line takes. Higher is slower and more meditative."><label>Time <b id="timeR">5s</b></label><input id="time" type="range" min="0" max="100" value="20" /></div>
-      <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
-      <label style="display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin:2px 0 6px">Ink</label>
+
+    <!-- primary action -->
+    <div class="group">
+      <button class="btn primary full" id="doneBtn">Bloom</button>
+      <div class="grid2" id="modRow" style="display:none">
+        <button class="btn" id="editBtn">Edit lines</button>
+        <button class="btn" id="restartBtn">Redraw</button>
+      </div>
+    </div>
+
+    <!-- form -->
+    <div class="group">
+      <div class="group__t">Form</div>
+      <div id="sliders">
+        <div class="knob" data-tip="How many stems of ink trail along each line you drew. More stems build up denser, richer growth."><label>Stems <b id="densityR">10</b></label><input id="density" type="range" min="0" max="100" value="10" /></div>
+        <div class="knob" data-tip="How much the stems bloom outward from your line. Low hugs your stroke; high sends them looping and expanding off it."><label>Expand <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
+        <div class="knob" data-tip="Adds a circular swirl to the stems' motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">100</b></label><input id="spiral" type="range" min="0" max="100" value="100" /></div>
+        <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">10</b></label><input id="weight" type="range" min="0" max="100" value="10" /></div>
+        <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and denser."><label>Ink density <b id="inkR">10</b></label><input id="ink" type="range" min="0" max="100" value="10" /></div>
+        <div class="knob" data-tip="How long one full pass along your line takes. Higher is slower and more meditative."><label>Time <b id="timeR">5s</b></label><input id="time" type="range" min="0" max="100" value="20" /></div>
+        <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
+      </div>
+      <button class="btn full" id="rndBtn" data-tip="Roll a fresh combination of every control — and a colour — for a new bloom to explore, like a strange attractor searching its space.">Randomize</button>
+    </div>
+
+    <!-- colour -->
+    <div class="group">
+      <div class="group__t">Ink</div>
       <div class="swrow" data-tip="Pick the ink colour — the first swatch is the rainbow (every hue), or choose one; the last is a custom picker. Raise Colour to bring it in.">
         <button class="sw" data-ink="rainbow" aria-pressed="true" title="Rainbow — every hue" style="background:conic-gradient(from 0deg,#e0483c,#e6902a,#e8c020,#4f9d69,#2f7fd0,#6a4fb0,#c0468f,#e0483c);"></button>
         <button class="sw" data-ink="#e0483c" title="Red" style="background:#e0483c"></button>
@@ -97,7 +126,7 @@
         <button class="sw" data-ink="#c0468f" title="Magenta" style="background:#c0468f"></button>
         <input class="sw" id="inkPick" type="color" value="#ff2d55" title="Custom colour" />
       </div>
-      <label style="display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin:12px 0 6px">Paper</label>
+      <div class="group__t" style="margin-top:3px">Paper</div>
       <div class="swrow" data-tip="The paper colour behind the ink. On a dark paper the ink flips to a light stroke so it always shows.">
         <button class="bg" data-bg="#ffffff" aria-pressed="true" title="White" style="background:#ffffff"></button>
         <button class="bg" data-bg="#f7f4e0" title="Cream" style="background:#f7f4e0"></button>
@@ -108,40 +137,57 @@
         <input class="sw" id="bgPick" type="color" value="#ffffff" title="Custom paper colour" />
       </div>
     </div>
-    <div class="row" style="flex-direction:column; align-items:stretch;" data-tip="Type words and the chains draw them out as letterforms — the text pours itself down the canvas.">
-      <input id="textIn" type="text" placeholder="Type words to pour…" autocomplete="off"
-        style="width:100%; background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--ink); font:inherit; font-size:12px; letter-spacing:.02em; padding:9px 10px; border-radius:2px; box-sizing:border-box;" />
-      <button class="btn" id="textBtn">Pour text</button>
+
+    <!-- type -->
+    <div class="group">
+      <div class="group__t">Type</div>
+      <input id="textIn" class="field" type="text" placeholder="Type words to pour…" autocomplete="off" data-tip="Type words and the chains draw them out as letterforms — the text pours itself down the canvas." />
+      <button class="btn full" id="textBtn">Pour text</button>
     </div>
-    <div class="row">
-      <button class="btn primary" id="doneBtn">Bloom</button>
-      <button class="btn chip" id="editBtn" style="display:none">Edit lines</button>
-      <div class="sep"></div>
-      <button class="btn chip" id="photoBtn">Photo</button>
-      <button class="btn chip" id="adjustBtn" style="display:none" aria-pressed="false" data-tip="Reposition the photo without distorting it — drag to move, scroll or pinch to resize. Toggle off to draw.">Move photo</button>
-      <button class="btn chip" id="eraseBtn" aria-pressed="false" data-tip="Erase mode — drag across your drawn lines to remove them. Toggle off to draw again.">Eraser</button>
-      <button class="btn chip" id="undoBtn">Undo</button>
-      <button class="btn chip" id="clearBtn">Clear</button>
-      <button class="btn chip" id="rndBtn" data-tip="Roll a fresh combination of every control — and a colour — for a new bloom to explore, like a strange attractor searching its space.">Randomize</button>
-      <button class="btn chip" id="restartBtn" style="display:none">Redraw</button>
-      <select id="aspect" class="btn chip" title="Canvas size">
+
+    <!-- finish -->
+    <div class="group">
+      <div class="group__t">Finish</div>
+      <div class="grid2">
+        <button class="btn" id="chromeBtn" aria-pressed="false" data-tip="Render the lines as polished chrome — adapts to your paper: a metallic glow on dark paper, shiny liquid chrome on light paper.">Chrome</button>
+        <button class="btn" id="soundBtn" aria-pressed="false" data-tip="An eerie synth soundtrack, generated live from the motion. Pick a voice below — each moves differently. Recording does not capture it.">Sound</button>
+      </div>
+      <select id="soundMode" class="btn full" title="Sound voice">
+        <option value="swarm" selected>Swarm — drifting</option>
+        <option value="rubber">Rubber — vibrato</option>
+        <option value="scrape">Scrape — dry</option>
+        <option value="machine">Machine — metallic</option>
+        <option value="wind">Wind — hollow</option>
+      </select>
+    </div>
+
+    <!-- lines & photo -->
+    <div class="group">
+      <div class="group__t">Lines &amp; photo</div>
+      <div class="grid3">
+        <button class="btn" id="photoBtn">Photo</button>
+        <button class="btn" id="adjustBtn" style="display:none" aria-pressed="false" data-tip="Reposition the photo without distorting it — drag to move, scroll or pinch to resize. Toggle off to draw.">Move photo</button>
+        <button class="btn" id="eraseBtn" aria-pressed="false" data-tip="Erase mode — drag across your drawn lines to remove them. Toggle off to draw again.">Eraser</button>
+        <button class="btn" id="undoBtn">Undo</button>
+        <button class="btn" id="clearBtn">Clear</button>
+      </div>
+    </div>
+
+    <!-- canvas & export -->
+    <div class="group">
+      <div class="group__t">Canvas &amp; export</div>
+      <select id="aspect" class="btn full" title="Canvas size">
         <option value="1080/1920" selected>Reel 9:16</option>
         <option value="1080/1350">Portrait 4:5</option>
         <option value="1/1">Square 1:1</option>
         <option value="1920/1080">Landscape 16:9</option>
       </select>
-      <button class="btn chip" id="chromeBtn" aria-pressed="false" data-tip="Render the lines as polished chrome — adapts to your paper: a metallic glow on dark paper, shiny liquid chrome on light paper.">Chrome</button>
-      <button class="btn chip" id="soundBtn" aria-pressed="false" data-tip="An eerie synth soundtrack, generated live from the motion. Pick a voice alongside — each moves differently (drifting swarm, rubbery vibrato, dry scrape, metallic machine, hollow wind). Recording does not capture it.">Sound</button>
-      <select id="soundMode" class="btn chip" title="Sound voice">
-        <option value="swarm" selected>Swarm</option>
-        <option value="rubber">Rubber</option>
-        <option value="scrape">Scrape</option>
-        <option value="machine">Machine</option>
-        <option value="wind">Wind</option>
-      </select>
-      <button class="btn chip" id="recBtn" aria-pressed="false">Record</button>
-      <button class="btn chip" id="saveBtn">Save</button>
+      <div class="grid2">
+        <button class="btn" id="recBtn" aria-pressed="false">Record</button>
+        <button class="btn" id="saveBtn">Save</button>
+      </div>
     </div>
+
   </div>
 
 <script src="/lab/shared/opal.js"></script>
@@ -425,12 +471,12 @@
     if(mode!=='modify') renderDraw(); }
 
   function toDraw(){ mode='draw'; cancelAnimationFrame(raf); silenceAudio();
-    $('doneBtn').style.display=''; $('editBtn').style.display='none'; $('restartBtn').style.display='none';
+    $('doneBtn').style.display=''; $('modRow').style.display='none';
     $('hint').textContent='Draw a line — then hit Bloom'; $('hint').style.opacity=1; renderDraw(); }
   function toModify(){ if(!strokes.length){ $('hint').textContent='Draw a line first'; $('hint').style.opacity=1; return; }
     adjustPhoto=false; $('adjustBtn').setAttribute('aria-pressed','false'); erasing=false; $('eraseBtn').setAttribute('aria-pressed','false'); cv.style.cursor='crosshair';
     mode='modify'; $('sliders').classList.remove('locked'); $('doneBtn').style.display='none';
-    $('editBtn').style.display=''; $('restartBtn').style.display='';
+    $('modRow').style.display='grid';
     $('hint').textContent='Now it moves — keep drawing to add more, live'; $('hint').style.opacity=1;
     setTimeout(()=>{ if(mode==='modify') $('hint').style.opacity=0; }, 3800); startSim(); }
   $('aspect').addEventListener('change', e=>{ const [a,b]=e.target.value.split('/').map(Number); ASPECT=a/b; fit();
