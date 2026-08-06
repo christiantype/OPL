@@ -409,8 +409,8 @@
       'shivery','feverish','tremulous','quivering','jittery','antsy','wired','restive','sharp','numb','electric',
       'floaty','aglow','hushed','brimming','radiant','tingly','simmering','porous','melting','awake'];
     const P={
-      text:'  '+EMOTIONS.join('   ')+'   ',
-      size:15, spacing:21, rowGap:78,
+      text:'  '+EMOTIONS.join('  ')+'  ',
+      size:12, spacing:16, rowGap:52,   // reel: denser field so the full 254-word vocabulary shows in portrait
       swayAmp:34, windSway:20, swayFreq:0.008, breathFreq:0.00139, breathAmp:0.62,
       spring:0.02, damp:0.9, collIter:3, collPush:1.0, restitution:0.4, accent:'#efe000', margin:40
     };
@@ -453,7 +453,10 @@
       strands=[]; nodes=[]; warmT=0; const m=P.margin, mainSpan=W-2*m;   // restart the breath warm-up on (re)build
       const count=Math.max(2,Math.floor((H-2*m)/P.rowGap)+1), nPer=Math.max(2,Math.floor(mainSpan/P.spacing)+1);
       // one long stream; each row starts at a different offset so the same words never stack vertically
-      const OFF=37, master=buildStream(nPer + count*OFF + 8);
+      // build the ENTIRE vocabulary once, then spread the rows evenly across all of it, so the
+      // whole 254-word list is represented top-to-bottom (not just the start of the list)
+      const master=buildStream([...P.text].length + 8);
+      const OFF=Math.max(1, Math.floor((master.length - nPer)/Math.max(1,count-1)));
       const rnd=(a,b)=>a+Math.random()*(b-a);
       for(let s=0;s<count;s++){ const cpos=m+(H-2*m)*(count===1?0.5:s/(count-1)); const strand=[]; const start=s*OFF;
         let wc=VIB[(Math.random()*VIB.length)|0];
