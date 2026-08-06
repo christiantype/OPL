@@ -67,6 +67,8 @@
     const VIB=['#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
       '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c','#0e5c5b','#4a2c4d'];
     const FAM='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
+    const logo=new Image(); logo.src='/lab/shared/opal-logo.svg';        // the real OP/AL wordmark
+    const LOGO_ASPECT=1584/612, LOGO_MARK_HFRAC=201.5/612;               // mark's height within the SVG viewBox
     const hexA=(h,a)=>{ const n=parseInt(h.slice(1),16); a=a<0?0:a>1?1:a; return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a.toFixed(3)+')'; };
     const easeOutCubic=x=>1-Math.pow(1-x,3);
     function shuffled(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
@@ -97,7 +99,7 @@
       const wi=idx%REEL.length, up=REEL[wi].toUpperCase();
       let a=1; if(t>TICKER_END-0.5) a=Math.max(0,1-(t-(TICKER_END-0.5))/0.5);   // settle + fade out into the invite
       if(a<=0) return;
-      let fs=82; g.font=fs+'px '+FAM;
+      let fs=62; g.font=fs+'px '+FAM;                              // scaled down 25%
       const ww=g.measureText(up).width; if(ww>W*0.86){ fs=Math.floor(fs*W*0.86/ww); g.font=fs+'px '+FAM; }
       g.textAlign='center'; g.textBaseline='middle';
       g.fillStyle=hexA(VIB[wi%VIB.length], a);
@@ -107,11 +109,16 @@
     // all on one line at one uniform size (INVITE_SIZE), in solid ink
     function computeInviteSize(){ const BASE=150; g.font=BASE+'px '+FAM; let widest=0;
       for(const w of ENDING){ const ww=g.measureText(w).width; if(ww>widest) widest=ww; }
-      INVITE_SIZE = widest>W*0.9 ? Math.floor(BASE*W*0.9/widest) : BASE; }
+      INVITE_SIZE = Math.floor((widest>W*0.9 ? BASE*W*0.9/widest : BASE) * 0.75); }   // scaled down 25%
     function drawEnding(t){
       const local=t-ENDING_START, ci=Math.floor(local/CARD_DUR); if(ci<0||ci>=ENDING.length) return;
       const word=ENDING[ci], lt=local-ci*CARD_DUR;
       const fin=Math.min(1,lt/0.5), fout=Math.min(1,(CARD_DUR-lt)/0.55), a=Math.max(0,Math.min(fin,fout));   // gentle fade in/out, held
+      if(word==='OP/AL' && logo.complete && logo.naturalWidth){        // draw the real wordmark instead of text
+        const markH=INVITE_SIZE*0.72, ih=markH/LOGO_MARK_HFRAC, iw=ih*LOGO_ASPECT;
+        g.globalAlpha=a; g.drawImage(logo, W/2-iw/2, H*0.5-ih/2, iw, ih); g.globalAlpha=1;
+        return;
+      }
       g.textAlign='center'; g.textBaseline='middle';
       g.font=INVITE_SIZE+'px '+FAM; g.fillStyle=hexA('#15171c', a);
       g.fillText(word, W/2, H*0.5);
