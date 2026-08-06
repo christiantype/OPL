@@ -126,6 +126,17 @@
     color:var(--mute); white-space:nowrap; }
   .rail .grp > label{ white-space:normal; }
   .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  /* overlay text / svg item editors */
+  .titem{ border:1px solid var(--hair); border-radius:3px; padding:9px; display:flex; flex-direction:column; gap:7px; }
+  .titem + .titem{ margin-top:8px; }
+  .titem .seg button{ padding:5px 4px; font-size:9px; }
+  .titem .grp label{ font-size:9px; }
+  .thead{ display:flex; gap:6px; align-items:center; }
+  .tt{ flex:1; min-width:0; background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:2px; padding:7px 8px; font:inherit; font-size:12px; }
+  .tbadge{ flex:1; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink); display:flex; align-items:center; gap:7px; min-width:0; }
+  .tbadge img{ width:22px; height:22px; object-fit:contain; background:rgba(127,127,127,.14); border-radius:2px; }
+  .xbtn{ appearance:none; border:1px solid var(--hair); background:transparent; color:var(--ink); width:26px; height:26px; border-radius:3px; cursor:pointer; font-size:15px; line-height:1; flex:none; }
+  .xbtn:hover{ background:var(--hair); }
   .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
   .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
     font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
@@ -273,33 +284,33 @@
 
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Text</button>
-    <p class="rowhint">Optional — drop a title and a few lines into a band. Place it anywhere, and choose whether it holds still or scrolls like a ticker.</p>
-    <div class="grp" data-tip="Show or hide the text band over the piece."><label>Show</label>
+    <p class="rowhint">Optional type — add as many pieces as you like and place each one anywhere: a title up top, details in a corner, a line scrolling across. Bring your own font too.</p>
+    <div class="grp" data-tip="Show or hide all the text over the piece."><label>Show</label>
       <div class="seg" id="textOnSeg"><button data-x="0" aria-pressed="true">Off</button><button data-x="1" aria-pressed="false">On</button></div>
     </div>
-    <textarea id="textInput" rows="3" spellcheck="false" placeholder="WHISKEY &amp; TEA&#10;Fri 12 Sept · 8pm&#10;The Loft, Chicago"
-      style="width:100%; background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:2px; padding:8px 9px; font:inherit; font-size:12px; letter-spacing:.02em; line-height:1.4; resize:vertical; min-height:64px;"></textarea>
-    <div class="duo">
-      <div class="grp" data-tip="Where the band sits, top to bottom."><label>Placement <b id="textPosR">50</b></label><input id="textPos" type="range" min="0" max="100" value="50" /></div>
-      <div class="grp" data-tip="Text size."><label>Size <b id="textSizeR">50</b></label><input id="textSize" type="range" min="0" max="100" value="50" /></div>
+    <div class="grp" data-tip="The letterform style for every text piece."><label>Typeface</label>
+      <div class="seg" id="textFontSeg"><button data-f="sans" aria-pressed="true">Sans</button><button data-f="serif" aria-pressed="false">Serif</button><button data-f="mono" aria-pressed="false">Mono</button><button data-f="custom" aria-pressed="false">Custom</button></div>
     </div>
-    <div class="grp" data-tip="Hold the text still, or scroll it along the band like a marquee."><label>Motion</label>
-      <div class="seg" id="textMoveSeg"><button data-x="0" aria-pressed="true">Still</button><button data-x="1" aria-pressed="false">Scroll</button></div>
-    </div>
-    <div class="grp" id="textSpeedWrap" data-tip="How fast the text scrolls." style="display:none"><label>Scroll speed <b id="textSpeedR">40</b></label><input id="textSpeed" type="range" min="0" max="100" value="40" /></div>
-    <div class="grp" data-tip="How the lines line up when still."><label>Align</label>
-      <div class="seg" id="textAlignSeg"><button data-a="left" aria-pressed="false">Left</button><button data-a="center" aria-pressed="true">Center</button><button data-a="right" aria-pressed="false">Right</button></div>
-    </div>
-    <div class="grp" data-tip="The letterform style of the text."><label>Typeface</label>
-      <div class="seg" id="textFontSeg"><button data-f="sans" aria-pressed="true">Sans</button><button data-f="serif" aria-pressed="false">Serif</button><button data-f="mono" aria-pressed="false">Mono</button></div>
-    </div>
-    <div class="grp" data-tip="Show a solid band behind the text, or let the text sit straight over the image."><label>Band</label>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="fontBtn" style="flex:1" data-tip="Upload your own .ttf or .otf font. It stays on this page and applies to every text piece.">Upload font</button>
+      <button class="btn" id="fontClear" style="flex:1" data-tip="Drop the custom font and go back to the built-in typefaces.">Clear</button>
+    </div></div>
+    <input id="fontInp" type="file" accept=".ttf,.otf,.woff,.woff2,font/*" hidden />
+    <p class="rowhint" id="fontName" style="opacity:.55;margin:3px 0 0">built-in typeface</p>
+    <div class="grp" data-tip="A solid plate behind each still piece (and a full band behind a scrolling one), or let the type sit straight over the image."><label>Plate</label>
       <div class="seg" id="bandOnSeg"><button data-x="1" aria-pressed="true">On</button><button data-x="0" aria-pressed="false">Off</button></div>
     </div>
     <div class="duo">
       <div class="grp" data-tip="Text colour."><div class="cin"><input type="color" id="textColor" value="#ffffff"><label>Text</label></div></div>
-      <div class="grp" data-tip="Band colour."><div class="cin"><input type="color" id="bandColor" value="#101014"><label>Band</label></div></div>
+      <div class="grp" data-tip="Plate / band colour."><div class="cin"><input type="color" id="bandColor" value="#101014"><label>Plate</label></div></div>
     </div>
+    <div class="grp" id="textSpeedWrap" data-tip="How fast any scrolling pieces move."><label>Scroll speed <b id="textSpeedR">40</b></label><input id="textSpeed" type="range" min="0" max="100" value="40" /></div>
+    <div id="textList"></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="textAdd" style="flex:1" data-tip="Add another text piece to place.">+ Text</button>
+      <button class="btn" id="svgAdd" style="flex:1" data-tip="Add an SVG — your logo or a mark. Place it, or scatter it broken-up and displaced throughout the frame.">+ SVG</button>
+    </div></div>
+    <input id="svgInp" type="file" accept=".svg,image/svg+xml" hidden />
   </div>
 
   <div class="row">
@@ -371,8 +382,11 @@
   const state={ count:43, uneven:100, axis:'weave', cross:61, speed:45, spread:60, bg:'#ffffff',
     size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, smudge:16, gap:0, vol:85, playing:true,
     cycle:'0', cycrate:40, ambience:'off', auto:'0', autoamt:50,
-    textOn:'0', text:'', textPos:50, textSize:50, textMove:'0', textSpeed:40,
-    textAlign:'center', textFont:'sans', bandOn:'1', textColor:'#ffffff', bandColor:'#101014' };
+    textOn:'0', textFont:'sans', textColor:'#ffffff', bandOn:'1', bandColor:'#101014', textSpeed:40,
+    items:[
+      {type:'text', t:'WHISKEY & TEA', x:50, y:15, size:64, track:8, align:'center', move:'0'},
+      {type:'text', t:'Fri 12 Sept · 8pm  ·  The Loft', x:50, y:88, size:30, track:22, align:'center', move:'0'}
+    ] };
   const CW=()=>+state.size.split('x')[0], CH=()=>+state.size.split('x')[1];
   function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
   function h01(a,b){ let h=(Math.imul(a|0,73856093) ^ Math.imul(b|0,19349663) ^ Math.imul(state.seed|0,83492791))>>>0; h=Math.imul(h^h>>>15,2246822519); h^=h>>>13; return (h>>>0)/4294967296; }
@@ -478,10 +492,10 @@
   function renderComp(g,W,H,t){
     g.globalAlpha=1; g.globalCompositeOperation='source-over';
     g.fillStyle=state.bg; g.fillRect(0,0,W,H);
-    if(!imgs.length){ if(+state.textOn) drawTextBand(g,W,H,t); return; }
+    if(!imgs.length){ drawOverlay(g,W,H,t); return; }
     build();
     const base=state.speed/100*260, frag=state.fragment/100;
-    if(state.axis==="radial"){ drawRadial(g,W,H,t,base); if(+state.meta) drawMeta(g,W,H,t); if(+state.textOn) drawTextBand(g,W,H,t); return; }
+    if(state.axis==="radial"){ drawRadial(g,W,H,t,base); if(+state.meta) drawMeta(g,W,H,t); drawOverlay(g,W,H,t); return; }
     let bi=0;
     for(const b of bands){ const im=imgs[imgAt(b,t)]; const off=(t*base*b.spd)*b.dir + b.phase*500; bi++;
       const fc = frag>0.01 ? 1+Math.round(frag*5) : 1;   // dice the band into scattered pieces
@@ -495,7 +509,7 @@
           if(sm) drawSmudge(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch);
           else drawSlice(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch, b.zoom); } } }
     if(+state.meta) drawMeta(g,W,H,t);
-    if(+state.textOn) drawTextBand(g,W,H,t);
+    drawOverlay(g,W,H,t);
   }
   // Studio telemetry — the piece's own data, broken up and scattered across the frame.
   function drawMeta(g,W,H,t){ const s=Math.min(W,H); g.save(); g.textBaseline='top';
@@ -525,34 +539,94 @@
     L.forEach((tx)=>{ const px=0.02*W + r()*0.8*W, py=0.03*H + r()*0.9*H, rot=(r()<0.18)?(r()<0.5?Math.PI/2:-Math.PI/2):0;
       g.save(); g.translate(px,py); if(rot) g.rotate(rot); g.fillStyle=`rgba(255,255,255,${(0.24+r()*0.5).toFixed(2)})`; g.fillText(tx,0,0); g.restore(); });
     g.restore(); }
-  // Optional caption — a title (and a few lines) set into a band, placed anywhere, still or scrolling.
-  function drawTextBand(g,W,H,t){
-    const lines=(state.text||'').split('\n').filter(s=>s.trim().length);
-    if(!lines.length) return;
-    const s=Math.min(W,H);
-    const fs=Math.max(10, Math.round(s*0.02 + (state.textSize/100)*s*0.10));
-    const lh=Math.round(fs*1.22), padY=Math.round(fs*0.5);
-    const bandH=lines.length*lh + padY*2;
-    const top=Math.round((state.textPos/100)*H - bandH/2);
-    const fam = state.textFont==='serif' ? `700 ${fs}px Georgia,"Times New Roman",serif`
-              : state.textFont==='mono'  ? `700 ${fs}px ui-monospace,Menlo,monospace`
-              :                            `800 ${fs}px "Helvetica Neue",Arial,sans-serif`;
-    g.save(); g.font=fam; g.textBaseline='middle';
-    if(+state.bandOn){ g.fillStyle=state.bandColor; g.fillRect(0, top, W, bandH); }
-    g.fillStyle=state.textColor;
-    if(+state.textMove){
-      g.textAlign='left'; const spd=(state.textSpeed/100)*280 + 12;
-      lines.forEach((ln,i)=>{ const y=top+padY+lh*i+lh/2;
-        const w=g.measureText(ln).width, period=w+fs*2.5;
-        let x=-((((t*spd)%period)+period)%period);
-        for(let px=x; px<W; px+=period) g.fillText(ln, px, y); });
-    } else {
-      g.textAlign=state.textAlign;
-      const ax = state.textAlign==='left'? Math.round(W*0.045) : state.textAlign==='right'? Math.round(W*0.955) : Math.round(W/2);
-      lines.forEach((ln,i)=>{ g.fillText(ln, ax, top+padY+lh*i+lh/2); });
+  // ---- overlay: text pieces + SVG marks, each placed anywhere or scattered throughout ----
+  let customFamily=null, customFF=null;
+  function fontFamily(){ return state.textFont==='custom'&&customFamily?`"${customFamily}"`
+      : state.textFont==='serif'?'Georgia,"Times New Roman",serif'
+      : state.textFont==='mono'?'ui-monospace,SFMono-Regular,Menlo,monospace'
+      : '"Helvetica Neue",Arial,sans-serif'; }
+  function fontWeight(){ return state.textFont==='custom'?'400':state.textFont==='sans'?'800':'700'; }
+  function drawTextItem(g,it,W,H,t){
+    const txt=(it.t||'').trim(); if(!txt) return;
+    const s=Math.min(W,H), fs=Math.max(8, Math.round(s*0.014 + (it.size/100)*s*0.11));
+    g.save(); g.font=`${fontWeight()} ${fs}px ${fontFamily()}`; g.textBaseline='middle';
+    if('letterSpacing' in g) g.letterSpacing=((it.track||0)/100*fs).toFixed(2)+'px';
+    const py=it.y/100*H;
+    if(+it.move){                                       // scroll across a full-width band at this row
+      const w0=g.measureText(txt).width, period=w0+fs*2.5, spd=(state.textSpeed/100)*280+12;
+      if(+state.bandOn){ const h=fs*1.7; g.fillStyle=state.bandColor; g.fillRect(0,py-h/2,W,h); }
+      g.fillStyle=state.textColor; g.textAlign='left';
+      let x=-((((t*spd)%period)+period)%period);
+      for(let X=x; X<W; X+=period) g.fillText(txt,X,py);
+    } else {                                            // still, anchored at (x,y) with a snug plate
+      const px=it.x/100*W, w=g.measureText(txt).width;
+      g.textAlign=it.align||'center';
+      if(+state.bandOn){ const padX=fs*0.5,h=fs*1.55, bx=it.align==='left'?px:it.align==='right'?px-w:px-w/2;
+        g.fillStyle=state.bandColor; g.fillRect(bx-padX,py-h/2,w+padX*2,h); }
+      g.fillStyle=state.textColor; g.fillText(txt,px,py);
     }
+    if('letterSpacing' in g) g.letterSpacing='0px';
     g.restore();
   }
+  function drawSvgItem(g,it,W,H,t){
+    const im=it.img; if(!im||!im.complete||!(im.naturalWidth||im.width)) return;
+    const s=Math.min(W,H), base=Math.max(12, s*0.03 + (it.size/100)*s*0.34);
+    const iw=im.naturalWidth||im.width, ih=im.naturalHeight||im.height, ar=iw/(ih||1);
+    const put=(cx,cy,scale,rot)=>{ const w=base*scale, h=w/ar;
+      g.save(); g.translate(cx,cy); if(rot) g.rotate(rot); g.drawImage(im,-w/2,-h/2,w,h); g.restore(); };
+    if(+it.scatter>0){                                  // broken up & displaced throughout the frame
+      const n=1+Math.round(it.scatter/100*23), r=mulberry(((it.seed||7)*2654435761)>>>0), spd=(state.textSpeed/100)*140;
+      for(let k=0;k<n;k++){ let cx=r()*W, cy=r()*H; const sc=0.35+r()*0.95, rot=(it.rotate||0)*Math.PI/180 + (r()-0.5)*0.5;
+        if(+it.move) cx=(((cx + t*spd*(0.3+r()*1.2)) % (W+base)) + (W+base)) % (W+base) - base/2;
+        put(cx,cy,sc,rot); }
+    } else put(it.x/100*W, it.y/100*H, 1, (it.rotate||0)*Math.PI/180);
+  }
+  function drawOverlay(g,W,H,t){ if(!(+state.textOn)) return;
+    for(const it of state.items){ if(it.type==='svg') drawSvgItem(g,it,W,H,t); else drawTextItem(g,it,W,H,t); } }
+
+  // ---- overlay item editors (dynamic list) ----
+  function escAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+  function ensureShow(){ if(state.textOn!=='1'){ state.textOn='1'; document.querySelectorAll('#textOnSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.x==='1'))); } }
+  function setFontSeg(f){ document.querySelectorAll('#textFontSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.f===f))); }
+  function renderItemList(){ const host=$('textList'); if(!host) return; host.innerHTML='';
+    state.items.forEach((it,i)=>{ const d=document.createElement('div'); d.className='titem'; d.dataset.i=i;
+      const xy=`<div class="duo"><div class="grp"><label>X <b>${it.x}</b></label><input class="ts" data-k="x" type="range" min="0" max="100" value="${it.x}"></div>`+
+               `<div class="grp"><label>Y <b>${it.y}</b></label><input class="ts" data-k="y" type="range" min="0" max="100" value="${it.y}"></div></div>`;
+      if(it.type==='svg'){
+        d.innerHTML=`<div class="thead"><span class="tbadge"><img src="${it.src||''}" alt="">SVG${it.name?' · '+escAttr(it.name).slice(0,14):''}</span><button class="xbtn tdel" title="Remove">×</button></div>`+xy+
+          `<div class="duo"><div class="grp"><label>Size <b>${it.size}</b></label><input class="ts" data-k="size" type="range" min="0" max="100" value="${it.size}"></div>`+
+          `<div class="grp"><label>Rotate <b>${it.rotate||0}</b></label><input class="ts" data-k="rotate" type="range" min="-180" max="180" value="${it.rotate||0}"></div></div>`+
+          `<div class="grp"><label>Scatter · displace throughout <b>${it.scatter||0}</b></label><input class="ts" data-k="scatter" type="range" min="0" max="100" value="${it.scatter||0}"></div>`+
+          `<div class="seg tmove"><button data-x="0" ${!+it.move?'aria-pressed="true"':''}>Still</button><button data-x="1" ${+it.move?'aria-pressed="true"':''}>Drift</button></div>`;
+      } else {
+        d.innerHTML=`<div class="thead"><input class="tt" type="text" value="${escAttr(it.t)}" placeholder="text…"><button class="xbtn tdel" title="Remove">×</button></div>`+xy+
+          `<div class="duo"><div class="grp"><label>Size <b>${it.size}</b></label><input class="ts" data-k="size" type="range" min="0" max="100" value="${it.size}"></div>`+
+          `<div class="grp"><label>Tracking <b>${it.track}</b></label><input class="ts" data-k="track" type="range" min="-10" max="80" value="${it.track}"></div></div>`+
+          `<div style="display:flex; gap:6px;"><div class="seg talign"><button data-a="left" ${it.align==='left'?'aria-pressed="true"':''}>L</button><button data-a="center" ${it.align==='center'?'aria-pressed="true"':''}>C</button><button data-a="right" ${it.align==='right'?'aria-pressed="true"':''}>R</button></div>`+
+          `<div class="seg tmove"><button data-x="0" ${!+it.move?'aria-pressed="true"':''}>Still</button><button data-x="1" ${+it.move?'aria-pressed="true"':''}>Scroll</button></div></div>`;
+      }
+      host.appendChild(d); });
+  }
+  function wireItemList(){ const host=$('textList'); if(!host) return;
+    host.addEventListener('input',e=>{ const d=e.target.closest('.titem'); if(!d) return; const it=state.items[+d.dataset.i]; if(!it) return;
+      if(e.target.classList.contains('tt')){ it.t=e.target.value; markDirty(); return; }
+      if(e.target.classList.contains('ts')){ it[e.target.dataset.k]=+e.target.value; const b=e.target.parentElement.querySelector('b'); if(b)b.textContent=e.target.value; markDirty(); } });
+    host.addEventListener('click',e=>{ const d=e.target.closest('.titem'); if(!d) return; const idx=+d.dataset.i, it=state.items[idx]; if(!it) return;
+      if(e.target.classList.contains('tdel')){ state.items.splice(idx,1); renderItemList(); markDirty(); return; }
+      const seg=e.target.closest('.seg'); if(seg&&e.target.tagName==='BUTTON'){
+        if(seg.classList.contains('talign')) it.align=e.target.dataset.a; else if(seg.classList.contains('tmove')) it.move=e.target.dataset.x;
+        seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===e.target))); markDirty(); } });
+  }
+  function addSVG(file){ const url=URL.createObjectURL(file), im=new Image();
+    im.onload=()=>{ state.items.push({type:'svg', img:im, src:url, name:file.name, x:50,y:50,size:38,rotate:0,scatter:0,move:'0', seed:(Math.abs(Math.sin(state.items.length*99+3))*1e9)|0});
+      ensureShow(); renderItemList(); markDirty(); setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1200); };
+    im.onerror=()=>{ setStatus('could not read '+file.name); setTimeout(()=>setStatus(''),2400); }; im.src=url; }
+  function loadFontFile(file){ const rd=new FileReader();
+    rd.onload=async ev=>{ try{ if(customFF) try{ document.fonts.delete(customFF); }catch(e){}
+        customFF=new FontFace('ITUserFont', ev.target.result); await customFF.load(); document.fonts.add(customFF);
+        customFamily='ITUserFont'; state.textFont='custom'; setFontSeg('custom'); $('fontName').textContent=file.name; markDirty();
+      }catch(err){ setStatus('could not load that font'); setTimeout(()=>setStatus(''),2400); } };
+    rd.readAsArrayBuffer(file); }
   function render(g,cw,ch,t,forExport){
     g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.globalCompositeOperation='source-over';
     if(forExport){ renderComp(g,cw,ch,t); return; }
@@ -678,7 +752,6 @@
   // ---- UI ----
   function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
   function updateCycleGate(){ const w=$('cycrateWrap'); if(w) w.style.display=(+state.cycle)?'':'none'; }
-  function updateTextGate(){ const w=$('textSpeedWrap'); if(w) w.style.display=(+state.textMove)?'':'none'; }
   function bindSeg(id,key,dk,after){ document.querySelectorAll(`#${id} button`).forEach(b=>b.addEventListener('click',()=>{
     state[key]=b.dataset[dk]; document.querySelectorAll(`#${id} button`).forEach(x=>x.setAttribute('aria-pressed',String(x===b))); bandsKey=''; if(after)after(); markDirty(); })); }
   const bind=(id,key,fn)=>{ const e=$(id); e.addEventListener('input',ev=>{ state[key]=+ev.target.value; const r=$(id+'R'); if(r)r.textContent=ev.target.value; bandsKey=''; if(fn)fn(); markDirty(); }); };
@@ -688,13 +761,19 @@
     bindSeg('ambSeg','ambience','m',()=>Ambient.set(state.ambience));
     bindSeg('autoSeg','auto','x',updateAutoGate); updateAutoGate();
     bind('autoamt','autoamt');
-    ['count','uneven','gap','cross','fragment','smudge','speed','spread','cycrate','textPos','textSize','textSpeed'].forEach(id=>bind(id,id));
-    // Text caption
-    bindSeg('textOnSeg','textOn','x'); bindSeg('textMoveSeg','textMove','x',updateTextGate); updateTextGate();
-    bindSeg('textAlignSeg','textAlign','a'); bindSeg('textFontSeg','textFont','f'); bindSeg('bandOnSeg','bandOn','x');
-    $('textInput').addEventListener('input',e=>{ state.text=e.target.value; markDirty(); });
+    ['count','uneven','gap','cross','fragment','smudge','speed','spread','cycrate','textSpeed'].forEach(id=>bind(id,id));
+    // Text & SVG overlay
+    bindSeg('textOnSeg','textOn','x'); bindSeg('bandOnSeg','bandOn','x');
+    bindSeg('textFontSeg','textFont','f',()=>{ if(state.textFont==='custom'&&!customFamily) $('fontInp').click(); });
     $('textColor').addEventListener('input',e=>{ state.textColor=e.target.value; markDirty(); });
     $('bandColor').addEventListener('input',e=>{ state.bandColor=e.target.value; markDirty(); });
+    $('textAdd').addEventListener('click',()=>{ state.items.push({type:'text',t:'New text',x:50,y:50,size:40,track:6,align:'center',move:'0'}); ensureShow(); renderItemList(); markDirty(); });
+    $('svgAdd').addEventListener('click',()=>$('svgInp').click());
+    $('svgInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) addSVG(f); e.target.value=''; });
+    $('fontBtn').addEventListener('click',()=>$('fontInp').click());
+    $('fontInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadFontFile(f); e.target.value=''; });
+    $('fontClear').addEventListener('click',()=>{ customFamily=null; if(customFF){ try{document.fonts.delete(customFF);}catch(e){} customFF=null; } if(state.textFont==='custom'){ state.textFont='sans'; setFontSeg('sans'); } $('fontName').textContent='built-in typeface'; markDirty(); });
+    renderItemList(); wireItemList();
     $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
     $('addBtn').addEventListener('click',()=>$('fileInp').click());
