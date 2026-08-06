@@ -126,6 +126,7 @@
     color:var(--mute); white-space:nowrap; }
   .rail .grp > label{ white-space:normal; }
   .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .rail select{ width:100%; background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:2px; padding:8px 9px; font:inherit; font-size:12px; cursor:pointer; }
   /* overlay text / svg item editors */
   .titem{ border:1px solid var(--hair); border-radius:3px; padding:9px; display:flex; flex-direction:column; gap:7px; }
   .titem + .titem{ margin-top:8px; }
@@ -245,6 +246,11 @@
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
 <div id="rail" class="rail rail-l">
+  <div class="row" style="padding-bottom:6px">
+    <div class="grp" data-tip="Prepopulate a ready-made layout you can then tweak — bands, type and colour all set for you."><label>Preset</label>
+      <select id="preset"><option value="">Custom…</option><option value="event">Event</option></select>
+    </div>
+  </div>
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Images</button>
     <p class="rowhint">Add a few pictures &#8212; or a PDF, and every page is pulled in as an image. They get sliced into bands and set moving. Drop files anywhere; nothing leaves this page.</p>
@@ -656,6 +662,27 @@
         customFamily='ITUserFont'; state.textFont='custom'; setFontSeg('custom'); $('fontName').textContent=file.name; markDirty();
       }catch(err){ setStatus('could not load that font'); setTimeout(()=>setStatus(''),2400); } };
     rd.readAsArrayBuffer(file); }
+  function clickSeg(sel){ const b=document.querySelector(sel); if(b) b.click(); }
+  function applyPreset(name){
+    if(name==='event'){
+      // bands — vertical columns, calm
+      setControl('count',3); setControl('uneven',0); setControl('gap',0);
+      clickSeg('#axisSeg [data-a="cols"]'); setControl('cross',20); setControl('fragment',0); setControl('smudge',26);
+      clickSeg('#metaSeg [data-x="0"]');
+      // type — red serif stack, no plate, straight over the image
+      clickSeg('#textOnSeg [data-x="1"]'); clickSeg('#textFontSeg [data-f="serif"]'); clickSeg('#bandOnSeg [data-x="0"]');
+      $('textColor').value='#b81f16'; $('textColor').dispatchEvent(new Event('input',{bubbles:true}));
+      state.items=[
+        {type:'text', t:'WHISKEY & TEA',        x:50, y:42, size:22, track:64, align:'center', move:'0', chop:0, seed:11},
+        {type:'text', t:'A CONVERSATION WITH',  x:50, y:47, size:8,  track:66, align:'center', move:'0', chop:0, seed:12},
+        {type:'text', t:'SCOTT CLUM',           x:50, y:51, size:34, track:2,  align:'center', move:'0', chop:0, seed:13},
+        {type:'text', t:'&',                    x:50, y:55, size:16, track:0,  align:'center', move:'0', chop:0, seed:14},
+        {type:'text', t:'CHRISTIAN SOLORZANO',  x:50, y:59, size:18, track:3,  align:'center', move:'0', chop:0, seed:15},
+        {type:'text', t:'AUGUST 20 · 6p CST',   x:50, y:65, size:9,  track:64, align:'center', move:'0', chop:0, seed:16},
+      ];
+      renderItemList(); markDirty();
+    }
+  }
   function render(g,cw,ch,t,forExport){
     g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.globalCompositeOperation='source-over';
     if(forExport){ renderComp(g,cw,ch,t); return; }
@@ -803,6 +830,7 @@
     $('fontInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadFontFile(f); e.target.value=''; });
     $('fontClear').addEventListener('click',()=>{ customFamily=null; if(customFF){ try{document.fonts.delete(customFF);}catch(e){} customFF=null; } if(state.textFont==='custom'){ state.textFont='sans'; setFontSeg('sans'); } $('fontName').textContent='built-in typeface'; markDirty(); });
     renderItemList(); wireItemList();
+    $('preset').addEventListener('change',e=>{ applyPreset(e.target.value); });
     $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
     $('addBtn').addEventListener('click',()=>$('fileInp').click());
