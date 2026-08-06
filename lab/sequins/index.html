@@ -20,7 +20,7 @@
   #dock{ position:fixed; top:var(--top); right:0; bottom:0; width:var(--rail); z-index:6;
     padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:rgba(11,11,18,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:16px; }
+    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; }
   .btn{ appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--ink);
     font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
@@ -31,6 +31,12 @@
   .btn.primary{ background:var(--ink); color:#07070c; border-color:var(--ink); font-weight:600; }
   .chip{ font-size:11px; letter-spacing:.04em; padding:7px 10px; }
   .sep{ width:1px; align-self:stretch; background:var(--line); margin:2px 4px; }
+  /* grouped sections — a clean, labelled stack with dividers */
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--line); }
+  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid2 .btn, .btn.full{ width:100%; }
   #sliders{ display:flex; flex-direction:column; gap:14px; width:100%; }
   .knob{ display:flex; flex-direction:column; gap:2px; }
   .knob label{ display:flex; justify-content:space-between; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); }
@@ -48,24 +54,38 @@
   <input id="file" type="file" accept="image/*" hidden />
 
   <div id="dock">
-    <div id="sliders">
-      <div class="knob"><label>Size <b id="sizeR">18</b></label><input id="size" type="range" min="6" max="46" value="18" /></div>
-      <div class="knob"><label>Gap <b id="gapR">14</b></label><input id="gap" type="range" min="0" max="60" value="14" /></div>
-      <div class="knob"><label>Shimmer <b id="shimmerR">55</b></label><input id="shimmer" type="range" min="0" max="100" value="55" /></div>
-      <div class="knob"><label>Glow <b id="glowR">60</b></label><input id="glow" type="range" min="0" max="100" value="60" /></div>
-      <div class="knob"><label>Iridescence <b id="iridR">45</b></label><input id="irid" type="range" min="0" max="100" value="45" /></div>
-      <div class="knob"><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="0" max="100" value="0" /></div>
-      <div class="knob"><label>Saturation <b id="satR">55</b></label><input id="sat" type="range" min="0" max="100" value="55" /></div>
-      <div class="knob"><label>Round <b id="roundR">100</b></label><input id="round" type="range" min="0" max="100" value="100" /></div>
-      <div class="knob"><label>Density <b id="densityR">100</b></label><input id="density" type="range" min="30" max="100" value="100" /></div>
+
+    <!-- primary action -->
+    <div class="group">
+      <button class="btn primary full" id="uploadBtn">Add image</button>
     </div>
-    <div class="row">
-      <button class="btn primary" id="uploadBtn">Add image</button>
-      <div class="sep"></div>
-      <button class="btn chip" id="bgBtn" aria-pressed="true">Dark</button>
-      <button class="btn chip" id="recBtn" aria-pressed="false">Record</button>
-      <button class="btn chip" id="saveBtn">Save</button>
+
+    <!-- look -->
+    <div class="group">
+      <div class="group__t">Look</div>
+      <div id="sliders">
+        <div class="knob"><label>Size <b id="sizeR">18</b></label><input id="size" type="range" min="6" max="46" value="18" /></div>
+        <div class="knob"><label>Gap <b id="gapR">14</b></label><input id="gap" type="range" min="0" max="60" value="14" /></div>
+        <div class="knob"><label>Shimmer <b id="shimmerR">55</b></label><input id="shimmer" type="range" min="0" max="100" value="55" /></div>
+        <div class="knob"><label>Glow <b id="glowR">60</b></label><input id="glow" type="range" min="0" max="100" value="60" /></div>
+        <div class="knob"><label>Iridescence <b id="iridR">45</b></label><input id="irid" type="range" min="0" max="100" value="45" /></div>
+        <div class="knob"><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="0" max="100" value="0" /></div>
+        <div class="knob"><label>Saturation <b id="satR">55</b></label><input id="sat" type="range" min="0" max="100" value="55" /></div>
+        <div class="knob"><label>Round <b id="roundR">100</b></label><input id="round" type="range" min="0" max="100" value="100" /></div>
+        <div class="knob"><label>Density <b id="densityR">100</b></label><input id="density" type="range" min="30" max="100" value="100" /></div>
+      </div>
     </div>
+
+    <!-- canvas & export -->
+    <div class="group">
+      <div class="group__t">Canvas &amp; export</div>
+      <button class="btn full" id="bgBtn" aria-pressed="true">Dark</button>
+      <div class="grid2">
+        <button class="btn" id="recBtn" aria-pressed="false">Record</button>
+        <button class="btn" id="saveBtn">Save</button>
+      </div>
+    </div>
+
   </div>
 
 <script src="/lab/shared/opal.js"></script>
