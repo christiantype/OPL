@@ -247,9 +247,13 @@
 
 <div id="rail" class="rail rail-l">
   <div class="row" style="padding-bottom:6px">
-    <div class="grp" data-tip="Prepopulate a ready-made layout you can then tweak — bands, type and colour all set for you."><label>Preset</label>
+    <div class="grp" data-tip="Prepopulate a ready-made layout, or save your own. Applies bands, type, colour and every placed piece."><label>Preset</label>
       <select id="preset"><option value="">Custom…</option><option value="event">Event</option></select>
     </div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="presetSave" style="flex:1" data-tip="Save the current layout — bands, type, colours and every placed text/SVG piece — as a reusable preset.">Save current</button>
+      <button class="btn" id="presetDel" style="flex:none" data-tip="Delete the selected saved preset.">Delete</button>
+    </div></div>
   </div>
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Images</button>
@@ -652,37 +656,66 @@
         if(seg.classList.contains('talign')) it.align=e.target.dataset.a; else if(seg.classList.contains('tmove')) it.move=e.target.dataset.x;
         seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===e.target))); markDirty(); } });
   }
-  function addSVG(file){ const url=URL.createObjectURL(file), im=new Image();
-    im.onload=()=>{ state.items.push({type:'svg', img:im, src:url, name:file.name, x:50,y:50,size:38,rotate:0,chop:0,move:'0', seed:(Math.abs(Math.sin(state.items.length*99+3))*1e9)|0});
+  function svgItemFromSrc(src,name,extra){ const im=new Image(); const it=Object.assign({type:'svg', img:im, src, name, x:50,y:50,size:38,rotate:0,chop:0,move:'0', seed:(Math.abs(Math.sin(state.items.length*99+3))*1e9)|0}, extra||{}); im.src=src; return it; }
+  function addSVG(file){ const rd=new FileReader();       // data URL so it survives Save-as-preset / reload
+    rd.onload=ev=>{ state.items.push(svgItemFromSrc(ev.target.result, file.name));
       ensureShow(); renderItemList(); markDirty(); setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1200); };
-    im.onerror=()=>{ setStatus('could not read '+file.name); setTimeout(()=>setStatus(''),2400); }; im.src=url; }
+    rd.onerror=()=>{ setStatus('could not read '+file.name); setTimeout(()=>setStatus(''),2400); }; rd.readAsDataURL(file); }
   function loadFontFile(file){ const rd=new FileReader();
     rd.onload=async ev=>{ try{ if(customFF) try{ document.fonts.delete(customFF); }catch(e){}
         customFF=new FontFace('ITUserFont', ev.target.result); await customFF.load(); document.fonts.add(customFF);
         customFamily='ITUserFont'; state.textFont='custom'; setFontSeg('custom'); $('fontName').textContent=file.name; markDirty();
       }catch(err){ setStatus('could not load that font'); setTimeout(()=>setStatus(''),2400); } };
     rd.readAsArrayBuffer(file); }
-  function clickSeg(sel){ const b=document.querySelector(sel); if(b) b.click(); }
-  function applyPreset(name){
-    if(name==='event'){
-      // bands — vertical columns, calm
-      setControl('count',3); setControl('uneven',0); setControl('gap',0);
-      clickSeg('#axisSeg [data-a="cols"]'); setControl('cross',20); setControl('fragment',0); setControl('smudge',26);
-      clickSeg('#metaSeg [data-x="0"]');
-      // type — red serif stack, no plate, straight over the image
-      clickSeg('#textOnSeg [data-x="1"]'); clickSeg('#textFontSeg [data-f="serif"]'); clickSeg('#bandOnSeg [data-x="0"]');
-      $('textColor').value='#b81f16'; $('textColor').dispatchEvent(new Event('input',{bubbles:true}));
-      state.items=[
-        {type:'text', t:'WHISKEY & TEA',        x:50, y:42, size:22, track:64, align:'center', move:'0', chop:0, seed:11},
-        {type:'text', t:'A CONVERSATION WITH',  x:50, y:47, size:8,  track:66, align:'center', move:'0', chop:0, seed:12},
-        {type:'text', t:'SCOTT CLUM',           x:50, y:51, size:34, track:2,  align:'center', move:'0', chop:0, seed:13},
-        {type:'text', t:'&',                    x:50, y:55, size:16, track:0,  align:'center', move:'0', chop:0, seed:14},
-        {type:'text', t:'CHRISTIAN SOLORZANO',  x:50, y:59, size:18, track:3,  align:'center', move:'0', chop:0, seed:15},
-        {type:'text', t:'AUGUST 20 · 6p CST',   x:50, y:65, size:9,  track:64, align:'center', move:'0', chop:0, seed:16},
-      ];
-      renderItemList(); markDirty();
-    }
-  }
+  // ---- presets: a built-in Event layout + your own saved layouts (localStorage) ----
+  const EVENT_PRESET={
+    bands:{count:3,uneven:0,gap:0,axis:'cols',cross:20,fragment:0,smudge:26,meta:0},
+    type:{textOn:'1',textFont:'serif',textColor:'#b81f16',bandOn:'0',bandColor:'#101014',textSpeed:40},
+    items:[
+      {type:'text', t:'WHISKEY & TEA',        x:50, y:41.5, size:18, track:66, align:'center', move:'0', chop:0, seed:11},
+      {type:'text', t:'A CONVERSATION WITH',  x:50, y:45.5, size:6,  track:66, align:'center', move:'0', chop:0, seed:12},
+      {type:'text', t:'SCOTT CLUM',           x:50, y:48.7, size:36, track:2,  align:'center', move:'0', chop:0, seed:13},
+      {type:'text', t:'&',                    x:50, y:52,   size:15, track:0,  align:'center', move:'0', chop:0, seed:14},
+      {type:'text', t:'CHRISTIAN SOLORZANO',  x:50, y:55.3, size:24, track:3,  align:'center', move:'0', chop:0, seed:15},
+      {type:'text', t:'AUGUST 20 · 6p CST',   x:50, y:59,   size:7,  track:64, align:'center', move:'0', chop:0, seed:16},
+    ]
+  };
+  const PKEY='it-presets-v1';
+  function loadUserPresets(){ try{ return JSON.parse(localStorage.getItem(PKEY)||'{}'); }catch(e){ return {}; } }
+  function saveUserPresets(o){ try{ localStorage.setItem(PKEY, JSON.stringify(o)); return true; }catch(e){ return false; } }
+  function setSegP(segId,attr,val){ document.querySelectorAll('#'+segId+' button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset[attr]===String(val)))); }
+  function serializeItems(){ return state.items.map(it=> it.type==='svg'
+    ? {type:'svg', src:it.src, name:it.name, x:it.x,y:it.y,size:it.size,rotate:it.rotate||0,chop:it.chop||0,move:it.move||'0',seed:it.seed||1}
+    : {type:'text', t:it.t,x:it.x,y:it.y,size:it.size,track:it.track||0,align:it.align||'center',move:it.move||'0',chop:it.chop||0,seed:it.seed||1} ); }
+  function currentPreset(){ return {
+    bands:{count:state.count,uneven:state.uneven,gap:state.gap,axis:state.axis,cross:state.cross,fragment:state.fragment,smudge:state.smudge,meta:state.meta},
+    type:{textOn:state.textOn,textFont:state.textFont,textColor:state.textColor,bandOn:state.bandOn,bandColor:state.bandColor,textSpeed:state.textSpeed},
+    items:serializeItems() }; }
+  function applyPresetObj(p){ if(!p) return;
+    if(p.bands){ const b=p.bands; setControl('count',b.count); setControl('uneven',b.uneven); setControl('gap',b.gap);
+      setControl('cross',b.cross); setControl('fragment',b.fragment); setControl('smudge',b.smudge);
+      state.axis=b.axis; setSegP('axisSeg','a',b.axis); state.meta=+b.meta?1:0; setSegP('metaSeg','x',state.meta); bandsKey=''; }
+    if(p.type){ const ty=p.type;
+      state.textOn=String(+ty.textOn?1:0); setSegP('textOnSeg','x',state.textOn);
+      state.bandOn=String(+ty.bandOn?1:0); setSegP('bandOnSeg','x',state.bandOn);
+      state.textFont=ty.textFont; setFontSeg(ty.textFont);
+      state.textSpeed=ty.textSpeed; $('textSpeed').value=ty.textSpeed; $('textSpeedR').textContent=ty.textSpeed;
+      state.textColor=ty.textColor; $('textColor').value=ty.textColor;
+      state.bandColor=ty.bandColor; $('bandColor').value=ty.bandColor; }
+    if(p.items){ state.items=p.items.map(it=> it.type==='svg' ? svgItemFromSrc(it.src,it.name||'svg',it) : Object.assign({},it) ); }
+    renderItemList(); markDirty(); }
+  function applyPreset(name){ if(name==='event') applyPresetObj(EVENT_PRESET);
+    else if(name && name.slice(0,5)==='user:'){ const u=loadUserPresets(); applyPresetObj(u[name.slice(5)]); } }
+  function refreshPresetOptions(sel){ const el=$('preset'), cur=sel||el.value, u=loadUserPresets();
+    el.innerHTML='<option value="">Custom…</option><option value="event">Event</option>'+
+      Object.keys(u).map(n=>`<option value="user:${escAttr(n)}">${escAttr(n)}</option>`).join('');
+    el.value=cur||''; }
+  function savePreset(){ const name=(prompt('Save the current layout as a preset — name it:','My layout')||'').trim(); if(!name) return;
+    const u=loadUserPresets(); u[name]=currentPreset();
+    if(saveUserPresets(u)){ refreshPresetOptions('user:'+name); setStatus('preset “'+name+'” saved'); }
+    else setStatus('couldn’t save (too large — try fewer/simpler SVGs)'); setTimeout(()=>setStatus(''),2000); }
+  function deletePreset(){ const v=$('preset').value; if(v.slice(0,5)!=='user:') return; const n=v.slice(5);
+    const u=loadUserPresets(); if(u[n] && confirm('Delete preset “'+n+'”?')){ delete u[n]; saveUserPresets(u); refreshPresetOptions(''); } }
   function render(g,cw,ch,t,forExport){
     g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.globalCompositeOperation='source-over';
     if(forExport){ renderComp(g,cw,ch,t); return; }
@@ -831,6 +864,9 @@
     $('fontClear').addEventListener('click',()=>{ customFamily=null; if(customFF){ try{document.fonts.delete(customFF);}catch(e){} customFF=null; } if(state.textFont==='custom'){ state.textFont='sans'; setFontSeg('sans'); } $('fontName').textContent='built-in typeface'; markDirty(); });
     renderItemList(); wireItemList();
     $('preset').addEventListener('change',e=>{ applyPreset(e.target.value); });
+    $('presetSave').addEventListener('click',savePreset);
+    $('presetDel').addEventListener('click',deletePreset);
+    refreshPresetOptions('');
     $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
     $('addBtn').addEventListener('click',()=>$('fileInp').click());
@@ -888,7 +924,9 @@
   addEventListener('pointerover',e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return; clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
   addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true);
 
-  wire(); resize(); document.body.classList.add('dark');
+  wire(); document.body.classList.add('dark');
+  $('rail').classList.add('open'); document.body.classList.add('panels'); $('toggle').setAttribute('aria-pressed','true');   // controls open by default
+  resize();
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
   syncRes(); syncHint();
   requestAnimationFrame(tick);
