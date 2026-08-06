@@ -287,6 +287,7 @@
       <div class="grp" data-tip="Breaks each band into scattered pieces so the images never fully assemble — sliced and dispersed across the frame."><label>Disperse <b id="fragmentR">26</b></label><input id="fragment" type="range" min="0" max="100" value="26" /></div>
     </div>
     <div class="grp" data-tip="Turns bands into smudge streaks (from Lake Opeka) — a single moving column stretched sideways, keeping vertical detail. Higher smears more bands."><label>Smudge <b id="smudgeR">16</b></label><input id="smudge" type="range" min="0" max="100" value="16" /></div>
+    <div class="grp" data-tip="Grunge, for Scott Clum — crushes the bands toward high-contrast xerox black-and-white, with live film grain, toner blotches and torn scratches. Works with any direction."><label>Grunge <b id="grungeR">0</b></label><input id="grunge" type="range" min="0" max="100" value="0" /></div>
     <div class="grp" data-tip="Overlay the frame with its own data — clinical telemetry, code fragments, time, location and per-band speeds scattered across the frame."><label>Metadata</label>
       <div class="seg" id="metaSeg"><button data-x="0" aria-pressed="false">Off</button><button data-x="1" aria-pressed="true">On</button></div>
     </div>
@@ -390,7 +391,7 @@
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
   let THEME='dark';
   const state={ count:43, uneven:100, axis:'weave', cross:61, speed:45, spread:60, bg:'#ffffff',
-    size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, smudge:16, gap:0, vol:85, playing:true,
+    size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, smudge:16, grunge:0, gap:0, vol:85, playing:true,
     cycle:'0', cycrate:40, ambience:'off', auto:'0', autoamt:50,
     textOn:'0', textFont:'sans', textColor:'#ffffff', bandOn:'1', bandColor:'#101014', textSpeed:40,
     items:[
@@ -500,26 +501,54 @@
     g.restore(); }
 
   function renderComp(g,W,H,t){
-    g.globalAlpha=1; g.globalCompositeOperation='source-over';
+    g.globalAlpha=1; g.globalCompositeOperation='source-over'; g.filter='none';
     g.fillStyle=state.bg; g.fillRect(0,0,W,H);
-    if(!imgs.length){ drawOverlay(g,W,H,t); return; }
-    build();
-    const base=state.speed/100*260, frag=state.fragment/100;
-    if(state.axis==="radial"){ drawRadial(g,W,H,t,base); if(+state.meta) drawMeta(g,W,H,t); drawOverlay(g,W,H,t); return; }
-    let bi=0;
-    for(const b of bands){ const im=imgs[imgAt(b,t)]; const off=(t*base*b.spd)*b.dir + b.phase*500; bi++;
-      const fc = frag>0.01 ? 1+Math.round(frag*5) : 1;   // dice the band into scattered pieces
-      const sm = b.sr < state.smudge/100;                 // this band renders as a smudge streak
-      if(b.horiz){ const y=b.p*H, h=Math.max(1,b.thick*H), x=b.start*W, w=Math.max(1,b.len*W), cw=w/fc;
-        for(let k=0;k<fc;k++){ const jx=(h01(bi,k)-0.5)*frag*W*0.28, jy=(h01(bi,k+99)-0.5)*frag*H*0.34;
-          if(sm) drawSmudge(g,im,true, x+k*cw+jx, y+jy, cw, h, b.p, b.thick, off+k*cw);
-          else drawSlice(g,im,true, x+k*cw+jx, y+jy, cw, h, b.p, b.thick, off+k*cw, b.zoom); } }
-      else { const x=b.p*W, w=Math.max(1,b.thick*W), y=b.start*H, h=Math.max(1,b.len*H), ch=h/fc;
-        for(let k=0;k<fc;k++){ const jy=(h01(bi,k)-0.5)*frag*H*0.28, jx=(h01(bi,k+99)-0.5)*frag*W*0.34;
-          if(sm) drawSmudge(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch);
-          else drawSlice(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch, b.zoom); } } }
-    if(+state.meta) drawMeta(g,W,H,t);
-    drawOverlay(g,W,H,t);
+    if(imgs.length){
+      build();
+      const base=state.speed/100*260, frag=state.fragment/100, gr=state.grunge/100;
+      // Grunge (for Scott Clum): crush contrast, bleach the colour toward xerox black-and-white while drawing the bands
+      if(gr>0) g.filter='contrast('+(1+gr*1.9).toFixed(2)+') saturate('+Math.max(0.05,1-gr*0.92).toFixed(2)+') brightness('+(1+gr*0.10).toFixed(2)+')';
+      if(state.axis==="radial"){ drawRadial(g,W,H,t,base); }
+      else { let bi=0;
+        for(const b of bands){ const im=imgs[imgAt(b,t)]; const off=(t*base*b.spd)*b.dir + b.phase*500; bi++;
+          const fc = frag>0.01 ? 1+Math.round(frag*5) : 1;   // dice the band into scattered pieces
+          const sm = b.sr < state.smudge/100;                 // this band renders as a smudge streak
+          if(b.horiz){ const y=b.p*H, h=Math.max(1,b.thick*H), x=b.start*W, w=Math.max(1,b.len*W), cw=w/fc;
+            for(let k=0;k<fc;k++){ const jx=(h01(bi,k)-0.5)*frag*W*0.28, jy=(h01(bi,k+99)-0.5)*frag*H*0.34;
+              if(sm) drawSmudge(g,im,true, x+k*cw+jx, y+jy, cw, h, b.p, b.thick, off+k*cw);
+              else drawSlice(g,im,true, x+k*cw+jx, y+jy, cw, h, b.p, b.thick, off+k*cw, b.zoom); } }
+          else { const x=b.p*W, w=Math.max(1,b.thick*W), y=b.start*H, h=Math.max(1,b.len*H), ch=h/fc;
+            for(let k=0;k<fc;k++){ const jy=(h01(bi,k)-0.5)*frag*H*0.28, jx=(h01(bi,k+99)-0.5)*frag*W*0.34;
+              if(sm) drawSmudge(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch);
+              else drawSlice(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch, b.zoom); } } }
+      }
+      g.filter='none';
+      if(gr>0) drawGrunge(g,W,H,t,gr);
+      if(+state.meta) drawMeta(g,W,H,t);
+    }
+    if(+state.textOn) drawOverlay(g,W,H,t);
+  }
+  // Grunge overlay — animated film grain (overlay blend) + a few toner blotches + torn scratches. Scott Clum energy.
+  let grainCv=null;
+  function makeGrain(){ const s=256; grainCv=document.createElement('canvas'); grainCv.width=s; grainCv.height=s;
+    const x=grainCv.getContext('2d'), im=x.createImageData(s,s), d=im.data;
+    for(let i=0;i<d.length;i+=4){ const v=Math.random()*255|0; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; } x.putImageData(im,0,0); }
+  function drawGrunge(g,W,H,t,gr){
+    if(!grainCv) makeGrain();
+    g.save();
+    g.globalCompositeOperation='overlay'; g.globalAlpha=Math.min(0.62, gr*0.6);
+    const ox=(Math.random()*256)|0, oy=(Math.random()*256)|0;   // jitter grain each frame → live film noise
+    for(let y=-oy;y<H;y+=256) for(let x=-ox;x<W;x+=256) g.drawImage(grainCv,x,y);
+    // xerox toner blotches — sparse dark specks at higher grunge
+    g.globalCompositeOperation='multiply'; g.globalAlpha=Math.min(0.5,gr*0.5); g.fillStyle='#000';
+    const nb=Math.round(gr*46);
+    for(let i=0;i<nb;i++){ const r=h01(i, (t*3|0)+i), r2=h01(i+7,(t*3|0)); const bx=r*W, by=r2*H, br=(0.4+h01(i+3,i)*2.4)*(1+gr*3);
+      g.beginPath(); g.arc(bx,by,br,0,6.2832); g.fill(); }
+    // a couple of torn scratch lines
+    g.globalCompositeOperation='screen'; g.globalAlpha=Math.min(0.5,gr*0.45); g.strokeStyle='#fff'; g.lineWidth=1;
+    const ns=Math.round(gr*4);
+    for(let i=0;i<ns;i++){ const sx=h01(i*13,(t|0))*W; g.beginPath(); g.moveTo(sx,0); g.lineTo(sx+(h01(i,7)-0.5)*40, H); g.stroke(); }
+    g.restore();
   }
   // Studio telemetry — the piece's own data, broken up and scattered across the frame.
   function drawMeta(g,W,H,t){ const s=Math.min(W,H); g.save(); g.textBaseline='top';
@@ -688,12 +717,12 @@
     ? {type:'svg', src:it.src, name:it.name, x:it.x,y:it.y,size:it.size,rotate:it.rotate||0,chop:it.chop||0,move:it.move||'0',seed:it.seed||1}
     : {type:'text', t:it.t,x:it.x,y:it.y,size:it.size,track:it.track||0,align:it.align||'center',move:it.move||'0',chop:it.chop||0,seed:it.seed||1} ); }
   function currentPreset(){ return {
-    bands:{count:state.count,uneven:state.uneven,gap:state.gap,axis:state.axis,cross:state.cross,fragment:state.fragment,smudge:state.smudge,meta:state.meta},
+    bands:{count:state.count,uneven:state.uneven,gap:state.gap,axis:state.axis,cross:state.cross,fragment:state.fragment,smudge:state.smudge,grunge:state.grunge,meta:state.meta},
     type:{textOn:state.textOn,textFont:state.textFont,textColor:state.textColor,bandOn:state.bandOn,bandColor:state.bandColor,textSpeed:state.textSpeed},
     items:serializeItems() }; }
   function applyPresetObj(p){ if(!p) return;
     if(p.bands){ const b=p.bands; setControl('count',b.count); setControl('uneven',b.uneven); setControl('gap',b.gap);
-      setControl('cross',b.cross); setControl('fragment',b.fragment); setControl('smudge',b.smudge);
+      setControl('cross',b.cross); setControl('fragment',b.fragment); setControl('smudge',b.smudge); if(b.grunge!=null) setControl('grunge',b.grunge);
       state.axis=b.axis; setSegP('axisSeg','a',b.axis); state.meta=+b.meta?1:0; setSegP('metaSeg','x',state.meta); bandsKey=''; }
     if(p.type){ const ty=p.type;
       state.textOn=String(+ty.textOn?1:0); setSegP('textOnSeg','x',state.textOn);
@@ -850,7 +879,7 @@
     bindSeg('ambSeg','ambience','m',()=>Ambient.set(state.ambience));
     bindSeg('autoSeg','auto','x',updateAutoGate); updateAutoGate();
     bind('autoamt','autoamt');
-    ['count','uneven','gap','cross','fragment','smudge','speed','spread','cycrate','textSpeed'].forEach(id=>bind(id,id));
+    ['count','uneven','gap','cross','fragment','smudge','grunge','speed','spread','cycrate','textSpeed'].forEach(id=>bind(id,id));
     // Text & SVG overlay
     bindSeg('textOnSeg','textOn','x'); bindSeg('bandOnSeg','bandOn','x');
     bindSeg('textFontSeg','textFont','f',()=>{ if(state.textFont==='custom'&&!customFamily) $('fontInp').click(); });
