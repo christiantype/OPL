@@ -384,8 +384,8 @@
     cycle:'0', cycrate:40, ambience:'off', auto:'0', autoamt:50,
     textOn:'0', textFont:'sans', textColor:'#ffffff', bandOn:'1', bandColor:'#101014', textSpeed:40,
     items:[
-      {type:'text', t:'WHISKEY & TEA', x:50, y:15, size:64, track:8, align:'center', move:'0'},
-      {type:'text', t:'Fri 12 Sept · 8pm  ·  The Loft', x:50, y:88, size:30, track:22, align:'center', move:'0'}
+      {type:'text', t:'WHISKEY & TEA', x:50, y:15, size:64, track:8, align:'center', move:'0', chop:0, seed:11},
+      {type:'text', t:'Fri 12 Sept · 8pm  ·  The Loft', x:50, y:88, size:30, track:22, align:'center', move:'0', chop:0, seed:29}
     ] };
   const CW=()=>+state.size.split('x')[0], CH=()=>+state.size.split('x')[1];
   function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -546,12 +546,46 @@
       : state.textFont==='mono'?'ui-monospace,SFMono-Regular,Menlo,monospace'
       : '"Helvetica Neue",Arial,sans-serif'; }
   function fontWeight(){ return state.textFont==='custom'?'400':state.textFont==='sans'?'800':'700'; }
+  // Chop a source (image or canvas) into a grid of shards and displace each one — 0 whole & in place,
+  // 100 fully broken up and scattered across the frame. Shards keep their size; they just move.
+  function shatter(g, src, srcW, srcH, hx, hy, w, h, amount, seed, FW, FH, t, drift){
+    const f=amount/100;
+    const cols=2+Math.round(f*8), rows=Math.max(1, Math.round(cols*(h/w)))||1;
+    const r=mulberry((seed>>>0)||1);
+    const tw=w/cols, th=h/rows, stw=srcW/cols, sth=srcH/rows;
+    for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){
+      const homeX=hx+i*tw, homeY=hy+j*th, rx=r()*FW, ry=r()*FH, rrot=r();
+      let dx=homeX+(rx-homeX)*f, dy=homeY+(ry-homeY)*f;
+      if(drift){ const ph=i*7.1+j*13.3; dx+=Math.sin(t*0.7+ph)*20*f; dy+=Math.cos(t*0.55+ph*1.4)*16*f; }
+      const rot=(rrot-0.5)*f*0.7;
+      g.save(); g.translate(dx+tw/2, dy+th/2); if(rot) g.rotate(rot);
+      g.drawImage(src, i*stw, j*sth, stw, sth, -tw/2, -th/2, tw, th); g.restore();
+    }
+  }
+  function textCanvas(it,fs){
+    const meas=(textCanvas._m||(textCanvas._m=document.createElement('canvas').getContext('2d')));
+    meas.font=`${fontWeight()} ${fs}px ${fontFamily()}`;
+    if('letterSpacing' in meas) meas.letterSpacing=((it.track||0)/100*fs).toFixed(2)+'px';
+    const tw=Math.ceil(meas.measureText(it.t).width)+2, plate=+state.bandOn, padX=Math.round(fs*0.5), padY=Math.round(fs*0.3);
+    const bw=Math.max(1,tw+(plate?padX*2:0)), bh=Math.max(1,Math.ceil(fs*1.3)+(plate?padY*2:0));
+    const c=document.createElement('canvas'); c.width=bw; c.height=bh; const x=c.getContext('2d');
+    x.font=`${fontWeight()} ${fs}px ${fontFamily()}`; x.textBaseline='middle'; x.textAlign='left';
+    if('letterSpacing' in x) x.letterSpacing=((it.track||0)/100*fs).toFixed(2)+'px';
+    if(plate){ x.fillStyle=state.bandColor; x.fillRect(0,0,bw,bh); }
+    x.fillStyle=state.textColor; x.fillText(it.t, plate?padX:0, bh/2);
+    return c;
+  }
   function drawTextItem(g,it,W,H,t){
     const txt=(it.t||'').trim(); if(!txt) return;
-    const s=Math.min(W,H), fs=Math.max(8, Math.round(s*0.014 + (it.size/100)*s*0.11));
+    const s=Math.min(W,H), fs=Math.max(8, Math.round(s*0.014 + (it.size/100)*s*0.11)), px=it.x/100*W, py=it.y/100*H;
+    if(+it.chop>0){                                     // chopped into shards, displaced throughout
+      const c=textCanvas(it,fs), bw=c.width, bh=c.height;
+      const hx = it.align==='left'?px : it.align==='right'?px-bw : px-bw/2;
+      shatter(g, c, bw, bh, hx, py-bh/2, bw, bh, it.chop, (it.seed||1)*2654435761, W, H, t, +it.move);
+      return;
+    }
     g.save(); g.font=`${fontWeight()} ${fs}px ${fontFamily()}`; g.textBaseline='middle';
     if('letterSpacing' in g) g.letterSpacing=((it.track||0)/100*fs).toFixed(2)+'px';
-    const py=it.y/100*H;
     if(+it.move){                                       // scroll across a full-width band at this row
       const w0=g.measureText(txt).width, period=w0+fs*2.5, spd=(state.textSpeed/100)*280+12;
       if(+state.bandOn){ const h=fs*1.7; g.fillStyle=state.bandColor; g.fillRect(0,py-h/2,W,h); }
@@ -559,8 +593,7 @@
       let x=-((((t*spd)%period)+period)%period);
       for(let X=x; X<W; X+=period) g.fillText(txt,X,py);
     } else {                                            // still, anchored at (x,y) with a snug plate
-      const px=it.x/100*W, w=g.measureText(txt).width;
-      g.textAlign=it.align||'center';
+      const w=g.measureText(txt).width; g.textAlign=it.align||'center';
       if(+state.bandOn){ const padX=fs*0.5,h=fs*1.55, bx=it.align==='left'?px:it.align==='right'?px-w:px-w/2;
         g.fillStyle=state.bandColor; g.fillRect(bx-padX,py-h/2,w+padX*2,h); }
       g.fillStyle=state.textColor; g.fillText(txt,px,py);
@@ -572,14 +605,9 @@
     const im=it.img; if(!im||!im.complete||!(im.naturalWidth||im.width)) return;
     const s=Math.min(W,H), base=Math.max(12, s*0.03 + (it.size/100)*s*0.34);
     const iw=im.naturalWidth||im.width, ih=im.naturalHeight||im.height, ar=iw/(ih||1);
-    const put=(cx,cy,scale,rot)=>{ const w=base*scale, h=w/ar;
-      g.save(); g.translate(cx,cy); if(rot) g.rotate(rot); g.drawImage(im,-w/2,-h/2,w,h); g.restore(); };
-    if(+it.scatter>0){                                  // broken up & displaced throughout the frame
-      const n=1+Math.round(it.scatter/100*23), r=mulberry(((it.seed||7)*2654435761)>>>0), spd=(state.textSpeed/100)*140;
-      for(let k=0;k<n;k++){ let cx=r()*W, cy=r()*H; const sc=0.35+r()*0.95, rot=(it.rotate||0)*Math.PI/180 + (r()-0.5)*0.5;
-        if(+it.move) cx=(((cx + t*spd*(0.3+r()*1.2)) % (W+base)) + (W+base)) % (W+base) - base/2;
-        put(cx,cy,sc,rot); }
-    } else put(it.x/100*W, it.y/100*H, 1, (it.rotate||0)*Math.PI/180);
+    const w=base, h=base/ar, px=it.x/100*W, py=it.y/100*H;
+    if(+it.chop>0){ shatter(g, im, iw, ih, px-w/2, py-h/2, w, h, it.chop, (it.seed||1)*2654435761, W, H, t, +it.move); return; }
+    g.save(); g.translate(px,py); if(it.rotate) g.rotate((it.rotate||0)*Math.PI/180); g.drawImage(im,-w/2,-h/2,w,h); g.restore();
   }
   function drawOverlay(g,W,H,t){ if(!(+state.textOn)) return;
     for(const it of state.items){ if(it.type==='svg') drawSvgItem(g,it,W,H,t); else drawTextItem(g,it,W,H,t); } }
@@ -596,12 +624,13 @@
         d.innerHTML=`<div class="thead"><span class="tbadge"><img src="${it.src||''}" alt="">SVG${it.name?' · '+escAttr(it.name).slice(0,14):''}</span><button class="xbtn tdel" title="Remove">×</button></div>`+xy+
           `<div class="duo"><div class="grp"><label>Size <b>${it.size}</b></label><input class="ts" data-k="size" type="range" min="0" max="100" value="${it.size}"></div>`+
           `<div class="grp"><label>Rotate <b>${it.rotate||0}</b></label><input class="ts" data-k="rotate" type="range" min="-180" max="180" value="${it.rotate||0}"></div></div>`+
-          `<div class="grp"><label>Scatter · displace throughout <b>${it.scatter||0}</b></label><input class="ts" data-k="scatter" type="range" min="0" max="100" value="${it.scatter||0}"></div>`+
+          `<div class="grp"><label>Chop · displace throughout <b>${it.chop||0}</b></label><input class="ts" data-k="chop" type="range" min="0" max="100" value="${it.chop||0}"></div>`+
           `<div class="seg tmove"><button data-x="0" ${!+it.move?'aria-pressed="true"':''}>Still</button><button data-x="1" ${+it.move?'aria-pressed="true"':''}>Drift</button></div>`;
       } else {
         d.innerHTML=`<div class="thead"><input class="tt" type="text" value="${escAttr(it.t)}" placeholder="text…"><button class="xbtn tdel" title="Remove">×</button></div>`+xy+
           `<div class="duo"><div class="grp"><label>Size <b>${it.size}</b></label><input class="ts" data-k="size" type="range" min="0" max="100" value="${it.size}"></div>`+
           `<div class="grp"><label>Tracking <b>${it.track}</b></label><input class="ts" data-k="track" type="range" min="-10" max="80" value="${it.track}"></div></div>`+
+          `<div class="grp"><label>Chop · displace throughout <b>${it.chop||0}</b></label><input class="ts" data-k="chop" type="range" min="0" max="100" value="${it.chop||0}"></div>`+
           `<div style="display:flex; gap:6px;"><div class="seg talign"><button data-a="left" ${it.align==='left'?'aria-pressed="true"':''}>L</button><button data-a="center" ${it.align==='center'?'aria-pressed="true"':''}>C</button><button data-a="right" ${it.align==='right'?'aria-pressed="true"':''}>R</button></div>`+
           `<div class="seg tmove"><button data-x="0" ${!+it.move?'aria-pressed="true"':''}>Still</button><button data-x="1" ${+it.move?'aria-pressed="true"':''}>Scroll</button></div></div>`;
       }
@@ -618,7 +647,7 @@
         seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===e.target))); markDirty(); } });
   }
   function addSVG(file){ const url=URL.createObjectURL(file), im=new Image();
-    im.onload=()=>{ state.items.push({type:'svg', img:im, src:url, name:file.name, x:50,y:50,size:38,rotate:0,scatter:0,move:'0', seed:(Math.abs(Math.sin(state.items.length*99+3))*1e9)|0});
+    im.onload=()=>{ state.items.push({type:'svg', img:im, src:url, name:file.name, x:50,y:50,size:38,rotate:0,chop:0,move:'0', seed:(Math.abs(Math.sin(state.items.length*99+3))*1e9)|0});
       ensureShow(); renderItemList(); markDirty(); setStatus(file.name+' added'); setTimeout(()=>setStatus(''),1200); };
     im.onerror=()=>{ setStatus('could not read '+file.name); setTimeout(()=>setStatus(''),2400); }; im.src=url; }
   function loadFontFile(file){ const rd=new FileReader();
@@ -767,7 +796,7 @@
     bindSeg('textFontSeg','textFont','f',()=>{ if(state.textFont==='custom'&&!customFamily) $('fontInp').click(); });
     $('textColor').addEventListener('input',e=>{ state.textColor=e.target.value; markDirty(); });
     $('bandColor').addEventListener('input',e=>{ state.bandColor=e.target.value; markDirty(); });
-    $('textAdd').addEventListener('click',()=>{ state.items.push({type:'text',t:'New text',x:50,y:50,size:40,track:6,align:'center',move:'0'}); ensureShow(); renderItemList(); markDirty(); });
+    $('textAdd').addEventListener('click',()=>{ state.items.push({type:'text',t:'New text',x:50,y:50,size:40,track:6,align:'center',move:'0',chop:0,seed:(Math.abs(Math.sin(state.items.length*57+9))*1e9)|0}); ensureShow(); renderItemList(); markDirty(); });
     $('svgAdd').addEventListener('click',()=>$('svgInp').click());
     $('svgInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) addSVG(f); e.target.value=''; });
     $('fontBtn').addEventListener('click',()=>$('fontInp').click());
