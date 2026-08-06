@@ -36,8 +36,16 @@
   #dock{ position:fixed; top:var(--top); right:0; bottom:0; width:var(--rail); z-index:6;
     padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:rgba(15,16,24,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:16px; }
+    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; }
+  /* grouped sections — a clean, labelled stack with dividers */
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--line); }
+  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
+  .grid2 .btn, .grid3 .btn, .btn.full{ width:100%; }
+  .swrow{ display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
   .btn{ appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--ink);
     font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
     display:inline-flex; align-items:center; justify-content:center;
@@ -80,44 +88,74 @@
   <div id="status"></div>
 
   <div id="dock" class="off">
-    <div id="sliders">
-      <div class="warp"><label>Nose <b id="noseR">0</b></label><input id="nose" type="range" min="-100" max="100" value="0" data-mid /></div>
-      <div class="warp"><label>Ears <b id="earsR">0</b></label><input id="ears" type="range" min="-100" max="100" value="0" data-mid /></div>
-      <div class="warp"><label>Eyes <b id="eyesR">0</b></label><input id="eyes" type="range" min="-100" max="100" value="0" data-mid /></div>
-      <div class="warp"><label>Mouth <b id="mouthR">0</b></label><input id="mouth" type="range" min="-100" max="100" value="0" data-mid /></div>
-      <div class="warp"><label>Chin <b id="chinR">0</b></label><input id="chin" type="range" min="-100" max="100" value="0" data-mid /></div>
-      <div class="warp"><label>Head <b id="headR">0</b></label><input id="head" type="range" min="-100" max="100" value="0" data-mid /></div>
+
+    <!-- warp -->
+    <div class="group">
+      <div class="group__t">Warp</div>
+      <div id="sliders">
+        <div class="warp"><label>Nose <b id="noseR">0</b></label><input id="nose" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="warp"><label>Ears <b id="earsR">0</b></label><input id="ears" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="warp"><label>Eyes <b id="eyesR">0</b></label><input id="eyes" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="warp"><label>Mouth <b id="mouthR">0</b></label><input id="mouth" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="warp"><label>Chin <b id="chinR">0</b></label><input id="chin" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="warp"><label>Head <b id="headR">0</b></label><input id="head" type="range" min="-100" max="100" value="0" data-mid /></div>
+      </div>
     </div>
-    <div class="row">
-      <button class="btn chip" data-preset="alien">Alien</button>
-      <button class="btn chip" data-preset="chipmunk">Chipmunk</button>
-      <button class="btn chip" data-preset="bobble">Bobblehead</button>
-      <button class="btn chip" data-preset="goblin">Goblin</button>
-      <button class="btn chip" data-preset="reset">Reset</button>
-      <div class="sep"></div>
-      <button class="btn chip" id="tintBtn" aria-pressed="false">Green</button>
-      <button class="btn chip" id="mirrorBtn" aria-pressed="true">Mirror</button>
-      <button class="btn chip" id="saveBtn">Save</button>
-      <button class="btn chip" id="recBtn" aria-pressed="false">Record</button>
-      <button class="btn chip" id="camBtn" aria-pressed="true">Camera</button>
+
+    <!-- presets -->
+    <div class="group">
+      <div class="group__t">Presets</div>
+      <div class="grid2">
+        <button class="btn" data-preset="alien">Alien</button>
+        <button class="btn" data-preset="chipmunk">Chipmunk</button>
+        <button class="btn" data-preset="bobble">Bobblehead</button>
+        <button class="btn" data-preset="goblin">Goblin</button>
+      </div>
+      <button class="btn full" data-preset="reset">Reset</button>
     </div>
-    <div class="row">
-      <button class="btn chip" data-tool="draw" aria-pressed="true">Draw</button>
-      <button class="btn chip" data-tool="smudge" aria-pressed="false">Smudge</button>
-      <button class="btn chip" data-tool="erase" aria-pressed="false">Erase</button>
-      <div class="sep"></div>
-      <button class="sw" data-color="#ff2d55" style="background:#ff2d55; outline:2px solid #fff"></button>
-      <button class="sw" data-color="#00e5ff" style="background:#00e5ff"></button>
-      <button class="sw" data-color="#39ff14" style="background:#39ff14"></button>
-      <button class="sw" data-color="#ffd400" style="background:#ffd400"></button>
-      <button class="sw" data-color="#ffffff" style="background:#fff"></button>
-      <button class="sw" data-color="#0b0c14" style="background:#0b0c14; border-color:#555"></button>
-      <div class="sep"></div>
-      <span style="font-size:11px;color:var(--dim)">Brush <b id="brushR" style="color:var(--ink)">18</b></span>
-      <input id="brush" type="range" min="3" max="60" value="18" style="width:88px" />
-      <button class="btn chip" id="dripBtn" aria-pressed="false">Drip</button>
-      <button class="btn chip" id="clearBtn">Clear paint</button>
+
+    <!-- camera -->
+    <div class="group">
+      <div class="group__t">Camera</div>
+      <div class="grid3">
+        <button class="btn" id="tintBtn" aria-pressed="false">Green</button>
+        <button class="btn" id="mirrorBtn" aria-pressed="true">Mirror</button>
+        <button class="btn" id="camBtn" aria-pressed="true">Camera</button>
+      </div>
     </div>
+
+    <!-- paint -->
+    <div class="group">
+      <div class="group__t">Paint</div>
+      <div class="grid3">
+        <button class="btn" data-tool="draw" aria-pressed="true">Draw</button>
+        <button class="btn" data-tool="smudge" aria-pressed="false">Smudge</button>
+        <button class="btn" data-tool="erase" aria-pressed="false">Erase</button>
+      </div>
+      <div class="swrow">
+        <button class="sw" data-color="#ff2d55" style="background:#ff2d55; outline:2px solid #fff"></button>
+        <button class="sw" data-color="#00e5ff" style="background:#00e5ff"></button>
+        <button class="sw" data-color="#39ff14" style="background:#39ff14"></button>
+        <button class="sw" data-color="#ffd400" style="background:#ffd400"></button>
+        <button class="sw" data-color="#ffffff" style="background:#fff"></button>
+        <button class="sw" data-color="#0b0c14" style="background:#0b0c14; border-color:#555"></button>
+      </div>
+      <div class="warp"><label>Brush <b id="brushR">18</b></label><input id="brush" type="range" min="3" max="60" value="18" /></div>
+      <div class="grid2">
+        <button class="btn" id="dripBtn" aria-pressed="false">Drip</button>
+        <button class="btn" id="clearBtn">Clear paint</button>
+      </div>
+    </div>
+
+    <!-- export -->
+    <div class="group">
+      <div class="group__t">Export</div>
+      <div class="grid2">
+        <button class="btn" id="saveBtn">Save</button>
+        <button class="btn" id="recBtn" aria-pressed="false">Record</button>
+      </div>
+    </div>
+
   </div>
 
 <script src="/lab/shared/opal.js"></script>
