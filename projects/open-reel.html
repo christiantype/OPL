@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OPEN — OP/AL</title>
+  <link rel="canonical" href="https://more-than.design/projects/open.html">
+  <meta name="description" content="OPEN — Original Practice / Everyday Noticing. A window onto a weekly hour of stillness, held Friday. The sky is Chicago's, right now.">
+  <meta property="og:type"        content="website">
+  <meta property="og:site_name"   content="OP/AL">
+  <meta property="og:title"       content="OPEN — OP/AL">
+  <meta property="og:description" content="Original Practice / Everyday Noticing. A weekly hour: 20 minutes of stillness, then 30 of conversation. The sky is Chicago's, right now.">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    /* OPEN — a window. Chicago's live sky behind, a curtain of the page's own words in front,
+       swaying in Chicago's real wind. The whole thing is the Letter Strings tool, in application. */
+    html, body{ height:100vh; height:100dvh; margin:0; overflow:hidden; background:#000;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+    /* the 9:16 reel stage — centred, black letterbox around it */
+    #frame{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      height:min(100vh, 100vw*16/9); aspect-ratio:9/16; max-width:100vw; overflow:hidden;
+      box-shadow:0 0 0 1px rgba(255,255,255,.06); }
+    #sky, #curtain{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+    #sky{ z-index:0; }
+    #curtain{ z-index:1; }
+    /* record control — a DOM overlay; it is NOT part of the recorded canvas */
+    #rec-ui{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:10;
+      display:flex; align-items:center; gap:12px; color:#eef; }
+    #recBtn{ width:46px; height:46px; border-radius:50%; border:1.5px solid rgba(255,255,255,.6);
+      background:rgba(20,22,30,.5); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+      cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.15s; }
+    #recBtn:hover{ background:rgba(40,44,58,.6); }
+    #recBtn i{ width:16px; height:16px; border-radius:50%; background:#ff4d5e; transition:.18s; }
+    #recBtn.on i{ border-radius:3px; width:14px; height:14px; }
+    #recTime{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; font-size:13px; opacity:0; transition:opacity .2s; }
+    #recTime.on{ opacity:1; }
+    #recHint{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; opacity:.5; }
+    #recHint.hide{ display:none; }
+    /* let the shared nav keep its site-wide mix-blend-mode:difference (colour-inverts over the sky) */
+    nav{ z-index:3; }
+    /* soft scrim layer sits between the curtain and the identity block so fine text reads */
+    .oc-scrim{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:2; pointer-events:none;
+      width:min(820px,95vw); height:min(580px,80vh); border-radius:50%;
+      background:radial-gradient(ellipse at center, var(--oc-scrim, rgba(248,249,252,.94)) 0%, var(--oc-scrim, rgba(248,249,252,.94)) 42%, transparent 74%);
+      transition:background 1.2s ease; }
+
+    /* identity lives in the corners; the centre stays empty */
+    .oc-ui{ position:fixed; inset:0; z-index:3; pointer-events:none; }
+    .oc-tl{ position:absolute; top:clamp(78px,14vh,150px); left:var(--oc-inset,42px); pointer-events:none; white-space:nowrap; }
+    .oc-when{ margin:12px 0 0; font-size:10.5px; letter-spacing:.18em; text-transform:uppercase; font-weight:400;
+      color:var(--oc-ink,#141414); opacity:.85; transition:color 1.2s ease; text-shadow:var(--oc-glow); }
+    /* soft scrim so the identity block reads clearly over the busy curtain */
+    .oc-scrim{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:-1; pointer-events:none;
+      width:min(520px,78vw); height:min(300px,44vh); border-radius:50%;
+      background:radial-gradient(ellipse at center, var(--oc-scrim, rgba(248,249,252,.3)) 0%, transparent 62%);
+      transition:background 1.2s ease; }
+    /* fine text sits on a solid highlighter plate so it stays legible over the busy curtain */
+    .oc-eyebrow, .oc-expand, .oc-sched{ background:var(--oc-plate,#fff); border-radius:4px; transition:background 1.2s ease; }
+    .oc-eyebrow{ font-size:10px; letter-spacing:.24em; text-transform:uppercase; opacity:1; margin:0 0 20px;
+      display:inline-flex; align-items:center; gap:8px; font-weight:600; color:var(--oc-platetext,#000);
+      padding:.6em .9em; transition:color 1.2s ease; }
+    .oc-eyebrow .dot{ width:5px; height:5px; border-radius:50%; background:var(--color-accent2); }
+    .oc-mark{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:15px; text-transform:uppercase;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      line-height:1; margin:0; letter-spacing:.04em; color:var(--oc-ink,#141414); transition:color 1.2s ease;
+      display:inline-flex; transform-origin:left center; }
+    /* OPEN breathes + deconstructs, driven in sync with the field's breath (see the sync loop in JS) */
+    .oc-mark span{ display:inline-block; will-change:transform; }
+    .oc-mark .sl{ color:var(--color-accent2); }
+    .oc-expand{ margin:22px 0 0; font-size:11px; letter-spacing:.22em; text-transform:uppercase; opacity:1; font-weight:600;
+      color:var(--oc-platetext,#000); padding:.62em .9em; transition:color 1.2s ease; }
+    .oc-sched{ margin:24px 0 0; font-size:clamp(11px,1.2vw,14px); letter-spacing:.03em; opacity:1; font-weight:500;
+      line-height:1.75; text-align:center; color:var(--oc-platetext,#000); padding:.7em 1.1em; transition:color 1.2s ease; }
+    .oc-join{ pointer-events:auto; position:absolute; bottom:clamp(26px,6vh,66px); right:var(--oc-inset,42px);
+      display:inline-block; font-size:10.5px; letter-spacing:.2em;
+      text-transform:uppercase; text-decoration:none; color:var(--oc-ink,#141414); font-weight:500;
+      border:1.5px solid currentColor; border-radius:999px; padding:13px 28px; opacity:1;
+      background:var(--oc-btnbg,rgba(248,249,252,.92));
+      transition:color 1.2s ease, background-color .3s ease, border-color .3s ease; }
+    .oc-join:hover{ background:var(--color-accent2); border-color:var(--color-accent2); color:#141414; opacity:1; }
+    /* actions row: Join + info, so the wordmark stays centred */
+    .oc-actions{ display:flex; align-items:center; gap:14px; margin-top:28px; }
+    .oc-actions .oc-join{ margin-top:0; }
+    .oc-info{ pointer-events:auto; position:absolute; bottom:clamp(26px,6vh,66px); left:var(--oc-inset,42px);
+      width:40px; height:40px; border-radius:50%; border:1.5px solid var(--oc-ink,#141414);
+      background:transparent; color:var(--oc-ink,#141414); cursor:pointer; font-family:"Sidepiece-HoneyPie",sans-serif;
+      font-size:19px; line-height:1; display:inline-flex; align-items:center; justify-content:center; padding:0;
+      transition:background .2s ease, color .2s ease, border-color .2s ease; }
+    .oc-info:hover{ background:var(--color-accent2); border-color:var(--color-accent2); color:#141414; }
+    /* about overlay */
+    .oc-overlay{ position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; padding:24px;
+      background:rgba(12,14,22,.55); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+      opacity:0; transition:opacity .28s ease; }
+    .oc-overlay.open{ opacity:1; }
+    .oc-overlay[hidden]{ display:none; }
+    .oc-panel{ position:relative; width:min(560px,94vw); max-height:86vh; overflow:auto;
+      background:#fff; color:#141414; border-radius:10px; padding:clamp(28px,4vw,48px);
+      transform:translateY(10px) scale(.98); transition:transform .28s ease; }
+    .oc-overlay.open .oc-panel{ transform:none; }
+    .oc-panel .ov-title{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:400; font-size:clamp(38px,7vw,62px);
+      line-height:.95; margin:0 0 6px; color:#141414; }
+    .oc-panel .ov-title .sl{ color:var(--color-accent2); }
+    .oc-panel .ov-sub{ font-size:11px; letter-spacing:.2em; text-transform:uppercase; opacity:.5; margin:0 0 22px; color:#141414; }
+    .oc-panel .ov-lead{ font-size:clamp(17px,2.4vw,21px); line-height:1.5; margin:0 0 20px; color:#141414; }
+    .oc-panel p{ font-size:15px; line-height:1.75; margin:0 0 15px; color:#141414; }
+    .oc-panel p em{ font-style:italic; }
+    .oc-panel .ov-join{ display:inline-block; margin-top:10px; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase;
+      text-decoration:none; color:#141414; font-weight:500; border:1.5px solid #141414; border-radius:999px; padding:12px 26px;
+      transition:background .25s ease, color .25s ease, border-color .25s ease; }
+    .oc-panel .ov-join:hover{ background:var(--color-accent2); border-color:var(--color-accent2); color:#141414; }
+    .oc-panel .ov-actions{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; margin-top:16px; }
+    .oc-panel .ov-actions .ov-join{ margin-top:0; }   /* keep both buttons on the same line */
+    .oc-panel .ov-cal{ font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:#141414; text-decoration:none;
+      border-bottom:1px solid rgba(0,0,0,.3); padding-bottom:4px; transition:border-color .25s ease; }
+    .oc-panel .ov-cal:hover{ border-color:var(--color-accent2); }
+    .oc-close{ position:absolute; top:14px; right:16px; width:34px; height:34px; border-radius:50%;
+      border:1px solid rgba(0,0,0,.18); background:transparent; color:#141414; font-size:0;
+      cursor:pointer; padding:0; transition:background .2s ease; }
+    .oc-close::before, .oc-close::after{ content:''; position:absolute; top:50%; left:50%;
+      width:13px; height:1.5px; background:currentColor; border-radius:1px; }
+    .oc-close::before{ transform:translate(-50%,-50%) rotate(45deg); }
+    .oc-close::after{  transform:translate(-50%,-50%) rotate(-45deg); }
+    .oc-close:hover{ background:rgba(0,0,0,.06); }
+    /* buttons that reuse link styling need the inherited font */
+    .oc-join, .oc-panel .ov-join{ font-family:inherit; cursor:pointer; }
+    /* request-invite form */
+    .req-panel .req-title{ font-family:"Sidepiece-HoneyPie",sans-serif; font-weight:600;
+      font-size:15px; line-height:1.4; margin:0 0 4px; color:#141414; }
+    .req-panel .req-sub{ font-size:14px; line-height:1.6; margin:0 0 24px; color:#141414; opacity:.65; }
+    .req-panel .req-about{ margin:12px 0 24px; }
+    .req-form{ display:flex; flex-direction:column; gap:18px; }
+    .req-field{ display:flex; flex-direction:column; gap:8px; font-size:10.5px; letter-spacing:.14em;
+      text-transform:uppercase; color:#141414; opacity:.7; }
+    .req-field input, .req-field select{ font-family:inherit; font-size:15px; letter-spacing:normal; text-transform:none;
+      padding:12px 14px; border:1px solid rgba(0,0,0,.25); border-radius:7px; background:#fff; color:#141414; width:100%; opacity:1; }
+    .req-field select{ appearance:none;
+      background-image:linear-gradient(45deg,transparent 50%,#141414 50%),linear-gradient(135deg,#141414 50%,transparent 50%);
+      background-position:calc(100% - 18px) 19px,calc(100% - 13px) 19px; background-size:5px 5px; background-repeat:no-repeat; }
+    .req-submit{ margin-top:6px; align-self:flex-start; font-family:inherit; cursor:pointer;
+      font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:#141414; font-weight:500;
+      border:1.5px solid #141414; border-radius:999px; padding:13px 28px; background:transparent;
+      transition:background .25s ease, border-color .25s ease; }
+    .req-submit:hover{ background:var(--color-accent2); border-color:var(--color-accent2); }
+    .req-submit:disabled{ opacity:.5; cursor:default; }
+    .req-msg{ font-size:13px; opacity:.8; margin:2px 0 0; min-height:1em; color:#141414; }
+  </style>
+</head>
+<body>
+  <div id="frame">
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <canvas id="curtain" aria-hidden="true"></canvas>
+  </div>
+  <div id="rec-ui">
+    <button id="recBtn" type="button" aria-label="Record"><i></i></button>
+    <span id="recTime">0:00</span>
+    <span id="recHint">record a reel · 1080×1920</span>
+  </div>
+
+  <script>
+  /* the sky + curtain engines size to this 9:16 stage instead of the window */
+  window.reelDims = function(){ const f=document.getElementById('frame'); const r=f.getBoundingClientRect(); return {W:Math.max(2,Math.round(r.width)), H:Math.max(2,Math.round(r.height))}; };
+  </script>
+
+  <script>
+  /* ─────────────────────────────────────────────────────────────────────────
+     1) THE SKY — Chicago's live weather drives colour (time of day + cloud cover)
+        and drifting procedural clouds. Wind speed feeds the curtain below.
+     ───────────────────────────────────────────────────────────────────────── */
+  const OC = (function () {
+    const sky = document.getElementById('sky'), sx = sky.getContext('2d');
+    const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>v<a?a:v>b?b:v;
+    let W=0,H=0,DPR=1;
+
+    // palettes as [r,g,b]; a phase blends its clear + overcast ends by cloud cover
+    const PAL = {
+      dayClear:{ top:[92,158,226], hor:[196,226,250], cloud:[255,255,255] },
+      dayCloud:{ top:[150,166,180], hor:[206,214,221], cloud:[240,242,244] },
+      dawn:    { top:[54,78,140],  hor:[242,172,120], cloud:[255,224,204] },
+      dawnCl:  { top:[120,132,158],hor:[214,190,186], cloud:[236,224,222] },
+      dusk:    { top:[40,50,104],  hor:[233,138,92],  cloud:[250,204,182] },
+      duskCl:  { top:[92,98,128],  hor:[176,150,150], cloud:[210,196,196] },
+      night:   { top:[7,11,30],    hor:[22,30,58],    cloud:[46,54,82] },
+      nightCl: { top:[24,30,50],   hor:[44,52,74],    cloud:[70,78,100] },
+    };
+    function mix(a,b,t){ return { top:a.top.map((v,i)=>lerp(v,b.top[i],t)),
+      hor:a.hor.map((v,i)=>lerp(v,b.hor[i],t)), cloud:a.cloud.map((v,i)=>lerp(v,b.cloud[i],t)) }; }
+
+    // current + target palettes; we ease current → target so weather changes glide in
+    let cur = { top:[140,180,220], hor:[210,230,245], cloud:[255,255,255] };
+    let tgt = cur;
+    let cloudCover = 0.45, cloudCoverTarget = 0.45, driftScale = 0.4, isNight = false, curPhase = 'day';
+
+    function setWeather(phase, cc, windKmh, night){
+      cloudCoverTarget = clamp(cc,0,1); isNight = night; curPhase = phase;   // cover eases smoothly, no jump
+      driftScale = clamp(0.15 + windKmh/40, 0.15, 1.1);
+      let a,b,t;
+      if(phase==='night'){ a=PAL.night; b=PAL.nightCl; t=Math.min(1,cc*0.9); }
+      else if(phase==='dawn'){ a=PAL.dawn; b=PAL.dawnCl; t=cc*0.75; }
+      else if(phase==='dusk'){ a=PAL.dusk; b=PAL.duskCl; t=cc*0.75; }
+      else { a=PAL.dayClear; b=PAL.dayCloud; t=cc*0.9; }
+      tgt = mix(a,b,t);
+    }
+
+    // luminance of the sky at a vertical fraction f (0 top → 1 horizon)
+    function lumAt(f){ const c=[lerp(cur.top[0],cur.hor[0],f),lerp(cur.top[1],cur.hor[1],f),lerp(cur.top[2],cur.hor[2],f)];
+      return (0.299*c[0]+0.587*c[1]+0.114*c[2])/255; }
+
+    // clouds: a handful of soft puffs drifting across the upper sky
+    let puffs=[];
+    function seedClouds(){ const n=16; puffs=[];   // fixed set, seeded once; visibility eases with cloudCover
+      for(let i=0;i<n;i++){ puffs.push({ x:Math.random(), y:0.05+Math.random()*0.62,
+        s:0.7+Math.random()*1.6, spd:0.2+Math.random()*0.6, seed:Math.random()*10 }); } }
+
+    // ── sky depth: stars, a dawn/dusk sun-glow, a moon, and a faint skyline ──
+    let stars=[], skyline=[], twT=0;
+    function seedStars(){ stars=[]; for(let i=0;i<140;i++) stars.push({
+      x:Math.random(), y:Math.random()*0.62, b:0.35+Math.random()*0.65, ph:Math.random()*6.28, sz:0.4+Math.random()*1.3 }); }
+    function seedSkyline(){ skyline=[]; let x=-0.02;
+      while(x<1.04){ const w=0.014+Math.random()*0.05, tall=Math.random()<0.12,
+        h=(tall?0.14+Math.random()*0.11:0.03+Math.random()*0.075);
+        skyline.push({x,w,h}); x+=w+Math.random()*0.006; } }
+    function drawStars(){ if(!isNight) return; const vis=1-cloudCover; if(vis<0.06) return;
+      for(const s of stars){ const a=s.b*(0.55+0.45*Math.sin(twT+s.ph))*vis*0.9; if(a<0.03) continue;
+        sx.fillStyle=`rgba(245,247,255,${a.toFixed(3)})`; sx.beginPath(); sx.arc(s.x*W,s.y*H,s.sz,0,6.2832); sx.fill(); } }
+    function drawMoon(){ if(!isNight) return; const vis=1-cloudCover*0.7; if(vis<0.15) return;
+      const mx=0.8*W, my=0.19*H, r=Math.min(W,H)*0.032;
+      let g=sx.createRadialGradient(mx,my,0,mx,my,r*4.2);
+      g.addColorStop(0,`rgba(226,235,250,${(0.22*vis).toFixed(3)})`); g.addColorStop(1,'rgba(226,235,250,0)');
+      sx.fillStyle=g; sx.beginPath(); sx.arc(mx,my,r*4.2,0,6.2832); sx.fill();
+      sx.fillStyle=`rgba(238,243,252,${(0.85*vis).toFixed(3)})`; sx.beginPath(); sx.arc(mx,my,r,0,6.2832); sx.fill(); }
+    function drawSun(){ let gx, warm;
+      if(curPhase==='dawn'){ gx=0.24*W; warm='255,196,132'; }
+      else if(curPhase==='dusk'){ gx=0.78*W; warm='255,150,96'; } else return;
+      const gy=H*0.86, r=Math.min(W,H)*0.85, a=0.42*(1-cloudCover*0.5);   // broad soft glow, no disc
+      let g=sx.createRadialGradient(gx,gy,0,gx,gy,r);
+      g.addColorStop(0,`rgba(${warm},${a.toFixed(3)})`); g.addColorStop(0.5,`rgba(${warm},${(a*0.3).toFixed(3)})`); g.addColorStop(1,`rgba(${warm},0)`);
+      sx.fillStyle=g; sx.fillRect(0,0,W,H); }
+    function drawSkyline(){
+      const h=cur.hor, col=[Math.round(h[0]*0.42+16),Math.round(h[1]*0.42+20),Math.round(h[2]*0.42+32)];
+      sx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},${isNight?0.55:0.3})`;
+      for(const b of skyline){ sx.fillRect(b.x*W, H-b.h*H, b.w*W+0.6, b.h*H); } }
+
+    // precipitation — rain streaks or snow, falling outside the glass
+    let precip={kind:'none',rate:0}, drops=[], precipVis=0, precipWant={kind:'none',rate:0};
+    function mkDrop(){ if(precip.kind==='snow')
+        return { x:Math.random()*W, y:Math.random()*H, r:1+Math.random()*2.6, spd:0.4+Math.random()*0.9, drift:Math.random()*6.28, sway:0.4+Math.random()*1.0 };
+      // rain: layered depth (0 far → 1 near) drives length, speed, thickness, opacity → real-drop parallax
+      const layer=Math.random();
+      return { x:Math.random()*W, y:Math.random()*H, layer, len:11+layer*24, spd:8+layer*13, w:0.7+layer*1.5, a:0.16+layer*0.4 }; }
+    function seedPrecip(){ drops=[]; if(precip.kind==='none') return;
+      const n=Math.round((precip.kind==='snow'?110:200)*precip.rate); for(let i=0;i<n;i++) drops.push(mkDrop()); }
+    function setPrecip(kind,rate){ precipWant={kind:kind||'none',rate:clamp(rate||0,0,1)}; }   // eased in/out by the frame loop
+    function drawPrecip(){
+      if(precip.kind==='none'||precipVis<0.01||!drops.length) return;
+      const slant=clamp((driftScale-0.3)*1.4,-0.1,1.3);
+      if(precip.kind==='rain'){
+        const base=isNight?'205,218,238':'184,202,228', head=isNight?'234,241,253':'247,251,255';
+        sx.lineCap='round';
+        for(const d of drops){ const hx=d.x, hy=d.y, tx=hx-d.len*slant*0.5, ty=hy-d.len;
+          const g=sx.createLinearGradient(tx,ty,hx,hy);   // glassy teardrop: faint tail → bright head
+          g.addColorStop(0,`rgba(${base},0)`); g.addColorStop(1,`rgba(${base},${(d.a*precipVis).toFixed(3)})`);
+          sx.strokeStyle=g; sx.lineWidth=d.w; sx.beginPath(); sx.moveTo(tx,ty); sx.lineTo(hx,hy); sx.stroke();
+          sx.fillStyle=`rgba(${head},${(Math.min(1,d.a*1.7)*precipVis).toFixed(3)})`;
+          sx.beginPath(); sx.arc(hx,hy,d.w*0.95,0,6.2832); sx.fill();
+          d.y+=d.spd; d.x-=slant*d.spd*0.16;
+          if(d.y-d.len>H){ d.y=-Math.random()*40; d.x=Math.random()*W; } if(d.x<-4)d.x+=W; if(d.x>W+4)d.x-=W; }
+      } else {
+        sx.fillStyle=isNight?`rgba(230,236,246,${(0.7*precipVis).toFixed(3)})`:`rgba(255,255,255,${(0.82*precipVis).toFixed(3)})`;
+        for(const d of drops){ d.y+=d.spd; d.x+=Math.sin(d.drift+d.y*0.01)*d.sway*0.6 - slant*0.6; d.drift+=0.01;
+          if(d.y>H){ d.y=-4; d.x=Math.random()*W; } if(d.x<-4)d.x+=W; if(d.x>W+4)d.x-=W;
+          sx.beginPath(); sx.arc(d.x,d.y,d.r,0,6.2832); sx.fill(); } }
+    }
+
+    function resize(){ DPR=Math.min(devicePixelRatio||1,1); const d=reelDims(); W=d.W; H=d.H;   // sky is soft → low-res is invisible
+      sky.width=W*DPR; sky.height=H*DPR; sx.setTransform(DPR,0,0,DPR,0,0); }
+    addEventListener('resize', resize);
+
+    let t=0;
+    function frame(){
+      // ease palette toward target
+      for(const k of ['top','hor','cloud']) for(let i=0;i<3;i++) cur[k][i]=lerp(cur[k][i],tgt[k][i],0.02);
+      cloudCover += (cloudCoverTarget-cloudCover)*0.02;   // clouds thicken/thin smoothly
+      t += 0.0016; twT += 0.045;
+
+      // sky gradient
+      const g=sx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0, `rgb(${cur.top.map(Math.round).join(',')})`);
+      g.addColorStop(1, `rgb(${cur.hor.map(Math.round).join(',')})`);
+      sx.fillStyle=g; sx.fillRect(0,0,W,H);
+
+      drawSun();   // soft ambient glow only — no moon, no stars, no discs
+
+      // clouds
+      const cc=cur.cloud.map(Math.round);
+      for(const p of puffs){ p.x += (p.spd*driftScale*0.0006); if(p.x>1.25) p.x-=1.5;
+        const cx=p.x*W, cy=p.y*H, base=Math.min(W,H)*0.16*p.s;
+        const alpha=cloudCover*0.6;   // clear skies fade clouds toward 0
+        // a cluster of soft blobs makes one fluffy mass
+        for(let b=0;b<4;b++){ const off=(b-1.5), ox=cx+off*base*0.6+Math.sin(t*2+p.seed+b)*base*0.15,
+          oy=cy+Math.cos(b*1.6+p.seed)*base*0.28, r=base*(1-Math.abs(off)*0.16);
+          const rg=sx.createRadialGradient(ox,oy,0,ox,oy,r);
+          rg.addColorStop(0,`rgba(${cc[0]},${cc[1]},${cc[2]},${alpha})`);
+          rg.addColorStop(1,`rgba(${cc[0]},${cc[1]},${cc[2]},0)`);
+          sx.fillStyle=rg; sx.beginPath(); sx.arc(ox,oy,r,0,6.2832); sx.fill(); } }
+
+      // smooth precip cross-fade (fade one out before the next fades in)
+      if(precip.kind!==precipWant.kind){ if(precipVis<0.03){ precip={kind:precipWant.kind,rate:precipWant.rate}; seedPrecip(); } }
+      else precip.rate=precipWant.rate;
+      const pvTarget=(precip.kind!=='none'&&precip.kind===precipWant.kind)?1:0;
+      precipVis += (pvTarget-precipVis)*0.03;
+      drawPrecip();
+      requestAnimationFrame(frame);
+    }
+    resize(); seedClouds(); seedStars(); requestAnimationFrame(frame);
+
+    return { lumAt, setWeather, setPrecip, get isNight(){return isNight;}, get windScale(){return driftScale;} };
+  })();
+  window.OC = OC;   // handle for previews / capture (site behaviour unchanged)
+
+  /* ── fetch Chicago weather; fall back to a time-based sky if it fails.
+        preview overrides: ?phase=night|dawn|dusk|day  ?precip=rain|snow  ?cloud=0..1 ── */
+  (function () {
+    const q=new URLSearchParams(location.search);
+    const fPhase=q.get('phase'), fPrecip=q.get('precip'), fCloud=q.get('cloud');
+    function phaseFromClock(h){ if(h<5||h>=21) return 'night'; if(h<8) return 'dawn'; if(h>=18) return 'dusk'; return 'day'; }
+    // Open-Meteo weather_code → precipitation {kind,rate}
+    function precipFor(code){
+      if(code>=71 && code<=77) return {kind:'snow',rate:0.7};
+      if(code===85||code===86) return {kind:'snow',rate:0.85};
+      if(code>=51 && code<=57) return {kind:'rain',rate:0.45};
+      if(code>=61 && code<=67) return {kind:'rain',rate:code>=65?0.9:0.6};
+      if(code>=80 && code<=82) return {kind:'rain',rate:code>=82?1:0.7};
+      if(code>=95) return {kind:'rain',rate:1};
+      return {kind:'none',rate:0};
+    }
+    function apply(phase, cc, wind, precip){
+      phase = fPhase || phase;
+      if(fCloud!=null) cc=+fCloud;
+      if(fPrecip){ precip={kind:fPrecip, rate:fPrecip==='snow'?0.75:0.85}; }
+      if(precip.kind!=='none') cc=Math.max(cc,0.8);   // it's overcast when it's precipitating
+      OC.setWeather(phase, cc, wind, phase==='night');
+      OC.setPrecip(precip.kind, precip.rate);
+      window.dispatchEvent(new CustomEvent('oc-wind',{detail:{scale:OC.windScale}}));
+      document.body.dataset.wx='1';
+    }
+    function fallback(){
+      const h=+new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'2-digit',hour12:false}).format(new Date());
+      apply(phaseFromClock(h), 0.45, 12, {kind:'none',rate:0});
+    }
+
+    // Oak Park, IL — 60302
+    const url='https://api.open-meteo.com/v1/forecast?latitude=41.8850&longitude=-87.7845'
+      +'&current=temperature_2m,is_day,weather_code,cloud_cover,wind_speed_10m'
+      +'&daily=sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FChicago&forecast_days=1';
+
+    fetch(url).then(r=>r.json()).then(d=>{
+      const c=d.current; if(!c) return fallback();
+      const cc=(c.cloud_cover??45)/100, wind=c.wind_speed_10m??10, code=c.weather_code??2;
+      const toMin=s=>{ const t=s.split('T')[1]; const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
+      const now=toMin(c.time), sr=toMin(d.daily.sunrise[0]), ss=toMin(d.daily.sunset[0]);
+      let ph; if(now<sr-20||now>ss+20) ph='night';
+        else if(now<sr+70) ph='dawn'; else if(now>ss-70) ph='dusk'; else ph='day';
+      apply(ph, cc, wind, precipFor(code));
+    }).catch(fallback);
+    if(fPhase||fPrecip||fCloud) apply('day',0.45,12,{kind:'none',rate:0});   // instant preview
+    setTimeout(()=>{ if(!document.body.dataset.wx) fallback(); }, 4000);
+  })();
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     2) THE CURTAIN — Letter Strings (wind · curtain · horizontal), full-bleed,
+        transparent so the sky shows through. Per-row ink keeps it legible on any
+        sky. Highlighted words glow in brand yellow.
+     ───────────────────────────────────────────────────────────────────────── */
+  (function () {
+    const stage=document.getElementById('curtain'); if(!stage) return;
+    const ctx=stage.getContext('2d');
+    const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+    const reduce=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // the curtain is a drifting field of feelings, states + sensations — everyday noticing, made decorative
+    const EMOTIONS=['calm','restless','tender','grateful','wonder','awe','joy','grief','hope','doubt','ease',
+      'ache','longing','content','curious','weary','alive','still','present','open','raw','quiet','patience',
+      'delight','sorrow','gratitude','boredom','clarity','confusion','peace','warmth','fear','courage','softness',
+      'gladness','melancholy','serenity','wistful','unease','comfort','tenderness','yearning','stillness','elation',
+      'sadness','nervous','hopeful','gentle','heavy','light','bright','tired','rested','held','seen','alone',
+      'together','loved','lonely','afraid','brave','soft','tense','easeful','aching','glowing','wandering','settled',
+      'unsettled','curiosity','reverence','humility','luminous','spacious','grounded','adrift','bittersweet',
+      'nostalgia','relief','surrender','acceptance','resistance','restlessness','wonderment','peaceful','patient',
+      'openness',
+      'anguished','anticipation','apprehension','bereft','bliss','centered','cherished','compassion','connected',
+      'cozy','cradled','craving','crestfallen','dazed','desolate','despair','despondent','devotion','disquiet',
+      'dread','eager','ecstasy','emptiness','enchanted','equanimity','expansive','exposed','faith','flow','forlorn',
+      'fragile','fulfilled','giddy','grace','grieving','guarded','heartache','heartbroken','hollow','homesick',
+      'immersed','inspired','irritable','jubilant','lightness','listless','lulled','meditative','mindful','mournful',
+      'nurtured','overwhelmed','placid','playful','reflective','regretful','relaxed','released','renewed','restful',
+      'rooted','rueful','sacred','safe','searching','secure','sensitive','sheltered','soothed','sorrowful','spent',
+      'steady','stirred','suspended','sweet','tearful','thankful','thoughtful','tranquil','trust','unburdened',
+      'unhurried','unmoored','untethered','vast','vulnerable','welcoming','whole','willing','yielding',
+      // the whole spectrum — bright and dark held together
+      'abundant','wholesome','flourishing','thriving','vibrant','exuberant','triumphant','blessed','boundless',
+      'overjoyed','ecstatic','generous','free',
+      'broken','shattered','ashamed','hopeless','helpless','terrified','bitter','resentful','defeated','abandoned',
+      'betrayed','anxious','furious','lost','trapped','exhausted','gutted','jealous',
+      'conflicted','ambivalent','torn','indifferent',
+      // states + sensations
+      'pensive','alert','watchful','attentive','absorbed','rapt','entranced','keen','dreamy','hazy','drowsy',
+      'sleepy','languid','mellow','buoyant','weightless','tingling','buzzing','humming','prickling','breathless',
+      'shivery','feverish','tremulous','quivering','jittery','antsy','wired','restive','sharp','numb','electric',
+      'floaty','aglow','hushed','brimming','radiant','tingly','simmering','porous','melting','awake'];
+    const P={
+      text:'  '+EMOTIONS.join('   ')+'   ',
+      size:15, spacing:21, rowGap:78,
+      swayAmp:34, windSway:20, swayFreq:0.008, breathFreq:0.00139, breathAmp:0.62,
+      spring:0.02, damp:0.9, collIter:3, collPush:1.0, restitution:0.4, accent:'#efe000', margin:40
+    };
+    const HL=new Set(['STILL','OPEN','PRESENT','AWE','ALIVE','WONDER','STILLNESS']);
+    // per-letter colours — mostly black & white, with pops pulled from the studio screensaver palette
+    // vibrant screensaver colours — reserved for the information phrases (the field stays black)
+    const VIB=['#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
+      '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c','#0e5c5b','#4a2c4d'];
+    let W=0,H=0,DPR=1, strands=[], nodes=[], drawOrder=[], clock=0, warmT=0;   // clock 0 → breath starts on the circle
+    const FAM='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
+    const EB1=1.70158, EB3=EB1+1, easeOutBack=k=>1+EB3*Math.pow(k-1,3)+EB1*Math.pow(k-1,2);
+    function breathEnv(p){ const s=0.5-0.5*Math.cos(p*6.2831853); return s*s*(3-2*s); }   // smooth, deep swell (no abrupt burst)
+    const ss=x=>{ x=x<0?0:x>1?1:x; return x*x*x*(x*(x*6-15)+10); };   // smootherstep 0..1 — zero 1st+2nd deriv at both ends
+
+    // Chicago wind sets how far the curtain leans (kept gentle)
+    addEventListener('oc-wind', e=>{ const s=e.detail.scale;
+      P.swayAmp = clamp(28 + s*28, 28, 60); P.windSway = clamp(14 + s*24, 14, 42); });
+
+    let lastW=-1;
+    function resize(){ DPR=Math.min(devicePixelRatio||1,2); const d=reelDims(); W=d.W; H=d.H;   // crisper type for the reel
+      stage.width=W*DPR; stage.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+      if(W!==lastW){ lastW=W; build(); } }   // only rebuild on a real width change — ignore mobile URL-bar height jitter
+    addEventListener('resize', resize);
+
+    function hash(x,y,z){ const n=Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453; return n-Math.floor(n); }
+    function vnoise(x,y,z){ const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z),xf=x-xi,yf=y-yi,zf=z-zi;
+      const u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf),w=zf*zf*(3-2*zf);
+      const x00=lerp(hash(xi,yi,zi),hash(xi+1,yi,zi),u), x10=lerp(hash(xi,yi+1,zi),hash(xi+1,yi+1,zi),u);
+      const x01=lerp(hash(xi,yi,zi+1),hash(xi+1,yi,zi+1),u), x11=lerp(hash(xi,yi+1,zi+1),hash(xi+1,yi+1,zi+1),u);
+      return lerp(lerp(x00,x10,v),lerp(x01,x11,v),w); }
+
+    function tokenize(t){ t=(t||' ').replace(/\n/g,' '); const isW=c=>/[A-Za-z0-9]/.test(c); const segs=[]; let i=0;
+      while(i<t.length){ const w=isW(t[i]); let j=i; while(j<t.length && isW(t[j])===w) j++; segs.push({w,s:t.slice(i,j)}); i=j; }
+      return segs.length?segs:[{w:false,s:' '}]; }
+    function buildStream(need){ const segs=tokenize(P.text), out=[]; let ti=0;
+      while(out.length<need){ const seg=segs[ti%segs.length]; const hot=seg.w && HL.has(seg.s.toUpperCase());
+        for(const ch of [...seg.s]){ if(out.length<need) out.push({ch,hot}); } ti++; } return out; }
+
+    function build(){
+      strands=[]; nodes=[]; warmT=0; const m=P.margin, mainSpan=W-2*m;   // restart the breath warm-up on (re)build
+      const count=Math.max(2,Math.floor((H-2*m)/P.rowGap)+1), nPer=Math.max(2,Math.floor(mainSpan/P.spacing)+1);
+      // one long stream; each row starts at a different offset so the same words never stack vertically
+      const OFF=37, master=buildStream(nPer + count*OFF + 8);
+      const rnd=(a,b)=>a+Math.random()*(b-a);
+      for(let s=0;s<count;s++){ const cpos=m+(H-2*m)*(count===1?0.5:s/(count-1)); const strand=[]; const start=s*OFF;
+        let wc=VIB[(Math.random()*VIB.length)|0];
+        for(let j=0;j<nPer;j++){ const g=master[start+j]; if(g.ch===' ') wc=VIB[(Math.random()*VIB.length)|0];   // a fresh colour per word
+          // organic home jitter — break the grid
+          const jx=rnd(-P.spacing*0.34,P.spacing*0.34), jy=rnd(-P.rowGap*0.32,P.rowGap*0.32);
+          const x=m+j*P.spacing+jx, y=cpos+jy;
+          const sz=rnd(0.82,1.3), fs=Math.round(P.size*sz);
+          const nd={x,y,ox:x,oy:y,hx:x,hy:y, sz, r:P.size*sz*0.38, rot:rnd(-0.28,0.28), seed:rnd(0,900),
+            phx:rnd(0,6.283), phy:rnd(0,6.283), fspd:rnd(0.5,1.7), dm:rnd(0.6,1.55),
+            fsize:fs, font:fs+'px '+FAM, col:wc, ch:g.ch, hot:g.hot};
+          strand.push(nd); nodes.push(nd); }
+        strands.push(strand); }
+      // (reel: no hero/corner phrases — just the breathing field)
+      // start ON the circle: seat every field letter at its gathered-disc position so the page opens as the circle
+      { const cx0=W/2, cy0=H/2, hW=W/2, hH=H/2, Rg=Math.sqrt(nodes.length)*P.size*0.45;
+        for(const nd of nodes){ if(nd.hero) continue;
+          const ux=(nd.hx-cx0)/hW, uy=(nd.hy-cy0)/hH;
+          nd.x=nd.ox=cx0+ux*Math.sqrt(Math.max(0,1-uy*uy*0.5))*Rg;
+          nd.y=nd.oy=cy0+uy*Math.sqrt(Math.max(0,1-ux*ux*0.5))*Rg; } }
+      for(let i=0;i<nodes.length;i++) nodes[i].id=i;
+      // draw in size-grouped order (heroes last, on top) so ctx.font is set ~once per size, not per glyph
+      drawOrder = nodes.slice().sort((a,b)=> a.hero===b.hero ? a.fsize-b.fsize : (a.hero?1:-1));
+    }
+    // the real message, as discrete bold phrases scattered through the field (natural breaks, no run-on)
+    // the four colour phrases, pinned to the four corners with identical margins (symmetric top/bottom)
+    const HERO=[['friday 6–7am cst',0.0,0.86],['weekly meditation',1.0,0.17]];
+    function buildHero(m){
+      const sp=P.size*0.6;                          // same letter size as the field
+      // match the header: left edge = OP/AL logo, right edge = info icon
+      let padL=m, padR=m;
+      const logoEl=document.querySelector('nav .nav-logo-link'), menuEl=document.querySelector('nav .nav-menu-btn');
+      if(logoEl){ const r=logoEl.getBoundingClientRect(); if(r.width) padL=Math.max(6, r.left); }
+      if(menuEl){ const r=menuEl.getBoundingClientRect(); if(r.width) padR=Math.max(6, W-r.right); }
+      const joinEl=document.querySelector('.oc-join'); let btnY=null;   // the Request Invite CTA's vertical centre
+      if(joinEl){ const r=joinEl.getBoundingClientRect(); if(r.height) btnY=r.top+r.height/2; }
+      HERO.forEach(([t,fx,fy])=>{ const chars=[...t], width=chars.length*sp;
+        const x0 = fx<0.5 ? padL : Math.max(padL, W-padR-width);
+        const y = (fy>0.5 && btnY!=null) ? Math.round(btnY) : Math.round(H*fy);   // bottom phrase shares the CTA baseline
+        const strand=[];
+        const ax=x0+width/2, ay=y;                 // one anchor for the whole phrase → it moves rigidly
+        const fs=Math.round(P.size);
+        for(let j=0;j<chars.length;j++){ const x=x0+j*sp, ch=chars[j];
+          const ea=Math.random()*6.2831853, em=0.4+Math.random()*0.75;   // per-letter explosion direction/strength
+          const nd={x,y,ox:x,oy:y,hx:x,hy:y, ax,ay, exx:Math.cos(ea)*em, exy:Math.sin(ea)*em,
+            sz:1, r:0, rot:0, seed:0, fsize:fs, font:fs+'px '+FAM, col:VIB[(Math.random()*VIB.length)|0], ch, hero:true}; strand.push(nd); nodes.push(nd); }
+        strands.push(strand); });
+    }
+
+    // collision: a spatial grid so nearby letters push apart; Verlet turns each push into momentum
+    function collide(){
+      const cell=P.size*1.1, INV=1/cell, grid=new Map();
+      const key=(cx,cy)=>((cx+2048)<<13)^(cy+2048);
+      for(const nd of nodes){ const k=key((nd.x*INV)|0,(nd.y*INV)|0); let a=grid.get(k); if(!a){a=[];grid.set(k,a);} a.push(nd); }
+      for(const nd of nodes){ if(nd.hero) continue; const cx=(nd.x*INV)|0, cy=(nd.y*INV)|0;
+        for(let gx=cx-1;gx<=cx+1;gx++) for(let gy=cy-1;gy<=cy+1;gy++){ const a=grid.get(key(gx,gy)); if(!a) continue;
+          for(const o of a){ if(o.id<=nd.id||o.hero) continue;      // each pair once; heroes glide through
+            let dx=o.x-nd.x, dy=o.y-nd.y, d2=dx*dx+dy*dy; const rr=nd.r+o.r;
+            if(d2<rr*rr && d2>1e-4){ const d=Math.sqrt(d2), push=(rr-d)/d*0.5*P.collPush;
+              const px=dx*push, py=dy*push, b=P.restitution;
+              nd.x-=px; nd.y-=py; o.x+=px; o.y+=py;          // separate so glyph bodies just touch
+              nd.ox+=px*b; nd.oy+=py*b; o.ox-=px*b; o.oy-=py*b; } } } }   // restitution → they bounce off
+    }
+
+    function step(){ const t=clock, amp=P.swayAmp, K=P.spring, damp=P.damp;
+      // ambient flow field (coarse noise swirls regions; no linear phase → no bands)
+      const CS=0.0026, T1=t*0.004;
+      // global wind: the whole curtain leans left↔right together (nearly uniform → wind, not bands)
+      const swayBase=Math.sin(t*P.swayFreq)*P.windSway;
+      // slow breath about the centre (tantien): the field GATHERS inward on the inhale — everything
+      // draws toward the centre point, closer together — then the exhale pushes it out to the edges.
+      // a wide radial window keeps it round and lets the pull/push reach all the way to the corners.
+      // ONE breath: the field is a gathered organic disc, then expands outward, then draws back — a single
+      // continuous move each way. u is a plain raised cosine, so it eases out and eases in with no dwell,
+      // no mid-state, no branch switch. It starts on the circle (u=0).
+      const cx0=W/2, cy0=H/2, halfW=W/2, halfH=H/2;
+      const bp=(t*P.breathFreq)%1;
+      const u = 0.5 - 0.5*Math.cos(bp*6.2831853);  // 0 = gathered circle (start) → 1 = expanded outward → back
+      const Rg=Math.sqrt(nodes.length)*P.size*0.45, expandAmt=1.12; // disc sized to the letters so they gather into full contact
+      const warm=ss(warmT/180);                    // eases the ambient drift/sway in on load (the breath itself starts matched)
+      for(const nd of nodes){
+        const dxn=nd.hx-cx0, dyn=nd.hy-cy0;
+        const cxf=vnoise(nd.hx*CS,nd.hy*CS,T1)-0.5, cyf=vnoise(nd.hx*CS+31.7,nd.hy*CS+11.3,T1)-0.5;
+        const swayX=swayBase*Math.cos(nd.hy*0.0011);   // a touch of row lag for fabric, far below one wave
+        if(nd.hero){   // the phrases expand + contract on the very same breath
+          const ex=u*88;
+          nd.x += (nd.hx + nd.exx*ex - nd.x)*0.085;
+          nd.y += (nd.hy + nd.exy*ex - nd.y)*0.085;
+          continue;
+        }
+        // gathered disc (u=0) → expanded field (u=1): one continuous interpolation between the two
+        const ux=dxn/halfW, uy=dyn/halfH;              // square→disc map so the gathered state is round
+        const Cx=cx0 + ux*Math.sqrt(Math.max(0,1-uy*uy*0.5))*Rg;
+        const Cy=cy0 + uy*Math.sqrt(Math.max(0,1-ux*ux*0.5))*Rg;
+        const bhx=Cx + (cx0+dxn*expandAmt - Cx)*u, bhy=Cy + (cy0+dyn*expandAmt - Cy)*u;
+        // each letter wanders on its own — independent phase, speed and reach → sporadic, organic
+        const dr=t*0.013;
+        const fx=vnoise(nd.seed*3.1+nd.phx+dr*nd.fspd,      nd.seed*0.7,      0)-0.5;
+        const fy=vnoise(nd.seed*1.7+nd.phy+dr*nd.fspd*0.68, nd.seed*2.3+50.0, 0)-0.5;
+        const tx=bhx + (swayX + cxf*0.85*amp + fx*amp*0.95*nd.dm)*warm;
+        const ty=bhy + (cyf*0.7*amp + fy*amp*0.95*nd.dm)*warm;
+        const vx=(nd.x-nd.ox)*damp, vy=(nd.y-nd.oy)*damp; nd.ox=nd.x; nd.oy=nd.y;   // Verlet velocity
+        nd.x += vx + (tx-nd.x)*K;
+        nd.y += vy + (ty-nd.y)*K;
+      }
+      for(let k=0;k<P.collIter;k++) collide();
+      // keep every letter inside the canvas; hitting a wall kills the inward velocity (no sticking)
+      for(const nd of nodes){ const pad=nd.r+1;
+        if(nd.x<pad){ nd.x=pad; nd.ox=nd.x; } else if(nd.x>W-pad){ nd.x=W-pad; nd.ox=nd.x; }
+        if(nd.y<pad){ nd.y=pad; nd.oy=nd.y; } else if(nd.y>H-pad){ nd.y=H-pad; nd.oy=nd.y; } }
+      clock++; if(warmT<180) warmT++;
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      const heroInk = OC.lumAt(0.5)>0.52 ? '#111' : '#f3f4f6';   // black on bright skies, light on dark
+      let curFont='';
+      for(const nd of drawOrder){
+        if(nd.font!==curFont){ ctx.font=nd.font; curFont=nd.font; }   // font set ~once per size, not per glyph
+        ctx.fillStyle = nd.hero ? heroInk : nd.col;   // phrases in black; field words each their own colour
+        ctx.fillText(nd.ch, nd.x, nd.y);   // upright — no per-glyph save/rotate (big perf win)
+      }
+    }
+
+    function tick(){ if(!reduce) step(); draw(); requestAnimationFrame(tick); }
+    // make sure the canvas renders in Sidepiece (web fonts must be loaded before canvas can use them)
+    if(document.fonts && document.fonts.load){ document.fonts.load('20px "Sidepiece-HoneyPie"').catch(()=>{}); }
+    resize(); if(reduce){ draw(); } else requestAnimationFrame(tick);
+    // breath phase/value for syncing external audio in captures and the OPEN wordmark
+    window.__breathPhase = ()=> (clock * P.breathFreq) % 1;
+    window.__breathPeriodSec = ()=> 1 / (P.breathFreq * 60);
+    window.__breathE = ()=> 0.5 - 0.5*Math.cos(((clock * P.breathFreq) % 1) * 6.2831853);   // expansion 0..1 (matches the field)
+  })();
+  </script>
+
+  <script>
+  /* ─── record the reel: composite sky + curtain into a fixed 1080×1920 H.264 MP4 ─── */
+  (function(){
+    const sky=document.getElementById('sky'), curtain=document.getElementById('curtain');
+    const btn=document.getElementById('recBtn'), tEl=document.getElementById('recTime'), hint=document.getElementById('recHint');
+    const RW=1080, RH=1920;
+    const comp=document.createElement('canvas'); comp.width=RW; comp.height=RH; const cx=comp.getContext('2d');
+    let rec=null, chunks=[], raf=0, t0=0, timer=0;
+    const fmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+    function frame(){ cx.fillStyle='#000'; cx.fillRect(0,0,RW,RH);
+      try{ cx.drawImage(sky,0,0,RW,RH); cx.drawImage(curtain,0,0,RW,RH); }catch(e){}
+      if(rec && rec.state==='recording') raf=requestAnimationFrame(frame); }
+    btn.addEventListener('click', ()=>{
+      if(rec && rec.state==='recording'){ rec.stop(); return; }
+      frame();   // seed one frame so the stream has content
+      const stream=comp.captureStream(30);
+      const mime=['video/mp4;codecs=avc1.640029','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
+      const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
+      rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:40000000}); chunks=[];
+      rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+      rec.onstop=()=>{ cancelAnimationFrame(raf); clearInterval(timer);
+        const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob); a.download='open-reel.'+ext; a.click();
+        btn.classList.remove('on'); tEl.classList.remove('on'); };
+      rec.start(); raf=requestAnimationFrame(frame);
+      t0=performance.now(); tEl.textContent='0:00'; tEl.classList.add('on'); btn.classList.add('on'); hint.classList.add('hide');
+      timer=setInterval(()=>{ tEl.textContent=fmt(performance.now()-t0); }, 250);
+    });
+  })();
+  </script>
+</body>
+</html>
