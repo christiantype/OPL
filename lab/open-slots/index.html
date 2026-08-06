@@ -77,10 +77,9 @@
     const c1=1.70158, c3=c1+1, easeOutBack=x=>1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);   // slight overshoot = a snap
     const HOLD=0.24, SNAP=0.11, STEP=HOLD+SNAP;       // ~0.35s per word — unhurried
     const TICKER_END=9.1, ENDING_START=9.45, CARD_DUR=1.6;
-    const ENDING=[ {t:'OPEN',size:150}, {t:'FRIDAYS',size:112}, {t:'6AM',size:150},
-      {t:'MEDITATION & COMMUNITY',size:94}, {t:'OP/AL',size:128}, {t:'MORE THAN DESIGN',size:114} ];
+    const ENDING=['OPEN','FRIDAYS','6AM','MEDITATION & COMMUNITY','OP/AL','MORE THAN DESIGN'];
     const TOTAL=ENDING_START + ENDING.length*CARD_DUR + 1.4;
-    let start=null,lastT=null;
+    let start=null, INVITE_SIZE=110;   // one uniform size for every invite line (longest still fits one line)
 
     function drawSky(now){
       const grd=g.createLinearGradient(0,0,0,H);
@@ -104,23 +103,19 @@
       g.fillStyle=hexA(VIB[wi%VIB.length], a);
       g.fillText(up, W/2, H*0.5 + yOff);
     }
-    function wrapLines(text,maxW){ const words=text.split(' '), lines=[]; let line='';
-      for(const w of words){ const test=line?line+' '+w:w; if(g.measureText(test).width>maxW && line){ lines.push(line); line=w; } else line=test; }
-      if(line) lines.push(line); return lines; }
+    // the invite words appear in the SAME slot style — each snaps into focus, holds, then the next —
+    // all on one line at one uniform size (INVITE_SIZE), in solid ink
+    function computeInviteSize(){ const BASE=150; g.font=BASE+'px '+FAM; let widest=0;
+      for(const w of ENDING){ const ww=g.measureText(w).width; if(ww>widest) widest=ww; }
+      INVITE_SIZE = widest>W*0.9 ? Math.floor(BASE*W*0.9/widest) : BASE; }
     function drawEnding(t){
       const local=t-ENDING_START, ci=Math.floor(local/CARD_DUR); if(ci<0||ci>=ENDING.length) return;
-      const card=ENDING[ci], lt=local-ci*CARD_DUR;
-      const fin=Math.min(1,lt/0.24), fout=Math.min(1,(CARD_DUR-lt)/0.3), a=Math.max(0,Math.min(fin,fout));
-      const sc=0.95+0.05*easeOutCubic(Math.min(1,lt/0.55));
-      g.save(); g.translate(W/2,H/2); g.scale(sc,sc); g.textAlign='center'; g.textBaseline='middle';
-      g.font=card.size+'px '+FAM;
-      const lines=wrapLines(card.t, W*0.86);
-      let fs=card.size, widest=Math.max.apply(null, lines.map(l=>g.measureText(l).width));
-      if(widest>W*0.88){ fs=Math.floor(card.size*W*0.88/widest); g.font=fs+'px '+FAM; }   // fit to frame
-      const lh=fs*1.02, y0=-(lines.length-1)*lh/2;
-      g.fillStyle=hexA('#15171c', a);
-      lines.forEach((ln,i)=> g.fillText(ln, 0, y0+i*lh));
-      g.restore();
+      const word=ENDING[ci], lt=local-ci*CARD_DUR, SNAP2=0.15;
+      const prog = lt<SNAP2 ? lt/SNAP2 : 1;
+      const yOff=(1-easeOutBack(prog))*42, a=Math.min(1, lt/(SNAP2*0.6));   // same snap-in as the emotions
+      g.textAlign='center'; g.textBaseline='middle';
+      g.font=INVITE_SIZE+'px '+FAM; g.fillStyle=hexA('#15171c', a);
+      g.fillText(word, W/2, H*0.5 + yOff);
     }
     function frame(now){ now/=1000; if(start==null){ start=now; }
       let t=now-start;
@@ -130,7 +125,8 @@
       if(t>=ENDING_START) drawEnding(t);
       requestAnimationFrame(frame);
     }
-    if(document.fonts && document.fonts.load){ document.fonts.load('40px "Sidepiece-HoneyPie"').catch(()=>{}); }
+    computeInviteSize();
+    if(document.fonts && document.fonts.load){ document.fonts.load('40px "Sidepiece-HoneyPie"').then(computeInviteSize).catch(()=>{}); }
     requestAnimationFrame(frame);
 
     /* record the canvas (native 1080×1920) → H.264 MP4 */
