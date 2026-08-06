@@ -131,7 +131,14 @@
         <option value="1920/1080">Landscape 16:9</option>
       </select>
       <button class="btn chip" id="chromeBtn" aria-pressed="false" data-tip="Render the lines as polished chrome — adapts to your paper: a metallic glow on dark paper, shiny liquid chrome on light paper.">Chrome</button>
-      <button class="btn chip" id="soundBtn" aria-pressed="false" data-tip="An eerie friction soundtrack, synthesized live from the motion — a chalk/rubber scratch that rasps as the ink scrapes out, over a low uneasy drone. Recording does not capture it.">Sound</button>
+      <button class="btn chip" id="soundBtn" aria-pressed="false" data-tip="An eerie synth soundtrack, generated live from the motion. Pick a voice alongside — each moves differently (drifting swarm, rubbery vibrato, dry scrape, metallic machine, hollow wind). Recording does not capture it.">Sound</button>
+      <select id="soundMode" class="btn chip" title="Sound voice">
+        <option value="swarm" selected>Swarm</option>
+        <option value="rubber">Rubber</option>
+        <option value="scrape">Scrape</option>
+        <option value="machine">Machine</option>
+        <option value="wind">Wind</option>
+      </select>
       <button class="btn chip" id="recBtn" aria-pressed="false">Record</button>
       <button class="btn chip" id="saveBtn">Save</button>
     </div>
@@ -201,33 +208,61 @@
   let bgColor='#ffffff';    // paper colour behind the ink
   const bgLuma = ()=>{ const n=parseInt(bgColor.slice(1),16); return (0.299*(n>>16&255)+0.587*(n>>8&255)+0.114*(n&255))/255; };
 
-  // ---- eerie friction audio: procedural chalk/rubber scratch + a low uneasy drone, driven by the bloom's motion (opt-in) ----
-  let audio=null, soundOn=false;
+  // ---- eerie synth: selectable VCO / FM / noise-scrape voices, each with LFO motion (drift, vibrato,
+  //      filter sweeps), all further driven by the bloom's movement (opt-in) ----
+  let audio=null, soundOn=false, soundMode='swarm';
+  const PRESETS={   // mix = voice levels; bp = noise band; osc = VCO; fm = metallic; lp = tone; slow/fast/vib = LFO motion; drive = grit; pM = pitch↔motion
+    swarm:  { mix:{n:0.06,a:0.5,b:0.5}, bp:{f:1800,q:1},   osc:{w:'triangle',hz:118,det:7}, fm:0,                 lpB:2200,lpM:1300, slow:{r:0.08,d:320}, fast:{r:0,d:0},    vib:{r:0.9,d:16}, drive:0.30, pM:0.18 },
+    rubber: { mix:{n:0.20,a:0.6,b:0},   bp:{f:1100,q:5},   osc:{w:'sawtooth',hz:96,det:0},  fm:0,                 lpB:1500,lpM:1700, slow:{r:0.2,d:220},  fast:{r:0,d:0},    vib:{r:6.5,d:58}, drive:0.45, pM:0.5 },
+    scrape: { mix:{n:1.0,a:0,b:0},      bp:{f:820,q:2.2},  osc:{w:'sawtooth',hz:60,det:0},  fm:0,                 lpB:1600,lpM:2900, slow:{r:0.12,d:520}, fast:{r:26,d:1500}, vib:{r:0,d:0},    drive:0.70, pM:0.25 },
+    machine:{ mix:{n:0.08,a:0.7,b:0},   bp:{f:2600,q:1},   osc:{w:'square',hz:68,det:0},    fm:{ratio:2.61,depth:200}, lpB:1800,lpM:2400, slow:{r:0.5,d:900},  fast:{r:0,d:0},    vib:{r:0,d:0},    drive:0.50, pM:0.12 },
+    wind:   { mix:{n:1.0,a:0,b:0},      bp:{f:600,q:0.8},  osc:{w:'sine',hz:60,det:0},      fm:0,                 lpB:520, lpM:1600, slow:{r:0.05,d:260}, fast:{r:0.25,d:150},vib:{r:0,d:0},    drive:0.15, pM:0 },
+  };
+  function shaperCurve(k){ const n=1024, c=new Float32Array(n); k=Math.max(0.001,k)*40;
+    for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=(1+k)*x/(1+k*Math.abs(x)); } return c; }   // soft-clip drive → harmonics/grit
   function initAudio(){ if(audio) return; const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const ac=new AC();
     const buf=ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate), dd=buf.getChannelData(0);
-    for(let i=0;i<dd.length;i++) dd[i]=Math.random()*2-1;                       // white-noise bed (looped)
+    for(let i=0;i<dd.length;i++) dd[i]=Math.random()*2-1;
     const noise=ac.createBufferSource(); noise.buffer=buf; noise.loop=true;
-    const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2400; bp.Q.value=10;   // resonant → scratchy timbre
-    const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=800;
-    const nGain=ac.createGain(); nGain.gain.value=0;
-    noise.connect(bp); bp.connect(hp); hp.connect(nGain);
-    const o1=ac.createOscillator(), o2=ac.createOscillator(); o1.type='triangle'; o2.type='sine';
-    o1.frequency.value=110; o2.frequency.value=111.7;                           // low + detuned → slow uneasy beating
-    const dGain=ac.createGain(); dGain.gain.value=0;
-    o1.connect(dGain); o2.connect(dGain);
-    const master=ac.createGain(); master.gain.value=0.85;
-    nGain.connect(master); dGain.connect(master); master.connect(ac.destination);
-    noise.start(); o1.start(); o2.start();
-    audio={ac,bp,hp,nGain,dGain,master}; }
-  function silenceAudio(){ if(!audio) return; const t=audio.ac.currentTime;
-    audio.nGain.gain.setTargetAtTime(0,t,0.15); audio.dGain.gain.setTargetAtTime(0,t,0.3); }
-  function audioFromMotion(a){ if(!audio||!soundOn) return; a=a<0?0:a>1?1:a; const t=audio.ac.currentTime;
-    audio.nGain.gain.setTargetAtTime(0.0008 + a*0.055, t, 0.06);                          // scratch swells with motion
-    audio.bp.frequency.setTargetAtTime(1300 + a*3400 + (Math.random()-0.5)*700, t, 0.02); // grainy, jittered pitch
-    audio.dGain.gain.setTargetAtTime(0.006 + a*0.018, t, 0.25);                            // low eerie drone underneath
-    if(a>0.55 && Math.random()<0.03){ const f0=audio.bp.frequency.value;                  // occasional rubber-squeak sweep
-      audio.bp.frequency.cancelScheduledValues(t); audio.bp.frequency.setValueAtTime(f0,t);
-      audio.bp.frequency.exponentialRampToValueAtTime(Math.min(7000,f0*2.4), t+0.09); } }
+    const bp=ac.createBiquadFilter(); bp.type='bandpass';
+    const nGain=ac.createGain(); nGain.gain.value=0; noise.connect(bp); bp.connect(nGain);
+    const oscA=ac.createOscillator(), oscB=ac.createOscillator();
+    const aGain=ac.createGain(), bGain=ac.createGain(); aGain.gain.value=0; bGain.gain.value=0;
+    oscA.connect(aGain); oscB.connect(bGain);
+    const fmOsc=ac.createOscillator(), fmGain=ac.createGain(); fmGain.gain.value=0; fmOsc.connect(fmGain); fmGain.connect(oscA.frequency);   // FM
+    const pre=ac.createGain(); nGain.connect(pre); aGain.connect(pre); bGain.connect(pre);
+    const shaper=ac.createWaveShaper(); shaper.curve=shaperCurve(0.3); pre.connect(shaper);
+    const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=0.7; shaper.connect(lp);   // tames the whistle
+    const level=ac.createGain(); level.gain.value=0; lp.connect(level);                        // motion swell
+    const comp=ac.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=6; level.connect(comp);
+    const master=ac.createGain(); master.gain.value=0.7; comp.connect(master); master.connect(ac.destination);
+    // LFOs — the constant "motion": filter drift, grain, pitch vibrato
+    const slow=ac.createOscillator(), slowG=ac.createGain(); slow.type='sine';     slowG.gain.value=0; slow.connect(slowG); slowG.connect(lp.frequency);
+    const fast=ac.createOscillator(), fastG=ac.createGain(); fast.type='triangle'; fastG.gain.value=0; fast.connect(fastG); fastG.connect(bp.frequency);
+    const vib =ac.createOscillator(), vibG =ac.createGain(); vib.type='sine';      vibG.gain.value=0;  vib.connect(vibG);  vibG.connect(oscA.frequency); vibG.connect(oscB.frequency);
+    [noise,oscA,oscB,fmOsc,slow,fast,vib].forEach(o=>o.start());
+    audio={ac,bp,nGain,oscA,oscB,aGain,bGain,fmOsc,fmGain,shaper,lp,level,master,slow,slowG,fast,fastG,vib,vibG,cur:null};
+    window.__bloomAudio=()=>audio&&({state:audio.ac.state, level:+audio.level.gain.value.toFixed(3), n:+audio.nGain.gain.value.toFixed(3), a:+audio.aGain.gain.value.toFixed(3), b:+audio.bGain.gain.value.toFixed(3), oscA:Math.round(audio.oscA.frequency.value), lp:Math.round(audio.lp.frequency.value), vib:+audio.vibG.gain.value.toFixed(1), fm:+audio.fmGain.gain.value.toFixed(1)});
+    applyPreset(soundMode); }
+  function applyPreset(name){ if(!audio) return; const p=PRESETS[name]||PRESETS.swarm; audio.cur=p;
+    const t=audio.ac.currentTime, S=(pm,v)=>pm.setTargetAtTime(v,t,0.05);
+    S(audio.nGain.gain, p.mix.n*0.5); S(audio.aGain.gain, p.mix.a*0.35); S(audio.bGain.gain, p.mix.b*0.35);
+    S(audio.bp.frequency, p.bp.f); S(audio.bp.Q, p.bp.q);
+    audio.oscA.type=p.osc.w; audio.oscB.type=p.osc.w; S(audio.oscB.detune, p.osc.det);
+    S(audio.oscA.frequency, p.osc.hz); S(audio.oscB.frequency, p.osc.hz);
+    S(audio.fmOsc.frequency, p.osc.hz*(p.fm?p.fm.ratio:1)); S(audio.fmGain.gain, p.fm?p.fm.depth:0);
+    audio.shaper.curve=shaperCurve(p.drive);
+    S(audio.slow.frequency, p.slow.r); S(audio.slowG.gain, p.slow.d);
+    S(audio.fast.frequency, p.fast.r); S(audio.fastG.gain, p.fast.d);
+    S(audio.vib.frequency,  p.vib.r);  S(audio.vibG.gain,  p.vib.d);
+    S(audio.lp.frequency, p.lpB); }
+  function silenceAudio(){ if(!audio) return; audio.level.gain.setTargetAtTime(0, audio.ac.currentTime, 0.2); }
+  function audioFromMotion(a){ if(!audio||!soundOn) return; a=a<0?0:a>1?1:a; const p=audio.cur||PRESETS.swarm, t=audio.ac.currentTime;
+    audio.level.gain.setTargetAtTime(0.05 + a*0.9, t, 0.08);                 // overall swell with movement
+    audio.lp.frequency.setTargetAtTime(p.lpB + a*p.lpM, t, 0.06);            // brighter as it moves (LFO drifts around this)
+    if(p.pM){ const f=p.osc.hz*(1+a*p.pM); audio.oscA.frequency.setTargetAtTime(f,t,0.05); audio.oscB.frequency.setTargetAtTime(f,t,0.05);
+      if(p.fm) audio.fmOsc.frequency.setTargetAtTime(f*p.fm.ratio,t,0.05); }
+    if(p.mix.n>0.5) audio.bp.frequency.setTargetAtTime(p.bp.f + a*900 + (Math.random()-0.5)*500, t, 0.02); }  // scratch grit jitter
   const CHR=[[0,205,222,245],[0.30,120,150,190],[0.47,36,50,76],[0.53,52,44,52],[0.72,192,150,108],[0.90,246,226,182],[1,255,246,228]];
   // liquid-chrome ramp for LIGHT paper: dark reflection bands (so it reads on white) with a bright specular horizon
   const CHRL=[[0,64,72,86],[0.26,150,164,184],[0.44,24,29,40],[0.50,206,218,232],[0.55,248,250,253],[0.68,52,60,74],[0.84,150,162,180],[1,26,31,42]];
@@ -481,8 +516,10 @@
   $('soundBtn').addEventListener('click', ()=>{ initAudio(); if(audio && audio.ac.state==='suspended') audio.ac.resume();
     soundOn=!soundOn; $('soundBtn').setAttribute('aria-pressed', soundOn?'true':'false');
     if(!soundOn){ silenceAudio(); }
-    else { $('hint').textContent='Sound on — an eerie friction from the motion'; $('hint').style.opacity=1;
+    else { $('hint').textContent='Sound on — '+soundMode+' voice, moving with the bloom'; $('hint').style.opacity=1;
       setTimeout(()=>{ if(mode==='modify') $('hint').style.opacity=0; }, 2400); } });
+  $('soundMode').addEventListener('change', e=>{ soundMode=e.target.value; if(audio) applyPreset(soundMode);
+    if(soundOn){ $('hint').textContent=soundMode+' voice'; $('hint').style.opacity=1; setTimeout(()=>{ if(mode==='modify') $('hint').style.opacity=0; }, 1600); } });
 
   let rec=null, chunks=[], recCv=null, recCtx=null, recRAF=0, recStart=0, recTimer=0;
   const recFmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
