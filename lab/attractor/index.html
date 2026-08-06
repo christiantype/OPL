@@ -31,7 +31,7 @@
   #dock{ position:fixed; top:var(--top); right:0; bottom:0; width:var(--rail); z-index:6;
     padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:rgba(15,16,24,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:16px; }
+    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
   #sliders{ display:flex; flex-direction:column; gap:14px; width:100%; }
   .knob{ display:flex; flex-direction:column; gap:2px; }
   .knob label{ display:flex; justify-content:space-between; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); }
@@ -50,6 +50,12 @@
   .btn[aria-pressed="true"], .btn.primary{ background:var(--ink); color:#0b0c14; border-color:var(--ink); }
   .chip{ font-size:11px; letter-spacing:.04em; padding:7px 10px; }
   select.btn{ text-transform:uppercase; }
+  /* grouped sections — a clean, labelled stack with dividers */
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--line); }
+  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid2 .btn, .btn.full{ width:100%; }
   .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
     background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
     -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
@@ -65,25 +71,40 @@
   <div id="recDot"><i></i><b>0:00</b></div>
 
   <div id="dock">
-    <div id="sliders">
-      <div class="knob" data-tip="How fast the two parameters a and b drift along their path — the whole attractor morphs as they move."><label>Drift <b id="speedR">40</b></label><input id="speed" type="range" min="0" max="100" value="40" /></div>
-      <div class="knob" data-tip="How many points are traced each frame. Higher is richer and smoother, but heavier."><label>Detail <b id="detailR">70</b></label><input id="detail" type="range" min="5" max="100" value="70" /></div>
-      <div class="knob" data-tip="Exposure — how brightly the density glows. Low is faint and delicate; high is bold and saturated."><label>Glow <b id="glowR">60</b></label><input id="glow" type="range" min="5" max="100" value="60" /></div>
-      <div class="knob" data-tip="How long the ink lingers as the shape morphs. Low keeps only the current shape; high layers the trail of shapes it passed through."><label>Trails <b id="trailsR">45</b></label><input id="trails" type="range" min="0" max="100" value="45" /></div>
-      <div class="knob" data-tip="Shifts the whole colour — the classic blue, or anywhere around the wheel."><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="0" max="100" value="0" /></div>
+
+    <!-- primary action -->
+    <div class="group">
+      <button class="btn primary full" id="playBtn" aria-pressed="true">Pause</button>
+      <button class="btn full" id="newBtn" data-tip="Roll a whole new attractor — new random coefficients, searched so it stays rich as it morphs. A fresh family of shapes every time.">Randomize</button>
     </div>
-    <div class="row">
-      <button class="btn primary" id="playBtn" aria-pressed="true">Pause</button>
-      <button class="btn chip" id="newBtn" data-tip="Roll a whole new attractor — new random coefficients, searched so it stays rich as it morphs. A fresh family of shapes every time.">Randomize</button>
-      <select id="aspect" class="btn chip" title="Canvas size">
+
+    <!-- field -->
+    <div class="group">
+      <div class="group__t">Field</div>
+      <div id="sliders">
+        <div class="knob" data-tip="How fast the two parameters a and b drift along their path — the whole attractor morphs as they move."><label>Drift <b id="speedR">40</b></label><input id="speed" type="range" min="0" max="100" value="40" /></div>
+        <div class="knob" data-tip="How many points are traced each frame. Higher is richer and smoother, but heavier."><label>Detail <b id="detailR">70</b></label><input id="detail" type="range" min="5" max="100" value="70" /></div>
+        <div class="knob" data-tip="Exposure — how brightly the density glows. Low is faint and delicate; high is bold and saturated."><label>Glow <b id="glowR">60</b></label><input id="glow" type="range" min="5" max="100" value="60" /></div>
+        <div class="knob" data-tip="How long the ink lingers as the shape morphs. Low keeps only the current shape; high layers the trail of shapes it passed through."><label>Trails <b id="trailsR">45</b></label><input id="trails" type="range" min="0" max="100" value="45" /></div>
+        <div class="knob" data-tip="Shifts the whole colour — the classic blue, or anywhere around the wheel."><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="0" max="100" value="0" /></div>
+      </div>
+    </div>
+
+    <!-- canvas & export -->
+    <div class="group">
+      <div class="group__t">Canvas &amp; export</div>
+      <select id="aspect" class="btn full" title="Canvas size">
         <option value="1080/1350">Portrait 4:5</option>
         <option value="1080/1920">Story 9:16</option>
         <option value="1/1">Square 1:1</option>
         <option value="1920/1080">Landscape 16:9</option>
       </select>
-      <button class="btn chip" id="recBtn" aria-pressed="false">Record</button>
-      <button class="btn chip" id="saveBtn">Save</button>
+      <div class="grid2">
+        <button class="btn" id="recBtn" aria-pressed="false">Record</button>
+        <button class="btn" id="saveBtn">Save</button>
+      </div>
     </div>
+
   </div>
 
 <script src="/lab/shared/opal.js"></script>
