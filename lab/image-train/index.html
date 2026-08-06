@@ -704,7 +704,7 @@
       state.bandColor=ty.bandColor; $('bandColor').value=ty.bandColor; }
     if(p.items){ state.items=p.items.map(it=> it.type==='svg' ? svgItemFromSrc(it.src,it.name||'svg',it) : Object.assign({},it) ); }
     renderItemList(); markDirty(); }
-  function applyPreset(name){ if(name==='event') applyPresetObj(EVENT_PRESET);
+  function applyPreset(name){ if(name==='event'){ const u=loadUserPresets(); applyPresetObj(u['Event']||EVENT_PRESET); }   // save one named "Event" to make your tweak the default
     else if(name && name.slice(0,5)==='user:'){ const u=loadUserPresets(); applyPresetObj(u[name.slice(5)]); } }
   function refreshPresetOptions(sel){ const el=$('preset'), cur=sel||el.value, u=loadUserPresets();
     el.innerHTML='<option value="">Custom…</option><option value="event">Event</option>'+
