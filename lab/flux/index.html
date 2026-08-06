@@ -243,6 +243,7 @@
       <option value="weave">Weave</option>
       <option value="metaballs">Metaballs</option>
       <option value="bubbles">Bubbles · soap film (3D)</option>
+      <option value="glass">Glass · spherized (through glass)</option>
       <option value="marble">Marble · ink in water</option>
       <option value="relief">Relief · shaded topography</option>
       <option value="wood">Woodgrain · annual rings</option>
@@ -433,6 +434,12 @@ const CONTROLS={
     ['inflate','inflate letters',0,60,1,0],
     ['openEdge','open perimeter %',0,100,1,0],
     ['filmThick','film thickness nm',80,900,5,340],
+    ['bulge','refraction',0,120,1,55],
+    ['glassR','glass size %',30,120,1,96],
+    ['glassShape','edge · round→square',2,8,0.1,4],
+    ['wall','glass wall',0,100,1,55],
+    ['glassDisp','dispersion',0,40,0.5,9],
+    ['sheen','sheen / highlights',0,100,1,50],
   ],
   warp:[
     ['flow','flow field',0,220,1,0],
@@ -698,6 +705,8 @@ function render(){
   function drawEngine(){
   if(style==='bubbles'){drawBubbles(glyphs,C,W,H,fill,bgc);rasterMode=true;
     $('#status').innerHTML=`${glyphs.length} glyphs · bubbles · ${W}×${H}<span class="ok"> · WebGL thin-film · PNG</span>`;return;}
+  if(style==='glass'){drawGlass(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · glass · ${W}×${H}<span class="ok"> · refracted · PNG/video</span>`;return;}
   if(style==='heatmap'){drawThermalField(glyphs,C,W,H);rasterMode=true;
     $('#status').innerHTML=`${glyphs.length} glyphs · thermal field · ${W}×${H}<span class="ok"> · living · PNG/video</span>`;return;}
   if(style==='halftone'){drawHalftone(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
@@ -776,6 +785,60 @@ function render(){
   } else drawEngine();
 }
 
+// Glass · spherized — refract the word through a heavy glass vessel with an analog edge.
+function drawGlass(glyphs,C,W,H,fill,bgc){
+  const transparent=$('#bgTransparent').checked;
+  const bg = transparent ? '#101014' : bgc;
+  const br=parseInt(bg.substr(1,2),16), bgG=parseInt(bg.substr(3,2),16), bB=parseInt(bg.substr(5,2),16);
+  // render the text solid to an offscreen source we then refract
+  const src=document.createElement('canvas'); src.width=W; src.height=H;
+  const sx=src.getContext('2d'); sx.fillStyle=bg; sx.fillRect(0,0,W,H);
+  sx.fillStyle=fill; for(const gl of glyphs) sx.fill(new Path2D(buildD(gl,makeT(gl,C),0)));
+  const D=sx.getImageData(0,0,W,H).data;
+  const out=ctx.createImageData(W,H), o=out.data;
+  const cx=W/2, cy=H/2;
+  const a=W*0.5*(S.glassR/100), b=H*0.5*(S.glassR/100);   // vessel half-extents
+  const n=S.glassShape, invn=1/n;                          // superellipse exponent (2 round · 4 tumbler · 8 square)
+  const bulge=1+S.bulge/100;                               // refraction / magnification
+  const wallStart=1-(0.14+0.5*(S.wall/100)), wallK=S.wall/100;
+  const sheen=S.sheen/100, disp=S.glassDisp, ab0=disp/Math.max(a,b);
+  const AO=0.07;                                           // soft contact shadow reach outside the edge
+  const L1x=-0.55,L1y=-0.83, L2x=0.92,L2y=-0.12;           // two lights → highlight streaks on the walls
+  function samp(fx,fy,ch){ if(fx<0)fx=0;else if(fx>W-1)fx=W-1; if(fy<0)fy=0;else if(fy>H-1)fy=H-1;
+    const x0=fx|0,y0=fy|0,x1=x0<W-1?x0+1:x0,y1=y0<H-1?y0+1:y0,tx=fx-x0,ty=fy-y0;
+    const p0=(y0*W+x0)*4+ch,p1=(y0*W+x1)*4+ch,p2=(y1*W+x0)*4+ch,p3=(y1*W+x1)*4+ch;
+    const u=D[p0]+(D[p1]-D[p0])*tx, v=D[p2]+(D[p3]-D[p2])*tx; return u+(v-u)*ty; }
+  for(let y=0;y<H;y++){ const dy=y-cy;
+    for(let x=0;x<W;x++){ const idx=(y*W+x)*4, dx=x-cx;
+      let nr=Math.pow(Math.pow(Math.abs(dx)/a,n)+Math.pow(Math.abs(dy)/b,n), invn);   // superellipse radius
+      if(nr>0.75){ const ang=Math.atan2(dy,dx); nr*= 1 + 0.010*Math.sin(ang*3+1.2) + 0.006*Math.sin(ang*7-0.5); } // analog wobble
+      if(nr>=1){ let sh=0; if(nr<1+AO){ const t=(nr-1)/AO; sh=(1-t)*0.5; } const m=1-sh;   // outside: bg + contact shadow
+        o[idx]=br*m; o[idx+1]=bgG*m; o[idx+2]=bB*m; o[idx+3]=255; continue; }
+      if(nr<1e-3){ o[idx]=D[idx];o[idx+1]=D[idx+1];o[idx+2]=D[idx+2];o[idx+3]=255; continue; }
+      const srcNr=Math.pow(nr,bulge), aber=ab0*nr*nr;
+      const sR=srcNr*(1+aber)/nr, sG=srcNr/nr, sB=srcNr*(1-aber)/nr;   // radial sample scale per channel (dispersion)
+      let R_=samp(cx+dx*sR, cy+dy*sR, 0), G_=samp(cx+dx*sG, cy+dy*sG, 1), B_=samp(cx+dx*sB, cy+dy*sB, 2);
+      if(nr>wallStart){                                  // thick banded glass wall + bright rim
+        const t=(nr-wallStart)/(1-wallStart);
+        const add=(Math.sin(t*Math.PI*2.2)*(0.5+0.5*t)*0.5 + Math.pow(t,3)*1.2)*wallK*sheen*150;
+        R_+=add; G_+=add; B_+=add;
+        if(t<0.16){ const c=(1-t/0.16)*0.35*wallK; R_*=1-c; G_*=1-c; B_*=1-c; }   // inner caustic line
+      }
+      if(sheen>0 && nr>0.55){                            // specular highlight streaks (strongest on the walls)
+        const r=Math.sqrt(dx*dx+dy*dy), ux=dx/r, uy=dy/r, wallW=(nr-0.55)/0.45;
+        let s1=ux*L1x+uy*L1y; if(s1<0)s1=0; let s2=ux*L2x+uy*L2y; if(s2<0)s2=0;
+        const spec=(Math.pow(s1,7)+Math.pow(s2,9))*wallW*sheen*230; R_+=spec; G_+=spec; B_+=spec;
+      }
+      if(nr>0.992){ const m=(1-nr)/0.008; const mm=m<0?0:m;   // feather the silhouette against the bg
+        R_=R_*mm+br*(1-mm); G_=G_*mm+bgG*(1-mm); B_=B_*mm+bB*(1-mm); }
+      o[idx]  = R_>255?255:R_<0?0:R_;
+      o[idx+1]= G_>255?255:G_<0?0:G_;
+      o[idx+2]= B_>255?255:B_<0?0:B_;
+      o[idx+3]=255;
+    }
+  }
+  ctx.putImageData(out,0,0);
+}
 function bgIsDark(){if($('#bgTransparent').checked)return true;const h=$('#bgColor').value;
   return (0.299*parseInt(h.substr(1,2),16)+0.587*parseInt(h.substr(3,2),16)+0.114*parseInt(h.substr(5,2),16))<128;}
 function drawChromatic(d,svg){const o=S.chromatic,p=new Path2D(d),dark=bgIsDark();
@@ -2221,6 +2284,7 @@ const ENGINE_CTRLS={solid:[],dimensional:[],
   lowpoly:['cellSize'],iso:['cellSize','gain'],weave:['cellSize','strokeW'],
   metaballs:['pDensity','gain','bloom'],
   bubbles:['pDensity','cellSize','pSpread','filmThick','gain','bloom','fieldDrift','grain'],moire:['dotSize','chromatic'],
+  glass:['bulge','glassR','glassShape','wall','glassDisp','sheen'],
   ascii:['dotSize'],
   beziers:['strokeW'],isoline:['ringCount','bloom','strokeW'],fieldfill:['ringCount','bloom','strokeW'],
   ripple:['ringGap','bloom','strokeW'],truchet:['cellSize','strokeW'],hatch:['dotSize','bloom','strokeW'],
@@ -2271,7 +2335,8 @@ const ENGINE_NOTE={solid:'Solid — no engine parameters. Shape it with Warp & M
   marble:'Ink suspended in water. The letterform is dragged through a twice-warped noise field; drift = swirl, intensity = ink contrast, chromatic = vein colour.',
   relief:'The word as shaded topography, lit from the upper left. Glow = smoothing, intensity = height, ring count = terracing steps.',
   polygon:'The word triangulated into a hand-drawn space frame. Silhouette edges read as heavy chords, interior as light web — intensity sets that contrast. Ring count = long braces, inflate swells the letters into one puffy mass, open perimeter breaks the outline. Extrude (3D panel) pulls it into a solid. Vector SVG.',
-  wireframe:'The letters swept through depth as a quad cage — rings at each depth slice, rails running along the extrusion. Ring count = slices, link distance = rail spacing. Drive depth and rotation from the 3D panel. Vector SVG.'};
+  wireframe:'The letters swept through depth as a quad cage — rings at each depth slice, rails running along the extrusion. Ring count = slices, link distance = rail spacing. Drive depth and rotation from the 3D panel. Vector SVG.',
+  glass:'The word seen through a heavy glass vessel — refracted and magnified, with a thick analog edge: banded walls, a bright rim, highlight streaks and a soft contact shadow. Refraction = bulge, edge = round↔square (a tumbler at ~4), glass wall = border thickness, dispersion = the rainbow split at the rim. PNG/video.'};
 function updateEngineUI(){const on=new Set(ENGINE_CTRLS[S.renderStyle]||[]);
   for(const id of RENDER_IDS){const el=document.getElementById('ctrl-'+id);if(el)el.classList.toggle('hidden',!on.has(id));}
   $('#style-colorway').classList.toggle('hidden',S.renderStyle!=='heatmap');
