@@ -251,9 +251,14 @@
       <select id="preset"><option value="">Custom…</option><option value="event">Event</option></select>
     </div>
     <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="presetSave" style="flex:1" data-tip="Save the current layout — bands, type, colours and every placed text/SVG piece — as a reusable preset.">Save current</button>
+      <button class="btn" id="presetSave" style="flex:1" data-tip="Save the current layout — bands, type, colours and every placed text/SVG piece — as a reusable preset in this browser.">Save current</button>
       <button class="btn" id="presetDel" style="flex:none" data-tip="Delete the selected saved preset.">Delete</button>
     </div></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="sessOut" style="flex:1" data-tip="Download a .json file with EVERYTHING — your uploaded images, all settings, and every text/SVG piece and its position. Re-import it anytime, or share it.">Export JSON</button>
+      <button class="btn" id="sessIn" style="flex:1" data-tip="Load a session .json — restores your images, settings and text exactly where you left off.">Import JSON</button>
+    </div></div>
+    <input id="sessFile" type="file" accept=".json,application/json" hidden />
   </div>
   <div class="row">
     <button type="button" class="rowhead" aria-expanded="true">Images</button>
@@ -733,6 +738,49 @@
       state.bandColor=ty.bandColor; $('bandColor').value=ty.bandColor; }
     if(p.items){ state.items=p.items.map(it=> it.type==='svg' ? svgItemFromSrc(it.src,it.name||'svg',it) : Object.assign({},it) ); }
     renderItemList(); markDirty(); }
+
+  // ── full session: a downloadable JSON with the images + every setting + text/SVG positions ──
+  const clickSeg=sel=>{ const b=document.querySelector(sel); if(b) b.click(); };
+  function imgToDataURL(im){ if(im.src && im.src.slice(0,5)==='data:') return im.src;
+    try{ const c=document.createElement('canvas'); c.width=im.naturalWidth||im.width||2; c.height=im.naturalHeight||im.height||2;
+      c.getContext('2d').drawImage(im,0,0); return c.toDataURL('image/jpeg',0.85); }catch(e){ return im.src||''; } }
+  function exportSession(){ const s=state;
+    const data={ v:1, app:'image-train',
+      state:{ count:s.count,uneven:s.uneven,gap:s.gap,axis:s.axis,cross:s.cross,speed:s.speed,spread:s.spread,bg:s.bg,
+        size:s.size,res:s.res,seed:s.seed,meta:s.meta,fragment:s.fragment,smudge:s.smudge,grunge:s.grunge,
+        cycle:s.cycle,cycrate:s.cycrate,auto:s.auto,autoamt:s.autoamt,
+        textOn:s.textOn,textFont:s.textFont,textColor:s.textColor,bandOn:s.bandOn,bandColor:s.bandColor,textSpeed:s.textSpeed },
+      items:serializeItems(),
+      images: imgs.map(im=>({ fname:im.fname||'image', src:imgToDataURL(im) })) };
+    const blob=new Blob([JSON.stringify(data)],{type:'application/json'}), u=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=u; a.download='image-train-session.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500);
+    setStatus('session exported ('+imgs.length+' image'+(imgs.length===1?'':'s')+')'); setTimeout(()=>setStatus(''),1900); }
+  function applySessionState(s){
+    ['count','uneven','gap','cross','speed','spread','fragment','smudge','grunge','cycrate','autoamt','textSpeed'].forEach(k=>{ if(s[k]!=null) setControl(k,s[k]); });
+    if(s.axis) clickSeg('#axisSeg [data-a="'+s.axis+'"]');
+    if(s.meta!=null) clickSeg('#metaSeg [data-x="'+(+s.meta?1:0)+'"]');
+    if(s.cycle!=null) clickSeg('#cycleSeg [data-x="'+(+s.cycle?1:0)+'"]');
+    if(s.auto!=null) clickSeg('#autoSeg [data-x="'+(+s.auto?1:0)+'"]');
+    if(s.size) clickSeg('#sizeSeg [data-z="'+s.size+'"]');
+    if(s.res!=null) setControl('res',s.res);                                   // after size so it isn't reclamped
+    if(s.textOn!=null) clickSeg('#textOnSeg [data-x="'+(+s.textOn?1:0)+'"]');
+    if(s.bandOn!=null) clickSeg('#bandOnSeg [data-x="'+(+s.bandOn?1:0)+'"]');
+    if(s.textFont){ state.textFont=s.textFont; setFontSeg(s.textFont); }
+    if(s.bg){ state.bg=s.bg; if($('bg')) $('bg').value=s.bg; }
+    if(s.textColor){ state.textColor=s.textColor; if($('textColor')) $('textColor').value=s.textColor; }
+    if(s.bandColor){ state.bandColor=s.bandColor; if($('bandColor')) $('bandColor').value=s.bandColor; }
+    if(s.seed!=null) state.seed=s.seed;
+    bandsKey=''; markDirty(); }
+  function importSession(file){ const rd=new FileReader();
+    rd.onload=ev=>{ let data; try{ data=JSON.parse(ev.target.result); }catch(e){ setStatus('not a valid session file'); setTimeout(()=>setStatus(''),2400); return; }
+      imgs.length=0;                                                            // rebuild the image pool (order preserved)
+      (data.images||[]).forEach(rec=>{ const im=new Image(); im.fname=rec.fname||'image';
+        im.onload=()=>{ renderThumbs(); bandsKey=''; markDirty(); }; im.src=rec.src; imgs.push(im); });
+      renderThumbs();
+      if(data.items){ state.items=data.items.map(it=> it.type==='svg' ? svgItemFromSrc(it.src,it.name||'svg',it) : Object.assign({},it) ); renderItemList(); }
+      applySessionState(data.state||{});
+      setStatus('session loaded ('+((data.images||[]).length)+' image'+((data.images||[]).length===1?'':'s')+')'); setTimeout(()=>setStatus(''),1900); };
+    rd.readAsText(file); }
   function applyPreset(name){ if(name==='event'){ const u=loadUserPresets(); applyPresetObj(u['Event']||EVENT_PRESET); }   // save one named "Event" to make your tweak the default
     else if(name && name.slice(0,5)==='user:'){ const u=loadUserPresets(); applyPresetObj(u[name.slice(5)]); } }
   function refreshPresetOptions(sel){ const el=$('preset'), cur=sel||el.value, u=loadUserPresets();
@@ -895,6 +943,9 @@
     $('preset').addEventListener('change',e=>{ applyPreset(e.target.value); });
     $('presetSave').addEventListener('click',savePreset);
     $('presetDel').addEventListener('click',deletePreset);
+    $('sessOut').addEventListener('click',exportSession);
+    $('sessIn').addEventListener('click',()=>$('sessFile').click());
+    $('sessFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importSession(f); e.target.value=''; });
     refreshPresetOptions('');
     $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
