@@ -293,6 +293,14 @@
     </div>
     <div class="grp" data-tip="Turns bands into smudge streaks (from Lake Opeka) — a single moving column stretched sideways, keeping vertical detail. Higher smears more bands."><label>Smudge <b id="smudgeR">16</b></label><input id="smudge" type="range" min="0" max="100" value="16" /></div>
     <div class="grp" data-tip="Grunge, for Scott Clum — crushes the bands toward high-contrast xerox black-and-white, with live film grain, toner blotches and torn scratches. Works with any direction."><label>Grunge <b id="grungeR">0</b></label><input id="grunge" type="range" min="0" max="100" value="0" /></div>
+    <div class="grp" data-tip="Halftone — screens the frame into printed dots (newsprint / risograph). Higher is a coarser dot. Pairs beautifully with Grunge and Duotone."><label>Halftone <b id="halftoneR">0</b></label><input id="halftone" type="range" min="0" max="100" value="0" /></div>
+    <div class="grp" data-tip="Duotone — maps the whole frame onto just two colours: shadows to one, highlights to the other. A strong graphic palette."><label>Duotone</label>
+      <div class="seg" id="duoSeg"><button data-x="0" aria-pressed="true">Off</button><button data-x="1" aria-pressed="false">On</button></div>
+    </div>
+    <div class="duo" id="duoColors" style="display:none">
+      <div class="grp" data-tip="The shadow colour (dark tones map to this)."><div class="cin"><input type="color" id="duoLo" value="#181826"><label>Shadow</label></div></div>
+      <div class="grp" data-tip="The highlight colour (light tones map to this)."><div class="cin"><input type="color" id="duoHi" value="#f2d24a"><label>Highlight</label></div></div>
+    </div>
     <div class="grp" data-tip="Overlay the frame with its own data — clinical telemetry, code fragments, time, location and per-band speeds scattered across the frame."><label>Metadata</label>
       <div class="seg" id="metaSeg"><button data-x="0" aria-pressed="false">Off</button><button data-x="1" aria-pressed="true">On</button></div>
     </div>
@@ -396,7 +404,7 @@
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
   let THEME='dark';
   const state={ count:43, uneven:100, axis:'weave', cross:61, speed:45, spread:60, bg:'#ffffff',
-    size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, smudge:16, grunge:0, gap:0, vol:85, playing:true,
+    size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, smudge:16, grunge:0, halftone:0, duo:'0', duoLo:'#181826', duoHi:'#f2d24a', gap:0, vol:85, playing:true,
     cycle:'0', cycrate:40, ambience:'off', auto:'0', autoamt:50,
     textOn:'0', textFont:'sans', textColor:'#ffffff', bandOn:'1', bandColor:'#101014', textSpeed:40,
     items:[
@@ -510,9 +518,9 @@
     g.fillStyle=state.bg; g.fillRect(0,0,W,H);
     if(imgs.length){
       build();
-      const base=state.speed/100*260, frag=state.fragment/100, gr=state.grunge/100;
-      // Grunge (for Scott Clum): crush contrast, bleach the colour toward xerox black-and-white while drawing the bands
-      if(gr>0) g.filter='contrast('+(1+gr*1.9).toFixed(2)+') saturate('+Math.max(0.05,1-gr*0.92).toFixed(2)+') brightness('+(1+gr*0.10).toFixed(2)+')';
+      const base=state.speed/100*260, frag=state.fragment/100, gr=state.grunge/100, duo=+state.duo, half=state.halftone/100;
+      // Grunge (for Scott Clum): crush contrast, bleach toward xerox; Duotone forces grayscale first
+      if(gr>0||duo) g.filter='contrast('+(1+gr*1.9).toFixed(2)+') brightness('+(1+gr*0.10).toFixed(2)+') '+(duo?'grayscale(1)':'saturate('+Math.max(0.05,1-gr*0.92).toFixed(2)+')');
       if(state.axis==="radial"){ drawRadial(g,W,H,t,base); }
       else { let bi=0;
         for(const b of bands){ const im=imgs[imgAt(b,t)]; const off=(t*base*b.spd)*b.dir + b.phase*500; bi++;
@@ -528,10 +536,23 @@
               else drawSlice(g,im,false, x+jx, y+k*ch+jy, w, ch, b.p, b.thick, off+k*ch, b.zoom); } } }
       }
       g.filter='none';
+      if(duo){ g.save(); g.globalCompositeOperation='multiply'; g.fillStyle=state.duoHi; g.fillRect(0,0,W,H);   // map grayscale → two colours
+        g.globalCompositeOperation='screen'; g.fillStyle=state.duoLo; g.fillRect(0,0,W,H); g.restore(); }
+      if(half>0) drawHalftone(g,W,H,half);
       if(gr>0) drawGrunge(g,W,H,t,gr);
       if(+state.meta) drawMeta(g,W,H,t);
     }
     if(+state.textOn) drawOverlay(g,W,H,t);
+  }
+  // Halftone — screen the frame into printed dots (newsprint / riso). Coarser dot as the slider rises.
+  function drawHalftone(g,W,H,amt){
+    const cell=3+Math.round(amt*20); let d; try{ d=g.getImageData(0,0,W,H).data; }catch(e){ return; }
+    const paper = +state.duo ? state.duoHi : state.bg, ink = +state.duo ? state.duoLo : '#141414';
+    g.fillStyle=paper; g.fillRect(0,0,W,H); g.fillStyle=ink;
+    const h=cell/2;
+    for(let y=h;y<H;y+=cell){ const yi=y|0;
+      for(let x=h;x<W;x+=cell){ const i=(yi*W+(x|0))*4, lum=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])/255, r=(1-lum)*cell*0.62;
+        if(r>0.4){ g.beginPath(); g.arc(x,y,r,0,6.2832); g.fill(); } } }
   }
   // Grunge overlay — animated film grain (overlay blend) + a few toner blotches + torn scratches. Scott Clum energy.
   let grainCv=null;
@@ -747,7 +768,7 @@
   function exportSession(){ const s=state;
     const data={ v:1, app:'image-train',
       state:{ count:s.count,uneven:s.uneven,gap:s.gap,axis:s.axis,cross:s.cross,speed:s.speed,spread:s.spread,bg:s.bg,
-        size:s.size,res:s.res,seed:s.seed,meta:s.meta,fragment:s.fragment,smudge:s.smudge,grunge:s.grunge,
+        size:s.size,res:s.res,seed:s.seed,meta:s.meta,fragment:s.fragment,smudge:s.smudge,grunge:s.grunge,halftone:s.halftone,duo:s.duo,duoLo:s.duoLo,duoHi:s.duoHi,
         cycle:s.cycle,cycrate:s.cycrate,auto:s.auto,autoamt:s.autoamt,
         textOn:s.textOn,textFont:s.textFont,textColor:s.textColor,bandOn:s.bandOn,bandColor:s.bandColor,textSpeed:s.textSpeed },
       items:serializeItems(),
@@ -756,7 +777,10 @@
     a.href=u; a.download='image-train-session.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500);
     setStatus('session exported ('+imgs.length+' image'+(imgs.length===1?'':'s')+')'); setTimeout(()=>setStatus(''),1900); }
   function applySessionState(s){
-    ['count','uneven','gap','cross','speed','spread','fragment','smudge','grunge','cycrate','autoamt','textSpeed'].forEach(k=>{ if(s[k]!=null) setControl(k,s[k]); });
+    ['count','uneven','gap','cross','speed','spread','fragment','smudge','grunge','halftone','cycrate','autoamt','textSpeed'].forEach(k=>{ if(s[k]!=null) setControl(k,s[k]); });
+    if(s.duo!=null){ clickSeg('#duoSeg [data-x="'+(+s.duo?1:0)+'"]'); }
+    if(s.duoLo){ state.duoLo=s.duoLo; if($('duoLo')) $('duoLo').value=s.duoLo; }
+    if(s.duoHi){ state.duoHi=s.duoHi; if($('duoHi')) $('duoHi').value=s.duoHi; }
     if(s.axis) clickSeg('#axisSeg [data-a="'+s.axis+'"]');
     if(s.meta!=null) clickSeg('#metaSeg [data-x="'+(+s.meta?1:0)+'"]');
     if(s.cycle!=null) clickSeg('#cycleSeg [data-x="'+(+s.cycle?1:0)+'"]');
@@ -814,6 +838,7 @@
     e.value=String(val); e.dispatchEvent(new Event('input',{bubbles:true})); if(e._rk) e._rk(); }
   function doShuffle(){ state.seed=(state.seed*1103515245+12345)>>>0||1; bandsKey=''; markDirty(); }
   function updateAutoGate(){ const w=$('autoamtWrap'); if(w) w.style.display=(+state.auto)?'':'none'; }
+  function updateDuoGate(){ const w=$('duoColors'); if(w) w.style.display=(+state.duo)?'':'none'; }
   function driveAuto(dt){ const amt=state.autoamt/100; if(amt<=0) return; aT+=dt*(0.4+amt*1.6);
     for(const p of AUTO) setControl(p.id, p.lo + nz(aT*p.f+p.ph)*(p.hi-p.lo));    // smooth organic wander
     glitchNext-=dt; if(glitchNext<=0){ glitchNext=0.7+Math.random()*(4.2-amt*3.2); const g=Math.random();  // glitch bursts
@@ -927,7 +952,10 @@
     bindSeg('ambSeg','ambience','m',()=>Ambient.set(state.ambience));
     bindSeg('autoSeg','auto','x',updateAutoGate); updateAutoGate();
     bind('autoamt','autoamt');
-    ['count','uneven','gap','cross','fragment','smudge','grunge','speed','spread','cycrate','textSpeed'].forEach(id=>bind(id,id));
+    ['count','uneven','gap','cross','fragment','smudge','grunge','halftone','speed','spread','cycrate','textSpeed'].forEach(id=>bind(id,id));
+    bindSeg('duoSeg','duo','x',updateDuoGate); updateDuoGate();
+    $('duoLo').addEventListener('input',e=>{ state.duoLo=e.target.value; markDirty(); });
+    $('duoHi').addEventListener('input',e=>{ state.duoHi=e.target.value; markDirty(); });
     // Text & SVG overlay
     bindSeg('textOnSeg','textOn','x'); bindSeg('bandOnSeg','bandOn','x');
     bindSeg('textFontSeg','textFont','f',()=>{ if(state.textFont==='custom'&&!customFamily) $('fontInp').click(); });
