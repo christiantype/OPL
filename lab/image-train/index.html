@@ -301,6 +301,13 @@
       <div class="grp" data-tip="The shadow colour (dark tones map to this)."><div class="cin"><input type="color" id="duoLo" value="#181826"><label>Shadow</label></div></div>
       <div class="grp" data-tip="The highlight colour (light tones map to this)."><div class="cin"><input type="color" id="duoHi" value="#f2d24a"><label>Highlight</label></div></div>
     </div>
+    <div class="grp" data-tip="Type mask — the whole moving composition shows ONLY through big letterforms; everything outside becomes a solid colour. Pure Carson/Clum."><label>Type mask</label>
+      <div class="seg" id="maskSeg"><button data-x="0" aria-pressed="true">Off</button><button data-x="1" aria-pressed="false">On</button></div>
+    </div>
+    <div id="maskWrap" style="display:none">
+      <input id="maskText" type="text" value="WHISKEY &amp; TEA" spellcheck="false" placeholder="mask word(s)…" style="width:100%; background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:2px; padding:8px 9px; font:inherit; font-size:12px; letter-spacing:.04em;" />
+      <div class="grp" data-tip="The colour outside the letters." style="margin-top:8px"><div class="cin"><input type="color" id="maskBg" value="#ffffff"><label>Outside</label></div></div>
+    </div>
     <div class="grp" data-tip="Overlay the frame with its own data — clinical telemetry, code fragments, time, location and per-band speeds scattered across the frame."><label>Metadata</label>
       <div class="seg" id="metaSeg"><button data-x="0" aria-pressed="false">Off</button><button data-x="1" aria-pressed="true">On</button></div>
     </div>
@@ -404,7 +411,8 @@
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
   let THEME='dark';
   const state={ count:43, uneven:100, axis:'weave', cross:61, speed:45, spread:60, bg:'#ffffff',
-    size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, smudge:16, grunge:0, halftone:0, duo:'0', duoLo:'#181826', duoHi:'#f2d24a', gap:0, vol:85, playing:true,
+    size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, smudge:16, grunge:0, halftone:0, duo:'0', duoLo:'#181826', duoHi:'#f2d24a',
+    maskOn:'0', maskText:'WHISKEY & TEA', maskBg:'#ffffff', gap:0, vol:85, playing:true,
     cycle:'0', cycrate:40, ambience:'off', auto:'0', autoamt:50,
     textOn:'0', textFont:'sans', textColor:'#ffffff', bandOn:'1', bandColor:'#101014', textSpeed:40,
     items:[
@@ -513,7 +521,7 @@
       for(let py=y-o; py<y+h; py+=dh) g.drawImage(im,sx,0,sw,ih, x,py,w,dh); }
     g.restore(); }
 
-  function renderComp(g,W,H,t){
+  function renderCore(g,W,H,t){
     g.globalAlpha=1; g.globalCompositeOperation='source-over'; g.filter='none';
     g.fillStyle=state.bg; g.fillRect(0,0,W,H);
     if(imgs.length){
@@ -542,6 +550,29 @@
       if(gr>0) drawGrunge(g,W,H,t,gr);
       if(+state.meta) drawMeta(g,W,H,t);
     }
+  }
+  // Type mask — the whole composition shows only through big letterforms; outside is a solid colour.
+  let maskCv=null;
+  function drawMaskText(g,W,H){
+    const words=(state.maskText||'').toUpperCase().trim().split(/\s+/).filter(Boolean); if(!words.length) return;
+    g.fillStyle='#000'; g.textAlign='center'; g.textBaseline='middle';
+    let fs=Math.round(H); g.font='900 '+fs+'px "Helvetica Neue",Arial,sans-serif';
+    let widest=0.5; for(const w of words){ const r=g.measureText(w).width/fs; if(r>widest) widest=r; }
+    fs=Math.max(8, Math.floor(Math.min((W*0.9)/widest, (H*0.9)/(words.length*1.02))));
+    g.font='900 '+fs+'px "Helvetica Neue",Arial,sans-serif';
+    const lh=fs*1.02, y0=H/2-(words.length-1)*lh/2;
+    words.forEach((w,i)=> g.fillText(w, W/2, y0+i*lh));
+  }
+  function renderComp(g,W,H,t){
+    if(+state.maskOn && (state.maskText||'').trim() && imgs.length){
+      if(!maskCv) maskCv=document.createElement('canvas');
+      if(maskCv.width!==W||maskCv.height!==H){ maskCv.width=W; maskCv.height=H; }
+      const m=maskCv.getContext('2d');
+      renderCore(m,W,H,t);
+      m.save(); m.globalCompositeOperation='destination-in'; drawMaskText(m,W,H); m.restore();   // keep the comp only inside the letters
+      g.globalCompositeOperation='source-over'; g.filter='none';
+      g.fillStyle=state.maskBg||'#ffffff'; g.fillRect(0,0,W,H); g.drawImage(maskCv,0,0);
+    } else renderCore(g,W,H,t);
     if(+state.textOn) drawOverlay(g,W,H,t);
   }
   // Halftone — screen the frame into printed dots (newsprint / riso). Coarser dot as the slider rises.
@@ -769,6 +800,7 @@
     const data={ v:1, app:'image-train',
       state:{ count:s.count,uneven:s.uneven,gap:s.gap,axis:s.axis,cross:s.cross,speed:s.speed,spread:s.spread,bg:s.bg,
         size:s.size,res:s.res,seed:s.seed,meta:s.meta,fragment:s.fragment,smudge:s.smudge,grunge:s.grunge,halftone:s.halftone,duo:s.duo,duoLo:s.duoLo,duoHi:s.duoHi,
+        maskOn:s.maskOn,maskText:s.maskText,maskBg:s.maskBg,
         cycle:s.cycle,cycrate:s.cycrate,auto:s.auto,autoamt:s.autoamt,
         textOn:s.textOn,textFont:s.textFont,textColor:s.textColor,bandOn:s.bandOn,bandColor:s.bandColor,textSpeed:s.textSpeed },
       items:serializeItems(),
@@ -781,6 +813,9 @@
     if(s.duo!=null){ clickSeg('#duoSeg [data-x="'+(+s.duo?1:0)+'"]'); }
     if(s.duoLo){ state.duoLo=s.duoLo; if($('duoLo')) $('duoLo').value=s.duoLo; }
     if(s.duoHi){ state.duoHi=s.duoHi; if($('duoHi')) $('duoHi').value=s.duoHi; }
+    if(s.maskText!=null){ state.maskText=s.maskText; if($('maskText')) $('maskText').value=s.maskText; }
+    if(s.maskBg){ state.maskBg=s.maskBg; if($('maskBg')) $('maskBg').value=s.maskBg; }
+    if(s.maskOn!=null){ clickSeg('#maskSeg [data-x="'+(+s.maskOn?1:0)+'"]'); }
     if(s.axis) clickSeg('#axisSeg [data-a="'+s.axis+'"]');
     if(s.meta!=null) clickSeg('#metaSeg [data-x="'+(+s.meta?1:0)+'"]');
     if(s.cycle!=null) clickSeg('#cycleSeg [data-x="'+(+s.cycle?1:0)+'"]');
@@ -839,6 +874,7 @@
   function doShuffle(){ state.seed=(state.seed*1103515245+12345)>>>0||1; bandsKey=''; markDirty(); }
   function updateAutoGate(){ const w=$('autoamtWrap'); if(w) w.style.display=(+state.auto)?'':'none'; }
   function updateDuoGate(){ const w=$('duoColors'); if(w) w.style.display=(+state.duo)?'':'none'; }
+  function updateMaskGate(){ const w=$('maskWrap'); if(w) w.style.display=(+state.maskOn)?'':'none'; }
   function driveAuto(dt){ const amt=state.autoamt/100; if(amt<=0) return; aT+=dt*(0.4+amt*1.6);
     for(const p of AUTO) setControl(p.id, p.lo + nz(aT*p.f+p.ph)*(p.hi-p.lo));    // smooth organic wander
     glitchNext-=dt; if(glitchNext<=0){ glitchNext=0.7+Math.random()*(4.2-amt*3.2); const g=Math.random();  // glitch bursts
@@ -956,6 +992,9 @@
     bindSeg('duoSeg','duo','x',updateDuoGate); updateDuoGate();
     $('duoLo').addEventListener('input',e=>{ state.duoLo=e.target.value; markDirty(); });
     $('duoHi').addEventListener('input',e=>{ state.duoHi=e.target.value; markDirty(); });
+    bindSeg('maskSeg','maskOn','x',updateMaskGate); updateMaskGate();
+    $('maskText').addEventListener('input',e=>{ state.maskText=e.target.value; markDirty(); });
+    $('maskBg').addEventListener('input',e=>{ state.maskBg=e.target.value; markDirty(); });
     // Text & SVG overlay
     bindSeg('textOnSeg','textOn','x'); bindSeg('bandOnSeg','bandOn','x');
     bindSeg('textFontSeg','textFont','f',()=>{ if(state.textFont==='custom'&&!customFamily) $('fontInp').click(); });
