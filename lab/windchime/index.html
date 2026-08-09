@@ -72,7 +72,7 @@
 </head>
 <body class="dark">
   <div id="wrap"><canvas id="art"></canvas></div>
-  <div id="hint">Click the sky to hang a chime — then let the wind step through them</div>
+  <div id="hint">Click the sky to plant a bloom — then let the wind and the sweep play them</div>
   <div id="recDot"><i></i><b>0:00</b></div>
   <div id="sizeDock">
     <select id="aspect" title="Canvas size">
@@ -230,29 +230,41 @@
       t.freq=base*Math.pow(2,semi/12); t.rel=n>1?i/(n-1):0; }); }
   function makeChime(fx,fy){ const nt=P.tubes; const c={ x:fx, y:fy, root:Math.floor(Math.random()*5),
       len:0.16+Math.random()*0.08, phase:Math.random()*TAU, sway:0, swayV:0, sail:0,
-      tubes:Array.from({length:nt},()=>({freq:220, rel:0, lit:0, vib:0})) };
+      petals:[], growth:0,
+      tubes:Array.from({length:nt},()=>({freq:220, rel:0 })) };
     retune(c); return c; }
   function scatter(n){ for(let i=0;i<n && chimes.length<CAP;i++){ chimes.push(makeChime(0.08+Math.random()*0.84, 0.10+Math.random()*0.34)); } }
 
   function findChime(fx,fy){ let best=null,bd=1e9; const px=fx*W, py=fy*H;
-    for(const c of chimes){ const cx=c.x*W, cy=c.y*H; const cw=Math.max(46*S, c.tubes.length*7*S);
-      const dx=px-cx, dy=py-cy; const d=Math.hypot(dx, dy*0.5); // wider vertical catch (tubes hang down)
-      const reach=cw*0.9 + c.len*H*0.7;
-      if(dy>-30*S && dy<reach && Math.abs(dx)<cw && d<bd){ bd=d; best=c; } }
+    for(const c of chimes){ const d=Math.hypot(px-c.x*W, py-c.y*H); const reach=(60+c.growth*22)*S;
+      if(d<reach && d<bd){ bd=d; best=c; } }
     return best; }
 
-  function ringChime(c, mode, strength){
-    audio();
-    const pan=(c.x*2-1)*0.55;
-    if(mode==='wind'){ const k=1+Math.floor(Math.random()*Math.min(3,c.tubes.length));
-      const start=Math.floor(Math.random()*c.tubes.length);
-      for(let j=0;j<k;j++){ const i=(start+j)%c.tubes.length; const t=c.tubes[i];
-        strike(t.freq, strength*(0.35+Math.random()*0.4), pan, j*0.05*Math.random());
-        t.lit=1; t.vib=(Math.random()<0.5?-1:1)*(0.5+strength*0.7); }
-    } else { // step / click — a soft roll down the tubes
-      c.tubes.forEach((t,i)=>{ strike(t.freq, strength*(0.55+0.35*(1-t.rel)), pan, i*0.028);
-        t.lit=1; t.vib=(i%2?1:-1)*(0.5+strength*0.6); }); }
-    c.swayV += (Math.random()<0.5?-1:1)*strength*0.9;
+  // one note: play it AND bloom a stroke from it — sound and picture are the same event, always in sync.
+  function voice(c, i, amp, when){ const t=c.tubes[i];
+    strike(t.freq, amp, (c.x*2-1)*0.55, when||0);
+    spawnPetal(c, t.freq, amp);
+  }
+  // a growing organic stroke (à la Bloom) whose shape + colour come from the note's frequency
+  function spawnPetal(c, freq, amp){
+    const fp=clamp((Math.log2(freq)-Math.log2(140))/(Math.log2(1100)-Math.log2(140)),0,1); // 0 low … 1 high
+    c.petals.push({
+      ang:-Math.PI/2 + (Math.random()-0.5)*Math.PI*1.7,   // radiate, biased upward
+      curl:(Math.random()-0.5)*1.9,
+      len:0, maxLen:(0.05 + (1-fp)*0.13 + amp*0.06)*H,      // low notes reach further
+      w:(3.2 + (1-fp)*5.5 + amp*3)*S,                        // low notes bloom fatter
+      hue:((P.hue/100)+0.55 + fp*0.42)%1,                    // pitch shifts the colour
+      sat:0.45+0.4*fp, lum:0.5+0.18*amp,
+      born:T, ttl:3.5 + (1-fp)*4.5, wob:Math.random()*TAU, env:0 });
+    if(c.petals.length>16) c.petals.shift();
+    c.growth=Math.min(2.4, c.growth + 0.45 + amp*0.6);
+    c.swayV += (Math.random()<0.5?-1:1)*amp*0.5;
+  }
+  function ringChime(c, mode, strength){ audio();
+    if(mode==='wind'){ const k=1+Math.floor(Math.random()*Math.min(3,c.tubes.length)), start=Math.floor(Math.random()*c.tubes.length);
+      for(let j=0;j<k;j++) voice(c,(start+j)%c.tubes.length, strength*(0.4+Math.random()*0.4), j*0.05*Math.random());
+    } else { // step / click — a soft roll through the notes
+      c.tubes.forEach((t,i)=> voice(c,i, strength*(0.55+0.35*(1-t.rel)), i*0.03)); }
   }
 
   // ---------- canvas fit ----------
@@ -274,17 +286,25 @@
     // ambient gusts
     gustTimer-=dt; if(gustTimer<=0){ if(wv>0.01) trigGust(); gustTimer=(2.6 - wv*2.0)*(0.6+Math.random()*0.9)+0.4; }
     if(gust.active){ const px=gust.x; gust.x+=gust.vx*dt; if(gust.x>1.15) gust.active=false;
-      for(const c of chimes){ if(px<c.x && c.x<=gust.x){ c.swayV += gust.str*(0.8+Math.random()*0.5)*(0.4+swy);
-        if(Math.random()<0.35+gust.str*0.4) ringChime(c,'wind',gust.str); } } }
-    // per-chime damped sway driven by breeze
+      for(const c of chimes){ if(px<c.x && c.x<=gust.x) c.swayV += gust.str*(0.8+Math.random()*0.5)*(0.4+swy); } }  // gust only PUSHES; sound comes from the swing
+    // per-chime damped sway driven by breeze — and the swing itself makes the sound (always in sync)
     const stiff=7.0, damp=0.9;
     for(const c of chimes){
       const breeze=(Math.sin(T*0.7+c.phase)+0.6*Math.sin(T*1.7+c.phase*2.3));
       const force=breeze*(0.08+wv*0.9)*(0.25+swy);
+      const prev=c.sway;
       c.swayV += (-stiff*c.sway - damp*c.swayV + force)*dt;
-      c.sway += c.swayV*dt; c.sway=clamp(c.sway,-0.6,0.6);
+      c.sway += c.swayV*dt; c.sway=clamp(c.sway,-0.7,0.7);
       c.sail += ((c.sway*1.25) - c.sail)*Math.min(1,dt*6);
-      for(const t of c.tubes){ if(t.lit>0) t.lit=Math.max(0,t.lit-dt*1.9); if(t.vib!==0){ t.vib*=Math.pow(0.0009,dt); if(Math.abs(t.vib)<0.01) t.vib=0; } }
+      // when the form swings through centre with enough speed, it sounds + blooms
+      const speed=Math.abs(c.swayV);
+      if((prev<0)!==(c.sway<0) && speed>0.5) voice(c,(Math.random()*c.tubes.length)|0, Math.min(0.9,0.12+speed*0.5), 0);
+      // grow / recede / wander the blooms
+      for(const p of c.petals){ const age=T-p.born;
+        const rise=Math.min(1, age/0.32), decay=Math.max(0, 1-(age-0.32)/p.ttl);
+        p.env=rise*decay; p.len += ((p.maxLen*(0.35+0.65*p.env)) - p.len)*Math.min(1,dt*7); }
+      if(c.petals.length) c.petals=c.petals.filter(p=> (T-p.born) < p.ttl+0.6);
+      c.growth *= Math.pow(0.5, dt*0.5);
     }
     // step sweep
     if(stepping){ const dur=8.5 - (P.tempo/100)*7.2; const prev=stepPh%1; stepPh+=dt/dur; const cur=stepPh%1;
@@ -319,56 +339,34 @@
     ctx.restore();
   }
 
+  // an organic bloom — flowing ink strokes that grew from the notes this seed has sounded
   function drawChime(c, accent){
-    const cx=c.x*W, cy=c.y*H; const m=MAT[MATERIAL];
-    const tint=mix(m.col, accent, 0.10+(P.hue/100)*0.10);
-    const n=c.tubes.length; const tw=Math.max(4, 6.5*S); const gap=tw*1.9; const totalW=(n-1)*gap;
-    const plateY=8*S; const maxLen=c.len*H;
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(c.sway);
-    // hanger
-    ctx.strokeStyle=rgba([255,255,255],0.28); ctx.lineWidth=1.4;
-    ctx.beginPath(); ctx.arc(0,-14*S,5*S,0,TAU); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,-9*S); ctx.lineTo(0,plateY); ctx.stroke();
-    // top plate (disc the tubes hang from)
-    ctx.fillStyle=rgba(mix(tint,[0,0,0],0.35),0.9);
-    ctx.beginPath(); ctx.ellipse(0,plateY, totalW/2+tw, 4*S, 0,0,TAU); ctx.fill();
-    // strings + tubes
-    for(let i=0;i<n;i++){ const t=c.tubes[i]; const x=(-totalW/2)+i*gap + t.vib*3*S;
-      const len=maxLen*(1-t.rel*0.44);
-      ctx.strokeStyle=rgba([255,255,255],0.14); ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo((-totalW/2)+i*gap, plateY); ctx.lineTo(x, plateY+6*S); ctx.stroke();
-      // tube body — metallic vertical gradient across width
-      const lg=ctx.createLinearGradient(x-tw/2,0,x+tw/2,0);
-      const lit=t.lit;
-      const light=mix(m.edge, [255,255,255], lit*0.5), dark=mix(tint,[0,0,0],0.55);
-      lg.addColorStop(0, rgba(dark,0.95));
-      lg.addColorStop(0.32, rgba(mix(light,tint,0.2),1));
-      lg.addColorStop(0.5, rgba(light,1));
-      lg.addColorStop(0.7, rgba(tint,1));
-      lg.addColorStop(1, rgba(dark,0.95));
-      if(lit>0.02){ ctx.shadowColor=rgba(mix(tint,accent,0.5), 0.55*lit); ctx.shadowBlur=16*S*lit; }
-      ctx.fillStyle=lg; roundRect(x-tw/2, plateY+6*S, tw, len, tw/2); ctx.fill();
-      ctx.shadowBlur=0;
-      // lit highlight ping
-      if(lit>0.02){ ctx.fillStyle=rgba([255,255,255],0.35*lit); roundRect(x-tw/2, plateY+6*S, tw, len, tw/2); ctx.fill(); }
+    const cx=c.x*W, cy=c.y*H;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(c.sway*0.7);
+    ctx.globalCompositeOperation='lighter';
+    // soft core that swells while the bloom is active
+    if(c.growth>0.02){ const coreR=(5+c.growth*11)*S; const cc=h2r(((P.hue/100)+0.58)%1,0.4,0.72);
+      const cg=ctx.createRadialGradient(0,0,0,0,0,coreR);
+      cg.addColorStop(0, rgba(cc, 0.35*Math.min(1,c.growth))); cg.addColorStop(1, rgba(cc,0));
+      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(0,0,coreR,0,TAU); ctx.fill(); }
+    // each petal = a curved stroke laid down as soft ink dabs
+    for(const p of c.petals){ if(p.len<0.6) continue;
+      const steps=Math.max(4, Math.round(p.len/(4.5*S)));
+      const wob=Math.sin(T*1.5+p.wob)*0.18;
+      for(let s=0;s<=steps;s++){ const u=s/steps;
+        const a=p.ang + (p.curl+wob)*u, r=u*p.len;
+        const x=Math.cos(a)*r, y=Math.sin(a)*r;
+        const rad=Math.max(0.5, p.w*(1-u*0.65)*(0.55+0.45*p.env));
+        const col=h2r(p.hue, p.sat, p.lum*(1-u*0.35));
+        const al=(0.14+0.13*p.env)*(1-u*0.45);
+        const gd=ctx.createRadialGradient(x,y,0,x,y,rad);
+        gd.addColorStop(0, rgba(col, al)); gd.addColorStop(1, rgba(col,0));
+        ctx.fillStyle=gd; ctx.beginPath(); ctx.arc(x,y,rad,0,TAU); ctx.fill();
+      }
     }
-    // clapper + wind-catcher sail, hanging from centre, swinging a touch more
-    ctx.save(); ctx.translate(0, plateY+6*S); ctx.rotate((c.sail-c.sway)*0.5);
-    const clapY=maxLen*0.62;
-    ctx.strokeStyle=rgba([255,255,255],0.16); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,clapY); ctx.stroke();
-    ctx.fillStyle=rgba(mix(tint,[0,0,0],0.15),0.95); ctx.beginPath(); ctx.arc(0,clapY, tw*1.05,0,TAU); ctx.fill();
-    // sail
-    const sy=clapY+tw*2.4;
-    ctx.beginPath(); ctx.moveTo(0,clapY+tw); ctx.lineTo(0,sy); ctx.strokeStyle=rgba([255,255,255],0.14); ctx.stroke();
-    const sailC=mix(accent,[255,255,255],0.25);
-    ctx.fillStyle=rgba(sailC,0.8);
-    roundRect(-tw*1.7, sy, tw*3.4, tw*4.6, tw*1.2); ctx.fill();
-    ctx.fillStyle=rgba([255,255,255],0.12); roundRect(-tw*1.7, sy, tw*1.4, tw*4.6, tw*0.9); ctx.fill();
-    ctx.restore();
+    ctx.globalCompositeOperation='source-over';
     ctx.restore();
   }
-  function roundRect(x,y,w,h,r){ r=Math.min(r,w/2,h/2); ctx.beginPath();
-    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 
   // ---------- loop ----------
   function tick(now){ requestAnimationFrame(tick); const dt=Math.min(0.05,(now-t0)/1000); t0=now; step(dt); render(); }
