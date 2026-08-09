@@ -8,21 +8,37 @@
 <link rel="stylesheet" href="/lab/shared/opal.css" />
 <script src="/assets/js/Tone.js"></script>
 <style>
-  /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
-     same knobs. What differs is everything below the chrome. */
-  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
+  /* Shell conformed to the Attractor standard: one always-open glassy left #dock of
+     labelled .group sections, plain sliders wrapped as .knob with live <b id> readouts,
+     a top-right #sizeDock, a centred #hint. Colour tokens are scoped to the body so the
+     tool's own light/dark toggle keeps winning over the dark-only shared tool.css. */
+  :root{ --top:82px; --rail:300px; }
+  body:not(.dark){ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
     --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
-    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:82px; --rail:290px; }
+    --track:rgba(0,0,0,.3); --liton:#6f9bff; --dim:var(--mute); --line:var(--edge); }
   body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
     --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
-    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+    --track:rgba(255,255,255,.3); --liton:#8ab0ff; --dim:var(--mute); --line:var(--edge); }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
     font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
-  /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
-     wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
-  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
-  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+  /* Canvas area — centred in the space right of the dock (Attractor #wrap). The wrapper's
+     rect is the single source of truth for canvas size; the canvas letterboxes to #sizeDock. */
+  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center; }
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none;
+    box-shadow:0 10px 44px rgba(0,0,0,.35); border-radius:2px; }
+
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
+    font-size:13px; color:var(--mute); background:var(--panel); padding:6px 14px; border-radius:999px;
+    pointer-events:none; transition:opacity .3s; z-index:7;
+    -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
+
+  /* canvas-size dock — pinned top-right on every tool */
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:9; }
+  #sizeDock select{ background:var(--panel); color:var(--ink); border:1px solid var(--hair); border-radius:2px;
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
+    width:auto; background-image:none; -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
 
   /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
      In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
@@ -37,19 +53,18 @@
   body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
-  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #dock, body.fs #bar, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
   body.fs #stagewrap{ top:0; left:0; }
-  #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
+  #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:1; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
-  body.fs.hint #exitFs{ opacity:1; }
 
   @media (max-width:560px){ :root{ --top:74px; } }
 
-  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
+  #status{ position:fixed; bottom:14px; left:calc(var(--rail) + 16px); z-index:5; pointer-events:none;
     font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
 
-  /* one hairline control strip — everything else is off until asked for */
-  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  /* icon strip — theme / pause / full screen, sitting just below the size dock */
+  #bar{ position:fixed; top:calc(var(--top) + 56px); right:14px; z-index:10; display:flex; gap:8px; }
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
     background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
@@ -58,7 +73,7 @@
   /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
      fixed right offset kept colliding with it. Stays put in full screen so a recording
      always shows its own timer. */
-  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+  #recDot{ position:fixed; top:calc(var(--top) + 100px); right:14px; z-index:11;
     display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
     font-size:10px; letter-spacing:.12em; color:#ff4d5e;
     background:var(--panel); border:1px solid var(--hair);
@@ -71,63 +86,45 @@
   body.fs #recDot{ top:14px; }
   @keyframes blink{ 50%{opacity:.2;} }
 
-  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
-     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
-     work with. */
-
-  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
-    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
-    background:var(--panel);
+  /* Left dock — one always-visible glassy rail, controls top-to-bottom (Attractor #dock). */
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
+    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:var(--panel); border-right:1px solid var(--edge);
     -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
-    display:flex; flex-direction:column; transition:transform .28s ease; }
-  .rail-l{ left:0; border-right:1px solid var(--edge); }
-  .rail-r{ right:0; border-left:1px solid var(--edge); }
-  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
-    padding:14px 0; border-bottom:1px solid var(--edge); }
-  .row:last-of-type{ border-bottom:0; }
-  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
-     past when you only want two of them. */
-  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
-    font-weight:600; opacity:.9; padding-bottom:2px;
-    display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
-    width:100%; background:none; border:0; font-family:inherit; text-align:left; }
-  .rowhead:hover{ opacity:1; }
-  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
-  .rowhead::before{ content:''; width:0; height:0; flex:none;
-    border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
-    transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
-  .row.folded .rowhead::before{ transform:rotate(0deg); }
-  .row.folded > *:not(.rowhead){ display:none; }
-  .row.folded{ padding-bottom:10px; }
+    display:flex; flex-direction:column; gap:0; }
+  /* tool.css paints #dock with a dark ground gradient (right for dark mode); flatten it in light */
+  body:not(.dark) #dock{ background:var(--panel); }
+  /* grouped sections with free dividers */
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--edge); }
+  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--mute); font-weight:600; }
+  .rowhint{ margin:0 0 2px; font-size:10px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  /* sliders — Attractor .knob: label + live readout + range */
+  .knob{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .knob label{ display:flex; justify-content:space-between; gap:8px; font-size:11px; letter-spacing:.04em;
+    text-transform:uppercase; color:var(--mute); }
+  .knob b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:20px; background:transparent; cursor:pointer; }
+  input[type=range]::-webkit-slider-runnable-track{ height:2px; background:var(--track); border-radius:2px; }
+  input[type=range]::-moz-range-track{ height:2px; background:var(--track); border-radius:2px; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; margin-top:-6px; border-radius:50%; background:var(--ink); }
+  input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
+  /* generic (non-slider) group: segs, source, labelled rows */
   .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
-  .rail input[type=range]{ width:100%; }
-  .rail select{ width:100%; }
-  .rail .seg{ width:100%; }
-  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  #dock select{ width:100%; }
+  .seg{ width:100%; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
-  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
-     nothing between you and the piece unless you ask for it. */
-  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
-  .rail-l{ transform:translateX(-100%); }
-  .rail-r{ transform:translateX(100%); }
-  .rail.open{ transform:none; }
-
-  /* Chrome fades out while you listen and comes back on movement. */
-  #bar{ transition:opacity .5s ease; }
-  body.idle #bar{ opacity:0; pointer-events:none; }
-  body.panels #bar{ opacity:1; pointer-events:auto; }
-
-  /* Mood — the one control that stays reachable. */
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid2 .btn, .btn.full{ width:100%; }
 
   .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
-    color:var(--mute); white-space:nowrap; }
-  .rail .grp > label{ white-space:normal; }
+    color:var(--mute); white-space:normal; }
   .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
   .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
   .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
+    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair);
+    white-space:nowrap; flex:1; text-align:center; }
   .seg button:last-child{ border-right:0; }
   .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
   .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
@@ -147,25 +144,7 @@
     font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
     background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
     background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
-  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
-     it's just visually replaced, so listeners and readouts are untouched. */
-  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
-  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
-    opacity:0; margin:0; pointer-events:none; }
-  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
-  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
-  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
-    transition:stroke-dasharray .04s linear; }
-  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
-  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
-  .knob:focus-visible{ outline:none; }
-  .knob:focus-visible .k-hub{ stroke:var(--ink); }
-  .knob.drag .k-vl{ stroke-width:3.6; }
-  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
-  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
-  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
-    color:var(--mute); text-align:center; white-space:nowrap; }
-  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  /* (Tape's old SVG dial styles removed — sliders now use the shared .knob slider look.) */
   .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
     color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
     padding:8px 12px; cursor:pointer; border-radius:2px; }
@@ -208,10 +187,20 @@
   .wearbar{ height:3px; border-radius:2px; background:var(--track); overflow:hidden; }
   .wearbar i{ display:block; height:100%; background:var(--ink); width:0; transition:width .3s linear; }
 </style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
 </head>
 <body>
 
 <div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="hint">Four tape loops, wearing away</div>
+<div id="sizeDock">
+  <select id="aspect" title="Canvas size">
+    <option value="1080/1350">Portrait &#183; 4:5</option>
+    <option value="1080/1920">Story &#183; 9:16</option>
+    <option value="1/1">Square &#183; 1:1</option>
+    <option value="1920/1080">Landscape &#183; 16:9</option>
+  </select>
+</div>
 <div id="status"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
 <div id="reels"></div>
@@ -219,13 +208,12 @@
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
   <button class="icon" id="pauseBtn" aria-label="pause" title="Pause / play &#183; space" aria-pressed="false"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
   <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
-  <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
 </div>
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
-<div id="rail" class="rail rail-l">
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Loops</button>
+<div id="dock">
+  <div class="group">
+    <div class="group__t">Loops</div>
     <p class="rowhint">Four loops of different lengths, all running at once. Arm one and whatever you play goes onto it.</p>
     <div class="grp" data-tip="Which loop the controls below apply to. All four keep running whichever one you are looking at."><div class="seg loops" id="loopSeg"></div></div>
     <div class="grp" data-tip="Arm a loop and everything coming in is recorded onto it, over whatever is already there. Unarm it and the loop keeps playing what it caught."><label>Arm <b style="font-weight:400;opacity:.55">record onto it</b></label>
@@ -233,38 +221,38 @@
     <div class="grp" data-tip="Freeze holds a loop exactly as it is: nothing new gets in, nothing wears away. Use it when a pass sounds right and you want to keep it."><label>Freeze <b style="font-weight:400;opacity:.55">stop it wearing</b></label>
       <div class="seg frz" id="frzSeg"></div></div>
     <div class="duo">
-      <div class="grp" data-tip="How long this loop is, in seconds. Lengths that do not divide into each other drift apart and take minutes to line up again — that drift is most of the music."><label>Length <b id="lenR">4.0s</b></label><input id="len" type="range" min="5" max="240" value="40" /></div>
-      <div class="grp" data-tip="How much of each pass survives into the next. Below about 90 the loop fades out over a minute; at 100 it never does."><label>Repeat <b id="fbR">94</b></label><input id="fb" type="range" min="40" max="100" value="94" /></div>
+      <div class="knob" data-tip="How long this loop is, in seconds. Lengths that do not divide into each other drift apart and take minutes to line up again — that drift is most of the music."><label>Length <b id="lenR">4.0s</b></label><input id="len" type="range" min="5" max="240" value="40" /></div>
+      <div class="knob" data-tip="How much of each pass survives into the next. Below about 90 the loop fades out over a minute; at 100 it never does."><label>Repeat <b id="fbR">94</b></label><input id="fb" type="range" min="40" max="100" value="94" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="How loud this loop sits against the other three."><label>Level <b id="lvlR">80</b></label><input id="lvl" type="range" min="0" max="100" value="80" /></div>
+      <div class="knob" data-tip="How loud this loop sits against the other three."><label>Level <b id="lvlR">80</b></label><input id="lvl" type="range" min="0" max="100" value="80" /></div>
       <div class="grp" data-tip="How worn this loop is so far. It climbs on its own at the rate set by Decay, and Erase puts it back to nothing."><label>Wear <b id="wearR">0%</b></label><div class="wearbar"><i id="wearBar"></i></div></div>
     </div>
-    <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="eraseBtn" style="flex:1" data-tip="Wipes this loop and resets its wear, without touching the others.">Erase</button>
-      <button class="btn" id="eraseAll" style="flex:1" data-tip="Wipes all four loops back to silence.">Erase all</button>
-    </div></div>
+    <div class="grid2">
+      <button class="btn" id="eraseBtn" data-tip="Wipes this loop and resets its wear, without touching the others.">Erase</button>
+      <button class="btn" id="eraseAll" data-tip="Wipes all four loops back to silence.">Erase all</button>
+    </div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Tape</button>
+  <div class="group">
+    <div class="group__t">Tape</div>
     <p class="rowhint">What the tape does to the sound on every pass. This is where the disintegration lives.</p>
     <div class="duo">
-      <div class="grp" data-tip="How fast the loops fall apart. Every pass loses a little more top end, and dropouts get more frequent. At the far left nothing decays; at the far right a loop is gone in under a minute."><label>Decay <b id="decR">18</b></label><input id="dec" type="range" min="0" max="100" value="18" /></div>
-      <div class="grp" data-tip="Tape saturation. Pushes the level into the tape until it thickens and starts to break up."><label>Drive <b id="drvR">22</b></label><input id="drv" type="range" min="0" max="100" value="22" /></div>
+      <div class="knob" data-tip="How fast the loops fall apart. Every pass loses a little more top end, and dropouts get more frequent. At the far left nothing decays; at the far right a loop is gone in under a minute."><label>Decay <b id="decR">18</b></label><input id="dec" type="range" min="0" max="100" value="18" /></div>
+      <div class="knob" data-tip="Tape saturation. Pushes the level into the tape until it thickens and starts to break up."><label>Drive <b id="drvR">22</b></label><input id="drv" type="range" min="0" max="100" value="22" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Slow speed variation — the sound of a loop that is not quite round. This is the drifting, seasick pitch."><label>Wow <b id="wowR">26</b></label><input id="wow" type="range" min="0" max="100" value="26" /></div>
-      <div class="grp" data-tip="Fast speed variation. Finer and quicker than Wow — a shimmer on the pitch rather than a drift."><label>Flutter <b id="fltR">18</b></label><input id="flt" type="range" min="0" max="100" value="18" /></div>
+      <div class="knob" data-tip="Slow speed variation — the sound of a loop that is not quite round. This is the drifting, seasick pitch."><label>Wow <b id="wowR">26</b></label><input id="wow" type="range" min="0" max="100" value="26" /></div>
+      <div class="knob" data-tip="Fast speed variation. Finer and quicker than Wow — a shimmer on the pitch rather than a drift."><label>Flutter <b id="fltR">18</b></label><input id="flt" type="range" min="0" max="100" value="18" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Tape noise. Rises with wear, so a tired loop is noisier than a fresh one."><label>Hiss <b id="hisR">24</b></label><input id="his" type="range" min="0" max="100" value="24" /></div>
-      <div class="grp" data-tip="How far the wear can take the top end down before it stops. Left leaves a loop muffled but present; right lets it disappear completely."><label>Depth <b id="dptR">70</b></label><input id="dpt" type="range" min="0" max="100" value="70" /></div>
+      <div class="knob" data-tip="Tape noise. Rises with wear, so a tired loop is noisier than a fresh one."><label>Hiss <b id="hisR">24</b></label><input id="his" type="range" min="0" max="100" value="24" /></div>
+      <div class="knob" data-tip="How far the wear can take the top end down before it stops. Left leaves a loop muffled but present; right lets it disappear completely."><label>Depth <b id="dptR">70</b></label><input id="dpt" type="range" min="0" max="100" value="70" /></div>
     </div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Input</button>
+  <div class="group">
+    <div class="group__t">Input</div>
     <p class="rowhint">What goes onto the tape. Click the canvas to play the built-in voice — no microphone needed.</p>
     <div class="grp" data-tip="Sources feeding the armed loops. The built-in voice plays when you click the canvas; the microphone needs permission the first time."><label>Source</label>
       <div class="seg" id="srcSeg">
@@ -273,26 +261,28 @@
         <button data-s="file" aria-pressed="false">File</button>
       </div>
     </div>
-    <div class="grp" id="fileRow" style="display:none"><div style="display:flex; gap:6px;">
-      <button class="btn" id="fileBtn" style="flex:1" data-tip="Plays an audio file into the armed loops. It is recorded as it plays.">Load file</button>
-      <button class="btn" id="filePlay" style="flex:1" data-tip="Plays the loaded file again from the start.">Replay</button>
-    </div></div>
+    <div class="grp" id="fileRow" style="display:none">
+      <div class="grid2">
+        <button class="btn" id="fileBtn" data-tip="Plays an audio file into the armed loops. It is recorded as it plays.">Load file</button>
+        <button class="btn" id="filePlay" data-tip="Plays the loaded file again from the start.">Replay</button>
+      </div>
+    </div>
     <input id="fileInp" type="file" accept="audio/*" hidden />
     <div class="duo">
-      <div class="grp" data-tip="How hard the input hits the tape."><label>Input <b id="inR">70</b></label><input id="inLvl" type="range" min="0" max="100" value="70" /></div>
-      <div class="grp" data-tip="How much of the live input you hear directly, before it comes back off the tape. Turn this down to zero when using a microphone through speakers, or it will howl."><label>Monitor <b id="monR">60</b></label><input id="mon" type="range" min="0" max="100" value="60" /></div>
+      <div class="knob" data-tip="How hard the input hits the tape."><label>Input <b id="inR">70</b></label><input id="inLvl" type="range" min="0" max="100" value="70" /></div>
+      <div class="knob" data-tip="How much of the live input you hear directly, before it comes back off the tape. Turn this down to zero when using a microphone through speakers, or it will howl."><label>Monitor <b id="monR">60</b></label><input id="mon" type="range" min="0" max="100" value="60" /></div>
     </div>
-    <div class="grp" data-tip="The built-in voice: a soft struck tone. Clicking the canvas plays one, low at the bottom and high at the top."><label>Voice pitch <b id="vpR">C3</b></label><input id="vp" type="range" min="36" max="72" value="48" /></div>
+    <div class="knob" data-tip="The built-in voice: a soft struck tone. Clicking the canvas plays one, low at the bottom and high at the top."><label>Voice pitch <b id="vpR">C3</b></label><input id="vp" type="range" min="36" max="72" value="48" /></div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Out</button>
+  <div class="group">
+    <div class="group__t">Out</div>
     <p class="rowhint">Level, and a way to keep what happened.</p>
-    <div class="grp" data-tip="Output volume."><label>Master <b id="mstR">80</b></label><input id="mst" type="range" min="0" max="100" value="80" /></div>
-    <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="snapBtn" style="flex:1" data-tip="Saves the canvas as a still image.">PNG</button>
-      <button class="btn" id="audBtn" style="flex:1" data-tip="Records what you are hearing to an audio file. Press again to stop and save.">Audio</button>
-    </div></div>
+    <div class="knob" data-tip="Output volume."><label>Master <b id="mstR">80</b></label><input id="mst" type="range" min="0" max="100" value="80" /></div>
+    <div class="grid2">
+      <button class="btn" id="snapBtn" data-tip="Saves the canvas as a still image.">PNG</button>
+      <button class="btn" id="audBtn" data-tip="Records what you are hearing to an audio file. Press again to stop and save.">Audio</button>
+    </div>
   </div>
 </div>
 
@@ -537,12 +527,19 @@
 
   // ---------- canvas ----------
   const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
-  let W=0,H=0,DPR=1;
+  let W=0,H=0,DPR=1, ASPECT=1080/1350;   // #sizeDock sets this; the canvas letterboxes to it
   function resize(){ const r=wrap.getBoundingClientRect();
-    DPR=Math.min(2,devicePixelRatio||1); W=r.width; H=r.height;
+    DPR=Math.min(2,devicePixelRatio||1);
+    const pad=document.body.classList.contains('fs')?0:24;
+    let w=Math.max(1,r.width-pad*2), h=Math.max(1,r.height-pad*2);
+    if(ASPECT){ if(w/h>ASPECT) w=h*ASPECT; else h=w/ASPECT; }
+    W=Math.round(w); H=Math.round(h);
+    cv.style.width=W+'px'; cv.style.height=H+'px';
     cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
     ctx.setTransform(DPR,0,0,DPR,0,0); }
   addEventListener('resize',resize);
+  $('aspect').addEventListener('change',e=>{ const [x,y]=e.target.value.split('/').map(Number);
+    ASPECT=x/y; resize(); });
 
   // Four rings have to fit inside half the short side, trace and all: 0.10 + 3x0.105
   // reaches 0.415, which leaves room for the trace to stand off the outer ring.
@@ -677,9 +674,7 @@
     b.innerHTML=on?PLAY_SVG:PAUSE_SVG; b.setAttribute('aria-pressed',String(on));
     b.setAttribute('aria-label',on?'play':'pause'); applyAll(); }
   $('pauseBtn').addEventListener('click',()=>setPaused(!state.paused));
-  $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open');
-    $('rail').classList.toggle('open',open); document.body.classList.toggle('panels',open);
-    $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
+  // (controls-drawer toggle removed — the #dock is always open in the shared shell)
   addEventListener('keydown',e=>{
     if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
     if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; }
@@ -798,7 +793,8 @@
 
   // ---------- go ----------
   setTheme(THEME);
-  resize(); refreshSegs(); refreshReels(); syncLoop(); knobify(); syncKnobs();
+  resize(); refreshSegs(); refreshReels(); syncLoop(); syncKnobs();
+  setTimeout(()=>{ const h=$('hint'); if(h) h.style.opacity=0; }, 3600);
   const veil=$('veil');
   { const _v=$('veil'); if(_v) _v.remove(); } resize();
   loops[0].arm=true; applyLoop(0); refreshSegs(); refreshReels();
