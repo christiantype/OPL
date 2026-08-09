@@ -17,26 +17,52 @@
   body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
 
   /* Stage — the camera, letterboxed on black, with a paint layer on top. */
-  #wrap{ position:fixed; top:var(--top); left:0; right:var(--rail); bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
-  #stack{ position:relative; display:inline-block; line-height:0; max-width:100%; max-height:100%; }
-  #gl{ max-width:100%; max-height:100%; display:block; background:#000; border-radius:2px; }
-  #paint{ position:absolute; inset:0; width:100%; height:100%; border-radius:2px; touch-action:none; cursor:crosshair; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #stack{ position:relative; display:block; line-height:0; max-width:100%; max-height:100%; overflow:hidden; border-radius:2px; box-shadow:0 10px 44px rgba(0,0,0,.55); }
+  #gl{ width:100%; height:100%; display:block; background:#000; object-fit:cover; }
+  #paint{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:crosshair; object-fit:cover; }
   video{ display:none; }
   .sw{ width:22px; height:22px; border-radius:50%; border:1px solid var(--line); cursor:pointer; padding:0; }
 
   /* First-run / status card, centred over the stage. */
-  #hero{ position:fixed; top:var(--top); left:0; right:var(--rail); bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  #hero{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:16px; text-align:center; padding:24px; pointer-events:none; }
   #hero.hidden{ display:none; }
   #hero p{ margin:0; max-width:30ch; color:var(--dim); line-height:1.5; }
-  #status{ position:fixed; left:18px; bottom:18px; font-size:13px; color:var(--dim);
+  #status{ position:fixed; left:calc(var(--rail) + 18px); bottom:18px; font-size:13px; color:var(--dim);
     pointer-events:none; transition:opacity .4s; }
 
   /* Control dock. */
-  #dock{ position:fixed; top:var(--top); right:0; bottom:0; width:var(--rail); z-index:6;
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
     padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:rgba(15,16,24,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
+    border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
+
+  /* canvas-size dock — pinned top-right on every tool */
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
+  #sizeDock select{ background:rgba(15,16,24,.92); color:var(--ink); border:1px solid var(--line); border-radius:2px;
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
+    -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  /* rec indicator — pinned top-left over the canvas while recording */
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
+    padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
+    background:rgba(15,16,24,.92); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:#ff5468; animation:recblink 1s infinite; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  @keyframes recblink{ 50%{ opacity:.25; } }
+  select.btn{ text-transform:uppercase; }
+  /* colour rows — label left, swatch right */
+  .crow{ display:flex; align-items:center; justify-content:space-between; }
+  .crow label{ font-size:12px; color:var(--ink); }
+  .crow input[type=color]{ width:44px; height:24px; border:1px solid var(--line); border-radius:4px; background:none; padding:0; cursor:pointer; }
+  /* tooltips */
+  .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
+    background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
+    -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.6);
+    font-size:11px; line-height:1.5; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; }
   /* grouped sections — a clean, labelled stack with dividers */
   .group{ display:flex; flex-direction:column; gap:9px; }
@@ -59,17 +85,17 @@
   /* Sliders grid. */
   #sliders{ display:flex; flex-direction:column; gap:14px; width:100%; }
   @media (max-width:560px){ #sliders{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
-  .warp{ display:flex; flex-direction:column; gap:2px; }
-  .warp label{ display:flex; justify-content:space-between; font-size:11px; letter-spacing:.04em;
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .knob label{ display:flex; justify-content:space-between; font-size:11px; letter-spacing:.04em;
     text-transform:uppercase; color:var(--dim); }
-  .warp b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  .knob b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
   input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; cursor:pointer; }
   input[type=range]::-webkit-slider-runnable-track{ height:2px; background:var(--line); border-radius:2px; }
   input[type=range]::-moz-range-track{ height:2px; background:var(--line); border-radius:2px; }
   input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px; margin-top:-6.5px;
     border-radius:50%; background:var(--ink); }
   input[type=range]::-moz-range-thumb{ width:15px; height:15px; border:0; border-radius:50%; background:var(--ink); }
-  .warp input[data-mid]{ } /* centred-zero sliders */
+  .knob input[data-mid]{ } /* centred-zero sliders */
   #dock.off{ opacity:.4; pointer-events:none; }
   .hint{ font-size:11px; color:var(--dim); text-align:center; }
 </style>
@@ -78,6 +104,16 @@
 <body class="dark">
   <div id="wrap"><div id="stack"><canvas id="gl"></canvas><canvas id="paint"></canvas></div></div>
   <video id="cam" playsinline muted></video>
+
+  <div id="recDot"><i></i><b>0:00</b></div>
+  <div id="sizeDock">
+    <select id="aspect" title="Canvas size">
+      <option value="1080/1350">Portrait · 4:5</option>
+      <option value="1080/1920">Story · 9:16</option>
+      <option value="1/1">Square · 1:1</option>
+      <option value="1920/1080">Landscape · 16:9</option>
+    </select>
+  </div>
 
   <div id="hero">
     <p style="pointer-events:auto; font-size:15px; color:var(--ink)">A funhouse mirror for your face.</p>
@@ -93,12 +129,12 @@
     <div class="group">
       <div class="group__t">Warp</div>
       <div id="sliders">
-        <div class="warp"><label>Nose <b id="noseR">0</b></label><input id="nose" type="range" min="-100" max="100" value="0" data-mid /></div>
-        <div class="warp"><label>Ears <b id="earsR">0</b></label><input id="ears" type="range" min="-100" max="100" value="0" data-mid /></div>
-        <div class="warp"><label>Eyes <b id="eyesR">0</b></label><input id="eyes" type="range" min="-100" max="100" value="0" data-mid /></div>
-        <div class="warp"><label>Mouth <b id="mouthR">0</b></label><input id="mouth" type="range" min="-100" max="100" value="0" data-mid /></div>
-        <div class="warp"><label>Chin <b id="chinR">0</b></label><input id="chin" type="range" min="-100" max="100" value="0" data-mid /></div>
-        <div class="warp"><label>Head <b id="headR">0</b></label><input id="head" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="knob" data-tip="Swell or shrink the nose. Right bulges it out, left pinches it in."><label>Nose <b id="noseR">0</b></label><input id="nose" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="knob" data-tip="Puff out or tuck in the ears. Right makes them big, left shrinks them."><label>Ears <b id="earsR">0</b></label><input id="ears" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="knob" data-tip="Bug the eyes out or beadify them. Right enlarges, left shrinks."><label>Eyes <b id="eyesR">0</b></label><input id="eyes" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="knob" data-tip="Widen or pucker the mouth. Right blows it up, left draws it in."><label>Mouth <b id="mouthR">0</b></label><input id="mouth" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="knob" data-tip="Jut out or pull back the chin. Right lengthens the jaw, left recedes it."><label>Chin <b id="chinR">0</b></label><input id="chin" type="range" min="-100" max="100" value="0" data-mid /></div>
+        <div class="knob" data-tip="Balloon or shrink the whole head. Right for a bobblehead, left for a pinhead."><label>Head <b id="headR">0</b></label><input id="head" type="range" min="-100" max="100" value="0" data-mid /></div>
       </div>
     </div>
 
@@ -106,21 +142,21 @@
     <div class="group">
       <div class="group__t">Presets</div>
       <div class="grid2">
-        <button class="btn" data-preset="alien">Alien</button>
-        <button class="btn" data-preset="chipmunk">Chipmunk</button>
-        <button class="btn" data-preset="bobble">Bobblehead</button>
-        <button class="btn" data-preset="goblin">Goblin</button>
+        <button class="btn" data-preset="alien" data-tip="Big eyes, tiny nose, green skin — instant little green man.">Alien</button>
+        <button class="btn" data-preset="chipmunk" data-tip="Puffed cheeks and big ears — a cheeky rodent.">Chipmunk</button>
+        <button class="btn" data-preset="bobble" data-tip="A giant head on a normal face — the classic bobblehead.">Bobblehead</button>
+        <button class="btn" data-preset="goblin" data-tip="Bulbous nose, huge ears, jutting chin — a proper goblin.">Goblin</button>
       </div>
-      <button class="btn full" data-preset="reset">Reset</button>
+      <button class="btn full" data-preset="reset" data-tip="Return every warp to zero — back to your real face.">Reset</button>
     </div>
 
     <!-- camera -->
     <div class="group">
       <div class="group__t">Camera</div>
       <div class="grid3">
-        <button class="btn" id="tintBtn" aria-pressed="false">Green</button>
-        <button class="btn" id="mirrorBtn" aria-pressed="true">Mirror</button>
-        <button class="btn" id="camBtn" aria-pressed="true">Camera</button>
+        <button class="btn" id="tintBtn" aria-pressed="false" data-tip="Wash the face in an alien-green tint.">Green</button>
+        <button class="btn" id="mirrorBtn" aria-pressed="true" data-tip="Flip the image left-to-right, like a mirror.">Mirror</button>
+        <button class="btn" id="camBtn" aria-pressed="true" data-tip="Turn the camera on or off. Video never leaves this page.">Camera</button>
       </div>
     </div>
 
@@ -128,9 +164,9 @@
     <div class="group">
       <div class="group__t">Paint</div>
       <div class="grid3">
-        <button class="btn" data-tool="draw" aria-pressed="true">Draw</button>
-        <button class="btn" data-tool="smudge" aria-pressed="false">Smudge</button>
-        <button class="btn" data-tool="erase" aria-pressed="false">Erase</button>
+        <button class="btn" data-tool="draw" aria-pressed="true" data-tip="Paint solid strokes on top of your face.">Draw</button>
+        <button class="btn" data-tool="smudge" aria-pressed="false" data-tip="Smear the paint around like wet ink.">Smudge</button>
+        <button class="btn" data-tool="erase" aria-pressed="false" data-tip="Rub paint back off.">Erase</button>
       </div>
       <div class="swrow">
         <button class="sw" data-color="#ff2d55" style="background:#ff2d55; outline:2px solid #fff"></button>
@@ -140,10 +176,10 @@
         <button class="sw" data-color="#ffffff" style="background:#fff"></button>
         <button class="sw" data-color="#0b0c14" style="background:#0b0c14; border-color:#555"></button>
       </div>
-      <div class="warp"><label>Brush <b id="brushR">18</b></label><input id="brush" type="range" min="3" max="60" value="18" /></div>
+      <div class="knob" data-tip="How thick the paint brush is — small for fine lines, large for bold strokes."><label>Brush <b id="brushR">18</b></label><input id="brush" type="range" min="3" max="60" value="18" /></div>
       <div class="grid2">
-        <button class="btn" id="dripBtn" aria-pressed="false">Drip</button>
-        <button class="btn" id="clearBtn">Clear paint</button>
+        <button class="btn" id="dripBtn" aria-pressed="false" data-tip="Let the paint slowly melt and run downward.">Drip</button>
+        <button class="btn" id="clearBtn" data-tip="Wipe away all the paint at once.">Clear paint</button>
       </div>
     </div>
 
@@ -151,8 +187,8 @@
     <div class="group">
       <div class="group__t">Export</div>
       <div class="grid2">
-        <button class="btn" id="saveBtn">Save</button>
-        <button class="btn" id="recBtn" aria-pressed="false">Record</button>
+        <button class="btn" id="saveBtn" data-tip="Save the current frame as a PNG image.">Save</button>
+        <button class="btn" id="recBtn" aria-pressed="false" data-tip="Record a video (MP4 where supported). Press again to stop and download.">Record</button>
       </div>
     </div>
 
@@ -169,7 +205,25 @@ import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@m
 const $ = id => document.getElementById(id);
 const video = $('cam'), canvas = $('gl');
 const statusEl = $('status');
+const stackEl = $('stack'), wrapEl = $('wrap');
 let mirror = true, tintOn = false, camOn = false;
+
+/* ---------- canvas size / aspect ----------
+   The #gl + #paint canvases keep the camera's native resolution internally (so face-warps and
+   exports are unaffected); the size dock just reshapes the on-screen stage by cover-cropping to
+   the chosen aspect. */
+let ASPECT = 1080/1350;                       // default Portrait · 4:5, matching the size dock
+function fitStack(){
+  const availW = Math.max(40, wrapEl.clientWidth  - 48);   // #wrap has 24px padding each side
+  const availH = Math.max(40, wrapEl.clientHeight - 48);
+  let w = availW, h = w/ASPECT;
+  if(h > availH){ h = availH; w = h*ASPECT; }
+  stackEl.style.width  = Math.round(w)+'px';
+  stackEl.style.height = Math.round(h)+'px';
+}
+$('aspect').addEventListener('change', e=>{ const [x,y]=e.target.value.split('/').map(Number); ASPECT=x/y; fitStack(); });
+addEventListener('resize', fitStack);
+fitStack();
 
 const setStatus = (t, hold=0)=>{ statusEl.textContent = t; statusEl.style.opacity = t?1:0;
   if(t && hold){ clearTimeout(setStatus._t); setStatus._t=setTimeout(()=>{statusEl.style.opacity=0;}, hold); } };
@@ -312,7 +366,7 @@ async function startCamera(){
     camOn = true; $('camBtn').setAttribute('aria-pressed','true');
     $('hero').classList.add('hidden'); $('dock').classList.remove('off');
     canvas.width = video.videoWidth || 960; canvas.height = video.videoHeight || 720;
-    gl && gl.viewport(0,0,canvas.width,canvas.height);
+    gl && gl.viewport(0,0,canvas.width,canvas.height); fitStack();
     setStatus('camera on — nothing leaves this page', 2600);
     if(!faceLandmarker) initModel();
     requestAnimationFrame(loop);
@@ -390,7 +444,7 @@ $('saveBtn').addEventListener('click', ()=>{
 
 // keep the drawing buffer matched to the video if it changes size
 video.addEventListener('resize', ()=>{ if(video.videoWidth){ canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-  gl && gl.viewport(0,0,canvas.width,canvas.height); } });
+  gl && gl.viewport(0,0,canvas.width,canvas.height); fitStack(); } });
 </script>
 
 <!-- paint layer: draw on your face, smudge it, let it drip -->
@@ -405,7 +459,11 @@ video.addEventListener('resize', ()=>{ if(video.videoWidth){ canvas.width=video.
   function sync(){ if(paint.width!==gl.width||paint.height!==gl.height){
     paint.width=gl.width; paint.height=gl.height; tmp.width=gl.width; tmp.height=gl.height; } }
   function pos(e){ const r=paint.getBoundingClientRect();
-    return { x:(e.clientX-r.left)/r.width*paint.width, y:(e.clientY-r.top)/r.height*paint.height }; }
+    // invert the object-fit:cover mapping so painting lands on the right pixels at any aspect
+    const cw=paint.width||r.width, ch=paint.height||r.height;
+    const scale=Math.max(r.width/cw, r.height/ch);
+    const ox=(r.width-cw*scale)/2, oy=(r.height-ch*scale)/2;
+    return { x:(e.clientX-r.left-ox)/scale, y:(e.clientY-r.top-oy)/scale }; }
 
   function down(e){ e.preventDefault(); sync(); const p=pos(e); px=p.x; py=p.y; drawing=true; paint.setPointerCapture&&paint.setPointerCapture(e.pointerId);
     if(tool==='draw'){ pctx.globalCompositeOperation='source-over'; pctx.fillStyle=color; pctx.beginPath(); pctx.arc(p.x,p.y,brush,0,6.2832); pctx.fill(); } }
@@ -423,7 +481,9 @@ video.addEventListener('resize', ()=>{ if(video.videoWidth){ canvas.width=video.
   const recC=document.createElement('canvas'), rctx=recC.getContext('2d');
   const ev2=n=>n-(n&1);   // even dimensions for H.264 (source video keeps its native resolution)
   let rec=null, chunks=[], recording=false;
-  const recBtn=document.getElementById('recBtn');
+  const recBtn=document.getElementById('recBtn'), recDot=document.getElementById('recDot');
+  let recStart=0, recTimer=0;
+  const recFmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
   recBtn.addEventListener('click', ()=>{
     if(rec && rec.state==='recording'){ rec.stop(); return; }
     recC.width=ev2(gl.width||960); recC.height=ev2(gl.height||720);
@@ -432,9 +492,12 @@ video.addEventListener('resize', ()=>{ if(video.videoWidth){ canvas.width=video.
     const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
     rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:40000000}); chunks=[]; recording=true;
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
-    rec.onstop=()=>{ recording=false; const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a');
+    rec.onstop=()=>{ recording=false; clearInterval(recTimer); recDot&&recDot.classList.remove('on');
+      const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a');
       a.href=URL.createObjectURL(blob); a.download='putty.'+ext; a.click(); recBtn.textContent='Record'; recBtn.setAttribute('aria-pressed','false'); };
     rec.start(); recBtn.textContent='Stop'; recBtn.setAttribute('aria-pressed','true');
+    if(recDot){ recStart=performance.now(); recDot.classList.add('on'); recDot.querySelector('b').textContent='0:00';
+      recTimer=setInterval(()=>{ recDot.querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250); }
   });
 
   // drip loop — melts the paint downward while on; also feeds the recorder
@@ -457,6 +520,23 @@ video.addEventListener('resize', ()=>{ if(video.videoWidth){ canvas.width=video.
   const bs=document.getElementById('brush'); bs.addEventListener('input',()=>{ brush=+bs.value; document.getElementById('brushR').textContent=bs.value; });
   const dt=document.getElementById('dripBtn'); dt.addEventListener('click',()=>{ dripOn=!dripOn; dt.setAttribute('aria-pressed',dripOn?'true':'false'); });
   document.getElementById('clearBtn').addEventListener('click',()=>{ pctx.clearRect(0,0,paint.width,paint.height); });
+})();
+</script>
+
+<!-- tooltips — plain-language hint on hover for any [data-tip] control -->
+<script>
+(()=>{
+  let tipEl=null, tipT=null, tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return;
+    if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0';
+    const r=host.getBoundingClientRect(), t=tipEl.getBoundingClientRect();
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8, r.bottom+8);
+    tipEl.style.left=Math.max(8,Math.min(r.left, innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+  addEventListener('pointerover', e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return;
+    clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown', hideTip); addEventListener('scroll', hideTip, true);
 })();
 </script>
 </body>
