@@ -310,9 +310,11 @@
     if(p.pM){ const f=p.osc.hz*(1+a*p.pM); audio.oscA.frequency.setTargetAtTime(f,t,0.05); audio.oscB.frequency.setTargetAtTime(f,t,0.05);
       if(p.fm) audio.fmOsc.frequency.setTargetAtTime(f*p.fm.ratio,t,0.05); }
     if(p.mix.n>0.5) audio.bp.frequency.setTargetAtTime(p.bp.f + a*900 + (Math.random()-0.5)*500, t, 0.02); }  // scratch grit jitter
-  const CHR=[[0,205,222,245],[0.30,120,150,190],[0.47,36,50,76],[0.53,52,44,52],[0.72,192,150,108],[0.90,246,226,182],[1,255,246,228]];
-  // liquid-chrome ramp for LIGHT paper: dark reflection bands (so it reads on white) with a bright specular horizon
-  const CHRL=[[0,64,72,86],[0.26,150,164,184],[0.44,24,29,40],[0.50,206,218,232],[0.55,248,250,253],[0.68,52,60,74],[0.84,150,162,180],[1,26,31,42]];
+  // real-chrome vertical reflection: bright sky → dark horizon → sharp specular → warm/steel ground
+  // CHR = for DARK paper (drawn additively, so bright bands glow and dark bands stay black)
+  const CHR=[[0,168,196,232],[0.30,58,80,120],[0.46,6,9,18],[0.50,2,3,9],[0.535,232,242,255],[0.62,70,82,104],[0.74,158,124,80],[0.90,224,190,138],[1,246,224,180]];
+  // CHRL = for LIGHT paper (drawn opaque): full steel values so it reads as polished metal, dark reflection band + sharp specular
+  const CHRL=[[0,96,108,128],[0.24,168,180,200],[0.42,18,24,40],[0.49,44,50,68],[0.525,252,253,255],[0.60,104,112,132],[0.72,26,32,48],[0.86,150,160,180],[1,64,72,92]];
   function rampCol(R,ny,a){ ny=ny<0?0:ny>1?1:ny; let i=0; while(i<R.length-1 && ny>R[i+1][0]) i++;
     const s0=R[i], s1=R[Math.min(R.length-1,i+1)], f=(ny-s0[0])/((s1[0]-s0[0])||1);
     return 'rgba('+Math.round(s0[1]+(s1[1]-s0[1])*f)+','+Math.round(s0[2]+(s1[2]-s0[2])*f)+','+Math.round(s0[3]+(s1[3]-s0[3])*f)+','+Math.min(1,a).toFixed(3)+')'; }
@@ -348,10 +350,16 @@
 
   function drawRaw(s){ if(s.length<2){ if(s.length){ ctx.beginPath(); ctx.arc(s[0].x*W,s[0].y*H,1.6,0,6.28); ctx.fillStyle='#141414'; ctx.fill(); } return; }
     ctx.beginPath(); ctx.moveTo(s[0].x*W,s[0].y*H); for(let i=1;i<s.length;i++) ctx.lineTo(s[i].x*W,s[i].y*H); ctx.stroke(); }
+  // arrowhead at the end, pointing the way the bloom will draw (from the first point onward)
+  function drawArrow(s,col){ if(!s||s.length<2) return; const n=s.length, p1=s[n-1]; let p0=s[n-2];
+    for(let i=n-2;i>=0;i--){ if(Math.hypot(s[i].x-p1.x,s[i].y-p1.y)>0.02){ p0=s[i]; break; } }   // step back for a steady heading
+    const ang=Math.atan2(p1.y-p0.y, p1.x-p0.x), x=p1.x*W, y=p1.y*H, len=Math.min(W,H)*0.032, back=ang+Math.PI, sp=0.5;
+    ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.beginPath(); ctx.moveTo(x+Math.cos(back+sp)*len, y+Math.sin(back+sp)*len); ctx.lineTo(x,y); ctx.lineTo(x+Math.cos(back-sp)*len, y+Math.sin(back-sp)*len); ctx.stroke(); ctx.restore(); }
   function renderDraw(){ ctx.fillStyle=bgColor; ctx.fillRect(0,0,W,H); drawRef(0.36); ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=1.6;
     const guide = bgLuma()<0.5 ? 'rgba(235,236,240,.85)' : 'rgba(20,20,26,.85)';   // the drawn-line preview flips on dark paper
-    strokes.forEach((s,si)=>{ const c=strokeCol[si]; ctx.strokeStyle=(c&&c!=='rainbow')?c:guide; drawRaw(s); });
-    if(cur){ ctx.strokeStyle=(inkColor&&inkColor!=='rainbow')?inkColor:guide; drawRaw(cur); } }
+    strokes.forEach((s,si)=>{ const c=strokeCol[si], col=(c&&c!=='rainbow')?c:guide; ctx.strokeStyle=col; drawRaw(s); drawArrow(s,col); });
+    if(cur){ const col=(inkColor&&inkColor!=='rainbow')?inkColor:guide; ctx.strokeStyle=col; drawRaw(cur); drawArrow(cur,col); } }
 
   // draw the photo backdrop preserving its aspect ratio (never stretched), positioned + scaled by imgT
   function refDims(){ const iw=traceRef.naturalWidth||traceRef.width, ih=traceRef.naturalHeight||traceRef.height;
@@ -407,8 +415,8 @@
       }
       for(let i=0;i<w.nodes.length;i++){ const a=w.last[i], b=w.nodes[i];
         for(let o=0;o<5;o++){ const px=a.x+(b.x-a.x)*o/5, py=a.y+(b.y-a.y)*o/5;
-          if(chrome) ctx.fillStyle = darkPaper ? chromeCol(py/H, ink*w.ink*1.6*(0.5+Math.random()*0.8)*born)                       // metallic sheen, jittered
-                                               : chromeColL(py/H, Math.min(0.55, ink*w.ink*5.2*(0.5+Math.random()*0.7)*born));   // liquid chrome on light paper
+          if(chrome) ctx.fillStyle = darkPaper ? chromeCol(py/H, (0.25 + ink*w.ink*3.0)*born*(0.6+Math.random()*0.7))              // bright reflections build on black
+                                               : chromeColL(py/H, Math.min(0.9, (0.34 + ink*w.ink*4.0)*born*(0.62+Math.random()*0.5)));  // solid polished metal on light paper
           ctx.beginPath(); ctx.arc(px+(Math.random()-0.5)*wBase*grow, py+(Math.random()-0.5)*wBase*grow, Math.random()*wBase*w.brushW*grow, 0, 6.2832); ctx.fill(); } }
       if(chrome && darkPaper) ctx.globalCompositeOperation='source-over';
     }
