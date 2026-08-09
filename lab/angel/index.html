@@ -10,7 +10,10 @@
 <style>
   /* Angel runs light: paper ground, ink marks. The canvas composites with multiply
      rather than the usual additive glow — see BLEND in the script. */
-  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
+  /* Angel runs LIGHT by default (paper ground). tool.css loads last and sets dark :root tokens,
+     so these are raised to html:root specificity to keep the light default; body.dark still wins
+     in the tree for dark mode. */
+  html:root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
     --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
     --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:82px; --rail:290px; }
   body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
@@ -37,19 +40,34 @@
   body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
-  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs .rail, body.fs #bar, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
   body.fs #stagewrap{ top:0; left:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
   body.fs.hint #exitFs{ opacity:1; }
 
-  @media (max-width:560px){ :root{ --top:74px; } }
+  @media (max-width:560px){ html:root{ --top:74px; } }
 
   #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
     font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
 
-  /* one hairline control strip — everything else is off until asked for */
-  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  /* one hairline control strip — everything else is off until asked for.
+     The icon row is shifted left to make room for the canvas-size dock pinned top-right. */
+  #bar{ position:fixed; top:calc(var(--top) + 12px); right:132px; z-index:10; display:flex; gap:8px; }
+  /* canvas-size dock — pinned top-right on every tool (shared shell standard). On Angel the
+     working canvas is a full-viewport instrument, so this sets the EXPORTED frame and stays in
+     sync with the Export section's size buttons. */
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:12; }
+  #sizeDock select{ background:var(--panel); color:var(--ink); border:1px solid var(--hair); border-radius:2px;
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
+    background-image:none; }
+  /* centered caption over the canvas — fades once you get going */
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:50%; transform:translateX(-50%); z-index:7;
+    font-size:12px; letter-spacing:.02em; color:var(--mute); background:var(--panel);
+    padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .5s ease;
+    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid var(--hair); }
+  #hint.gone{ opacity:0; }
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
     background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
@@ -296,10 +314,12 @@
   @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
   @media (max-width:560px){ input[type=range]{ width:82px; } }
 </style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
 </head>
 <body>
 
 <div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="hint">Tap a ring to place steps · tap the open field for orbs</div>
 <div id="status"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
 <div id="countin" aria-live="assertive"><b id="countinN">3</b><span>get ready</span></div>
@@ -313,6 +333,14 @@
 </div>
 <button id="mood" aria-label="change mood" data-tip="Loads a whole patch at once — voices, notes, tuning and motion together. Tap to move somewhere else."><b id="moodName">Drone</b><span>mood</span></button>
 <div id="kbd" class="hidden" aria-label="playable keyboard"></div>
+<div id="sizeDock">
+  <select id="aspect" title="Canvas / export size" data-tip="The shape of the exported still or video. Angel's live field fills the screen; this sets the frame it exports into.">
+    <option value="1080/1350">Portrait · 4:5</option>
+    <option value="1080/1920">Story · 9:16</option>
+    <option value="1/1">Square · 1:1</option>
+    <option value="1920/1080">Landscape · 16:9</option>
+  </select>
+</div>
 <div id="bar">
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
   <button class="icon" id="pauseBtn" aria-label="pause" title="Pause / play · space" aria-pressed="false"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
@@ -634,6 +662,7 @@
         <button data-z="RL" aria-pressed="true">9:16</button>
         <button data-z="PT" aria-pressed="false">4:5</button>
         <button data-z="SQ" aria-pressed="false">1:1</button>
+        <button data-z="LS" aria-pressed="false">16:9</button>
       </div>
     </div>
     <div class="grp"><div style="display:flex; gap:6px;">
@@ -1012,7 +1041,7 @@
   const INSTR_NAMES={ piano:'Grand Piano', neon:'Neon', acid:'Acid', chip:'Chip', sub:'Sub',
     drone:'Drift', air:'Air',
     bloom:'Halo', glass:'Prism', pluck:'Pluck', bell:'Bell', mallet:'Mallet' };
-  const SIZES={ RL:[1080,1920], PT:[1080,1350], SQ:[1080,1080] };
+  const SIZES={ RL:[1080,1920], PT:[1080,1350], SQ:[1080,1080], LS:[1920,1080] };
 
   // four lanes (rings). each: instrument, steps, speed multiplier, octave, pattern, own playhead.
   // pattern cells: null = off, 'auto' = pitch from the scale, <number> = that exact MIDI note.
@@ -1735,8 +1764,18 @@
     if(v==='camera' && !camOn && !camAsking) camStart(); }
   function syncCamLook(){ const f=document.getElementById('faceCtls');
     if(f) f.style.display = (state.visual==='camera' && state.camLook==='face') ? '' : 'none'; }
-  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z'); seg('visSeg','visual','v',()=>syncVisualCtls()); seg('shapeSeg','shape','h');
+  seg('palSeg','palette','p',()=>{ refreshLaneSeg(); refreshMutes(); refreshHoldSeg(); }); seg('scaleSeg','scale','s'); seg('sizeSeg','exportSize','z',()=>syncSizeUI()); seg('visSeg','visual','v',()=>syncVisualCtls()); seg('shapeSeg','shape','h');
   const $=id=>document.getElementById(id);
+  // Top-right canvas-size dock — mirrors the Export frame (state.exportSize). Angel's live field
+  // is a full-viewport instrument, so this reshapes what gets exported, kept in sync both ways
+  // with the Export section's size buttons.
+  const Z_TO_AR={ RL:'1080/1920', PT:'1080/1350', SQ:'1/1', LS:'1920/1080' };
+  const AR_TO_Z={ '1080/1920':'RL', '1080/1350':'PT', '1/1':'SQ', '1920/1080':'LS' };
+  function syncSizeUI(){ const sel=document.getElementById('aspect'), ar=Z_TO_AR[state.exportSize];
+    if(sel && ar) sel.value=ar;
+    document.querySelectorAll('#sizeSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.z===state.exportSize))); }
+  document.getElementById('aspect').addEventListener('change',e=>{ const z=AR_TO_Z[e.target.value]; if(!z) return; state.exportSize=z; syncSizeUI(); });
+  syncSizeUI();
   $('tempo').addEventListener('input',e=>{ state.tempo=(+e.target.value/100)*1.4; $('tempoR').textContent=e.target.value; });
   $('pitch').addEventListener('input',e=>{ state.root=+e.target.value; $('pitchR').textContent=midiLabel(state.root); });
   const PAUSE_SVG='<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>';
@@ -2345,6 +2384,10 @@
   // Audio needs a user gesture, so it unlocks on the first interaction instead of a splash.
   const _unlock=()=>{ Tone.start(); buildAudio(); state.ready=true; refreshSteps(); window.removeEventListener('pointerdown',_unlock,true); };
   window.addEventListener('pointerdown',_unlock,true);
+  // The centered caption fades once you start, or after a few seconds.
+  { const _hint=document.getElementById('hint'); if(_hint){
+      const goHint=()=>{ _hint.classList.add('gone'); window.removeEventListener('pointerdown',goHint,true); };
+      window.addEventListener('pointerdown',goHint,true); setTimeout(goHint,7000); } }
   /* ---------- sampling ----------
      Record the mic or drop in a file; the buffer becomes a pitched voice you can select for
      any lane or for the orbs. Playback is a one-zone Sampler rooted at C4, so the sequencer's
@@ -2655,6 +2698,7 @@
     document.querySelectorAll('#visSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===state.visual)));
     document.querySelectorAll('#shapeSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.h===state.shape)));
     document.querySelectorAll('#scaleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===state.scale)));
+    if(typeof syncSizeUI==='function') syncSizeUI();
     if($('orbVoice')) $('orbVoice').value=state.orbVoice;
     if(o.theme) setTheme(o.theme);
     // A restored patch brings its performance back too — but never while one is running,
