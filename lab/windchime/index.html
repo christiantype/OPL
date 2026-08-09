@@ -17,7 +17,7 @@
   body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
 
   #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
-  #art{ background:#0e1320; box-shadow:0 10px 44px rgba(0,0,0,.55); max-width:100%; max-height:100%; display:block; border-radius:2px; cursor:crosshair; touch-action:none; }
+  #art{ background:#0b0d16; box-shadow:0 10px 44px rgba(0,0,0,.55); max-width:100%; max-height:100%; display:block; border-radius:2px; cursor:pointer; touch-action:none; }
   #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); font-size:13px; color:var(--dim);
     background:rgba(11,12,20,.7); padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .3s; z-index:7; }
   #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
@@ -56,11 +56,6 @@
   .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
   .grid2 .btn, .btn.full{ width:100%; }
-  .crow{ display:flex; align-items:center; justify-content:space-between; }
-  .crow label{ font-size:12px; color:var(--ink); }
-  .crow input[type=color]{ width:44px; height:24px; border:1px solid var(--line); border-radius:4px; background:none; padding:0; cursor:pointer; }
-  .crow input[type=color]::-webkit-color-swatch-wrapper{ padding:2px; }
-  .crow input[type=color]::-webkit-color-swatch{ border:none; border-radius:2px; }
   .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
     background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
     -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
@@ -72,14 +67,14 @@
 </head>
 <body class="dark">
   <div id="wrap"><canvas id="art"></canvas></div>
-  <div id="hint">Click the sky to plant a bloom — then let the wind and the sweep play them</div>
+  <div id="hint">Add an image — it becomes a kaleidoscope the wind plays through the chimes</div>
   <div id="recDot"><i></i><b>0:00</b></div>
   <div id="sizeDock">
     <select id="aspect" title="Canvas size">
       <option value="1080/1350">Portrait · 4:5</option>
       <option value="1080/1920">Story · 9:16</option>
-      <option value="1/1">Square · 1:1</option>
-      <option value="1920/1080" selected>Landscape · 16:9</option>
+      <option value="1/1" selected>Square · 1:1</option>
+      <option value="1920/1080">Landscape · 16:9</option>
     </select>
   </div>
 
@@ -89,29 +84,38 @@
     <div class="group">
       <button class="btn primary full" id="playBtn" aria-pressed="true">Pause</button>
       <div class="grid2">
-        <button class="btn" id="scatterBtn" data-tip="Hang a handful of new chimes in random spots. Or click anywhere on the sky to place one exactly.">Scatter</button>
-        <button class="btn" id="clearBtn" data-tip="Take every chime down and start with an empty sky.">Clear</button>
+        <button class="btn" id="imgBtn" data-tip="Add a photo — it becomes the source the kaleidoscope mirrors. Without one, it uses a soft colour field.">Add image</button>
+        <button class="btn" id="clrImgBtn" data-tip="Go back to the generated colour field.">Colour</button>
       </div>
+      <input id="imgFile" type="file" accept="image/*" hidden />
+    </div>
+
+    <!-- kaleidoscope -->
+    <div class="group">
+      <div class="group__t">Kaleidoscope</div>
+      <div class="knob" data-tip="How many windchimes are hung — and this IS the number of mirrored slices in the kaleidoscope. Fewer is bold and simple; more is an intricate mandala."><label>Chimes <b id="countR">8</b></label><input id="count" type="range" min="2" max="24" value="8" /></div>
+      <div class="knob" data-tip="How far into the image the kaleidoscope reaches — tight crop to wide field."><label>Zoom <b id="zoomR">45</b></label><input id="zoom" type="range" min="0" max="100" value="45" /></div>
+      <div class="knob" data-tip="A steady turning of the whole pattern."><label>Twist <b id="twistR">30</b></label><input id="twist" type="range" min="0" max="100" value="30" /></div>
     </div>
 
     <!-- wind -->
     <div class="group">
       <div class="group__t">Wind</div>
-      <div class="knob" data-tip="How strong and how often the breeze blows. Gusts sweep across the sky, swaying the chimes and setting them ringing on their own."><label>Breeze <b id="windR">45</b></label><input id="wind" type="range" min="0" max="100" value="45" /></div>
-      <div class="knob" data-tip="How far the chimes swing. Low is a gentle stir; high is a real sway in the wind."><label>Sway <b id="swayR">50</b></label><input id="sway" type="range" min="0" max="100" value="50" /></div>
+      <div class="knob" data-tip="How strong and how often the breeze blows — each gust rings chimes and makes the kaleidoscope pulse and bloom."><label>Breeze <b id="windR">45</b></label><input id="wind" type="range" min="0" max="100" value="45" /></div>
+      <div class="knob" data-tip="How much the pattern sways and wobbles in the wind."><label>Sway <b id="swayR">50</b></label><input id="sway" type="range" min="0" max="100" value="50" /></div>
     </div>
 
     <!-- step -->
     <div class="group">
       <div class="group__t">Step</div>
-      <button class="btn full" id="stepBtn" aria-pressed="true" data-tip="A line sweeps across the sky and rings each chime as it passes — turning wherever you scattered them into a repeating melody.">Step through · on</button>
-      <div class="knob" data-tip="How fast the sweeping line travels — the tempo of the melody it plays."><label>Tempo <b id="tempoR">45</b></label><input id="tempo" type="range" min="0" max="100" value="45" /></div>
+      <button class="btn full" id="stepBtn" aria-pressed="true" data-tip="Ring the chimes one after another in a loop — a pulse travels the mandala in time, turning it into a repeating rhythm.">Step through · on</button>
+      <div class="knob" data-tip="How fast it steps and turns."><label>Tempo <b id="tempoR">45</b></label><input id="tempo" type="range" min="0" max="100" value="45" /></div>
     </div>
 
     <!-- sound -->
     <div class="group">
       <div class="group__t">Sound</div>
-      <select id="scale" class="btn" data-tip="The set of notes every chime is tuned to. Any combination stays in tune with the rest.">
+      <select id="scale" class="btn" data-tip="The set of notes every chime is tuned to.">
         <option value="penta">Pentatonic — open, sweet</option>
         <option value="minor">Minor pentatonic — wistful</option>
         <option value="hira">Hirajoshi — Japanese</option>
@@ -119,24 +123,22 @@
         <option value="whole">Whole tone — dreamlike</option>
         <option value="major">Major — bright</option>
       </select>
-      <select id="material" class="btn" data-tip="What the tubes are made of — changes the timbre and how long each note rings.">
+      <select id="material" class="btn" data-tip="What the tubes are made of — the timbre and how long each note rings.">
         <option value="metal">Aluminium — warm metal</option>
         <option value="glass">Glass — pure, short</option>
         <option value="crystal">Crystal — shimmering</option>
         <option value="bamboo">Bamboo — soft, woody</option>
       </select>
-      <div class="knob" data-tip="Shifts every chime up or down in pitch — deep and mellow, or high and glassy."><label>Pitch <b id="pitchR">0</b></label><input id="pitch" type="range" min="-12" max="12" value="0" /></div>
-      <div class="knob" data-tip="How many tubes each new chime carries — more tubes, more notes per chime."><label>Tubes <b id="tubesR">5</b></label><input id="tubes" type="range" min="3" max="8" value="5" /></div>
-      <div class="knob" data-tip="How long each note rings out before it fades to silence."><label>Ring <b id="ringR">55</b></label><input id="ring" type="range" min="0" max="100" value="55" /></div>
-      <div class="knob" data-tip="Adds a wash of reverb — a little air, or a vast cathedral bloom."><label>Shimmer <b id="shimmerR">45</b></label><input id="shimmer" type="range" min="0" max="100" value="45" /></div>
+      <div class="knob" data-tip="Shifts every chime up or down in pitch."><label>Pitch <b id="pitchR">0</b></label><input id="pitch" type="range" min="-12" max="12" value="0" /></div>
+      <div class="knob" data-tip="How long each note rings before it fades."><label>Ring <b id="ringR">55</b></label><input id="ring" type="range" min="0" max="100" value="55" /></div>
+      <div class="knob" data-tip="A wash of reverb around the sound."><label>Shimmer <b id="shimmerR">45</b></label><input id="shimmer" type="range" min="0" max="100" value="45" /></div>
       <div class="knob" data-tip="Overall loudness."><label>Volume <b id="volR">70</b></label><input id="vol" type="range" min="0" max="100" value="70" /></div>
     </div>
 
     <!-- look -->
     <div class="group">
       <div class="group__t">Look</div>
-      <div class="crow" data-tip="The colour of the sky the chimes hang in."><label>Sky</label><input type="color" id="skyCol" value="#0e1320" /></div>
-      <div class="knob" data-tip="Tints the horizon glow and the sheen on the chimes."><label>Hue <b id="hueR">20</b></label><input id="hue" type="range" min="0" max="100" value="20" /></div>
+      <div class="knob" data-tip="Tints the whole kaleidoscope and the glow that blooms when chimes ring."><label>Hue <b id="hueR">20</b></label><input id="hue" type="range" min="0" max="100" value="20" /></div>
     </div>
 
     <!-- export -->
@@ -151,220 +153,125 @@
   </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name:'WINDCHIME', desc:'Hang chimes, let the wind play them',
-  about:"Click the sky to hang a windchime wherever you like — or hit Scatter for a handful at once. Each chime is a cluster of tuned tubes; every chime you place stays in tune with the rest. Then let it play itself two ways: the Breeze sends gusts sweeping across, swaying the chimes and setting them ringing on their own; and Step sends a line travelling across the sky that rings each chime as it passes, so wherever you scattered them becomes a repeating melody. Choose a scale, a material, tune the pitch and the reverb. Click a chime to strike it by hand; double-click to take one down. Record the whole thing — sound and all — as a video.",
+<script>Opal.mountTopbar({ name:'WINDCHIME', desc:'A kaleidoscope the wind plays',
+  about:"Add an image and it becomes a living kaleidoscope. The number of windchimes you hang is the number of mirrored slices — a few for a bold, simple form, many for an intricate mandala. Then the wind plays it: gusts sweep through and ring the chimes (tuned to the scale and material you choose), and every ring makes the kaleidoscope pulse, bloom and turn. Step sends a rhythm travelling around the ring; Zoom and Twist and Sway reshape the pattern; the pitch of each note tints the glow. Click the image to strike a chime by hand. Record the whole performance — sound and all. Runs entirely on your device; no image ever leaves the page.",
   version:'v1' });</script>
 
 <script>
 (() => {
   const cv=document.getElementById('art'); const ctx=cv.getContext('2d');
   const $=id=>document.getElementById(id);
-  const TAU=Math.PI*2, CAP=48;
-  let ASPECT=1920/1080, W=0,H=0,dpr=1,S=1;
-  const P={ wind:45, sway:50, tempo:45, pitch:0, tubes:5, ring:55, shimmer:45, vol:70, hue:20 };
-  let playing=true, stepping=true;
-  let SCALE='penta', MATERIAL='metal';
-  let SKY=[14,19,32];
-
-  // ---------- colour helpers ----------
+  const TAU=Math.PI*2;
+  let ASPECT=1, W=0,H=0,dpr=1,S=1;
+  const P={ count:8, zoom:45, twist:30, wind:45, sway:50, tempo:45, pitch:0, ring:55, shimmer:45, vol:70, hue:20 };
+  let playing=true, stepping=true, SCALE='penta', MATERIAL='metal';
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
-  const hex2rgb=h=>{ const n=parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; };
-  const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
-  const rgbStr=c=>'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';
+  const h2r=(h,s,l)=>{ h=(h%1+1)%1; const a=s*Math.min(l,1-l); const f=n=>{ const k=(n+h*12)%12; return l-a*Math.max(-1,Math.min(k-3,9-k,1)); }; return [f(0)*255,f(8)*255,f(4)*255]; };
   const rgba=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+a+')';
-  function h2r(h,s,l){ h=(h%1+1)%1; const a=s*Math.min(l,1-l);
-    const f=n=>{ const k=(n+h*12)%12; return l-a*Math.max(-1,Math.min(k-3,9-k,1)); };
-    return [f(0)*255, f(8)*255, f(4)*255]; }
+  const rgbStr=c=>'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';
+
+  // ---------- source image (offscreen) ----------
+  const SRC=1200; const srcCv=document.createElement('canvas'); srcCv.width=SRC; srcCv.height=SRC; const sctx=srcCv.getContext('2d');
+  let hasImg=false, userImg=null;
+  function drawColourField(){ const N=SRC; hasImg=false; const base=h2r((P.hue/100),0.5,0.10); sctx.fillStyle=rgbStr(base); sctx.fillRect(0,0,N,N);
+    // bold, high-contrast shapes across the hue wheel — gives the kaleidoscope real facets to mirror
+    for(let i=0;i<80;i++){ const hue=(P.hue/100 + (Math.random()-0.5)*0.9 +1)%1; const col=h2r(hue, 0.7, 0.42+Math.random()*0.34);
+      sctx.fillStyle=rgba(col,0.85); const x=Math.random()*N, y=Math.random()*N, r=N*(0.02+Math.random()*0.11), t=Math.random();
+      sctx.save(); sctx.translate(x,y); sctx.rotate(Math.random()*TAU);
+      if(t<0.38){ sctx.beginPath(); sctx.arc(0,0,r,0,TAU); sctx.fill(); }
+      else if(t<0.70){ sctx.fillRect(-r,-r*0.28,r*2,r*0.56); }
+      else { sctx.beginPath(); sctx.moveTo(0,-r); sctx.lineTo(r*0.9,r); sctx.lineTo(-r*0.9,r); sctx.closePath(); sctx.fill(); }
+      sctx.restore(); }
+    for(let i=0;i<10;i++){ const col=h2r((P.hue/100+Math.random())%1,0.6,0.62); const x=Math.random()*N,y=Math.random()*N,r=N*0.22;
+      const gd=sctx.createRadialGradient(x,y,0,x,y,r); gd.addColorStop(0,rgba(col,0.42)); gd.addColorStop(1,rgba(col,0)); sctx.fillStyle=gd; sctx.beginPath(); sctx.arc(x,y,r,0,TAU); sctx.fill(); } }
+  function drawImageSource(img){ const N=SRC; sctx.clearRect(0,0,N,N); sctx.fillStyle='#000'; sctx.fillRect(0,0,N,N);
+    const s=Math.max(N/img.width,N/img.height), w=img.width*s, h=img.height*s; sctx.drawImage(img,(N-w)/2,(N-h)/2,w,h); hasImg=true; }
 
   // ---------- audio ----------
-  let AC=null, master=null, verb=null, wet=null, dry=null, streamDest=null;
-  function audio(){ if(AC) return AC;
-    AC=new (window.AudioContext||window.webkitAudioContext)();
-    master=AC.createGain(); master.gain.value=(P.vol/100)*0.85;
-    dry=AC.createGain(); dry.gain.value=1;
-    wet=AC.createGain(); wet.gain.value=P.shimmer/100;
-    verb=AC.createConvolver(); verb.buffer=makeIR(3.0, 2.4);
-    master.connect(dry).connect(AC.destination);
-    master.connect(verb).connect(wet).connect(AC.destination);
-    streamDest=AC.createMediaStreamDestination();
-    dry.connect(streamDest); wet.connect(streamDest);
-    return AC; }
-  function makeIR(dur, decay){ const rate=AC.sampleRate, len=Math.floor(rate*dur), buf=AC.createBuffer(2,len,rate);
-    for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch);
-      for(let i=0;i<len;i++){ d[i]=(Math.random()*2-1)*Math.pow(1-i/len, decay); } }
-    return buf; }
-
-  // material = list of [ratio, amplitude, decayScale] partials + attack + tube colour
+  let AC=null, master=null, wet=null, streamDest=null;
   const MAT={
-    metal:  { parts:[[1,1,2.4],[2.76,0.45,1.5],[5.40,0.22,0.9],[8.93,0.10,0.6]], atk:0.004, col:[214,220,230], edge:[255,255,255] },
-    glass:  { parts:[[1,1,1.2],[2.40,0.42,0.7],[4.20,0.20,0.45]],                atk:0.002, col:[206,232,238], edge:[255,255,255] },
-    crystal:{ parts:[[1,1,2.2],[2.00,0.6,1.9],[3.01,0.4,1.4],[4.98,0.24,1.0],[7.0,0.13,0.8]], atk:0.002, col:[224,234,246], edge:[255,255,255] },
-    bamboo: { parts:[[1,1,0.55],[2.0,0.28,0.35],[3.02,0.10,0.25]],               atk:0.006, col:[196,168,122], edge:[236,214,170] },
+    metal:  { parts:[[1,1,2.4],[2.76,0.45,1.5],[5.40,0.22,0.9],[8.93,0.10,0.6]], atk:0.004 },
+    glass:  { parts:[[1,1,1.2],[2.40,0.42,0.7],[4.20,0.20,0.45]],                atk:0.002 },
+    crystal:{ parts:[[1,1,2.2],[2.00,0.6,1.9],[3.01,0.4,1.4],[4.98,0.24,1.0],[7.0,0.13,0.8]], atk:0.002 },
+    bamboo: { parts:[[1,1,0.55],[2.0,0.28,0.35],[3.02,0.10,0.25]],               atk:0.006 },
   };
+  function audio(){ if(AC) return AC; AC=new (window.AudioContext||window.webkitAudioContext)();
+    master=AC.createGain(); master.gain.value=(P.vol/100)*0.85;
+    const dry=AC.createGain(); wet=AC.createGain(); wet.gain.value=P.shimmer/100;
+    const verb=AC.createConvolver(); { const len=Math.floor(AC.sampleRate*3.0), b=AC.createBuffer(2,len,AC.sampleRate);
+      for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.4); } verb.buffer=b; }
+    master.connect(dry).connect(AC.destination); master.connect(verb).connect(wet).connect(AC.destination);
+    streamDest=AC.createMediaStreamDestination(); dry.connect(streamDest); wet.connect(streamDest); return AC; }
   let voices=0;
-  function strike(freq, amp, pan, when){
-    if(!AC) return; if(voices>44) return;
-    const now=AC.currentTime + (when||0);
-    const m=MAT[MATERIAL]; const ring=0.5 + (P.ring/100)*5.5;
+  function strike(freq, amp, pan, when){ if(!AC||voices>44) return; const now=AC.currentTime+(when||0); const m=MAT[MATERIAL]; const ring=0.5+(P.ring/100)*5.5;
     const out=AC.createGain(); out.gain.value=clamp(amp,0,1)*0.5;
-    const pn=AC.createStereoPanner?AC.createStereoPanner():null;
-    if(pn){ pn.pan.value=clamp(pan||0,-1,1); out.connect(pn).connect(master); } else out.connect(master);
-    m.parts.forEach(([ratio,pa,ds])=>{
-      const o=AC.createOscillator(); o.type='sine';
-      o.frequency.value=freq*ratio*(1+(Math.random()-0.5)*0.004);
-      const g=AC.createGain(); const dur=ring*ds;
-      g.gain.setValueAtTime(0.0001, now);
-      g.gain.linearRampToValueAtTime(pa, now+m.atk);
-      g.gain.exponentialRampToValueAtTime(0.0001, now+m.atk+dur);
-      o.connect(g).connect(out); o.start(now); o.stop(now+m.atk+dur+0.05);
-      voices++; o.onended=()=>{ voices--; };
-    });
-  }
+    const pn=AC.createStereoPanner?AC.createStereoPanner():null; if(pn){ pn.pan.value=clamp(pan||0,-1,1); out.connect(pn).connect(master); } else out.connect(master);
+    m.parts.forEach(([r,pa,ds])=>{ const o=AC.createOscillator(); o.type='sine'; o.frequency.value=freq*r*(1+(Math.random()-0.5)*0.004);
+      const g=AC.createGain(); const dur=ring*ds; g.gain.setValueAtTime(0.0001,now); g.gain.linearRampToValueAtTime(pa,now+m.atk); g.gain.exponentialRampToValueAtTime(0.0001,now+m.atk+dur);
+      o.connect(g).connect(out); o.start(now); o.stop(now+m.atk+dur+0.05); voices++; o.onended=()=>{voices--;}; }); }
 
-  // ---------- scales & chimes ----------
+  // ---------- chimes = ring of tuned sound-sources; count also = kaleidoscope slices ----------
   const SCALES={ penta:[0,2,4,7,9], minor:[0,3,5,7,10], major:[0,2,4,5,7,9,11], whole:[0,2,4,6,8,10], hira:[0,2,3,7,8], insen:[0,1,5,6,10] };
-  const chimes=[];
-  function retune(c){ const sc=SCALES[SCALE]; const base=196*Math.pow(2,P.pitch/12); // ~G3 root
-    const n=c.tubes.length;
-    c.tubes.forEach((t,i)=>{ const deg=c.root+i; const oct=Math.floor(deg/sc.length); const semi=sc[((deg%sc.length)+sc.length)%sc.length]+oct*12;
-      t.freq=base*Math.pow(2,semi/12); t.rel=n>1?i/(n-1):0; }); }
-  function makeChime(fx,fy){ const nt=P.tubes; const c={ x:fx, y:fy, root:Math.floor(Math.random()*5),
-      len:0.16+Math.random()*0.08, phase:Math.random()*TAU, sway:0, swayV:0, sail:0,
-      petals:[], growth:0,
-      tubes:Array.from({length:nt},()=>({freq:220, rel:0 })) };
-    retune(c); return c; }
-  function scatter(n){ for(let i=0;i<n && chimes.length<CAP;i++){ chimes.push(makeChime(0.08+Math.random()*0.84, 0.10+Math.random()*0.34)); } }
+  let chimes=[];
+  function retune(c){ const sc=SCALES[SCALE], base=196*Math.pow(2,P.pitch/12);
+    c.tubes.forEach((t,i)=>{ const deg=c.root+i, oct=Math.floor(deg/sc.length), semi=sc[((deg%sc.length)+sc.length)%sc.length]+oct*12; t.freq=base*Math.pow(2,semi/12); t.rel=i/(c.tubes.length-1||1); }); }
+  function rebuildChimes(){ const n=P.count; chimes=[]; for(let i=0;i<n;i++){ const ang=(i/n)*TAU; const c={ ang, root:(i*2)%5, lit:0, tubes:Array.from({length:5},()=>({freq:220,rel:0})) }; retune(c); chimes.push(c); } }
+  function retuneAll(){ chimes.forEach(retune); }
 
-  function findChime(fx,fy){ let best=null,bd=1e9; const px=fx*W, py=fy*H;
-    for(const c of chimes){ const d=Math.hypot(px-c.x*W, py-c.y*H); const reach=(60+c.growth*22)*S;
-      if(d<reach && d<bd){ bd=d; best=c; } }
-    return best; }
+  let energy=0, hueKick=0, spinV=0;
+  function voice(c, i, amp, when){ const t=c.tubes[i]; strike(t.freq, amp, Math.sin(c.ang)*0.55, when||0);
+    energy=Math.min(2.2, energy+amp*0.7); hueKick=Math.min(1, hueKick+amp*0.3); spinV+=amp*0.25*(Math.sin(c.ang)>0?1:-1); c.lit=1; }
+  function ringChime(c, amp){ const n=c.tubes.length, k=1+((Math.random()*Math.min(3,n))|0), st=(Math.random()*n)|0;
+    for(let j=0;j<k;j++) voice(c,(st+j)%n, amp*(0.5+Math.random()*0.4), j*0.04*Math.random()); }
 
-  // one note: play it AND bloom a stroke from it — sound and picture are the same event, always in sync.
-  function voice(c, i, amp, when){ const t=c.tubes[i];
-    strike(t.freq, amp, (c.x*2-1)*0.55, when||0);
-    spawnPetal(c, t.freq, amp);
-  }
-  // a growing organic stroke (à la Bloom) whose shape + colour come from the note's frequency
-  function spawnPetal(c, freq, amp){
-    const fp=clamp((Math.log2(freq)-Math.log2(140))/(Math.log2(1100)-Math.log2(140)),0,1); // 0 low … 1 high
-    c.petals.push({
-      ang:-Math.PI/2 + (Math.random()-0.5)*Math.PI*1.7,   // radiate, biased upward
-      curl:(Math.random()-0.5)*1.9,
-      len:0, maxLen:(0.05 + (1-fp)*0.13 + amp*0.06)*H,      // low notes reach further
-      w:(3.2 + (1-fp)*5.5 + amp*3)*S,                        // low notes bloom fatter
-      hue:((P.hue/100)+0.55 + fp*0.42)%1,                    // pitch shifts the colour
-      sat:0.45+0.4*fp, lum:0.5+0.18*amp,
-      born:T, ttl:3.5 + (1-fp)*4.5, wob:Math.random()*TAU, env:0 });
-    if(c.petals.length>16) c.petals.shift();
-    c.growth=Math.min(2.4, c.growth + 0.45 + amp*0.6);
-    c.swayV += (Math.random()<0.5?-1:1)*amp*0.5;
-  }
-  function ringChime(c, mode, strength){ audio();
-    if(mode==='wind'){ const k=1+Math.floor(Math.random()*Math.min(3,c.tubes.length)), start=Math.floor(Math.random()*c.tubes.length);
-      for(let j=0;j<k;j++) voice(c,(start+j)%c.tubes.length, strength*(0.4+Math.random()*0.4), j*0.05*Math.random());
-    } else { // step / click — a soft roll through the notes
-      c.tubes.forEach((t,i)=> voice(c,i, strength*(0.55+0.35*(1-t.rel)), i*0.03)); }
-  }
-
-  // ---------- canvas fit ----------
+  // ---------- fit ----------
   function fit(){ const availH=innerHeight-168, availW=innerWidth-28;
     let h=Math.min(availH,1650), w=h*ASPECT; if(w>availW){ w=availW; h=w/ASPECT; }
-    W=Math.round(w); H=Math.round(h); S=H/900;
+    W=Math.round(w); H=Math.round(h); S=H/1000;
     dpr=Math.max(Math.min(devicePixelRatio||1,2), 2160/Math.max(W,H));
     cv.style.width=W+'px'; cv.style.height=H+'px'; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
 
-  // ---------- simulation ----------
-  let t0=performance.now(), T=0, stepPh=0;
-  let gust={active:false,x:0,vx:0,str:0}, gustTimer=1.4;
-  function trigGust(){ const w=P.wind/100; gust.active=true; gust.x=-0.12; gust.vx=0.35+w*0.75+Math.random()*0.2; gust.str=0.4+w*0.9; }
-
-  function step(dt){
-    if(!playing) return;
-    T+=dt;
-    const wv=P.wind/100, swy=P.sway/100;
-    // ambient gusts
-    gustTimer-=dt; if(gustTimer<=0){ if(wv>0.01) trigGust(); gustTimer=(2.6 - wv*2.0)*(0.6+Math.random()*0.9)+0.4; }
-    if(gust.active){ const px=gust.x; gust.x+=gust.vx*dt; if(gust.x>1.15) gust.active=false;
-      for(const c of chimes){ if(px<c.x && c.x<=gust.x) c.swayV += gust.str*(0.8+Math.random()*0.5)*(0.4+swy); } }  // gust only PUSHES; sound comes from the swing
-    // per-chime damped sway driven by breeze — and the swing itself makes the sound (always in sync)
-    const stiff=7.0, damp=0.9;
-    for(const c of chimes){
-      const breeze=(Math.sin(T*0.7+c.phase)+0.6*Math.sin(T*1.7+c.phase*2.3));
-      const force=breeze*(0.08+wv*0.9)*(0.25+swy);
-      const prev=c.sway;
-      c.swayV += (-stiff*c.sway - damp*c.swayV + force)*dt;
-      c.sway += c.swayV*dt; c.sway=clamp(c.sway,-0.7,0.7);
-      c.sail += ((c.sway*1.25) - c.sail)*Math.min(1,dt*6);
-      // when the form swings through centre with enough speed, it sounds + blooms
-      const speed=Math.abs(c.swayV);
-      if((prev<0)!==(c.sway<0) && speed>0.5) voice(c,(Math.random()*c.tubes.length)|0, Math.min(0.9,0.12+speed*0.5), 0);
-      // grow / recede / wander the blooms
-      for(const p of c.petals){ const age=T-p.born;
-        const rise=Math.min(1, age/0.32), decay=Math.max(0, 1-(age-0.32)/p.ttl);
-        p.env=rise*decay; p.len += ((p.maxLen*(0.35+0.65*p.env)) - p.len)*Math.min(1,dt*7); }
-      if(c.petals.length) c.petals=c.petals.filter(p=> (T-p.born) < p.ttl+0.6);
-      c.growth *= Math.pow(0.5, dt*0.5);
-    }
-    // step sweep
-    if(stepping){ const dur=8.5 - (P.tempo/100)*7.2; const prev=stepPh%1; stepPh+=dt/dur; const cur=stepPh%1;
-      for(const c of chimes){ const x=c.x; const crossed = prev<cur ? (x>prev && x<=cur) : (x>prev || x<=cur);
-        if(crossed) ringChime(c,'step',0.72); } }
+  // ---------- sim ----------
+  let T=0, t0=performance.now(), stepIdx=0, stepAcc=0, gustTimer=1.2, spin=0;
+  function step(dt){ if(!playing) return; T+=dt; const wv=P.wind/100;
+    // ambient gusts ring a cluster of chimes
+    gustTimer-=dt; if(gustTimer<=0){ if(wv>0.01){ const n=1+Math.floor(Math.random()*Math.max(1,chimes.length*0.4));
+        for(let i=0;i<n;i++){ const c=chimes[(Math.random()*chimes.length)|0]; if(c) ringChime(c, 0.4+wv*0.5); } }
+      gustTimer=(2.4-wv*1.9)*(0.6+Math.random()*0.9)+0.35; }
+    // step sequence — ring around the ring in time
+    if(stepping && chimes.length){ stepAcc+=dt; const iv=0.7-(P.tempo/100)*0.58; if(stepAcc>=iv){ stepAcc-=iv; const c=chimes[stepIdx%chimes.length]; if(c) ringChime(c,0.6); stepIdx++; } }
+    // decays
+    energy=Math.max(0, energy-dt*1.3); hueKick=Math.max(0,hueKick-dt*0.8); spinV*=Math.pow(0.2,dt);
+    for(const c of chimes){ if(c.lit>0) c.lit=Math.max(0,c.lit-dt*1.8); }
+    spin += dt*(0.04 + (P.tempo/100)*0.22 + wv*0.14 + (P.twist/100)*0.35) + spinV*dt;
   }
 
-  // ---------- render ----------
+  // ---------- kaleidoscope render ----------
   function render(){
     ctx.save(); ctx.scale(dpr,dpr);
-    // sky
-    const accent=h2r((P.hue/100)*0.85+0.55, 0.55, 0.62);
-    const top=mix(SKY, accent, 0.32), horizon=mix(SKY, accent, 0.14);
-    const g=ctx.createLinearGradient(0,0,0,H);
-    g.addColorStop(0, rgbStr(mix(SKY,[255,255,255],0.06)));
-    g.addColorStop(0.42, rgbStr(mix(SKY, top, 0.5)));
-    g.addColorStop(0.78, rgbStr(horizon));
-    g.addColorStop(1, rgbStr(mix(SKY,[0,0,0],0.25)));
-    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-    // drifting breeze streaks
-    const wv=P.wind/100;
-    if(wv>0.02){ ctx.strokeStyle=rgba([255,255,255], 0.04+wv*0.05); ctx.lineWidth=1;
-      for(let i=0;i<6;i++){ const yy=((i*137.5 + T*(20+wv*120))%(H+80))-40; const xoff=(T*(30+wv*160)+i*90)% (W+200)-100;
-        ctx.beginPath(); ctx.moveTo(xoff,yy); ctx.quadraticCurveTo(xoff+60,yy-8,xoff+120,yy); ctx.stroke(); } }
-    // step playhead
-    if(stepping){ const x=(stepPh%1)*W; const lg=ctx.createLinearGradient(x-30,0,x+30,0);
-      lg.addColorStop(0,rgba(accent,0)); lg.addColorStop(0.5,rgba(mix(accent,[255,255,255],0.4),0.16)); lg.addColorStop(1,rgba(accent,0));
-      ctx.fillStyle=lg; ctx.fillRect(x-30,0,60,H);
-      ctx.strokeStyle=rgba(mix(accent,[255,255,255],0.5),0.5); ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-    // chimes
-    for(const c of chimes) drawChime(c, accent);
-    ctx.restore();
-  }
-
-  // an organic bloom — flowing ink strokes that grew from the notes this seed has sounded
-  function drawChime(c, accent){
-    const cx=c.x*W, cy=c.y*H;
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(c.sway*0.7);
-    ctx.globalCompositeOperation='lighter';
-    // soft core that swells while the bloom is active
-    if(c.growth>0.02){ const coreR=(5+c.growth*11)*S; const cc=h2r(((P.hue/100)+0.58)%1,0.4,0.72);
-      const cg=ctx.createRadialGradient(0,0,0,0,0,coreR);
-      cg.addColorStop(0, rgba(cc, 0.35*Math.min(1,c.growth))); cg.addColorStop(1, rgba(cc,0));
-      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(0,0,coreR,0,TAU); ctx.fill(); }
-    // each petal = a curved stroke laid down as soft ink dabs
-    for(const p of c.petals){ if(p.len<0.6) continue;
-      const steps=Math.max(4, Math.round(p.len/(4.5*S)));
-      const wob=Math.sin(T*1.5+p.wob)*0.18;
-      for(let s=0;s<=steps;s++){ const u=s/steps;
-        const a=p.ang + (p.curl+wob)*u, r=u*p.len;
-        const x=Math.cos(a)*r, y=Math.sin(a)*r;
-        const rad=Math.max(0.5, p.w*(1-u*0.65)*(0.55+0.45*p.env));
-        const col=h2r(p.hue, p.sat, p.lum*(1-u*0.35));
-        const al=(0.14+0.13*p.env)*(1-u*0.45);
-        const gd=ctx.createRadialGradient(x,y,0,x,y,rad);
-        gd.addColorStop(0, rgba(col, al)); gd.addColorStop(1, rgba(col,0));
-        ctx.fillStyle=gd; ctx.beginPath(); ctx.arc(x,y,rad,0,TAU); ctx.fill();
-      }
+    ctx.fillStyle='#0b0d16'; ctx.fillRect(0,0,W,H);
+    const cx=W/2, cy=H/2, R=Math.hypot(W,H)*0.56;
+    const slices=Math.max(2, Math.min(24, chimes.length||P.count));
+    const seg=TAU/slices;
+    const wob=Math.sin(T*1.3)*(P.sway/100)*0.16;
+    const zoom=(0.7+(P.zoom/100)*1.9)*(1 + energy*0.28 + 0.05*Math.sin(T*0.4));
+    const ox=0.20+Math.sin(T*0.11)*0.16+wob, oy=0.14+Math.cos(T*0.093)*0.16;
+    for(let i=0;i<slices;i++){
+      ctx.save(); ctx.translate(cx,cy); ctx.rotate(spin+i*seg); if(i%2) ctx.scale(1,-1);
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,R,-seg/2-0.01,seg/2+0.01); ctx.closePath(); ctx.clip();
+      ctx.rotate(-spin*0.55); ctx.scale(zoom,zoom);
+      ctx.drawImage(srcCv, -SRC/2 + ox*SRC, -SRC/2 + oy*SRC, SRC, SRC);
+      ctx.restore();
     }
+    // hue wash (tints image kaleidoscopes; deepens the colour field)
+    const tint=h2r((P.hue/100), 0.6, 0.5);
+    ctx.globalCompositeOperation='overlay'; ctx.fillStyle=rgba(tint, 0.06+hueKick*0.22); ctx.fillRect(0,0,W,H);
+    // energy bloom from the centre when chimes ring
+    if(energy>0.01){ const gg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.6); const gc=h2r((P.hue/100 + hueKick*0.3)%1,0.5,0.7);
+      gg.addColorStop(0, rgba(gc, 0.22*Math.min(1,energy))); gg.addColorStop(1, rgba(gc,0)); ctx.globalCompositeOperation='lighter'; ctx.fillStyle=gg; ctx.fillRect(0,0,W,H); }
     ctx.globalCompositeOperation='source-over';
+    // vignette
+    const vg=ctx.createRadialGradient(cx,cy,R*0.35,cx,cy,R); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.5)'); ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
     ctx.restore();
   }
 
@@ -372,36 +279,28 @@
   function tick(now){ requestAnimationFrame(tick); const dt=Math.min(0.05,(now-t0)/1000); t0=now; step(dt); render(); }
 
   // ---------- interaction ----------
-  let lastClick=0, lastX=0, lastY=0;
-  cv.addEventListener('pointerdown', e=>{ e.preventDefault();
-    const A=audio(); if(A.state==='suspended') A.resume();
-    const r=cv.getBoundingClientRect(); const fx=(e.clientX-r.left)/r.width, fy=(e.clientY-r.top)/r.height;
-    const now=performance.now(); const dbl=(now-lastClick<330)&&Math.hypot(fx-lastX,fy-lastY)<0.03; lastClick=now; lastX=fx; lastY=fy;
-    const hit=findChime(fx,fy);
-    if(hit){ if(dbl){ const i=chimes.indexOf(hit); if(i>=0) chimes.splice(i,1); } else ringChime(hit,'click',0.95); }
-    else if(!dbl && chimes.length<CAP){ const c=makeChime(fx, clamp(fy,0.05,0.5)); chimes.push(c); ringChime(c,'click',0.7); }
-    $('hint').style.opacity=0;
-  });
+  cv.addEventListener('pointerdown', e=>{ e.preventDefault(); const A=audio(); if(A.state==='suspended') A.resume();
+    if(chimes.length) ringChime(chimes[(Math.random()*chimes.length)|0], 0.85); $('hint').style.opacity=0; });
 
   // ---------- controls ----------
   $('playBtn').addEventListener('click', ()=>{ playing=!playing; if(playing && AC && AC.state==='suspended') AC.resume();
     $('playBtn').textContent=playing?'Pause':'Play'; $('playBtn').setAttribute('aria-pressed',playing?'true':'false'); });
-  $('stepBtn').addEventListener('click', ()=>{ stepping=!stepping;
-    $('stepBtn').textContent=stepping?'Step through · on':'Step through · off'; $('stepBtn').setAttribute('aria-pressed',stepping?'true':'false'); });
-  $('scatterBtn').addEventListener('click', ()=>{ audio(); if(AC.state==='suspended') AC.resume(); scatter(6); $('hint').style.opacity=0; });
-  $('clearBtn').addEventListener('click', ()=>{ chimes.length=0; });
-
+  $('stepBtn').addEventListener('click', ()=>{ stepping=!stepping; $('stepBtn').textContent=stepping?'Step through · on':'Step through · off'; $('stepBtn').setAttribute('aria-pressed',stepping?'true':'false'); });
+  $('imgBtn').addEventListener('click', ()=> $('imgFile').click());
+  $('imgFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const img=new Image();
+    img.onload=()=>{ userImg=img; drawImageSource(img); $('hint').style.opacity=0; }; img.src=URL.createObjectURL(f); });
+  $('clrImgBtn').addEventListener('click', ()=>{ userImg=null; drawColourField(); });
   const fmt={ pitch:v=>(v>0?'+':'')+v };
-  [['wind'],['sway'],['tempo'],['pitch'],['tubes'],['ring'],['shimmer'],['vol'],['hue']].forEach(([k])=>{
+  [['count'],['zoom'],['twist'],['wind'],['sway'],['tempo'],['pitch'],['ring'],['shimmer'],['vol'],['hue']].forEach(([k])=>{
     const inp=$(k), out=$(k+'R'); inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=(fmt[k]?fmt[k](P[k]):P[k]);
+      if(k==='count') rebuildChimes();
+      if(k==='pitch') retuneAll();
       if(k==='vol' && master) master.gain.setTargetAtTime((P.vol/100)*0.85, AC.currentTime, 0.02);
       if(k==='shimmer' && wet) wet.gain.setTargetAtTime(P.shimmer/100, AC.currentTime, 0.02);
-      if(k==='pitch') chimes.forEach(retune);
+      if(k==='hue' && !hasImg) drawColourField();
     }); });
-  $('scale').addEventListener('change', e=>{ SCALE=e.target.value; chimes.forEach(retune); });
+  $('scale').addEventListener('change', e=>{ SCALE=e.target.value; retuneAll(); });
   $('material').addEventListener('change', e=>{ MATERIAL=e.target.value; });
-  $('skyCol').addEventListener('input', e=>{ SKY=hex2rgb(e.target.value); cv.style.background=e.target.value; });
-
   $('aspect').addEventListener('change', e=>{ const [x,y]=e.target.value.split('/').map(Number); ASPECT=x/y; fit(); });
 
   // ---------- record (video + audio) ----------
@@ -413,8 +312,7 @@
     const rw=ev2(ASPECT>=1?long:Math.round(long*ASPECT)), rh=ev2(ASPECT>=1?Math.round(long/ASPECT):long);
     recCv=document.createElement('canvas'); recCv.width=rw; recCv.height=rh; recCtx=recCv.getContext('2d');
     recCtx.imageSmoothingEnabled=true; recCtx.imageSmoothingQuality='high';
-    const drawFrame=()=>{ recCtx.drawImage(cv,0,0,rw,rh); };
-    drawFrame();
+    const drawFrame=()=>{ recCtx.drawImage(cv,0,0,rw,rh); }; drawFrame();
     const stream=recCv.captureStream(30);
     try{ if(streamDest) streamDest.stream.getAudioTracks().forEach(tr=>stream.addTrack(tr)); }catch(err){}
     const mime=['video/mp4;codecs=avc1.640029,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
@@ -422,14 +320,13 @@
     rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:24000000, audioBitsPerSecond:192000}); chunks=[];
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop=()=>{ cancelAnimationFrame(recRAF); clearInterval(recTimer); $('recDot').classList.remove('on');
-      const blob=new Blob(chunks,{type:mime}); const a2=document.createElement('a');
-      a2.href=URL.createObjectURL(blob); a2.download='windchime.'+ext; a2.click(); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); };
+      const blob=new Blob(chunks,{type:mime}); const a2=document.createElement('a'); a2.href=URL.createObjectURL(blob); a2.download='windchime.'+ext; a2.click();
+      $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); };
     rec.start();
     (function comp(){ drawFrame(); if(rec && rec.state==='recording') recRAF=requestAnimationFrame(comp); })();
     recStart=performance.now(); $('recDot').classList.add('on'); $('recDot').querySelector('b').textContent='0:00';
     recTimer=setInterval(()=>{ $('recDot').querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250);
     $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
-
   $('saveBtn').addEventListener('click', ()=>{ const a2=document.createElement('a'); a2.download='windchime.png'; a2.href=cv.toDataURL('image/png'); a2.click(); });
 
   addEventListener('resize', ()=>{ fit(); });
@@ -449,7 +346,7 @@
   addEventListener('pointerdown', hideTip); addEventListener('scroll', hideTip, true);
 
   // ---------- go ----------
-  fit(); scatter(5); requestAnimationFrame(tick);
+  drawColourField(); rebuildChimes(); fit(); requestAnimationFrame(tick);
 })();
 </script>
 </body>
