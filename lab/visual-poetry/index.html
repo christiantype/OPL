@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>VISUAL POETRY — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --ink:#f2f3f7; --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.14); --rail:300px; --top:82px; }
+  @media (max-width:560px){ :root{ --top:74px; } }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; background:#0b0c14; color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; overscroll-behavior:none; }
+  body.dark .opal-topbar{ background:transparent; border:none; color:var(--ink); }
+  body.dark .opal-subhead__name{ color:var(--ink); }
+  body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #art{ background:#0c0e16; box-shadow:0 10px 44px rgba(0,0,0,.55); max-width:100%; max-height:100%; display:block; border-radius:2px; cursor:pointer; touch-action:none; }
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); font-size:13px; color:var(--dim);
+    background:rgba(11,12,20,.7); padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .3s; z-index:7; }
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
+  #sizeDock select{ background:rgba(15,16,24,.92); color:var(--ink); border:1px solid var(--line); border-radius:2px;
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
+    -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
+    padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
+    background:rgba(15,16,24,.92); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:#ff5468; animation:recblink 1s infinite; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  @keyframes recblink{ 50%{ opacity:.25; } }
+
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
+    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:rgba(15,16,24,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
+    border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .knob label{ display:flex; justify-content:space-between; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); }
+  .knob b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:20px; background:transparent; cursor:pointer; }
+  input[type=range]::-webkit-slider-runnable-track{ height:2px; background:var(--line); border-radius:2px; }
+  input[type=range]::-moz-range-track{ height:2px; background:var(--line); border-radius:2px; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; margin-top:-6px; border-radius:50%; background:var(--ink); }
+  input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
+  textarea{ width:100%; background:rgba(255,255,255,.05); color:var(--ink); border:1px solid var(--line); border-radius:4px;
+    font:inherit; font-size:13px; padding:8px 9px; resize:vertical; }
+  textarea:focus{ outline:none; border-color:rgba(255,255,255,.4); }
+  .btn{ appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--ink);
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:8px 12px; border-radius:2px; cursor:pointer; transition:.15s; white-space:nowrap; }
+  .btn:hover{ background:rgba(255,255,255,.11); }
+  .btn[aria-pressed="true"], .btn.primary{ background:var(--ink); color:#0b0c14; border-color:var(--ink); }
+  select.btn{ text-transform:uppercase; width:100%; }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--line); }
+  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid2 .btn, .btn.full{ width:100%; }
+  .tog{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--dim); }
+  .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
+    background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
+    -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.6);
+    font-size:11px; line-height:1.5; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+</style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
+</head>
+<body class="dark">
+  <div id="wrap"><canvas id="art"></canvas></div>
+  <div id="hint">Press Start — the koto plays; recite your verse over it, or pluck the strings yourself</div>
+  <div id="recDot"><i></i><b>0:00</b></div>
+  <div id="sizeDock">
+    <select id="aspect" title="Canvas size">
+      <option value="1080/1350">Portrait · 4:5</option>
+      <option value="1080/1920" selected>Story · 9:16</option>
+      <option value="1/1">Square · 1:1</option>
+      <option value="1920/1080">Landscape · 16:9</option>
+    </select>
+  </div>
+
+  <div id="dock">
+
+    <!-- transport -->
+    <div class="group">
+      <button class="btn primary full" id="startBtn" aria-pressed="false" data-tip="Start the auto-accompaniment — a flowing koto figure over a held drone, the way a poetry synth backs a recitation. Press again to stop.">Start</button>
+      <div class="knob" data-tip="Speed of the accompaniment."><label>Tempo <b id="tempoR">42</b></label><input id="tempo" type="range" min="0" max="100" value="42" /></div>
+    </div>
+
+    <!-- mode -->
+    <div class="group">
+      <div class="group__t">Mode · the koto scale</div>
+      <select id="scale" class="btn" data-tip="The traditional Japanese scale the whole instrument is tuned to — the character of the piece.">
+        <option value="in">In · Miyako-bushi — classic, plaintive</option>
+        <option value="hira">Hirajoshi — the koto's own tuning</option>
+        <option value="kumoi">Kumoi — bright, open</option>
+        <option value="iwato">Iwato — dark, austere</option>
+        <option value="insen">Insen — spare, floating</option>
+        <option value="yo">Yo — folk, sunlit</option>
+      </select>
+      <div class="knob" data-tip="Moves the whole instrument up or down in pitch — the key you recite in."><label>Key <b id="keyR">D</b></label><input id="key" type="range" min="48" max="64" value="50" /></div>
+      <select id="pattern" class="btn" data-tip="The shape of the koto figure that plays under you.">
+        <option value="asc">Rising figure</option>
+        <option value="roll">Rolling figure</option>
+        <option value="sparse">Sparse · pillow words</option>
+        <option value="wave">Wave · back and forth</option>
+      </select>
+    </div>
+
+    <!-- voices — like the ST-50's row of sliders -->
+    <div class="group">
+      <div class="group__t">Voices</div>
+      <div class="knob" data-tip="The plucked koto — the melody figure."><label>Koto <b id="kotoR">80</b></label><input id="koto" type="range" min="0" max="100" value="80" /></div>
+      <div class="knob" data-tip="The shakuhachi — a breathy bamboo flute that answers with slow phrases."><label>Shakuhachi <b id="shakuR">45</b></label><input id="shaku" type="range" min="0" max="100" value="45" /></div>
+      <div class="knob" data-tip="The shō — a held reed drone underneath everything."><label>Drone <b id="droneR">55</b></label><input id="drone" type="range" min="0" max="100" value="55" /></div>
+      <div class="knob" data-tip="A soft tsuzumi drum marking the pulse."><label>Drum <b id="drumR">30</b></label><input id="drum" type="range" min="0" max="100" value="30" /></div>
+      <div class="knob" data-tip="Hall reverb — the space around the sound."><label>Reverb <b id="verbR">55</b></label><input id="verb" type="range" min="0" max="100" value="55" /></div>
+      <div class="knob" data-tip="Overall loudness."><label>Volume <b id="volR">75</b></label><input id="vol" type="range" min="0" max="100" value="75" /></div>
+    </div>
+
+    <!-- verse -->
+    <div class="group">
+      <div class="group__t">Verse · the poem you recite</div>
+      <textarea id="verse" rows="3" spellcheck="false">the old pond—
+a frog leaps in,
+the sound of water</textarea>
+      <div class="tog" data-tip="Show the verse on screen, one line lifting into view — a teleprompter to recite over the koto."><label>Show verse</label><button class="btn" id="verseBtn" aria-pressed="true">On</button></div>
+      <div class="grid2">
+        <button class="btn" id="prevBtn" data-tip="Previous line.">◀ Line</button>
+        <button class="btn" id="nextBtn" data-tip="Advance to the next line as you recite.">Line ▶</button>
+      </div>
+    </div>
+
+    <!-- look -->
+    <div class="group">
+      <div class="group__t">Look</div>
+      <div class="knob" data-tip="The ink tone of the scene — the sky behind the strings."><label>Hue <b id="hueR">60</b></label><input id="hue" type="range" min="0" max="100" value="60" /></div>
+    </div>
+
+    <!-- export -->
+    <div class="group">
+      <div class="group__t">Export</div>
+      <div class="grid2">
+        <button class="btn" id="recBtn" aria-pressed="false">Record</button>
+        <button class="btn" id="saveBtn">Save</button>
+      </div>
+    </div>
+
+  </div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'VISUAL POETRY', desc:'A Japanese poetry synthesizer',
+  about:"A poetry synthesizer — a replica of the rare Japanese instruments (like the Suiko ST-50) built to accompany shigin, the recitation of poetry. Press Start and it plays itself: a flowing koto figure over a held shō drone, in a traditional Japanese scale, answered now and then by a breathy shakuhachi and marked by a soft drum — exactly the kind of auto-accompaniment those machines gave a reciter. Choose the scale (In, Hirajoshi, Kumoi, Iwato, Insen, Yo), the key, the figure, and balance the voices on the row of sliders. Type your verse and it lifts into view a line at a time to recite over the music. The whole thing is a visualizer of what's playing: thirteen koto strings that pluck and shiver as each note sounds, a rising moon, ink and petals moving to the pulse. Pluck the strings yourself by clicking, record the performance, or save a still. Runs entirely on your device.",
+  version:'v1' });</script>
+
+<script>
+(() => {
+  const cv=document.getElementById('art'); const ctx=cv.getContext('2d');
+  const $=id=>document.getElementById(id);
+  const TAU=Math.PI*2;
+  let ASPECT=1080/1920, W=0,H=0,dpr=1,S=1;
+  const P={ tempo:42, key:50, koto:80, shaku:45, drone:55, drum:30, verb:55, vol:75, hue:60 };
+  let playing=false, verseOn=true;
+  let SCALE='in', PATTERN='asc';
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+  const h2r=(h,s,l)=>{ h=(h%1+1)%1; const a=s*Math.min(l,1-l); const f=n=>{ const k=(n+h*12)%12; return l-a*Math.max(-1,Math.min(k-3,9-k,1)); }; return [f(0)*255,f(8)*255,f(4)*255]; };
+  const rgba=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+a+')';
+  const rgbStr=c=>'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';
+  const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+
+  // traditional Japanese pentatonic scales (semitones from the key)
+  const SCALES={ in:[0,1,5,7,8], hira:[0,2,3,7,8], kumoi:[0,2,3,7,9], iwato:[0,1,5,6,10], insen:[0,1,5,7,10], yo:[0,2,5,7,9] };
+  const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const mtof=m=>440*Math.pow(2,(m-69)/12);
+  // 13 koto strings across ~2.5 octaves of the current scale
+  const NSTR=13;
+  function scaleMidi(i){ const sc=SCALES[SCALE]; const oct=Math.floor(i/sc.length); return P.key + sc[i%sc.length] + 12*oct; }
+  const strings=Array.from({length:NSTR},()=>({amp:0, phase:Math.random()*TAU}));
+
+  // ---------- audio ----------
+  let AC=null, master=null, wet=null, streamDest=null, droneNodes=null;
+  function audio(){ if(AC) return AC; AC=new (window.AudioContext||window.webkitAudioContext)();
+    master=AC.createGain(); master.gain.value=(P.vol/100)*0.8;
+    const dry=AC.createGain(); wet=AC.createGain(); wet.gain.value=P.verb/100;
+    const verb=AC.createConvolver(); { const len=Math.floor(AC.sampleRate*3.0), b=AC.createBuffer(2,len,AC.sampleRate);
+      for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6); } verb.buffer=b; }
+    master.connect(dry).connect(AC.destination); master.connect(verb).connect(wet).connect(AC.destination);
+    streamDest=AC.createMediaStreamDestination(); dry.connect(streamDest); wet.connect(streamDest); return AC; }
+
+  // plucked koto — bright attack, a few harmonics, quick-ish decay
+  function pluckKoto(midi, amp){ const A=audio(); const now=A.currentTime; const f=mtof(midi);
+    const out=A.createGain(); out.gain.value=amp*0.5*(P.koto/100);
+    const pan=A.createStereoPanner?A.createStereoPanner():null; if(pan){ pan.pan.value=clamp((midi-P.key-9)/18,-0.7,0.7); out.connect(pan).connect(master); } else out.connect(master);
+    const parts=[[1,1,1.6],[2,0.4,1.1],[3,0.22,0.8],[4.2,0.12,0.55]];
+    parts.forEach(([r,a,dc])=>{ const o=A.createOscillator(); o.type='triangle'; o.frequency.value=f*r*(1+(Math.random()-0.5)*0.003);
+      const g=A.createGain(); const dur=1.4*dc; g.gain.setValueAtTime(0.0001,now); g.gain.linearRampToValueAtTime(a,now+0.005); g.gain.exponentialRampToValueAtTime(0.0001,now+dur);
+      o.connect(g).connect(out); o.start(now); o.stop(now+dur+0.05); });
+    // pluck flash on the matching string
+    pluckString(midi, amp);
+  }
+  // breathy shakuhachi phrase note
+  function shaku(midi, amp, dur){ const A=audio(); const now=A.currentTime; const f=mtof(midi);
+    const out=A.createGain(); out.gain.value=amp*(P.shaku/100)*0.4; out.connect(master);
+    const o=A.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(f*0.996,now); o.frequency.linearRampToValueAtTime(f,now+0.12);
+    const lfo=A.createOscillator(), lg=A.createGain(); lfo.frequency.value=5.2; lg.gain.value=f*0.008; lfo.connect(lg).connect(o.frequency); lfo.start(now); lfo.stop(now+dur+0.1);
+    const g=A.createGain(); g.gain.setValueAtTime(0.0001,now); g.gain.linearRampToValueAtTime(1,now+0.14); g.gain.setValueAtTime(1,now+dur-0.2); g.gain.exponentialRampToValueAtTime(0.0001,now+dur);
+    o.connect(g).connect(out); o.start(now); o.stop(now+dur+0.1);
+    // breath noise
+    const nb=A.createBufferSource(); const bl=Math.floor(A.sampleRate*dur), buf=A.createBuffer(1,bl,A.sampleRate); const dd=buf.getChannelData(0);
+    for(let i=0;i<bl;i++) dd[i]=(Math.random()*2-1); nb.buffer=buf; const bp=A.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=f*2; bp.Q.value=3;
+    const ng=A.createGain(); ng.gain.setValueAtTime(0.0001,now); ng.gain.linearRampToValueAtTime(0.05*(P.shaku/100),now+0.12); ng.gain.exponentialRampToValueAtTime(0.0001,now+dur);
+    nb.connect(bp).connect(ng).connect(out); nb.start(now); nb.stop(now+dur);
+    breathFlash=1;
+  }
+  function drumHit(amp){ const A=audio(); const now=A.currentTime;
+    const o=A.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(180,now); o.frequency.exponentialRampToValueAtTime(60,now+0.18);
+    const g=A.createGain(); g.gain.setValueAtTime(amp*(P.drum/100)*0.6,now); g.gain.exponentialRampToValueAtTime(0.0001,now+0.22);
+    o.connect(g).connect(master); o.start(now); o.stop(now+0.24); drumFlash=1; }
+  function startDrone(){ stopDrone(); const A=audio(); droneNodes=[]; const roots=[P.key-12, P.key-5];
+    roots.forEach(m=>{ const o=A.createOscillator(); o.type='sawtooth'; o.frequency.value=mtof(m);
+      const lp=A.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=520;
+      const g=A.createGain(); g.gain.value=0; g.gain.setTargetAtTime((P.drone/100)*0.12, A.currentTime, 1.2);
+      o.connect(lp).connect(g).connect(master); o.start(); droneNodes.push({o,g}); }); }
+  function stopDrone(){ if(!droneNodes) return; const A=AC; droneNodes.forEach(n=>{ try{ n.g.gain.setTargetAtTime(0,A.currentTime,0.4); n.o.stop(A.currentTime+1.2);}catch(e){} }); droneNodes=null; }
+  function retuneDrone(){ if(!droneNodes) return; const roots=[P.key-12,P.key-5]; droneNodes.forEach((n,i)=>{ try{ n.o.frequency.setTargetAtTime(mtof(roots[i]),AC.currentTime,0.3);}catch(e){} }); }
+
+  // string pluck visual
+  function pluckString(midi, amp){ // find nearest string
+    let best=0,bd=1e9; for(let i=0;i<NSTR;i++){ const d=Math.abs(scaleMidi(i)-midi); if(d<bd){bd=d;best=i;} }
+    strings[best].amp=Math.min(1.4, strings[best].amp+0.7+amp*0.6); ripple(best); }
+  let breathFlash=0, drumFlash=0;
+  const ripples=[]; function ripple(i){ ripples.push({ i, born:performance.now()/1000 }); if(ripples.length>30) ripples.shift(); }
+
+  // ---------- sequencer ----------
+  let beat=0, acc=0;
+  const PATTERNS={ asc:[0,2,4,6,4,2], roll:[0,2,4,2,4,6], sparse:[0,-1,4,-1,2,-1], wave:[0,3,6,3,0,3] };
+  function stepSeq(){ // called once per beat
+    const pat=PATTERNS[PATTERN]; const deg=pat[beat%pat.length];
+    if(deg>=0 && P.koto>0){ const oct=(beat%12<6?0:0); pluckKoto(scaleMidi(deg)+ (Math.random()<0.15?12:0), 0.7+Math.random()*0.2); }
+    if(P.drum>0 && beat%2===0) drumHit(beat%4===0?0.9:0.5);
+    // shakuhachi answers every 8 beats
+    if(P.shaku>0 && beat%8===7){ const notes=[6,8,7]; notes.forEach((n,k)=> setTimeout(()=>{ if(playing) shaku(scaleMidi(n%SCALES[SCALE].length + 5), 0.8, 0.9); }, k*260)); }
+    beat++;
+  }
+
+  // ---------- verse ----------
+  let verseLines=[], vIdx=0;
+  function parseVerse(){ verseLines=$('verse').value.split('\n'); vIdx=clamp(vIdx,0,Math.max(0,verseLines.length-1)); }
+  let vShowT=0;
+  function nextVerse(){ if(vIdx<verseLines.length-1){ vIdx++; vShowT=performance.now()/1000; } }
+  function prevVerse(){ if(vIdx>0){ vIdx--; vShowT=performance.now()/1000; } }
+
+  // ---------- canvas ----------
+  function fit(){ const availH=innerHeight-168, availW=innerWidth-28;
+    let h=Math.min(availH,1650), w=h*ASPECT; if(w>availW){ w=availW; h=w/ASPECT; }
+    W=Math.round(w); H=Math.round(h); S=H/1000;
+    dpr=Math.max(Math.min(devicePixelRatio||1,2), 2160/Math.max(W,H));
+    cv.style.width=W+'px'; cv.style.height=H+'px'; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+
+  // ---------- render ----------
+  let T=0, t0=performance.now();
+  function render(){
+    ctx.save(); ctx.scale(dpr,dpr);
+    const now=performance.now()/1000;
+    // ink sky
+    const sky=h2r((P.hue/100)*0.4+0.6, 0.35, 0.10);
+    const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0, rgbStr(mix(sky,[0,0,0],0.25))); g.addColorStop(0.55, rgbStr(sky)); g.addColorStop(1, rgbStr(mix(sky,[0,0,0],0.45)));
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    const accent=h2r((P.hue/100)*0.5+0.6, 0.5, 0.68);
+    // rising moon
+    const moonY=H*0.24 - Math.sin(T*0.05)*10*S; const moonX=W*0.72; const mr=64*S;
+    const mg=ctx.createRadialGradient(moonX,moonY,0,moonX,moonY,mr*2.4); mg.addColorStop(0,rgba(mix(accent,[255,255,255],0.6),0.5)); mg.addColorStop(0.4,rgba(accent,0.10)); mg.addColorStop(1,rgba(accent,0));
+    ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(moonX,moonY,mr*2.4,0,TAU); ctx.fill();
+    ctx.fillStyle=rgba(mix(accent,[255,255,255],0.75),0.92); ctx.beginPath(); ctx.arc(moonX,moonY,mr,0,TAU); ctx.fill();
+
+    // falling petals with the pulse
+    const dr=(1-drumFlash); for(let i=0;i<10;i++){ const t=(T*(6+i)+i*97)%(H+60); const x=(i*131.3+T*(9+i*2))%(W+40)-20;
+      ctx.fillStyle=rgba(mix(accent,[255,255,255],0.4),0.10+0.05*drumFlash); ctx.beginPath(); ctx.ellipse(x, t-30, 4*S,2.2*S, i, 0, TAU); ctx.fill(); }
+
+    // the 13 koto strings
+    const x0=W*0.10, x1=W*0.90, midX=(x0+x1)/2;
+    const top=H*0.46, bot=H*0.9; const step=(bot-top)/(NSTR-1);
+    for(let i=0;i<NSTR;i++){ const st=strings[i]; const y=top+i*step;
+      const amp=st.amp*14*S; const col=mix(accent,[255,255,255], 0.2+0.5*Math.min(1,st.amp));
+      ctx.beginPath();
+      for(let s=0;s<=24;s++){ const u=s/24; const x=x0+(x1-x0)*u;
+        const env=Math.sin(u*Math.PI); const yy=y + Math.sin(u*Math.PI*3 + T*22 + st.phase)*amp*env;
+        if(s===0) ctx.moveTo(x,yy); else ctx.lineTo(x,yy); }
+      ctx.strokeStyle=rgba(col, 0.28+0.5*Math.min(1,st.amp)); ctx.lineWidth=(1+st.amp*1.6)*S;
+      if(st.amp>0.05){ ctx.shadowColor=rgba(accent,0.5*Math.min(1,st.amp)); ctx.shadowBlur=12*S*Math.min(1,st.amp); }
+      ctx.stroke(); ctx.shadowBlur=0;
+      // bridge dots
+      ctx.fillStyle=rgba(mix(accent,[255,255,255],0.3),0.5); ctx.beginPath(); ctx.arc(x0,y,2*S,0,TAU); ctx.fill(); ctx.beginPath(); ctx.arc(x1,y,2*S,0,TAU); ctx.fill();
+    }
+    // ripples where a string was plucked
+    for(const rp of ripples){ const age=now-rp.born; if(age>1.1) continue; const y=top+rp.i*step; const k=1-age/1.1;
+      ctx.strokeStyle=rgba(mix(accent,[255,255,255],0.5),0.5*k); ctx.lineWidth=1.4*S; ctx.beginPath(); ctx.arc(midX, y, (10+age*120)*S, 0, TAU); ctx.stroke(); }
+
+    // shakuhachi breath sweep
+    if(breathFlash>0.01){ const y=top-40*S; ctx.strokeStyle=rgba(mix(accent,[255,255,255],0.6),0.25*breathFlash); ctx.lineWidth=2*S;
+      ctx.beginPath(); for(let s=0;s<=40;s++){ const u=s/40; const x=x0+(x1-x0)*u; const yy=y+Math.sin(u*6+T*3)*10*S*breathFlash; if(s===0)ctx.moveTo(x,yy); else ctx.lineTo(x,yy);} ctx.stroke(); }
+
+    // drone band
+    if(P.drone>0){ const dy=bot+18*S; const a=(P.drone/100)*(0.12+0.05*Math.sin(T*1.5)); ctx.fillStyle=rgba(accent,a); ctx.fillRect(0,dy,W,H-dy); }
+
+    // verse — a line lifting into view
+    if(verseOn && verseLines.length){ const line=verseLines[vIdx]||''; const age=now-vShowT; const rise=clamp(age/0.7,0,1);
+      const fs=Math.round(34*S); ctx.font='italic '+fs+'px Georgia, "Times New Roman", serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      const y=H*0.34 + (1-rise)*16*S;
+      ctx.fillStyle=rgba([255,255,255], 0.9*rise); ctx.shadowColor=rgba(accent,0.6); ctx.shadowBlur=20*S; ctx.fillText(line, W*0.5, y); ctx.shadowBlur=0;
+      // small progress dots
+      ctx.textBaseline='middle'; for(let i=0;i<verseLines.length;i++){ ctx.fillStyle=rgba([255,255,255], i===vIdx?0.8:0.25); ctx.beginPath(); ctx.arc(W*0.5+(i-(verseLines.length-1)/2)*14*S, H*0.40, 2.6*S,0,TAU); ctx.fill(); } }
+
+    // key/scale label
+    ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.font=(12*S)+'px -apple-system,sans-serif';
+    ctx.fillStyle=rgba([255,255,255],0.35); ctx.fillText(NOTES[((P.key%12)+12)%12]+' · '+({in:'In',hira:'Hirajoshi',kumoi:'Kumoi',iwato:'Iwato',insen:'Insen',yo:'Yo'})[SCALE], W*0.06, H*0.94);
+    ctx.restore();
+  }
+
+  // ---------- loop ----------
+  function tick(now){ requestAnimationFrame(tick); const dt=Math.min(0.05,(now-t0)/1000); t0=now; T+=dt;
+    if(playing){ acc+=dt; const iv=0.62 - (P.tempo/100)*0.44; if(acc>=iv){ acc-=iv; stepSeq(); } }
+    for(const st of strings){ if(st.amp>0) st.amp=Math.max(0, st.amp - dt*1.6); }
+    if(breathFlash>0) breathFlash=Math.max(0,breathFlash-dt*0.7);
+    if(drumFlash>0) drumFlash=Math.max(0,drumFlash-dt*3);
+    render();
+  }
+
+  // ---------- interaction: pluck strings by clicking ----------
+  cv.addEventListener('pointerdown', e=>{ const A=audio(); if(A.state==='suspended') A.resume();
+    const r=cv.getBoundingClientRect(); const fy=(e.clientY-r.top)/r.height; const top=0.46, bot=0.9;
+    const i=clamp(Math.round((fy-top)/((bot-top)/(NSTR-1))),0,NSTR-1);
+    pluckKoto(scaleMidi(i), 0.9); $('hint').style.opacity=0; });
+
+  // ---------- controls ----------
+  function setPlaying(on){ playing=on; const A=audio(); if(A.state==='suspended') A.resume();
+    if(on){ beat=0; acc=0; startDrone(); } else { stopDrone(); }
+    $('startBtn').textContent=on?'Stop':'Start'; $('startBtn').setAttribute('aria-pressed',on?'true':'false'); }
+  $('startBtn').addEventListener('click', ()=> setPlaying(!playing));
+  $('scale').addEventListener('change', e=>{ SCALE=e.target.value; });
+  $('pattern').addEventListener('change', e=>{ PATTERN=e.target.value; });
+  [['tempo'],['koto'],['shaku'],['drone'],['drum'],['verb'],['vol'],['hue'],['key']].forEach(([k])=>{ const inp=$(k), out=$(k+'R');
+    inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent = k==='key'? NOTES[((P.key%12)+12)%12] : P[k];
+      if(k==='vol'&&master) master.gain.setTargetAtTime((P.vol/100)*0.8,AC.currentTime,0.02);
+      if(k==='verb'&&wet) wet.gain.setTargetAtTime(P.verb/100,AC.currentTime,0.02);
+      if(k==='drone'&&droneNodes) droneNodes.forEach(n=>n.g.gain.setTargetAtTime((P.drone/100)*0.12,AC.currentTime,0.1));
+      if(k==='key') retuneDrone();
+    }); });
+  $('verse').addEventListener('input', parseVerse);
+  $('verseBtn').addEventListener('click', ()=>{ verseOn=!verseOn; $('verseBtn').textContent=verseOn?'On':'Off'; $('verseBtn').setAttribute('aria-pressed',verseOn?'true':'false'); });
+  $('nextBtn').addEventListener('click', nextVerse);
+  $('prevBtn').addEventListener('click', prevVerse);
+  addEventListener('keydown', e=>{ if(e.target.tagName==='TEXTAREA') return; if(e.key==='ArrowRight'){ nextVerse(); } else if(e.key==='ArrowLeft'){ prevVerse(); }
+    else if(e.code==='Space'){ e.preventDefault(); setPlaying(!playing); } });
+  $('aspect').addEventListener('change', e=>{ const [x,y]=e.target.value.split('/').map(Number); ASPECT=x/y; fit(); });
+
+  // ---------- record ----------
+  let rec=null, chunks=[], recCv=null, recCtx=null, recRAF=0, recStart=0, recTimer=0;
+  const recFmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+  $('recBtn').addEventListener('click', ()=>{ if(rec && rec.state==='recording'){ rec.stop(); return; }
+    const A=audio(); if(A.state==='suspended') A.resume();
+    const long=1920, ev2=n=>n-(n&1);
+    const rw=ev2(ASPECT>=1?long:Math.round(long*ASPECT)), rh=ev2(ASPECT>=1?Math.round(long/ASPECT):long);
+    recCv=document.createElement('canvas'); recCv.width=rw; recCv.height=rh; recCtx=recCv.getContext('2d');
+    recCtx.imageSmoothingEnabled=true; recCtx.imageSmoothingQuality='high';
+    const drawFrame=()=>{ recCtx.drawImage(cv,0,0,rw,rh); }; drawFrame();
+    const stream=recCv.captureStream(30);
+    try{ if(streamDest) streamDest.stream.getAudioTracks().forEach(tr=>stream.addTrack(tr)); }catch(err){}
+    const mime=['video/mp4;codecs=avc1.640029,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
+    const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
+    rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:20000000, audioBitsPerSecond:192000}); chunks=[];
+    rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{ cancelAnimationFrame(recRAF); clearInterval(recTimer); $('recDot').classList.remove('on');
+      const blob=new Blob(chunks,{type:mime}); const a2=document.createElement('a'); a2.href=URL.createObjectURL(blob); a2.download='visual-poetry.'+ext; a2.click();
+      $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); };
+    rec.start();
+    (function comp(){ drawFrame(); if(rec && rec.state==='recording') recRAF=requestAnimationFrame(comp); })();
+    recStart=performance.now(); $('recDot').classList.add('on'); $('recDot').querySelector('b').textContent='0:00';
+    recTimer=setInterval(()=>{ $('recDot').querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250);
+    $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
+  $('saveBtn').addEventListener('click', ()=>{ const a2=document.createElement('a'); a2.download='visual-poetry.png'; a2.href=cv.toDataURL('image/png'); a2.click(); });
+
+  addEventListener('resize', ()=>{ fit(); });
+  setTimeout(()=>{ $('hint').style.opacity=0.9; }, 100);
+
+  // ---------- tooltips ----------
+  let tipEl=null, tipT=null, tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return;
+    if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0';
+    const r=host.getBoundingClientRect(), t=tipEl.getBoundingClientRect();
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8, r.bottom+8);
+    tipEl.style.left=Math.max(8,Math.min(r.left, innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+  addEventListener('pointerover', e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return;
+    clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown', hideTip); addEventListener('scroll', hideTip, true);
+
+  // ---------- go ----------
+  parseVerse(); fit(); requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
