@@ -61,14 +61,9 @@
   .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
   .grid2 .btn, .btn.full{ width:100%; }
-  /* equation editor — type the coefficients */
-  .eqline{ font-family:Georgia,"Times New Roman",serif; font-style:italic; font-size:13.5px; line-height:2.05; color:var(--dim); }
-  .eqline b{ font-style:normal; color:var(--ink); }
-  .eqline i{ font-style:normal; color:var(--dim); padding:0 1px; }
-  .cf{ width:46px; background:rgba(255,255,255,.06); color:var(--ink); border:1px solid var(--line); border-radius:2px;
-    text-align:center; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-style:normal; font-size:11px; padding:3px 2px; margin:0 1px; }
-  .cf:focus{ outline:1px solid var(--ink); }
-  .cf::-webkit-outer-spin-button,.cf::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  /* equation — a caption line above the coefficient sliders */
+  .eqcap{ font-family:Georgia,"Times New Roman",serif; font-style:italic; font-size:12.5px; color:var(--dim); margin:4px 0 -2px; }
+  .eqcap b{ font-style:normal; color:var(--ink); }
   .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
     background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
     -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
@@ -113,9 +108,17 @@
 
     <!-- equation — type the numbers to reshape the attractor -->
     <div class="group" data-tip="This is the map the attractor iterates. Type any numbers and the shape changes live. Set Drift to 0 for a still equation; above 0, the two constants breathe.">
-      <div class="group__t">Equation · type the numbers</div>
-      <div class="eqline"><b>x′ = sin(</b> <input class="cf" data-i="0" type="text" inputmode="decimal" spellcheck="false"> x² <i>+</i> <input class="cf" data-i="1" type="text" inputmode="decimal" spellcheck="false"> y² <i>+</i> <input class="cf" data-i="2" type="text" inputmode="decimal" spellcheck="false"> xy <i>+</i> <input class="cf" data-i="3" type="text" inputmode="decimal" spellcheck="false"> <b>)</b></div>
-      <div class="eqline"><b>y′ = cos(</b> <input class="cf" data-i="4" type="text" inputmode="decimal" spellcheck="false"> x² <i>+</i> <input class="cf" data-i="5" type="text" inputmode="decimal" spellcheck="false"> y² <i>+</i> <input class="cf" data-i="6" type="text" inputmode="decimal" spellcheck="false"> xy <i>+</i> <input class="cf" data-i="7" type="text" inputmode="decimal" spellcheck="false"> <b>)</b></div>
+      <div class="group__t">Equation · drag to explore</div>
+      <div class="eqcap"><b>x′ = sin(</b> a·x² + b·y² + c·xy + d <b>)</b></div>
+      <div class="knob"><label>a · x² <b id="c0R">1.00</b></label><input class="ceq" data-i="0" id="c0" type="range" min="-2" max="2" step="0.01" value="1" /></div>
+      <div class="knob"><label>b · y² <b id="c1R">-1.00</b></label><input class="ceq" data-i="1" id="c1" type="range" min="-2" max="2" step="0.01" value="-1" /></div>
+      <div class="knob"><label>c · xy <b id="c2R">0.00</b></label><input class="ceq" data-i="2" id="c2" type="range" min="-2" max="2" step="0.01" value="0" /></div>
+      <div class="knob"><label>d · const <b id="c3R">0.39</b></label><input class="ceq" data-i="3" id="c3" type="range" min="0" max="6.28" step="0.01" value="0.39" /></div>
+      <div class="eqcap"><b>y′ = cos(</b> e·x² + f·y² + g·xy + h <b>)</b></div>
+      <div class="knob"><label>e · x² <b id="c4R">0.00</b></label><input class="ceq" data-i="4" id="c4" type="range" min="-2" max="2" step="0.01" value="0" /></div>
+      <div class="knob"><label>f · y² <b id="c5R">0.00</b></label><input class="ceq" data-i="5" id="c5" type="range" min="-2" max="2" step="0.01" value="0" /></div>
+      <div class="knob"><label>g · xy <b id="c6R">2.00</b></label><input class="ceq" data-i="6" id="c6" type="range" min="-2" max="2" step="0.01" value="2" /></div>
+      <div class="knob"><label>h · const <b id="c7R">1.55</b></label><input class="ceq" data-i="7" id="c7" type="range" min="0" max="6.28" step="0.01" value="1.55" /></div>
     </div>
 
     <!-- export -->
@@ -197,7 +200,7 @@
     for(let i=0;i<8;i++) C[i]=best.c[i];
     D.c3=best.c3; D.c7=best.c7; D.a3=best.a3; D.a7=best.a7;
     D.fx=0.4+Math.random()*0.6; D.fy=0.3+Math.random()*0.5; D.phx=rnd(0,TAU); D.phy=rnd(0,TAU);
-    theta=rnd(0,40); px=0.1; py=0.0; if(dens) dens.fill(0); updateAB(); warm(); if(document.querySelector('.cf')) syncCoefFields(); }
+    theta=rnd(0,40); px=0.1; py=0.0; if(dens) dens.fill(0); updateAB(); warm(); if(document.querySelector('.ceq')) syncCoefFields(); }
 
   // ---- colour LUT (density -> colour), rebuilt when hue/glow change ----
   const DMAX=42; let lut=new Uint8ClampedArray(256*3); let lutHue=-1, lutGlow=-1;
@@ -279,11 +282,13 @@
     inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=inp.value; }); });
   $('playBtn').addEventListener('click', ()=>{ playing=!playing; $('playBtn').textContent=playing?'Pause':'Play'; $('playBtn').setAttribute('aria-pressed', playing?'true':'false'); });
   $('newBtn').addEventListener('click', randomize);
-  // Equation editor — type coefficients, the attractor reshapes live
-  function syncCoefFields(){ document.querySelectorAll('.cf').forEach(inp=>{ const i=+inp.dataset.i;
-    const v = i===3?D.c3 : i===7?D.c7 : C[i]; inp.value = String(Math.round(v*100)/100); }); }
-  document.querySelectorAll('.cf').forEach(inp=>{ inp.addEventListener('input', ()=>{ const v=parseFloat(inp.value); if(isNaN(v)) return;
+  // Equation editor — drag the coefficient sliders, the attractor reshapes live
+  function syncCoefFields(){ document.querySelectorAll('.ceq').forEach(inp=>{ const i=+inp.dataset.i;
+    let v = i===3?D.c3 : i===7?D.c7 : C[i]; v=Math.round(v*100)/100;
+    inp.value=v; const r=$(inp.id+'R'); if(r) r.textContent=v.toFixed(2); }); }
+  document.querySelectorAll('.ceq').forEach(inp=>{ inp.addEventListener('input', ()=>{ const v=parseFloat(inp.value);
     const i=+inp.dataset.i; if(i===3) D.c3=v; else if(i===7) D.c7=v; else C[i]=v;
+    const r=$(inp.id+'R'); if(r) r.textContent=v.toFixed(2);
     if(dens) dens.fill(0); updateAB(); warm(); }); });
   $('aspect').addEventListener('change', e=>{ const [x,y]=e.target.value.split('/').map(Number); ASPECT=x/y; fit(); setupGrid(); warm(); });
 
