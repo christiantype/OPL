@@ -101,7 +101,12 @@
   .row.folded > *:not(.rowhead){ display:none; }
   .row.folded{ padding-bottom:10px; }
   .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
-  .rail input[type=range]{ width:100%; }
+  /* flat shell sliders (the Lab standard) — replaces the rotary knobs */
+  .rail input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:20px; margin:0; background:transparent; cursor:pointer; }
+  .rail input[type=range]::-webkit-slider-runnable-track{ height:2px; background:var(--track); border-radius:2px; }
+  .rail input[type=range]::-moz-range-track{ height:2px; background:var(--track); border-radius:2px; }
+  .rail input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; margin-top:-6px; border-radius:50%; background:var(--ink); }
+  .rail input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
   .rail select{ width:100%; }
   .rail .seg{ width:100%; }
   .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
@@ -228,6 +233,12 @@
   .cin label{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); }
   #thumbs{ display:flex; flex-wrap:wrap; gap:5px; margin:2px 0 2px; }
   #thumbs img{ width:38px; height:38px; object-fit:cover; border-radius:4px; border:1px solid var(--hair); }
+  /* canvas-size dock — pinned top-right, matches the tool's own theme */
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:190px; z-index:10; transition:opacity .5s ease; }
+  #sizeDock select{ background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:4px;
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer; }
+  body.idle #sizeDock{ opacity:0; pointer-events:none; }
+  body.panels #sizeDock{ opacity:1; pointer-events:auto; }
 </style>
 </head>
 <body>
@@ -242,6 +253,14 @@
   <button class="icon" id="playBtn" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
   <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
   <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
+</div>
+<div id="sizeDock">
+  <select id="itAspect" title="Canvas size">
+    <option value="1080x1350">Portrait · 4:5</option>
+    <option value="1080x1920">Story · 9:16</option>
+    <option value="1080x1080">Square · 1:1</option>
+    <option value="1920x1080">Landscape · 16:9</option>
+  </select>
 </div>
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
@@ -1074,10 +1093,19 @@
   wire(); document.body.classList.add('dark');
   $('rail').classList.add('open'); document.body.classList.add('panels'); $('toggle').setAttribute('aria-pressed','true');   // controls open by default
   resize();
-  document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
+  /* sliders render natively as flat shell sliders — knob-wrapping disabled for Lab consistency (makeKnob/paintKnob kept but unused) */
   syncRes(); syncHint();
   requestAnimationFrame(tick);
   window.imgtrain={ state, imgs, render:renderComp, exportDims, addImageFile:addImage, get bands(){return bands;} };
+})();
+</script>
+<script>
+/* Top-right size dock → drives the existing #sizeSeg segmented control (kept in sync both ways). */
+(function(){ var sd=document.getElementById('itAspect'); if(!sd) return;
+  sd.addEventListener('change', function(){ var b=document.querySelector('#sizeSeg [data-z="'+sd.value+'"]'); if(b) b.click(); });
+  var reflect=function(){ var cur=document.querySelector('#sizeSeg [data-z][aria-pressed="true"]'); if(cur) sd.value=cur.getAttribute('data-z'); };
+  window.addEventListener('load', reflect); reflect();
+  var seg=document.getElementById('sizeSeg'); if(seg) seg.addEventListener('click', function(){ setTimeout(reflect,0); });
 })();
 </script>
 </body>
