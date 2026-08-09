@@ -15,12 +15,26 @@
   body.dark .opal-topbar, body.dark .opal-subhead{ background:#07070c; border-bottom-color:rgba(255,255,255,.1); }
   body.dark .opal-subhead__name{ color:var(--ink); }
   body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
-  #wrap{ position:fixed; top:var(--top); left:0; right:var(--rail); bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
   #art{ max-width:100%; max-height:100%; display:block; border-radius:2px; box-shadow:0 10px 50px rgba(0,0,0,.6); }
-  #dock{ position:fixed; top:var(--top); right:0; bottom:0; width:var(--rail); z-index:6;
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); font-size:13px; color:var(--dim);
+    background:rgba(7,7,12,.7); padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .3s; z-index:7; }
+  /* canvas-size dock — pinned top-right on every tool */
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
+  #sizeDock select{ background:rgba(11,11,18,.92); color:var(--ink); border:1px solid var(--line); border-radius:2px;
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
+    -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
+    padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
+    background:rgba(11,11,18,.92); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:#ff5468; animation:recblink 1s infinite; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  @keyframes recblink{ 50%{ opacity:.25; } }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
     padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:rgba(11,11,18,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
+    border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; }
   .btn{ appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--ink);
     font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
@@ -46,43 +60,69 @@
   input[type=range]::-moz-range-track{ height:2px; background:var(--line); border-radius:2px; }
   input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; margin-top:-6px; border-radius:50%; background:var(--ink); }
   input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
+  .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
+    background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
+    -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.6);
+    font-size:11px; line-height:1.5; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
 </style>
 <link rel="stylesheet" href="/lab/shared/tool.css" />
 </head>
 <body class="dark">
   <div id="wrap"><canvas id="art"></canvas></div>
   <input id="file" type="file" accept="image/*" hidden />
+  <div id="hint">Add an image — it becomes a field of sequins</div>
+  <div id="recDot"><i></i><b>0:00</b></div>
+  <div id="sizeDock">
+    <select id="aspect" title="Canvas size">
+      <option value="1080/1350">Portrait · 4:5</option>
+      <option value="1080/1920">Story · 9:16</option>
+      <option value="1/1">Square · 1:1</option>
+      <option value="1920/1080">Landscape · 16:9</option>
+    </select>
+  </div>
 
   <div id="dock">
 
     <!-- primary action -->
     <div class="group">
-      <button class="btn primary full" id="uploadBtn">Add image</button>
+      <button class="btn primary full" id="uploadBtn" data-tip="Load your own photo — it's resampled into a field of sequins, each disc taking the colour underneath it.">Add image</button>
     </div>
 
-    <!-- look -->
+    <!-- form -->
     <div class="group">
-      <div class="group__t">Look</div>
+      <div class="group__t">Form</div>
       <div id="sliders">
-        <div class="knob"><label>Size <b id="sizeR">18</b></label><input id="size" type="range" min="6" max="46" value="18" /></div>
-        <div class="knob"><label>Gap <b id="gapR">14</b></label><input id="gap" type="range" min="0" max="60" value="14" /></div>
-        <div class="knob"><label>Shimmer <b id="shimmerR">55</b></label><input id="shimmer" type="range" min="0" max="100" value="55" /></div>
-        <div class="knob"><label>Glow <b id="glowR">60</b></label><input id="glow" type="range" min="0" max="100" value="60" /></div>
-        <div class="knob"><label>Iridescence <b id="iridR">45</b></label><input id="irid" type="range" min="0" max="100" value="45" /></div>
-        <div class="knob"><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="0" max="100" value="0" /></div>
-        <div class="knob"><label>Saturation <b id="satR">55</b></label><input id="sat" type="range" min="0" max="100" value="55" /></div>
-        <div class="knob"><label>Round <b id="roundR">100</b></label><input id="round" type="range" min="0" max="100" value="100" /></div>
-        <div class="knob"><label>Density <b id="densityR">100</b></label><input id="density" type="range" min="30" max="100" value="100" /></div>
+        <div class="knob" data-tip="How big each sequin disc is."><label>Size <b id="sizeR">18</b></label><input id="size" type="range" min="6" max="46" value="18" /></div>
+        <div class="knob" data-tip="The spacing left between sequins — more gap shows the backdrop between them."><label>Gap <b id="gapR">14</b></label><input id="gap" type="range" min="0" max="60" value="14" /></div>
+        <div class="knob" data-tip="Rounds each sequin from a square into a perfect disc."><label>Roundness <b id="roundR">100</b></label><input id="round" type="range" min="0" max="100" value="100" /></div>
+        <div class="knob" data-tip="How many sequins are stitched in — lower thins them out for a sparser, scattered look."><label>Density <b id="densityR">100</b></label><input id="density" type="range" min="30" max="100" value="100" /></div>
       </div>
+    </div>
+
+    <!-- shimmer -->
+    <div class="group">
+      <div class="group__t">Shimmer</div>
+      <div class="knob" data-tip="How much the sequins twinkle — the strength of the catching-the-light sparkle."><label>Shimmer <b id="shimmerR">55</b></label><input id="shimmer" type="range" min="0" max="100" value="55" /></div>
+      <div class="knob" data-tip="Brightness of the glints — how boldly each sparkle flares."><label>Glow <b id="glowR">60</b></label><input id="glow" type="range" min="0" max="100" value="60" /></div>
+      <div class="knob" data-tip="The rainbow foil shift — how much a travelling spectrum plays across the sequins as they twinkle."><label>Iridescence <b id="iridR">45</b></label><input id="irid" type="range" min="0" max="100" value="45" /></div>
+    </div>
+
+    <!-- colour -->
+    <div class="group">
+      <div class="group__t">Colour</div>
+      <div class="knob" data-tip="Rotates every sequin's colour around the wheel."><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="0" max="100" value="0" /></div>
+      <div class="knob" data-tip="How vivid the colours are — from near-grey up to fully saturated."><label>Saturation <b id="satR">55</b></label><input id="sat" type="range" min="0" max="100" value="55" /></div>
     </div>
 
     <!-- canvas & export -->
     <div class="group">
       <div class="group__t">Canvas &amp; export</div>
-      <button class="btn full" id="bgBtn" aria-pressed="true">Dark</button>
+      <button class="btn full" id="bgBtn" aria-pressed="true" data-tip="Switch the backdrop behind the sequins between dark and light.">Dark</button>
       <div class="grid2">
-        <button class="btn" id="recBtn" aria-pressed="false">Record</button>
-        <button class="btn" id="saveBtn">Save</button>
+        <button class="btn" id="recBtn" aria-pressed="false" data-tip="Record the shimmer to a video file.">Record</button>
+        <button class="btn" id="saveBtn" data-tip="Save the current frame as a PNG image.">Save</button>
       </div>
     </div>
 
@@ -99,6 +139,7 @@
   const $=id=>document.getElementById(id);
   const sample=document.createElement('canvas'), sctx=sample.getContext('2d',{willReadFrequency:true});
   let img=null, cells=[], W=0, H=0, dpr=1, dark=true, F=0, need=true;
+  let ASPECT=1080/1350;   // canvas shape, driven by the top-right size dock
   const P={ size:18, gap:14, shimmer:55, glow:60, irid:45, sat:55, round:100, density:100, hue:0 };
 
   /* default demo image — a few vivid overlapping blooms so it shows immediately */
@@ -109,7 +150,7 @@
       x.globalCompositeOperation='lighter'; x.fillStyle=g; x.beginPath(); x.arc(cx,cy,r,0,6.2832); x.fill(); }
     x.globalCompositeOperation='source-over'; const im=new Image(); im.onload=()=>{ img=im; need=true; }; im.src=c.toDataURL(); }
 
-  function fit(){ const availH=innerHeight-168, availW=innerWidth-28; const ar = img? img.width/img.height : 900/1120;
+  function fit(){ const availH=innerHeight-168, availW=innerWidth-28; const ar = ASPECT;
     let h=Math.min(availH, 1120), w=h*ar; if(w>availW){ w=availW; h=w/ar; }
     W=Math.round(w); H=Math.round(h);
     dpr=Math.max(Math.min(devicePixelRatio||1,2), 2160/Math.max(W,H));   // hi-res backing so Save + Record are crisp
@@ -182,12 +223,14 @@
   Object.keys(P).forEach(k=>{ const inp=$(k), out=$(k+'R'); inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=inp.value;
     if(k==='size'||k==='gap'||k==='density') need=true; }); });
   $('bgBtn').addEventListener('click', ()=>{ dark=!dark; $('bgBtn').textContent=dark?'Dark':'Light'; $('bgBtn').setAttribute('aria-pressed',dark?'true':'false'); });
+  $('aspect').addEventListener('change', e=>{ const [x,y]=e.target.value.split('/').map(Number); ASPECT=x/y; fit(); });
 
   $('uploadBtn').addEventListener('click', ()=> $('file').click());
   $('file').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const url=URL.createObjectURL(f);
-    const im=new Image(); im.onload=()=>{ img=im; fit(); need=true; URL.revokeObjectURL(url); }; im.src=url; });
+    const im=new Image(); im.onload=()=>{ img=im; ASPECT=im.width/im.height; fit(); need=true; URL.revokeObjectURL(url); }; im.src=url; });
 
-  let rec=null, chunks=[], recRAF=0;
+  let rec=null, chunks=[], recRAF=0, recStart=0, recTimer=0;
+  const recFmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
   $('recBtn').addEventListener('click', ()=>{ if(rec&&rec.state==='recording'){ rec.stop(); return; }
     // Record from a fixed-size high-res buffer (long edge 2160, even dims) so output is crisp and consistent
     const ar=W/H, long=2160, ev2=n=>n-(n&1);
@@ -201,13 +244,31 @@
     const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
     rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:40000000}); chunks=[];
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
-    rec.onstop=()=>{ cancelAnimationFrame(recRAF); const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='sequins.'+ext; a.click();
+    rec.onstop=()=>{ cancelAnimationFrame(recRAF); clearInterval(recTimer); $('recDot').classList.remove('on');
+      const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='sequins.'+ext; a.click();
       $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); };
     rec.start();
     (function comp(){ drawFrame(); if(rec&&rec.state==='recording') recRAF=requestAnimationFrame(comp); })();
+    recStart=performance.now(); $('recDot').classList.add('on'); $('recDot').querySelector('b').textContent='0:00';
+    recTimer=setInterval(()=>{ $('recDot').querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250);
     $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
 
   $('saveBtn').addEventListener('click', ()=>{ const a=document.createElement('a'); a.download='sequins.png'; a.href=cv.toDataURL('image/png'); a.click(); });
+
+  setTimeout(()=>{ $('hint').style.opacity=0; }, 3600);
+
+  // ---- tooltips ----
+  let tipEl=null, tipT=null, tipFor=null;
+  function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+  function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return;
+    if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0';
+    const r=host.getBoundingClientRect(), t=tipEl.getBoundingClientRect();
+    let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8, r.bottom+8);
+    tipEl.style.left=Math.max(8,Math.min(r.left, innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+  addEventListener('pointerover', e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return;
+    clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown', hideTip); addEventListener('scroll', hideTip, true);
 
   demo(); fit(); requestAnimationFrame(frame);
   addEventListener('resize', ()=>{ fit(); });
