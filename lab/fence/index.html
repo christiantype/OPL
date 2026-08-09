@@ -16,16 +16,21 @@
   body.dark .opal-subhead__name{ color:var(--ink); }
   body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
 
-  #wrap{ position:fixed; top:var(--top); left:0; right:var(--rail); bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
   #art{ background:#fff; box-shadow:0 10px 40px rgba(0,0,0,.5); max-width:100%; max-height:100%; display:block; touch-action:none; cursor:crosshair; }
-  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% - var(--rail))/2); transform:translateX(-50%); font-size:13px; color:var(--dim);
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); font-size:13px; color:var(--dim);
     background:rgba(11,12,20,.7); padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .3s; z-index:7; }
+  /* canvas-size dock — pinned top-right on every tool */
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
+  #sizeDock select{ background:rgba(15,16,24,.92); color:var(--ink); border:1px solid var(--line); border-radius:2px;
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
+    -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
 
-  /* right-side control rail — matches the other tools' shells */
-  #dock{ position:fixed; top:var(--top); right:0; bottom:0; width:var(--rail); z-index:6;
+  /* left-side control rail — matches the other tools' shells */
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
     padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:rgba(15,16,24,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
+    border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; }
   /* grouped sections — a clean, labelled stack with dividers */
   .group{ display:flex; flex-direction:column; gap:9px; }
@@ -71,7 +76,7 @@
   #inkPick::-webkit-color-swatch-wrapper{ padding:0; } #inkPick::-webkit-color-swatch{ border:none; border-radius:50%; }
   #inkPick::-moz-color-swatch{ border:none; border-radius:50%; }
   /* recording timer — matches the other tools */
-  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:24px; z-index:11; display:none; align-items:center; gap:7px;
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
     padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
     background:rgba(15,16,24,.92); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
   #recDot.on{ display:flex; }
@@ -86,6 +91,14 @@
   <input id="photoFile" type="file" accept="image/*" hidden />
   <div id="hint">Draw a line — then hit Bloom</div>
   <div id="recDot"><i></i><b>0:00</b></div>
+  <div id="sizeDock">
+    <select id="aspect" title="Canvas size">
+      <option value="1080/1350">Portrait · 4:5</option>
+      <option value="1080/1920" selected>Story · 9:16</option>
+      <option value="1/1">Square · 1:1</option>
+      <option value="1920/1080">Landscape · 16:9</option>
+    </select>
+  </div>
 
   <div id="dock">
 
@@ -108,15 +121,15 @@
         <div class="knob" data-tip="Thickness of the ink — thin and delicate on the left, thick and heavy on the right."><label>Brush size <b id="weightR">10</b></label><input id="weight" type="range" min="0" max="100" value="10" /></div>
         <div class="knob" data-tip="How much ink each pass lays down. Higher builds up darker and denser."><label>Ink density <b id="inkR">10</b></label><input id="ink" type="range" min="0" max="100" value="10" /></div>
         <div class="knob" data-tip="How long one full pass along your line takes. Higher is slower and more meditative."><label>Time <b id="timeR">5s</b></label><input id="time" type="range" min="0" max="100" value="20" /></div>
-        <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
-        <div class="knob" data-tip="Strobe — the ink rapidly flashes and cycles through colour as it draws. 0 is off; higher flashes faster and harder."><label>Flash <b id="flashR">0</b></label><input id="flash" type="range" min="0" max="100" value="0" /></div>
       </div>
       <button class="btn full" id="rndBtn" data-tip="Roll a fresh combination of every control — and a colour — for a new bloom to explore, like a strange attractor searching its space.">Randomize</button>
     </div>
 
-    <!-- colour -->
+    <!-- ink & colour -->
     <div class="group">
-      <div class="group__t">Ink</div>
+      <div class="group__t">Ink &amp; colour</div>
+      <div class="knob" data-tip="How much colour is mixed into the ink — 0 is plain black, up brings the chosen colour in."><label>Colour <b id="colorR">0</b></label><input id="color" type="range" min="0" max="100" value="0" /></div>
+      <div class="group__t" style="margin-top:3px">Ink</div>
       <div class="swrow" data-tip="Pick the ink colour — the first swatch is the rainbow (every hue), or choose one; the last is a custom picker. Raise Colour to bring it in.">
         <button class="sw" data-ink="rainbow" aria-pressed="true" title="Rainbow — every hue" style="background:conic-gradient(from 0deg,#e0483c,#e6902a,#e8c020,#4f9d69,#2f7fd0,#6a4fb0,#c0468f,#e0483c);"></button>
         <button class="sw" data-ink="#e0483c" title="Red" style="background:#e0483c"></button>
@@ -146,9 +159,10 @@
       <button class="btn full" id="textBtn">Pour text</button>
     </div>
 
-    <!-- finish -->
+    <!-- effects -->
     <div class="group">
-      <div class="group__t">Finish</div>
+      <div class="group__t">Effects</div>
+      <div class="knob" data-tip="Strobe — the ink rapidly flashes and cycles through colour as it draws. 0 is off; higher flashes faster and harder."><label>Flash <b id="flashR">0</b></label><input id="flash" type="range" min="0" max="100" value="0" /></div>
       <div class="grid2">
         <button class="btn" id="chromeBtn" aria-pressed="false" data-tip="Render the lines as polished chrome — adapts to your paper: a metallic glow on dark paper, shiny liquid chrome on light paper.">Chrome</button>
         <button class="btn" id="soundBtn" aria-pressed="false" data-tip="An eerie synth soundtrack, generated live from the motion. Pick a voice below — each moves differently. Recording does not capture it.">Sound</button>
@@ -174,15 +188,9 @@
       </div>
     </div>
 
-    <!-- canvas & export -->
+    <!-- export -->
     <div class="group">
-      <div class="group__t">Canvas &amp; export</div>
-      <select id="aspect" class="btn full" title="Canvas size">
-        <option value="1080/1920" selected>Reel 9:16</option>
-        <option value="1080/1350">Portrait 4:5</option>
-        <option value="1/1">Square 1:1</option>
-        <option value="1920/1080">Landscape 16:9</option>
-      </select>
+      <div class="group__t">Export</div>
       <div class="grid2">
         <button class="btn" id="recBtn" aria-pressed="false">Record</button>
         <button class="btn" id="saveBtn">Save</button>
