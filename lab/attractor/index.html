@@ -16,11 +16,16 @@
   body.dark .opal-subhead__name{ color:var(--ink); }
   body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
 
-  #wrap{ position:fixed; top:var(--top); left:0; right:var(--rail); bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
   #art{ background:#f7f4e0; box-shadow:0 10px 44px rgba(0,0,0,.55); max-width:100%; max-height:100%; display:block; border-radius:2px; }
-  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% - var(--rail))/2); transform:translateX(-50%); font-size:13px; color:var(--dim);
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); font-size:13px; color:var(--dim);
     background:rgba(11,12,20,.7); padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .3s; z-index:7; }
-  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:24px; z-index:11; display:none; align-items:center; gap:7px;
+  /* canvas-size dock — pinned top-right on every tool */
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
+  #sizeDock select{ background:rgba(15,16,24,.92); color:var(--ink); border:1px solid var(--line); border-radius:2px;
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
+    -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
     padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
     background:rgba(15,16,24,.92); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
   #recDot.on{ display:flex; }
@@ -28,10 +33,10 @@
   #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
   @keyframes recblink{ 50%{ opacity:.25; } }
 
-  #dock{ position:fixed; top:var(--top); right:0; bottom:0; width:var(--rail); z-index:6;
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
     padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:rgba(15,16,24,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-left:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
+    border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
   #sliders{ display:flex; flex-direction:column; gap:14px; width:100%; }
   .knob{ display:flex; flex-direction:column; gap:2px; }
   .knob label{ display:flex; justify-content:space-between; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); }
@@ -69,6 +74,14 @@
   <div id="wrap"><canvas id="art"></canvas></div>
   <div id="hint">A strange attractor, drifting</div>
   <div id="recDot"><i></i><b>0:00</b></div>
+  <div id="sizeDock">
+    <select id="aspect" title="Canvas size">
+      <option value="1080/1350">Portrait · 4:5</option>
+      <option value="1080/1920">Story · 9:16</option>
+      <option value="1/1">Square · 1:1</option>
+      <option value="1920/1080">Landscape · 16:9</option>
+    </select>
+  </div>
 
   <div id="dock">
 
@@ -90,15 +103,9 @@
       </div>
     </div>
 
-    <!-- canvas & export -->
+    <!-- export -->
     <div class="group">
-      <div class="group__t">Canvas &amp; export</div>
-      <select id="aspect" class="btn full" title="Canvas size">
-        <option value="1080/1350">Portrait 4:5</option>
-        <option value="1080/1920">Story 9:16</option>
-        <option value="1/1">Square 1:1</option>
-        <option value="1920/1080">Landscape 16:9</option>
-      </select>
+      <div class="group__t">Export</div>
       <div class="grid2">
         <button class="btn" id="recBtn" aria-pressed="false">Record</button>
         <button class="btn" id="saveBtn">Save</button>
