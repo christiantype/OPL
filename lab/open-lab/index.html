@@ -7,6 +7,7 @@
 <title>OPEN LAB — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css" />
 <style>
+  @font-face{ font-family:'Sidepiece'; src:url('/shared/fonts/Sidepiece-HoneyPie.woff2') format('woff2'), url('/shared/fonts/Sidepiece-HoneyPie.ttf') format('truetype'); font-weight:normal; font-display:swap; }
   :root{ --ink:#f2f3f7; --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.14); --rail:300px; --top:82px; }
   @media (max-width:560px){ :root{ --top:74px; } }
   *{ box-sizing:border-box; }
@@ -17,7 +18,8 @@
   body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
 
   #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
-  #art{ background:#0a0a10; box-shadow:0 10px 44px rgba(0,0,0,.55); max-width:100%; max-height:100%; display:block; border-radius:2px; }
+  #art{ background:#0a0a10; box-shadow:0 10px 44px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.18); max-width:100%; max-height:100%; display:block; border-radius:2px; }
+  #art:fullscreen{ border:0; }
   #art:fullscreen{ width:100vw; height:100vh; border-radius:0; box-shadow:none; }
   #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); font-size:13px; color:var(--dim);
     background:rgba(11,12,20,.7); padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .3s; z-index:7; }
@@ -102,6 +104,7 @@
 THAN
 DESIGN</textarea>
       <select id="font" class="btn" data-tip="The typeface the words are set in before they break into dots.">
+        <option value="Sidepiece, Georgia, serif" selected>Sidepiece — house display</option>
         <option value="Helvetica Neue, Arial, sans-serif">Helvetica — bold sans</option>
         <option value="Georgia, Times New Roman, serif">Georgia — serif</option>
         <option value="Impact, Haettenschweiler, sans-serif">Impact — heavy</option>
@@ -139,6 +142,21 @@ DESIGN</textarea>
       <div class="tog" data-tip="Slowly turn each dot in place."><label>Spin</label><button class="btn" id="spinBtn" aria-pressed="false">Off</button></div>
     </div>
 
+    <!-- colour -->
+    <div class="group">
+      <div class="group__t">Colour</div>
+      <select id="colMode" class="btn" data-tip="How the dots are coloured. Shape — each shape its own colour. Gradient — a two-colour blend across the words. Spectrum — a moving rainbow. From image — the dots take their colour from a photo you drop in.">
+        <option value="shape" selected>Shape colours</option>
+        <option value="gradient">Gradient</option>
+        <option value="spectrum">Spectrum — rainbow</option>
+        <option value="image">From image</option>
+      </select>
+      <div class="crow" data-tip="Start of the gradient."><label>Gradient from</label><input type="color" id="gradA" value="#ff5ea8" /></div>
+      <div class="crow" data-tip="End of the gradient."><label>Gradient to</label><input type="color" id="gradB" value="#3ec6ff" /></div>
+      <button class="btn full" id="colImgBtn" data-tip="Drop in a photo — the dots take their colour from it, wherever each dot falls.">Colour image…</button>
+      <input id="colImgFile" type="file" accept="image/*" hidden />
+    </div>
+
     <!-- paper -->
     <div class="group">
       <div class="group__t">Paper</div>
@@ -168,8 +186,24 @@ DESIGN</textarea>
   const TAU=Math.PI*2;
   let ASPECT=1920/1080, W=0,H=0,dpr=1;
   const P={ size:62, cell:40, angle:50, contrast:55, jitter:0, wave:15 };
-  let FONT='Helvetica Neue, Arial, sans-serif', DEF='#f4f4f8', PAPER='#0a0a10';
+  let FONT='Sidepiece, Georgia, serif', DEF='#f4f4f8', PAPER='#0a0a10';
   let mixOn=false, spinOn=false, baseIdx=0, seed1=1.7, seed2=9.3;
+  // colour modes
+  const hexToRgb=h=>{ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; };
+  const rgbStr=c=>'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';
+  const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+  const h2r=(h,s,l)=>{ h=(h%1+1)%1; const a=s*Math.min(l,1-l); const f=n=>{ const k=(n+h*12)%12; return l-a*Math.max(-1,Math.min(k-3,9-k,1)); }; return [f(0)*255,f(8)*255,f(4)*255]; };
+  let colMode='shape', GRA=[255,94,168], GRB=[62,198,255];
+  const colCv=document.createElement('canvas'); const colCtx=colCv.getContext('2d'); let colW=0,colH=0,colData=null,hasColImg=false;
+  function colourFor(x,y){
+    if(colMode==='gradient') return rgbStr(mix(GRA,GRB, x/W));
+    if(colMode==='spectrum') return rgbStr(h2r((x/W*0.9 + T*0.04)%1, 0.8, 0.62));
+    if(colMode==='image' && hasColImg){ const px=Math.min(colW-1,(x/W*colW)|0), py=Math.min(colH-1,(y/H*colH)|0), i=(py*colW+px)*4; return 'rgb('+colData[i]+','+colData[i+1]+','+colData[i+2]+')'; }
+    return null;
+  }
+  function loadColImg(img){ const long=640; colW=ASPECT>=1?long:Math.round(long*ASPECT); colH=ASPECT>=1?Math.round(long/ASPECT):long;
+    colCv.width=colW; colCv.height=colH; const s=Math.max(colW/img.width,colH/img.height), w=img.width*s, h=img.height*s;
+    colCtx.drawImage(img,(colW-w)/2,(colH-h)/2,w,h); colData=colCtx.getImageData(0,0,colW,colH).data; hasColImg=true; colMode='image'; $('colMode').value='image'; }
 
   // ---------- shapes (each carries its own colour) ----------
   const SVGSH={
@@ -207,10 +241,10 @@ DESIGN</textarea>
       b.addEventListener('click', ()=>{ baseIdx=i; if(mixOn){ mixOn=false; $('mixBtn').textContent='Off'; $('mixBtn').setAttribute('aria-pressed','false'); } syncShapeCol(); buildShapeButtons(); });
       host.appendChild(b); }); }
   function syncShapeCol(){ const s=SH[baseIdx]; if(s) $('shapeCol').value=s.colour; }
-  function drawShape(sh,x,y,r,rot){
-    if(sh.type==='img'){ if(!sh.ready){ ctx.fillStyle=sh.colour; ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill(); return; }
-      ctx.save(); ctx.translate(x,y); if(rot) ctx.rotate(rot); ctx.drawImage(sh.cache,-r,-r,2*r,2*r); ctx.restore(); return; }
-    ctx.fillStyle=sh.colour; ctx.save(); ctx.translate(x,y); if(rot) ctx.rotate(rot); const s=r/50; ctx.scale(s,s); ctx.translate(-50,-50); ctx.fill(sh.path, sh.rule); ctx.restore();
+  function drawShape(sh,x,y,r,rot,forced){
+    if(sh.type==='img'){ if(!sh.ready){ ctx.fillStyle=forced||sh.colour; ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill(); return; }
+      ctx.save(); ctx.translate(x,y); if(rot) ctx.rotate(rot); ctx.drawImage(sh.cache,-r,-r,2*r,2*r); ctx.restore(); return; }  // uploaded shapes keep their own colour
+    ctx.fillStyle=forced||sh.colour; ctx.save(); ctx.translate(x,y); if(rot) ctx.rotate(rot); const s=r/50; ctx.scale(s,s); ctx.translate(-50,-50); ctx.fill(sh.path, sh.rule); ctx.restore();
   }
 
   // ---------- text coverage ----------
@@ -218,10 +252,10 @@ DESIGN</textarea>
   function rebuildText(){ const long=1000; covW=ASPECT>=1?long:Math.round(long*ASPECT); covH=ASPECT>=1?Math.round(long/ASPECT):long;
     covCv.width=covW; covCv.height=covH; const g=covCtx; g.fillStyle='#000'; g.fillRect(0,0,covW,covH);
     const lines=($('text').value||' ').split('\n'); const n=Math.max(1,lines.length); const margin=covW*0.06;
-    const maxW=covW-margin*2, maxH=covH-margin*2;
-    let size=maxH/(1.16*n); g.font='800 '+size+'px '+FONT; let w=0; for(const l of lines) w=Math.max(w, g.measureText(l||' ').width);
+    const maxW=covW-margin*2, maxH=covH-margin*2; const wt=FONT.indexOf('Sidepiece')>=0?'400':'800';
+    let size=maxH/(1.16*n); g.font=wt+' '+size+'px '+FONT; let w=0; for(const l of lines) w=Math.max(w, g.measureText(l||' ').width);
     if(w>maxW) size*=maxW/w; size*=(0.4+(P.size/100)*0.62);
-    g.font='800 '+size+'px '+FONT; g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
+    g.font=wt+' '+size+'px '+FONT; g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
     const lh=size*1.16, totalH=lh*n; let y=covH/2-totalH/2+lh/2;
     for(const l of lines){ g.fillText(l, covW/2, y); y+=lh; }
     covArr=g.getImageData(0,0,covW,covH).data;
@@ -259,7 +293,7 @@ DESIGN</textarea>
       if(waveA>0) r*=1+waveA*0.5*Math.sin(x*0.018 - t*2.2 + y*0.006);
       if(r<0.35) continue;
       const sh = mixOn ? SH[(hash(i,j,seed2)*SH.length)|0] : SH[baseIdx];
-      drawShape(sh, x, y, r, spinOn? t*0.4 : 0);
+      drawShape(sh, x, y, r, spinOn? t*0.4 : 0, colMode==='shape'? null : colourFor(x,y));
     }}
     ctx.restore();
   }
@@ -276,6 +310,11 @@ DESIGN</textarea>
   $('randBtn').addEventListener('click', ()=>{ seed1=Math.random()*1000; seed2=Math.random()*1000; });
   $('svgBtn').addEventListener('click', ()=> $('svgFile').click());
   $('svgFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>addSVGShape(rd.result, f.name.replace(/\.svg$/i,'')); rd.readAsText(f); });
+  $('colMode').addEventListener('change', e=>{ colMode=e.target.value; if(colMode==='image' && !hasColImg) $('colImgFile').click(); });
+  $('gradA').addEventListener('input', e=>{ GRA=hexToRgb(e.target.value); });
+  $('gradB').addEventListener('input', e=>{ GRB=hexToRgb(e.target.value); });
+  $('colImgBtn').addEventListener('click', ()=> $('colImgFile').click());
+  $('colImgFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const img=new Image(); img.onload=()=>loadColImg(img); img.src=URL.createObjectURL(f); });
   $('paperCol').addEventListener('input', e=>{ PAPER=e.target.value; cv.style.background=e.target.value; });
   $('aspect').addEventListener('change', e=>{ const [x,y]=e.target.value.split('/').map(Number); ASPECT=x/y; fit(); });
   $('projBtn').addEventListener('click', ()=>{ if(document.fullscreenElement) document.exitFullscreen(); else cv.requestFullscreen&&cv.requestFullscreen(); });
@@ -323,6 +362,8 @@ DESIGN</textarea>
 
   // ---------- go ----------
   buildBuiltins(); syncShapeCol(); buildShapeButtons(); fit(); requestAnimationFrame(tick);
+  // re-measure once web fonts (Sidepiece) are ready
+  if(document.fonts){ try{ document.fonts.load("40px Sidepiece").then(rebuildText).catch(()=>{}); document.fonts.ready.then(rebuildText); }catch(e){} }
 })();
 </script>
 </body>
