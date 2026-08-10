@@ -171,8 +171,44 @@
   const rgbStr=c=>'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';
 
   // ---------- source image (offscreen) ----------
-  const SRC=1200; const srcCv=document.createElement('canvas'); srcCv.width=SRC; srcCv.height=SRC; const sctx=srcCv.getContext('2d');
+  const SRC=1024; const srcCv=document.createElement('canvas'); srcCv.width=SRC; srcCv.height=SRC; const sctx=srcCv.getContext('2d');   // power-of-two so the GL texture can REPEAT
   let hasImg=false, userImg=null;
+
+  // ---------- WebGL kaleidoscope (full-frame, tiling — like a real shader kaleidoscope) ----------
+  const glcv=document.createElement('canvas'); const gl=glcv.getContext('webgl',{preserveDrawingBuffer:true, antialias:true});
+  let glProg=null, glTex=null; const uLoc={};
+  function glInit(){ if(!gl) return false;
+    const vs='attribute vec2 p; void main(){ gl_Position=vec4(p,0.0,1.0); }';
+    const fs='precision highp float;\n'+
+      'uniform sampler2D uTex; uniform vec2 uRes,uDrift; uniform float uSlices,uTime,uSpin,uZoom,uTumble,uPulse,uHue;\n'+
+      'mat2 rot(float a){ float c=cos(a),s=sin(a); return mat2(c,-s,s,c); }\n'+
+      'vec3 hueShift(vec3 col,float h){ const vec3 k=vec3(0.57735); float ca=cos(h*6.2831853); return col*ca+cross(k,col)*sin(h*6.2831853)+k*dot(k,col)*(1.0-ca); }\n'+
+      'void main(){\n'+
+      '  vec2 uv=(gl_FragCoord.xy-0.5*uRes)/min(uRes.x,uRes.y);\n'+
+      '  float r=length(uv);\n'+
+      '  float a=atan(uv.y,uv.x)+uSpin;\n'+
+      '  float seg=6.2831853/uSlices;\n'+
+      '  a=mod(a,seg); a=abs(a-seg*0.5);\n'+                 // fold the wedge into a mirror
+      '  vec2 p=vec2(cos(a),sin(a))*r;\n'+
+      '  p*=uZoom*(1.0+uPulse*0.14);\n'+
+      '  p=rot(uTumble)*p; p+=uDrift;\n'+
+      '  vec2 st=fract(p*0.62+0.5);\n'+                      // REPEAT tile the source → motif repeats across the frame
+      '  vec3 col=texture2D(uTex,st).rgb;\n'+
+      '  col=hueShift(col,uHue); col*=(1.0+uPulse*0.35);\n'+
+      '  gl_FragColor=vec4(col,1.0);\n}';
+    const sh=(t,src)=>{ const s=gl.createShader(t); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) console.error('SHADER',gl.getShaderInfoLog(s)); return s; };
+    glProg=gl.createProgram(); gl.attachShader(glProg,sh(gl.VERTEX_SHADER,vs)); gl.attachShader(glProg,sh(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(glProg);
+    if(!gl.getProgramParameter(glProg,gl.LINK_STATUS)) console.error('LINK',gl.getProgramInfoLog(glProg));
+    gl.useProgram(glProg);
+    const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(glProg,'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    ['uTex','uRes','uSlices','uTime','uSpin','uZoom','uTumble','uPulse','uHue','uDrift'].forEach(n=>uLoc[n]=gl.getUniformLocation(glProg,n));
+    glTex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,glTex);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    return true; }
+  function uploadTex(){ if(!gl||!glTex) return; gl.bindTexture(gl.TEXTURE_2D,glTex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    try{ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,srcCv); }catch(e){} }
   // the object chamber of a real kaleidoscope — a heap of translucent coloured glass shards on black
   function drawColourField(){ const N=SRC; hasImg=false;
     sctx.globalCompositeOperation='source-over'; sctx.fillStyle='#04050a'; sctx.fillRect(0,0,N,N);
@@ -189,9 +225,9 @@
     // a few soft jewel glows for depth
     for(let i=0;i<14;i++){ const col=h2r(Math.random(),0.7,0.6); const x=Math.random()*N,y=Math.random()*N,r=N*(0.06+Math.random()*0.12);
       const gd=sctx.createRadialGradient(x,y,0,x,y,r); gd.addColorStop(0,rgba(col,0.5)); gd.addColorStop(1,rgba(col,0)); sctx.fillStyle=gd; sctx.beginPath(); sctx.arc(x,y,r,0,TAU); sctx.fill(); }
-    sctx.globalCompositeOperation='source-over'; sctx.globalAlpha=1; }
+    sctx.globalCompositeOperation='source-over'; sctx.globalAlpha=1; uploadTex(); }
   function drawImageSource(img){ const N=SRC; sctx.clearRect(0,0,N,N); sctx.fillStyle='#000'; sctx.fillRect(0,0,N,N);
-    const s=Math.max(N/img.width,N/img.height), w=img.width*s, h=img.height*s; sctx.drawImage(img,(N-w)/2,(N-h)/2,w,h); hasImg=true; }
+    const s=Math.max(N/img.width,N/img.height), w=img.width*s, h=img.height*s; sctx.drawImage(img,(N-w)/2,(N-h)/2,w,h); hasImg=true; uploadTex(); }
 
   // ---------- audio ----------
   let AC=null, master=null, wet=null, streamDest=null;
@@ -234,7 +270,7 @@
   function fit(){ const availH=innerHeight-168, availW=innerWidth-28;
     let h=Math.min(availH,1650), w=h*ASPECT; if(w>availW){ w=availW; h=w/ASPECT; }
     W=Math.round(w); H=Math.round(h); S=H/1000;
-    dpr=Math.min(devicePixelRatio||1, 1.5);   // kaleidoscope refills the whole frame each tick — keep the live backing light so it stays smooth (record uses its own 1920 buffer)
+    dpr=Math.min(devicePixelRatio||1, 2);   // WebGL shader is cheap per pixel — full resolution
     cv.style.width=W+'px'; cv.style.height=H+'px'; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
 
   // ---------- sim ----------
@@ -253,43 +289,27 @@
     spin += dt*(0.04 + (P.tempo/100)*0.22 + wv*0.14 + (P.twist/100)*0.35 + pulse*0.22);  // steady, smooth
   }
 
-  // ---------- kaleidoscope render — looking down the tube ----------
+  // ---------- kaleidoscope render — full-frame WebGL, blitted to the 2D canvas so record/save keep working ----------
   function render(){
-    ctx.save(); ctx.scale(dpr,dpr);
-    ctx.fillStyle='#050609'; ctx.fillRect(0,0,W,H);                 // the dark inside of the tube
-    const cx=W/2, cy=H/2, Rc=Math.min(W,H)*0.47, R=Math.hypot(W,H)*0.6;
-    const slices=Math.max(2, Math.min(24, chimes.length||P.count));
-    const seg=TAU/slices;
-    const wob=Math.sin(T*1.3)*(P.sway/100)*0.12;
-    const zoom=(0.7+(P.zoom/100)*1.9)*(1 + pulse*0.16 + 0.04*Math.sin(T*0.4));
-    const tumble=T*(0.05+(P.wind/100)*0.13)+pulse*0.14;             // the glass tumbling in the chamber
-    const ox=0.20+Math.sin(T*0.13)*0.15+wob, oy=0.14+Math.cos(T*0.10)*0.15;
-    ctx.save();
-    ctx.beginPath(); ctx.arc(cx,cy,Rc,0,TAU); ctx.clip();           // the round viewing aperture
-    for(let i=0;i<slices;i++){
-      ctx.save(); ctx.translate(cx,cy); ctx.rotate(spin+i*seg); if(i%2) ctx.scale(1,-1);
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,R,-seg/2-0.012,seg/2+0.012); ctx.closePath(); ctx.clip();
-      ctx.rotate(tumble); ctx.scale(zoom,zoom);
-      ctx.drawImage(srcCv, -SRC/2 + ox*SRC, -SRC/2 + oy*SRC, SRC, SRC);
-      ctx.restore();
-    }
-    const box=[cx-Rc,cy-Rc,Rc*2,Rc*2];
-    const tint=h2r((P.hue/100), 0.6, 0.5);
-    ctx.globalCompositeOperation='overlay'; ctx.fillStyle=rgba(tint, 0.06+hueKick*0.22); ctx.fillRect(box[0],box[1],box[2],box[3]);
-    if(pulse>0.01){ const gg=ctx.createRadialGradient(cx,cy,0,cx,cy,Rc*0.7); const gc=h2r((P.hue/100 + hueKick*0.3)%1,0.5,0.72);
-      gg.addColorStop(0, rgba(gc, 0.18*Math.min(1,pulse))); gg.addColorStop(1, rgba(gc,0)); ctx.globalCompositeOperation='lighter'; ctx.fillStyle=gg; ctx.fillRect(box[0],box[1],box[2],box[3]); }
-    ctx.globalCompositeOperation='source-over';
-    // curved glass — a soft bright glint + a darkening toward the rim, so it reads as looking through a lens
-    const glint=ctx.createRadialGradient(cx-Rc*0.3,cy-Rc*0.35,0, cx-Rc*0.3,cy-Rc*0.35, Rc*0.9); glint.addColorStop(0,'rgba(255,255,255,0.08)'); glint.addColorStop(0.5,'rgba(255,255,255,0)'); ctx.fillStyle=glint; ctx.fillRect(box[0],box[1],box[2],box[3]);
-    const vg=ctx.createRadialGradient(cx,cy,Rc*0.35,cx,cy,Rc); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(0.82,'rgba(0,0,0,0.15)'); vg.addColorStop(1,'rgba(0,0,0,0.62)'); ctx.fillStyle=vg; ctx.fillRect(box[0],box[1],box[2],box[3]);
-    ctx.restore();                                                  // end aperture clip
-    // the metal rim of the eyepiece
-    const rimW=Math.max(3, Rc*0.035);
-    const rim=ctx.createLinearGradient(cx-Rc,cy-Rc,cx+Rc,cy+Rc);
-    rim.addColorStop(0,'rgba(255,255,255,0.22)'); rim.addColorStop(0.5,'rgba(255,255,255,0.04)'); rim.addColorStop(1,'rgba(255,255,255,0.16)');
-    ctx.lineWidth=rimW; ctx.strokeStyle=rim; ctx.beginPath(); ctx.arc(cx,cy,Rc+rimW*0.5,0,TAU); ctx.stroke();
-    ctx.lineWidth=1; ctx.strokeStyle='rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.arc(cx,cy,Rc,0,TAU); ctx.stroke();
-    ctx.restore();
+    const bw=cv.width, bh=cv.height;
+    if(gl && glProg){
+      if(glcv.width!==bw||glcv.height!==bh){ glcv.width=bw; glcv.height=bh; }
+      gl.viewport(0,0,bw,bh); gl.useProgram(glProg);
+      const slices=Math.max(2, Math.min(24, chimes.length||P.count));
+      const wob=Math.sin(T*1.3)*(P.sway/100)*0.12;
+      gl.uniform2f(uLoc.uRes,bw,bh);
+      gl.uniform1f(uLoc.uSlices,slices);
+      gl.uniform1f(uLoc.uTime,T);
+      gl.uniform1f(uLoc.uSpin,spin);
+      gl.uniform1f(uLoc.uZoom,0.7+(P.zoom/100)*1.9);
+      gl.uniform1f(uLoc.uTumble,T*(0.05+(P.wind/100)*0.13)+pulse*0.14);
+      gl.uniform1f(uLoc.uPulse,pulse);
+      gl.uniform1f(uLoc.uHue,(P.hue/100)+hueKick*0.15);
+      gl.uniform2f(uLoc.uDrift,0.2+Math.sin(T*0.13)*0.15+wob, 0.14+Math.cos(T*0.10)*0.15);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,glTex); gl.uniform1i(uLoc.uTex,0);
+      gl.drawArrays(gl.TRIANGLES,0,3);
+      ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(glcv,0,0);
+    } else { ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#0b0d16'; ctx.fillRect(0,0,bw,bh); }
   }
 
   // ---------- loop ----------
@@ -363,7 +383,7 @@
   addEventListener('pointerdown', hideTip); addEventListener('scroll', hideTip, true);
 
   // ---------- go ----------
-  drawColourField(); rebuildChimes(); fit(); requestAnimationFrame(tick);
+  glInit(); drawColourField(); rebuildChimes(); fit(); requestAnimationFrame(tick);
 })();
 </script>
 </body>
