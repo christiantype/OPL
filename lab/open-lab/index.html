@@ -72,6 +72,7 @@
   .sh{ position:relative; aspect-ratio:1; border:1px solid var(--line); border-radius:3px; background:rgba(255,255,255,.04); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:5px; }
   .sh svg, .sh img{ width:100%; height:100%; object-fit:contain; }
   .sh[aria-pressed="true"]{ border-color:var(--ink); background:rgba(255,255,255,.12); }
+  .sh.focus{ outline:2px solid var(--ink); outline-offset:-2px; }
   .tog{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--dim); }
   .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
     background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
@@ -100,9 +101,9 @@
     <!-- text -->
     <div class="group">
       <div class="group__t">Words · line breaks and all</div>
-      <textarea id="text" rows="3" spellcheck="false">MORE
-THAN
-DESIGN</textarea>
+      <textarea id="text" rows="3" spellcheck="false">OPEN
+LAB
+SATURDAY</textarea>
       <select id="font" class="btn" data-tip="The typeface the words are set in before they break into dots.">
         <option value="Sidepiece, Georgia, serif" selected>Sidepiece — house display</option>
         <option value="Helvetica Neue, Arial, sans-serif">Helvetica — bold sans</option>
@@ -222,23 +223,25 @@ DESIGN</textarea>
   const PAL=['#f4f4f8','#ff5ea8','#ffd23f','#3ec6ff','#5be584','#c9a3ff','#ff8a3d','#ffffff','#ff4d4d','#26e0c8'];
   const SH=[];
   function buildBuiltins(){ let n=0; for(const k in SVGSH){ let p; if(k==='dot'){ p=new Path2D(); p.arc(50,50,47,0,TAU); } else p=new Path2D(SVGSH[k]);
-    SH.push({ key:k, type:'path', path:p, rule:RULE[k]||'nonzero', colour:PAL[n%PAL.length] }); n++; } SH.forEach(s=>s.colour='#f4f4f8'); }
+    SH.push({ key:k, type:'path', path:p, rule:RULE[k]||'nonzero', colour:PAL[n%PAL.length], on:true }); n++; } SH.forEach(s=>s.colour='#f4f4f8'); }
   function tintCache(img, colour){ const c=document.createElement('canvas'); c.width=c.height=160; const g=c.getContext('2d');
     g.clearRect(0,0,160,160); g.drawImage(img,0,0,160,160); g.globalCompositeOperation='source-in'; g.fillStyle=colour; g.fillRect(0,0,160,160); return c; }
   function addSVGShape(text, name){ try{ const doc=new DOMParser().parseFromString(text,'image/svg+xml'); const svg=doc.querySelector('svg'); if(!svg||doc.querySelector('parsererror')) return;
     let vb={w:100,h:100}; const v=svg.getAttribute('viewBox'); if(v){ const a=v.split(/[ ,]+/).map(Number); vb={w:a[2]||100,h:a[3]||100}; }
     const stripped=svg.innerHTML.replace(/fill\s*=\s*"(?!none)[^"]*"/g,'').replace(/fill\s*:\s*[^;"'}]+/g,'');
     const norm='<svg xmlns="http://www.w3.org/2000/svg" width="'+vb.w+'" height="'+vb.h+'" viewBox="0 0 '+vb.w+' '+vb.h+'" fill="#fff">'+stripped+'</svg>';
-    const im=new Image(); const sh={ key:name, type:'img', img:null, cache:null, ready:false, colour:'#f4f4f8' };
+    const im=new Image(); const sh={ key:name, type:'img', img:null, cache:null, ready:false, colour:'#f4f4f8', on:true };
     im.onload=()=>{ sh.img=im; sh.cache=tintCache(im, sh.colour); sh.ready=true; SH.push(sh); baseIdx=SH.length-1; syncShapeCol(); buildShapeButtons(); };
     im.src='data:image/svg+xml;utf8,'+encodeURIComponent(norm);
   }catch(e){} }
   function shapeSVG(s){ const fill=s.colour; if(s.key==='dot') return '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" style="fill:'+fill+'"/></svg>';
     return '<svg viewBox="0 0 100 100"><path d="'+SVGSH[s.key]+'"'+(RULE[s.key]?' fill-rule="'+RULE[s.key]+'"':'')+' style="fill:'+fill+'"/></svg>'; }
   function buildShapeButtons(){ const host=$('shapes'); host.innerHTML='';
-    SH.forEach((s,i)=>{ const b=document.createElement('button'); b.className='sh'; b.setAttribute('aria-pressed', i===baseIdx?'true':'false'); b.title=s.key;
+    SH.forEach((s,i)=>{ const b=document.createElement('button'); b.className='sh'+(i===baseIdx?' focus':''); b.title=s.key;
+      b.setAttribute('aria-pressed', (mixOn? !!s.on : i===baseIdx)?'true':'false');
       b.innerHTML = s.type==='path' ? shapeSVG(s) : ('<img src="'+(s.cache?s.cache.toDataURL():'')+'">');
-      b.addEventListener('click', ()=>{ baseIdx=i; if(mixOn){ mixOn=false; $('mixBtn').textContent='Off'; $('mixBtn').setAttribute('aria-pressed','false'); } syncShapeCol(); buildShapeButtons(); });
+      b.addEventListener('click', ()=>{ if(mixOn){ s.on=!s.on; if(!SH.some(x=>x.on)) s.on=true; }  // toggle membership; keep Mix on
+        baseIdx=i; syncShapeCol(); buildShapeButtons(); });
       host.appendChild(b); }); }
   function syncShapeCol(){ const s=SH[baseIdx]; if(s) $('shapeCol').value=s.colour; }
   function drawShape(sh,x,y,r,rot,forced){
@@ -284,6 +287,7 @@ DESIGN</textarea>
     const ang=((P.angle/100)*2-1)*Math.PI/4; const ca=Math.cos(ang), sa=Math.sin(ang);
     const N=Math.ceil(Math.hypot(W,H)/cell/2)+2; const gamma=0.4+(1-P.contrast/100)*1.7;
     const jit=P.jitter/100, waveA=P.wave/100, t=T;
+    let actArr; if(mixOn){ actArr=[]; for(let k=0;k<SH.length;k++) if(SH[k].on) actArr.push(k); if(!actArr.length) actArr=[baseIdx]; }
     for(let i=-N;i<=N;i++){ for(let j=-N;j<=N;j++){
       const gx=i*cell, gy=j*cell; const x=cx+gx*ca-gy*sa, y=cy+gx*sa+gy*ca;
       if(x<-cell||x>W+cell||y<-cell||y>H+cell) continue;
@@ -292,7 +296,7 @@ DESIGN</textarea>
       let r=cell*0.62*cc; r*=(1+(hash(i,j,seed1)-0.5)*jit*1.4);
       if(waveA>0) r*=1+waveA*0.5*Math.sin(x*0.018 - t*2.2 + y*0.006);
       if(r<0.35) continue;
-      const sh = mixOn ? SH[(hash(i,j,seed2)*SH.length)|0] : SH[baseIdx];
+      const sh = mixOn ? SH[actArr[(hash(i,j,seed2)*actArr.length)|0]] : SH[baseIdx];
       drawShape(sh, x, y, r, spinOn? t*0.4 : 0, colMode==='shape'? null : colourFor(x,y));
     }}
     ctx.restore();
@@ -305,7 +309,7 @@ DESIGN</textarea>
   [['size'],['cell'],['angle'],['contrast'],['jitter'],['wave']].forEach(([k])=>{ const inp=$(k), out=$(k+'R');
     inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=P[k]; if(k==='size') rebuildText(); }); });
   $('shapeCol').addEventListener('input', e=>{ const s=SH[baseIdx]; if(!s) return; s.colour=e.target.value; if(s.type==='img'&&s.img) s.cache=tintCache(s.img, s.colour); buildShapeButtons(); });
-  $('mixBtn').addEventListener('click', ()=>{ mixOn=!mixOn; $('mixBtn').textContent=mixOn?'On':'Off'; $('mixBtn').setAttribute('aria-pressed',mixOn?'true':'false'); });
+  $('mixBtn').addEventListener('click', ()=>{ mixOn=!mixOn; $('mixBtn').textContent=mixOn?'On':'Off'; $('mixBtn').setAttribute('aria-pressed',mixOn?'true':'false'); buildShapeButtons(); });
   $('spinBtn').addEventListener('click', ()=>{ spinOn=!spinOn; $('spinBtn').textContent=spinOn?'On':'Off'; $('spinBtn').setAttribute('aria-pressed',spinOn?'true':'false'); });
   $('randBtn').addEventListener('click', ()=>{ seed1=Math.random()*1000; seed2=Math.random()*1000; });
   $('svgBtn').addEventListener('click', ()=> $('svgFile').click());
