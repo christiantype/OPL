@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>HAND SHADER — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --ink:#16171c; --dim:#585860; --line:rgba(0,0,0,.16); --rail:300px; --top:82px; }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; background:#f4f4f6; color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; overscroll-behavior:none; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #gl{ background:#000; box-shadow:0 10px 44px rgba(0,0,0,.35); border:1px solid var(--line); max-width:100%; max-height:100%; display:block; border-radius:4px; cursor:crosshair; touch-action:none; }
+  /* webcam picture-in-picture with hand skeleton */
+  #cam{ position:fixed; top:calc(var(--top) + 20px); right:20px; width:190px; height:143px; z-index:9;
+    border-radius:8px; overflow:hidden; border:1px solid var(--line); background:#111; box-shadow:0 8px 30px -10px rgba(0,0,0,.5); }
+  #cam video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+  #cam canvas{ position:absolute; inset:0; width:100%; height:100%; transform:scaleX(-1); }
+  #cam .camoff{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:#bbb; text-align:center; padding:10px; letter-spacing:.03em; }
+  #handdot{ position:fixed; width:26px; height:26px; margin:-13px 0 0 -13px; border:2px solid #fff; border-radius:50%; z-index:8; pointer-events:none;
+    box-shadow:0 0 0 2px rgba(0,0,0,.4), 0 0 14px rgba(255,255,255,.5); transition:opacity .2s; opacity:0; }
+  /* the teaching card — a dark code panel over the canvas */
+  #card{ position:fixed; left:calc(var(--rail) + 22px); bottom:22px; width:min(560px, calc(100vw - var(--rail) - 44px)); z-index:8;
+    background:rgba(16,17,22,.94); color:#e8e9ee; border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:14px 16px;
+    -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); box-shadow:0 16px 50px -20px rgba(0,0,0,.6); }
+  #card h3{ margin:0 0 4px; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#fff; }
+  #card p{ margin:0 0 10px; font-size:13px; line-height:1.5; color:#c7c8cf; }
+  #card pre{ margin:0; font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; line-height:1.7; color:#cfe3ff; white-space:pre-wrap; }
+  #card pre .hl{ color:#ffd23f; }
+  #card pre .cm{ color:#7c8296; }
+  #card .live{ margin-top:9px; font-family:"SF Mono",ui-monospace,monospace; font-size:12px; color:#9fe6c0; letter-spacing:.02em; }
+
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
+    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden; background:#e8e9ee; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
+  .group{ display:flex; flex-direction:column; gap:8px; }
+  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--line); }
+  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
+  .btn{ appearance:none; border:1px solid var(--line); background:rgba(0,0,0,.05); color:var(--ink);
+    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
+    display:inline-flex; align-items:center; justify-content:center; padding:8px 12px; border-radius:2px; cursor:pointer; transition:.15s; white-space:nowrap; }
+  .btn:hover{ background:rgba(0,0,0,.09); }
+  .btn.primary, .btn[aria-pressed="true"]{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .btn.full{ width:100%; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .lesson{ text-align:left; justify-content:flex-start; gap:9px; text-transform:none; letter-spacing:.01em; font-size:12.5px; padding:9px 11px; }
+  .lesson .n{ font-variant-numeric:tabular-nums; color:var(--dim); font-size:11px; min-width:16px; }
+  .lesson[aria-pressed="true"] .n{ color:rgba(255,255,255,.7); }
+  .hintline{ font-size:11.5px; line-height:1.5; color:var(--dim); }
+</style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
+</head>
+<body class="dark">
+  <div id="wrap"><canvas id="gl"></canvas></div>
+  <div id="handdot"></div>
+  <div id="cam"><video id="video" playsinline muted></video><canvas id="camcv" width="190" height="143"></canvas><div class="camoff" id="camoff">Camera off — using the mouse. Turn it on to control the shader with your hand.</div></div>
+  <div id="card">
+    <h3 id="cardTitle">Coordinates</h3>
+    <p id="cardText"></p>
+    <pre id="cardCode"></pre>
+    <div class="live" id="cardLive"></div>
+  </div>
+
+  <div id="dock">
+    <div class="group">
+      <button class="btn primary full" id="camBtn" data-tip="Turn on the camera and control the shader with your hand — your index finger is the point, and pinching your finger and thumb is the value.">Use my hand</button>
+      <div class="hintline">Your <b>index finger</b> moves the point. <b>Pinch</b> finger + thumb for the value. No camera? Your mouse does the same (drag to pinch).</div>
+    </div>
+    <div class="group">
+      <div class="group__t">Lessons</div>
+      <div id="lessons" style="display:flex; flex-direction:column; gap:6px;"></div>
+    </div>
+    <div class="group">
+      <div class="grid2">
+        <button class="btn" id="prevBtn">◀ Back</button>
+        <button class="btn" id="nextBtn">Next ▶</button>
+      </div>
+    </div>
+  </div>
+
+<!-- MediaPipe Hands (loads from CDN on the live site; the tool still works with the mouse if it can't) -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'HAND SHADER', desc:'Learn WebGL with your hands', about:"A hands-on way into WebGL. Each lesson is a tiny fragment shader — a program that runs once for every pixel — and you steer it with your hand: your index finger is a point on the screen (a vec2), and pinching your finger and thumb is a value from 0 to 1. Move and pinch and watch the maths respond: coordinates, time, sine waves, distance fields, colour mixing, repetition. The live code is shown with the line your hand is driving highlighted, so you can see exactly which number you're changing. Turn on the camera to use your hand, or just use the mouse (drag to pinch). Built on MediaPipe hand-tracking + a raw WebGL shader.",
+  version:'v1' });</script>
+
+<script>
+(() => {
+  const cv=document.getElementById('gl'); const gl=cv.getContext('webgl',{antialias:true});
+  const $=id=>document.getElementById(id);
+  let W=0,H=0,dpr=1;
+
+  // ---------- lessons ----------
+  const VS='attribute vec2 p; void main(){ gl_Position=vec4(p,0.0,1.0); }';
+  const HEAD='precision highp float; uniform vec2 uRes; uniform float uTime; uniform vec2 uHand; uniform float uPinch;\n';
+  const LESSONS=[
+    { title:'Coordinates', text:"Every pixel has a position. We divide gl_FragCoord by the resolution to get uv — 0 to 1 across the screen. Your finger is a uv too. The ring sits where hand equals uv.",
+      code:['vec2 uv = gl_FragCoord.xy / uRes;','vec2 hand = uHand;            // ← your finger','float d = length(uv - hand);  // distance to it','gl_FragColor = vec4(uv, 0.5, 1.0);'],
+      frag:'void main(){ vec2 uv=gl_FragCoord.xy/uRes; float d=length((uv-uHand)*vec2(uRes.x/uRes.y,1.0));'+
+           ' vec3 c=vec3(uv,0.55); float ring=smoothstep(0.006,0.0,abs(d-0.10)); c=mix(c,vec3(1.0),ring);'+
+           ' gl_FragColor=vec4(c,1.0); }' },
+    { title:'Time', text:"Shaders get a clock, uTime, that always ticks up. Feed it into cos() and colours cycle. Move your hand left–right to speed the clock up or slow it down.",
+      code:['float speed = uHand.x * 5.0;   // ← hand x','vec3 c = 0.5 + 0.5*cos(uTime*speed','          + uv.xyx + vec3(0,2,4));'],
+      frag:'void main(){ vec2 uv=gl_FragCoord.xy/uRes; float speed=uHand.x*5.0; vec3 c=0.5+0.5*cos(uTime*speed+uv.xyx+vec3(0.0,2.0,4.0)); gl_FragColor=vec4(c,1.0); }' },
+    { title:'Sine waves', text:"sin() bends a straight line into a wave. Hand x sets how many waves (frequency); pinch sets how tall they are (amplitude).",
+      code:['float freq = 4.0 + uHand.x*40.0; // hand x','float amp  = 0.05 + uPinch*0.4;  // pinch','float y = 0.5 + amp*sin(uv.x*freq + uTime);'],
+      frag:'void main(){ vec2 uv=gl_FragCoord.xy/uRes; float freq=4.0+uHand.x*40.0; float amp=0.05+uPinch*0.4; float y=0.5+amp*sin(uv.x*freq+uTime);'+
+           ' float line=smoothstep(0.02,0.0,abs(uv.y-y)); vec3 c=mix(vec3(0.06,0.07,0.12),vec3(0.4,0.8,1.0),line); gl_FragColor=vec4(c,1.0); }' },
+    { title:'Distance fields', text:"length() gives the distance from a point. Compare it to a radius and you get a circle for free. Your finger is the centre; pinch is the radius. This is how SDF graphics are drawn.",
+      code:['float d = length(uv - uHand);','float r = 0.04 + uPinch*0.4;  // pinch','float c = smoothstep(r, r-0.01, d);'],
+      frag:'void main(){ vec2 uv=gl_FragCoord.xy/uRes; vec2 a=vec2(uRes.x/uRes.y,1.0); float d=length((uv-uHand)*a); float r=0.05+uPinch*0.45;'+
+           ' float fill=smoothstep(r,r-0.008,d); float glow=smoothstep(r+0.15,r,d)*0.5; vec3 c=vec3(glow*0.2,glow*0.5,glow)+fill*vec3(1.0,0.85,0.3); gl_FragColor=vec4(c,1.0); }' },
+    { title:'Mixing colour', text:"mix(a, b, t) blends two colours by t. Hand x is the blend; hand y is the brightness. Everything on screen is just three numbers — red, green, blue.",
+      code:['vec3 a = vec3(1.0, 0.3, 0.2);','vec3 b = vec3(0.2, 0.5, 1.0);','vec3 c = mix(a, b, uHand.x) * uHand.y;'],
+      frag:'void main(){ vec2 uv=gl_FragCoord.xy/uRes; vec3 a=vec3(1.0,0.3,0.2), b=vec3(0.2,0.5,1.0); vec3 c=mix(a,b,uHand.x)*clamp(uHand.y,0.05,1.0); gl_FragColor=vec4(c,1.0); }' },
+    { title:'Repetition', text:"fract() keeps only the fractional part, so multiplying uv and taking fract() tiles the plane into a grid. Pinch adds more cells — one line of code, infinite pattern.",
+      code:['float n = 2.0 + uPinch*10.0;   // pinch','vec2 g = fract(uv * n) - 0.5;','float d = length(g);'],
+      frag:'void main(){ vec2 uv=gl_FragCoord.xy/uRes; float n=2.0+uPinch*10.0; vec2 g=fract(uv*n)-0.5; float d=length(g);'+
+           ' float dot=smoothstep(0.32,0.30,d); float hue=uHand.x; vec3 col=0.5+0.5*cos(6.2831*(hue+vec3(0.0,0.33,0.66))); gl_FragColor=vec4(col*dot,1.0); }' },
+  ];
+  let cur=0;
+
+  // ---------- webgl program ----------
+  function compile(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); return s; }
+  let prog=null, uLoc={};
+  const quad=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,quad); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  function loadLesson(i){ cur=i;
+    if(prog) gl.deleteProgram(prog);
+    prog=gl.createProgram(); gl.attachShader(prog,compile(gl.VERTEX_SHADER,VS)); gl.attachShader(prog,compile(gl.FRAGMENT_SHADER,HEAD+LESSONS[i].frag)); gl.linkProgram(prog); gl.useProgram(prog);
+    if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+    const loc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(loc); gl.bindBuffer(gl.ARRAY_BUFFER,quad); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    ['uRes','uTime','uHand','uPinch'].forEach(n=>uLoc[n]=gl.getUniformLocation(prog,n));
+    // card
+    const L=LESSONS[i]; $('cardTitle').textContent=(i+1)+'. '+L.title; $('cardText').textContent=L.text;
+    $('cardCode').innerHTML=L.code.map(line=>line.replace(/(uHand|uPinch)/g,'<span class="hl">$1</span>').replace(/(\/\/.*)$/,'<span class="cm">$1</span>')).join('\n');
+    [...document.querySelectorAll('.lesson')].forEach((b,k)=>b.setAttribute('aria-pressed', k===i?'true':'false'));
+  }
+
+  // ---------- hand / mouse input ----------
+  let hand={x:0.5,y:0.5}, target={x:0.5,y:0.5}, pinch=0, targetPinch=0, haveInput=false, camOn=false, mouseDown=false;
+  cv.addEventListener('pointermove', e=>{ if(camOn) return; const r=cv.getBoundingClientRect(); target.x=(e.clientX-r.left)/r.width; target.y=(e.clientY-r.top)/r.height; haveInput=true; });
+  cv.addEventListener('pointerdown', ()=>{ mouseDown=true; });
+  addEventListener('pointerup', ()=>{ mouseDown=false; });
+
+  // ---------- camera + MediaPipe hands ----------
+  const camcv=$('camcv'), camctx=camcv.getContext('2d'); let hands=null, camera=null;
+  const CONNS=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  function onResults(res){ camctx.clearRect(0,0,camcv.width,camcv.height);
+    const L=res.multiHandLandmarks && res.multiHandLandmarks[0];
+    if(L){ haveInput=true;
+      const idx=L[8], th=L[4];
+      target.x=1.0-idx.x; target.y=idx.y;          // mirror x to match the flipped preview
+      const d=Math.hypot(idx.x-th.x, idx.y-th.y); targetPinch=Math.max(0,Math.min(1,(0.22-d)/0.16));
+      // draw skeleton
+      camctx.strokeStyle='rgba(255,255,255,.7)'; camctx.lineWidth=2;
+      CONNS.forEach(([a,b])=>{ camctx.beginPath(); camctx.moveTo(L[a].x*camcv.width,L[a].y*camcv.height); camctx.lineTo(L[b].x*camcv.width,L[b].y*camcv.height); camctx.stroke(); });
+      camctx.fillStyle='#ffd23f'; camctx.beginPath(); camctx.arc(idx.x*camcv.width,idx.y*camcv.height,4,0,6.28); camctx.fill();
+      camctx.fillStyle='#3ec6ff'; camctx.beginPath(); camctx.arc(th.x*camcv.width,th.y*camcv.height,4,0,6.28); camctx.fill();
+    }
+  }
+  function startCamera(){
+    if(camOn){ stopCamera(); return; }
+    if(!window.Hands || !window.Camera){ $('camoff').textContent='Hand-tracking library did not load (need internet). The mouse still works.'; return; }
+    try{
+      hands=new window.Hands({ locateFile:f=>'https://cdn.jsdelivr.net/npm/@mediapipe/hands/'+f });
+      hands.setOptions({ maxNumHands:1, modelComplexity:0, minDetectionConfidence:0.6, minTrackingConfidence:0.6 });
+      hands.onResults(onResults);
+      const video=$('video');
+      camera=new window.Camera(video,{ onFrame:async()=>{ try{ await hands.send({image:video}); }catch(e){} }, width:640, height:480 });
+      camera.start(); camOn=true; $('camoff').style.display='none'; $('camBtn').textContent='Stop camera'; $('camBtn').setAttribute('aria-pressed','true');
+    }catch(e){ $('camoff').textContent='Could not start the camera. The mouse still works.'; }
+  }
+  function stopCamera(){ camOn=false; try{ camera&&camera.stop(); }catch(e){} $('camoff').style.display=''; $('camoff').textContent='Camera off — using the mouse.'; $('camBtn').textContent='Use my hand'; $('camBtn').setAttribute('aria-pressed','false'); }
+
+  // ---------- fit + loop ----------
+  function fit(){ const availH=innerHeight-116, availW=innerWidth-var_rail()-48; const s=Math.min(availW,availH); W=Math.max(320,Math.round(Math.min(availW, availH*1.4))); H=Math.round(Math.min(availH, W/1.4));
+    // simple: fill the area at ~7:5
+    const aw=innerWidth-var_rail()-48, ah=innerHeight-116; let w=aw, h=w/1.5; if(h>ah){ h=ah; w=h*1.5; } W=Math.round(w); H=Math.round(h);
+    dpr=Math.min(devicePixelRatio||1,2); cv.style.width=W+'px'; cv.style.height=H+'px'; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+  function var_rail(){ return 300; }
+  let t0=performance.now(), T=0;
+  function tick(now){ requestAnimationFrame(tick); const dt=Math.min(0.05,(now-t0)/1000); t0=now; T+=dt;
+    if(!camOn && mouseDown) targetPinch=Math.min(1,targetPinch+dt*2.2); else if(!camOn && !mouseDown) targetPinch=Math.max(0,targetPinch-dt*2.5);
+    hand.x+=(target.x-hand.x)*Math.min(1,dt*12); hand.y+=(target.y-hand.y)*Math.min(1,dt*12); pinch+=(targetPinch-pinch)*Math.min(1,dt*10);
+    // draw
+    gl.viewport(0,0,cv.width,cv.height); gl.useProgram(prog);
+    gl.uniform2f(uLoc.uRes,cv.width,cv.height); gl.uniform1f(uLoc.uTime,T); gl.uniform2f(uLoc.uHand,hand.x,1.0-hand.y); gl.uniform1f(uLoc.uPinch,pinch);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    // hand dot overlay (DOM)
+    const r=cv.getBoundingClientRect(); const hd=$('handdot'); hd.style.opacity=haveInput?'1':'0'; hd.style.left=(r.left+hand.x*r.width)+'px'; hd.style.top=(r.top+hand.y*r.height)+'px';
+    hd.style.width=hd.style.height=(18+pinch*30)+'px'; hd.style.margin=(-(9+pinch*15))+'px 0 0 '+(-(9+pinch*15))+'px';
+    // live values (throttled)
+    if((T*4|0)!==live_t){ live_t=(T*4|0); $('cardLive').textContent='uHand = ('+hand.x.toFixed(2)+', '+(1-hand.y).toFixed(2)+')   uPinch = '+pinch.toFixed(2); }
+  }
+  let live_t=-1;
+
+  // ---------- ui ----------
+  const lhost=$('lessons'); LESSONS.forEach((L,i)=>{ const b=document.createElement('button'); b.className='btn lesson'; b.innerHTML='<span class="n">'+(i+1)+'</span> '+L.title; b.addEventListener('click',()=>loadLesson(i)); lhost.appendChild(b); });
+  $('camBtn').addEventListener('click', startCamera);
+  $('prevBtn').addEventListener('click', ()=>loadLesson((cur-1+LESSONS.length)%LESSONS.length));
+  $('nextBtn').addEventListener('click', ()=>loadLesson((cur+1)%LESSONS.length));
+  addEventListener('resize', fit);
+  addEventListener('keydown', e=>{ if(e.key==='ArrowRight') loadLesson((cur+1)%LESSONS.length); else if(e.key==='ArrowLeft') loadLesson((cur-1+LESSONS.length)%LESSONS.length); });
+
+  // ---------- go ----------
+  fit(); loadLesson(0); requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
