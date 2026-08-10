@@ -125,7 +125,7 @@ SATURDAY</textarea>
 
     <!-- shape -->
     <div class="group">
-      <div class="group__t">Shape · pick one, set its colour</div>
+      <div class="group__t">Shape · tap to pick + colour · tap again to drop</div>
       <div id="shapes"></div>
       <div class="crow" data-tip="The colour of the selected shape. With Mix shapes on, each shape keeps its own colour for a multi-colour screen."><label>This shape's colour</label><input type="color" id="shapeCol" value="#f4f4f8" /></div>
       <div class="tog" data-tip="Give every dot a random shape from the set — each in its own colour."><label>Mix shapes</label><button class="btn" id="mixBtn" aria-pressed="false">Off</button></div>
@@ -240,8 +240,12 @@ SATURDAY</textarea>
     SH.forEach((s,i)=>{ const b=document.createElement('button'); b.className='sh'+(i===baseIdx?' focus':''); b.title=s.key;
       b.setAttribute('aria-pressed', (mixOn? !!s.on : i===baseIdx)?'true':'false');
       b.innerHTML = s.type==='path' ? shapeSVG(s) : ('<img src="'+(s.cache?s.cache.toDataURL():'')+'">');
-      b.addEventListener('click', ()=>{ if(mixOn){ s.on=!s.on; if(!SH.some(x=>x.on)) s.on=true; }  // toggle membership; keep Mix on
-        baseIdx=i; syncShapeCol(); buildShapeButtons(); });
+      b.addEventListener('click', ()=>{
+        if(mixOn){
+          if(i===baseIdx){ s.on=!s.on; if(!SH.some(x=>x.on)) s.on=true; }   // click the focused one again to drop / re-add it
+          else { s.on=true; baseIdx=i; }                                    // click another to focus it AND keep it in the mix (so its colour shows)
+        } else baseIdx=i;
+        syncShapeCol(); buildShapeButtons(); });
       host.appendChild(b); }); }
   function syncShapeCol(){ const s=SH[baseIdx]; if(s) $('shapeCol').value=s.colour; }
   function drawShape(sh,x,y,r,rot,forced){
