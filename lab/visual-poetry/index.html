@@ -58,7 +58,7 @@
   .grid2 .btn, .btn.full{ width:100%; }
   /* per-line track cards */
   #lines{ display:flex; flex-direction:column; gap:9px; }
-  .linec{ border:1px solid var(--line); border-radius:5px; padding:8px; display:flex; flex-direction:column; gap:7px; background:rgba(255,255,255,.02); }
+  .linec{ border:1px solid rgba(0,0,0,.14); border-radius:5px; padding:8px; display:flex; flex-direction:column; gap:7px; background:rgba(255,255,255,.6); }
   .linec .lh{ display:flex; gap:6px; align-items:center; }
   .linec .lcol{ width:26px; height:24px; flex:none; border:1px solid var(--line); border-radius:3px; background:none; padding:0; cursor:pointer; }
   .linec .lcol::-webkit-color-swatch-wrapper{ padding:2px; } .linec .lcol::-webkit-color-swatch{ border:none; border-radius:1px; }
@@ -68,10 +68,11 @@
   .linec .noter span{ font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); min-width:34px; }
   .linec .noter b{ font-size:11px; color:var(--ink); font-variant-numeric:tabular-nums; min-width:30px; text-align:right; }
   .steps{ display:grid; gap:3px; }
-  .stp{ aspect-ratio:1; border:1px solid var(--line); border-radius:2px; background:transparent; cursor:pointer; padding:0; min-width:0; }
+  .stp{ aspect-ratio:1; border:1px solid rgba(0,0,0,.34); border-radius:2px; background:rgba(0,0,0,.05); cursor:pointer; padding:0; min-width:0; }
+  .stp:hover{ background:rgba(0,0,0,.14); }
   .stp.on{ background:var(--ink); border-color:var(--ink); }
-  .stp.beat{ border-color:rgba(255,255,255,.3); }
-  .stp.pcur{ box-shadow:inset 0 0 0 2px #ff5468; }
+  .stp.beat{ border-color:rgba(0,0,0,.55); }
+  .stp.pcur{ box-shadow:inset 0 0 0 2px #c01f34; }
   .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
     background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
     -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
@@ -168,13 +169,18 @@
 
   // instruments: name → {colour, play(freq,amp)}
   const INST={
-    koto:  { col:[236,196,120] },
-    shaku: { col:[120,214,236] },
-    bell:  { col:[196,150,255] },
-    drum:  { col:[255,110,120] },
+    koto:   { col:[236,196,120] },
+    pluck:  { col:[120,214,236] },
+    marimba:{ col:[240,168,96] },
+    kalimba:{ col:[130,230,170] },
+    shaku:  { col:[96,180,236] },
+    bell:   { col:[196,150,255] },
+    pad:    { col:[150,170,255] },
+    bass:   { col:[130,150,175] },
+    drum:   { col:[255,110,120] },
   };
-  const INST_ORDER=['koto','shaku','bell','drum'];
-  const INST_LABEL={ koto:'Koto', shaku:'Shakuhachi', bell:'Bell', drum:'Drum' };
+  const INST_ORDER=['koto','pluck','marimba','kalimba','shaku','bell','pad','bass','drum'];
+  const INST_LABEL={ koto:'Koto', pluck:'Pluck', marimba:'Marimba', kalimba:'Kalimba', shaku:'Shakuhachi', bell:'Bell', pad:'Pad', bass:'Bass', drum:'Drum' };
 
   // ---------- audio ----------
   let AC=null, master=null, wet=null, streamDest=null;
@@ -195,11 +201,24 @@
     [1,2.0,2.76,5.4].forEach((r,k)=>{ const o=A.createOscillator(); o.type='sine'; o.frequency.value=freq*r; const g=A.createGain(); const dur=2.2/(1+k*0.8); env(g,now,0.003,0.6/(k+1),dur); o.connect(g).connect(out); o.start(now); o.stop(now+dur+0.05); }); }
   function drum(freq,amp){ const A=audio(), now=A.currentTime; const o=A.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(freq*1.6,now); o.frequency.exponentialRampToValueAtTime(freq*0.5,now+0.16);
     const g=A.createGain(); g.gain.setValueAtTime(amp*0.6,now); g.gain.exponentialRampToValueAtTime(0.0001,now+0.2); o.connect(g).connect(master); o.start(now); o.stop(now+0.22); }
-  function playInst(name,freq,amp){ ({koto:pluckKoto,shaku:shaku,bell:bell,drum:drum}[name]||pluckKoto)(freq,amp); }
+  function marimba(freq,amp){ const A=audio(), now=A.currentTime; const out=A.createGain(); out.gain.value=amp*0.5; out.connect(master);
+    [[1,1,1.1],[3.9,0.3,0.4],[9.2,0.08,0.2]].forEach(([r,a,dc])=>{ const o=A.createOscillator(); o.type='sine'; o.frequency.value=freq*r; const g=A.createGain(); env(g,now,0.004,a,1.0*dc); o.connect(g).connect(out); o.start(now); o.stop(now+1.0*dc+0.05); }); }
+  function kalimba(freq,amp){ const A=audio(), now=A.currentTime; const out=A.createGain(); out.gain.value=amp*0.45; out.connect(master);
+    [[1,1,0.9],[2.0,0.3,0.5],[3.01,0.16,0.3]].forEach(([r,a,dc])=>{ const o=A.createOscillator(); o.type='sine'; o.frequency.value=freq*r; const g=A.createGain(); env(g,now,0.002,a,0.9*dc); o.connect(g).connect(out); o.start(now); o.stop(now+0.9*dc+0.05); }); }
+  function pad(freq,amp){ const A=audio(), now=A.currentTime, dur=1.6; const out=A.createGain(); out.gain.value=amp*0.3; out.connect(master);
+    const lp=A.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1200; lp.connect(out);
+    [0,-1,1].forEach(det=>{ const o=A.createOscillator(); o.type='sawtooth'; o.frequency.value=freq*(1+det*0.006); const g=A.createGain(); env(g,now,0.25,0.5,dur); o.connect(g).connect(lp); o.start(now); o.stop(now+dur+0.1); }); }
+  function bass(freq,amp){ const A=audio(), now=A.currentTime; freq*=0.5; const out=A.createGain(); out.gain.value=amp*0.6; out.connect(master);
+    const o=A.createOscillator(); o.type='triangle'; o.frequency.value=freq; const o2=A.createOscillator(); o2.type='sine'; o2.frequency.value=freq;
+    const g=A.createGain(); env(g,now,0.005,1,0.5); o.connect(g).connect(out); o2.connect(g); o.start(now); o2.start(now); o.stop(now+0.55); o2.stop(now+0.55); }
+  function pluck(freq,amp){ const A=audio(), now=A.currentTime; const out=A.createGain(); out.gain.value=amp*0.5; out.connect(master);
+    const lp=A.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(freq*8,now); lp.frequency.exponentialRampToValueAtTime(freq*2,now+0.4); lp.connect(out);
+    const o=A.createOscillator(); o.type='sawtooth'; o.frequency.value=freq; const g=A.createGain(); env(g,now,0.004,0.8,0.6); o.connect(g).connect(lp); o.start(now); o.stop(now+0.65); }
+  function playInst(name,freq,amp){ ({koto:pluckKoto,pluck:pluck,marimba:marimba,kalimba:kalimba,shaku:shaku,bell:bell,pad:pad,bass:bass,drum:drum}[name]||pluckKoto)(freq,amp); }
 
   // ---------- lines ----------
   const lines=[];
-  function makeLine(inst,deg,pat){ const n=16; const steps=new Array(n).fill(false); if(pat) pat.forEach(i=>{ if(i<n) steps[i]=true; }); return { inst, deg, steps, amp:0, phase:Math.random()*TAU, col:INST[inst].col.slice() }; }
+  function makeLine(inst,deg,pat){ const n=16; const steps=new Array(n).fill(false); if(pat) pat.forEach(i=>{ if(i<n) steps[i]=true; }); return { inst, deg, steps, level:80, amp:0, phase:Math.random()*TAU, col:INST[inst].col.slice() }; }
   function defaultLines(){ lines.length=0;
     lines.push(makeLine('koto', 7, [0,4,8,12]));
     lines.push(makeLine('koto', 4, [2,6,10,14]));
@@ -213,6 +232,7 @@
           '<select class="inst">'+INST_ORDER.map(k=>'<option value="'+k+'"'+(k===L.inst?' selected':'')+'>'+INST_LABEL[k]+'</option>').join('')+'</select>'+
           '<button class="btn rm" title="Remove line">×</button></div>'+
         '<div class="noter"><span>Note</span><input class="note" type="range" min="0" max="14" value="'+L.deg+'"><b class="nn">'+nn+'</b></div>'+
+        '<div class="noter"><span>Level</span><input class="lvl" type="range" min="0" max="100" value="'+L.level+'"><b class="lv">'+L.level+'</b></div>'+
         '<div class="steps"></div>';
       const grid=card.querySelector('.steps'); grid.style.gridTemplateColumns='repeat('+P.steps+',1fr)';
       for(let s=0;s<P.steps;s++){ const b=document.createElement('button'); b.className='stp'+(L.steps[s]?' on':'')+(s%4===0?' beat':''); b.dataset.s=s;
@@ -220,6 +240,7 @@
       card.querySelector('.lcol').addEventListener('input',e=>{ L.col=hexToRgb(e.target.value); });
       card.querySelector('.inst').addEventListener('change',e=>{ L.inst=e.target.value; });
       card.querySelector('.note').addEventListener('input',e=>{ L.deg=+e.target.value; const m=scaleMidi(L.deg); card.querySelector('.nn').textContent=NOTES[((m%12)+12)%12]+(Math.floor(m/12)-1); });
+      card.querySelector('.lvl').addEventListener('input',e=>{ L.level=+e.target.value; card.querySelector('.lv').textContent=L.level; });
       card.querySelector('.rm').addEventListener('click',()=>{ if(lines.length>1){ lines.splice(li,1); buildLines(); } });
       host.appendChild(card); }); }
   function refreshNotes(){ document.querySelectorAll('.linec').forEach((card,li)=>{ const L=lines[li]; if(!L) return; const m=scaleMidi(L.deg); const b=card.querySelector('.nn'); if(b) b.textContent=NOTES[((m%12)+12)%12]+(Math.floor(m/12)-1); }); }
@@ -236,7 +257,7 @@
     const bpm=60+(P.tempo/100)*150; const stepDur=60/bpm/4; phase += dt/stepDur;
     const cur=Math.floor(phase)%P.steps;
     if(cur!==lastStep){ lastStep=cur;
-      for(const L of lines){ if(L.steps[cur]){ playInst(L.inst, mtof(scaleMidi(L.deg)), 0.9); L.amp=Math.min(1.5, L.amp+1); } }
+      for(const L of lines){ if(L.steps[cur] && L.level>0){ playInst(L.inst, mtof(scaleMidi(L.deg)), 0.9*(L.level/100)); L.amp=Math.min(1.5, L.amp+0.4+0.6*(L.level/100)); } }
     }
     for(const L of lines){ if(L.amp>0) L.amp=Math.max(0, L.amp-dt*2.0); }
   }
