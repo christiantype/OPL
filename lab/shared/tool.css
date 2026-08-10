@@ -1,48 +1,53 @@
-/* Shared control language for the lab tools — matches the established look
-   (Angel / Scanner / Halftone / Flux): sharp 2px corners, uppercase 11px labels,
-   the --ink / --hair / --paper token palette on a #07080f ground.
-   Loaded AFTER a tool's own <style>, so it overrides bespoke control styling
-   while leaving each tool's layout (canvas, docks, panels) intact. */
+/* Shared control language for the lab tools — LIGHT shell.
+   Loaded AFTER a tool's own <style>, so it overrides the bespoke (formerly dark)
+   chrome while leaving each tool's canvas + layout intact. One white shell for all. */
 
 :root{
-  --ink:#f2f4f8; --hair:rgba(255,255,255,.24); --mute:rgba(255,255,255,.60);
-  --paper:#07080f; --cell:rgba(255,255,255,.05); --track:rgba(255,255,255,.20);
-  --line:rgba(255,255,255,.24); --dim:rgba(255,255,255,.60);
+  --ink:#16171c; --hair:rgba(0,0,0,.16); --mute:rgba(0,0,0,.55);
+  --paper:#f4f4f6; --cell:rgba(0,0,0,.05); --track:rgba(0,0,0,.16);
+  --line:rgba(0,0,0,.14); --dim:rgba(0,0,0,.55);
 }
 html, body{ background:var(--paper); color:var(--ink); }
+
+/* topbar + sub-header read dark-on-white (the wordmark is currentColor, so it follows) */
 body.dark .opal-topbar{ background:transparent; border:none; color:var(--ink); }
 body.dark .opal-subhead__name{ color:var(--ink); }
-body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(0,0,0,.5); }
 
-/* docks + side panels share one ground */
-#dock{ background:linear-gradient(to top, var(--paper), rgba(7,8,15,.82) 72%, transparent); }
-#panel{ background:var(--paper); border-left-color:var(--hair); }
+/* docks + floating chrome — light frosted glass */
+#dock{ background:rgba(249,249,251,.9); border-right-color:var(--line); }
+#panel{ background:#fff; border-left-color:var(--hair); }
+#sizeDock select{ background:rgba(249,249,251,.92); color:var(--ink); border-color:var(--line); }
+#recDot{ background:rgba(249,249,251,.92); border-color:var(--line); }
+.tip{ background:rgba(252,252,253,.98); color:var(--ink); border-color:var(--line);
+  box-shadow:0 16px 40px -20px rgba(0,0,0,.28); }
 
-/* buttons — sharp, uppercase, letter-spaced (Angel's .btn) */
-.btn{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+/* buttons — sharp, uppercase, letter-spaced */
+.btn{ appearance:none; background:var(--cell); border:1px solid var(--line); color:var(--ink);
   font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
   padding:8px 12px; border-radius:2px; cursor:pointer; transition:background .15s; white-space:nowrap; }
-.btn:hover{ background:rgba(255,255,255,.11); }
-.btn[aria-pressed="true"], .btn.primary, .btn.on{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+.btn:hover{ background:rgba(0,0,0,.09); }
+.btn[aria-pressed="true"], .btn.primary, .btn.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
 .btn.on{ outline:none; }
 .chip{ font-size:11px; padding:7px 10px; }
-.sep{ background:var(--hair); }
+.sep{ background:var(--line); }
 
 /* segmented rows */
-.seg{ border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
-.seg button{ font-size:11px; letter-spacing:.04em; text-transform:uppercase; }
-.seg button[aria-pressed="true"]{ background:var(--ink); color:var(--paper); }
+.seg{ border:1px solid var(--line); border-radius:2px; overflow:hidden; }
+.seg button{ font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink); }
+.seg button[aria-pressed="true"]{ background:var(--ink); color:#fff; }
 
-/* selects */
-select{ background:var(--cell); color:var(--ink); border:1px solid var(--hair); border-radius:2px;
+/* selects + text fields */
+select{ background:var(--cell); color:var(--ink); border:1px solid var(--line); border-radius:2px;
   font:inherit; font-size:11px; letter-spacing:.04em; text-transform:uppercase; padding:7px 8px; }
+textarea, input[type=text], input[type=number]{ background:#fff; color:var(--ink); border-color:var(--line); }
 
 /* labels */
 .knob label, .warp label, h4{ font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--mute); }
 .knob b, .warp b{ color:var(--ink); }
 
-/* sliders — thin track, small square ink thumb */
+/* sliders — thin track, small ink thumb (dark on light) */
 input[type=range]::-webkit-slider-runnable-track{ background:var(--track); }
 input[type=range]::-moz-range-track{ background:var(--track); }
-input[type=range]::-webkit-slider-thumb{ background:var(--ink); border-radius:1px; width:12px; height:12px; margin-top:-5px; }
-input[type=range]::-moz-range-thumb{ background:var(--ink); border-radius:1px; width:12px; height:12px; }
+input[type=range]::-webkit-slider-thumb{ background:var(--ink); }
+input[type=range]::-moz-range-thumb{ background:var(--ink); }
