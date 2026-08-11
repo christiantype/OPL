@@ -25,9 +25,10 @@
   /* Canvas area — centred in the space right of the dock (Attractor #wrap). The wrapper's
      rect is the single source of truth for canvas size; the canvas letterboxes to #sizeDock. */
   #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
-    display:flex; align-items:center; justify-content:center; }
-  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none;
-    box-shadow:0 10px 44px rgba(0,0,0,.35); border-radius:2px; }
+    display:flex; align-items:center; justify-content:center; padding:24px; }
+  /* the artboard: a board letterboxed to the size dock, centred on the grey mat.
+     tool.css paints the board white + 1px border + no shadow. */
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; border-radius:2px; }
 
   #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
     font-size:13px; color:var(--mute); background:var(--panel); padding:6px 14px; border-radius:999px;
@@ -54,7 +55,7 @@
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
   body.fs #dock, body.fs #bar, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
-  body.fs #stagewrap{ top:0; left:0; }
+  body.fs #stagewrap{ top:0; left:0; padding:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:1; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
 
@@ -528,10 +529,13 @@
   // ---------- canvas ----------
   const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
   let W=0,H=0,DPR=1, ASPECT=1080/1350;   // #sizeDock sets this; the canvas letterboxes to it
-  function resize(){ const r=wrap.getBoundingClientRect();
+  function resize(){ const r=wrap.getBoundingClientRect(), cs=getComputedStyle(wrap);
     DPR=Math.min(2,devicePixelRatio||1);
-    const pad=document.body.classList.contains('fs')?0:24;
-    let w=Math.max(1,r.width-pad*2), h=Math.max(1,r.height-pad*2);
+    // Size to the PADDED mat area — the wrapper owns the ~24px margin in CSS (0 in full
+    // screen), so the canvas letterboxes to aspect and centres inside it, never full-bleed.
+    const padX=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);
+    const padY=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
+    let w=Math.max(1,r.width-padX), h=Math.max(1,r.height-padY);
     if(ASPECT){ if(w/h>ASPECT) w=h*ASPECT; else h=w/ASPECT; }
     W=Math.round(w); H=Math.round(h);
     cv.style.width=W+'px'; cv.style.height=H+'px';
