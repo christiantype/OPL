@@ -168,16 +168,6 @@
     <div class="crow" data-tip="Colour of the ground behind everything."><label>Ground</label><input type="color" id="bg" value="#0a0b10" /></div>
   </div>
 
-  <!-- export -->
-  <div class="group">
-    <div class="group__t">Export</div>
-    <div class="knob" data-tip="Pixels across the long edge of the saved PNG. The line beneath is the print size at 300 DPI."><label>Pixels <b id="resR">3200</b></label><input id="res" type="range" min="1024" max="8192" step="256" value="3200" /><div class="capline"><b id="resIn" style="font-weight:400;opacity:.75"></b></div></div>
-    <div class="grid2">
-      <button class="btn" id="pngBtn" data-tip="Saves the current frame as a high-resolution PNG.">PNG</button>
-      <button class="btn" id="vidBtn" data-tip="Records the flow as a video (MP4 where supported).">Record</button>
-    </div>
-  </div>
-
   <!-- view -->
   <div class="group">
     <div class="group__t">View</div>
@@ -185,6 +175,16 @@
       <button class="btn" id="themeBtn" data-tip="Switches the interface and canvas between light and dark.">Theme</button>
       <button class="btn" id="fsBtn" data-tip="Fills the screen with the canvas only. Press Esc to exit.">Full screen</button>
     </div>
+  </div>
+
+  <!-- output -->
+  <div class="group out">
+    <div class="group__t">Output</div>
+    <div class="grid2">
+      <button class="btn" id="recBtn" data-tip="Records the flow as a video (MP4 where supported).">Record</button>
+      <button class="btn" id="saveBtn" data-tip="Saves the current frame as a high-resolution PNG.">Save</button>
+    </div>
+    <div class="knob" data-tip="Pixels across the long edge of the saved PNG. The line beneath is the print size at 300 DPI."><label>Pixels <b id="resR">3200</b></label><input id="res" type="range" min="1024" max="8192" step="256" value="3200" /><div class="capline"><b id="resIn" style="font-weight:400;opacity:.75"></b></div></div>
   </div>
 
 </div>
@@ -308,7 +308,7 @@
     ['c1','c2','c3','bg'].forEach(id=>$(id).addEventListener('input',e=>{ state[id]=e.target.value; markDirty(); }));
     $('loadBtn').addEventListener('click',()=>$('fileInp').click());
     $('fileInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) addImage(f); e.target.value=''; });
-    $('pngBtn').addEventListener('click',exportPNG); $('vidBtn').addEventListener('click',exportVid);
+    $('saveBtn').addEventListener('click',exportPNG); $('recBtn').addEventListener('click',exportVid);
     $('playBtn').addEventListener('click',()=>{ state.playing=!state.playing; last=null; $('playBtn').setAttribute('aria-pressed',String(state.playing)); $('playBtn').textContent=state.playing?'Pause':'Play'; });
     $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark'));
       if(THEME==='light'&&state.bg==='#0a0b10'){ state.bg='#eef0f4'; $('bg').value=state.bg; } else if(THEME==='dark'&&state.bg==='#eef0f4'){ state.bg='#0a0b10'; $('bg').value=state.bg; } markDirty(); });
