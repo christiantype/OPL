@@ -6,6 +6,8 @@ The reference implementation is **[attractor/index.html](/lab/attractor/index.ht
 
 The living spec is **[lab-design-system/](/lab/lab-design-system/)** (LAB Design System, OP-LAB-028) — it renders every token, element and pattern live through this same `tool.css`, with the standing audit. When in doubt, open it.
 
+**Skin — in the vein of IBM (Carbon).** The shell is typeset in **IBM Plex Sans** (interface) + **IBM Plex Mono** (labels, readouts, code), self-hosted at `/shared/fonts/ibm-plex-*.woff2`. **Corners are square** — every radius token is `0`. A single interactive accent, **IBM Blue `#0f62fe`**, carries primary buttons, the selected/pressed state, and the 2px focus ring; greys are neutral (no blue tint); spacing is an 8/16/24 grid; tooltips are solid dark. Only the round slider thumb and record dot are curved.
+
 ---
 
 ## 1. Non-negotiables
@@ -53,23 +55,29 @@ The tool defines these + its own art CSS. It should NOT hardcode dark colours �
 
 | token | value | use |
 |---|---|---|
-| `--ink` | `#16171c` | primary text, slider thumbs, primary-button ground (~15:1) |
-| `--dim` / `--mute` | `#585860` | muted labels / captions (~6:1 — AA) |
+| `--font` | `'IBM Plex Sans', system-ui…` | interface type |
+| `--mono` | `'IBM Plex Mono', ui-monospace…` | labels, readouts, code |
+| `--accent` | `#0f62fe` | primary, selected, focus (IBM Blue 60); `--accent-hover` `#0353e9`, `--accent-active` `#002d9c` |
+| `--ink` | `#161616` | primary text, slider thumbs (~16:1) |
+| `--dim` / `--mute` | `#525252` | muted labels / captions (~7:1 — AA) |
 | `--line` | `rgba(0,0,0,.16)` | borders, dividers |
 | `--hair` | `rgba(0,0,0,.18)` | panel edges |
 | `--track` | `rgba(0,0,0,.28)` | slider tracks |
-| `--paper` | `#f4f4f6` | body / canvas-area ground |
-| `--cell` | `rgba(0,0,0,.05)` | button ground |
+| `--paper` | `#f4f4f4` | body ground (Gray 10) |
+| `--cell` | `rgba(0,0,0,.05)` | button / input ground |
+| `--mat` / `--rail-bg` / `--island` | `#e0e0e0` / `#e8e8e8` / `#fff` | canvas mat / left rail / control card |
+| `--rec` | `#da1e28` | record indicator (Carbon Red 60) |
+| `--r-island` … `--r-seg` | `0` | all radii are zero — corners are square |
 
-Chrome painted by `tool.css`: white topbar with a hairline under it; `#dock` = `#e8e9ee` grey panel; `#hint`/`#recDot`/`#sizeDock select`/`.tip` = light frosted with dark text; `#recDot` red = `#c01f34`.
+Chrome painted by `tool.css`: white topbar with a hairline under it; `#dock` = `#e8e8e8` grey panel; `#hint`/`#recDot`/`#sizeDock select` = light frosted with dark text; `.tip` = solid dark (Carbon); `#recDot` red = `#da1e28`.
 
 ---
 
 ## 4. Control language (use these classes)
 
-- **Groups = islands.** `<div class="group">` with a `<div class="group__t">CAPTION</div>`. `tool.css` renders every group as a floating white **island** (Lake-Opeka style) — `border-radius:12px`, `padding:14px`, soft shadow — on the grey rail "water". Spacing is a **consistent 12px gap** between stacked islands (via `#dock { gap }`), the same left/right inset for all (via `#dock` padding). Put each logical section of controls in its own `.group`; do not add manual margins/dividers — the shell handles island radius, padding, margin and gap uniformly.
-- **Sliders:** `<div class="knob"><label>Name <b id="xR">val</b></label><input type="range" …></div>` — flat thin track, round `--ink` thumb. Wire the `<b>` readout on `input`.
-- **Buttons:** `.btn` (light), `.btn.primary` / `[aria-pressed="true"]` (inverted: `--ink` ground, white text), `.grid2` for two-up, `.btn.full`. **Radius is a uniform 5px** for every `.btn` + `select` (enforced `!important` in tool.css). Segmented buttons inside a rounded `.seg` stay square (0px) by design; round colour swatches stay circular.
+- **Groups = islands.** `<div class="group">` with a `<div class="group__t">CAPTION</div>`. `tool.css` renders every group as a **square white island** — `border-radius:0`, `padding:16px`, a hairline border, no shadow — on the grey rail. Spacing is a **consistent 16px gap** between stacked islands (via `#dock { gap }`), the same inset for all (via `#dock` padding 16px). Put each logical section of controls in its own `.group`; do not add manual margins/dividers — the shell handles it uniformly.
+- **Sliders:** `<div class="knob"><label>Name <b id="xR">val</b></label><input type="range" …></div>` — flat 2px track, round `--ink` thumb (blue on focus), mono readout. Wire the `<b>` readout on `input`.
+- **Buttons:** `.btn` (quiet grey), `.btn.primary` / `[aria-pressed="true"]` / `.btn.on` (**IBM Blue `--accent` ground, white text** — this is the selected/primary state), `.grid2` for two-up, `.btn.full`. **All corners are square (0 radius)** on every `.btn` + `select` (enforced `!important`). Segmented buttons fill blue when active; square colour swatches (`.sw`) get a blue outline when selected. Focus shows a 2px blue ring.
 - **Selects:** `select.btn` (full width) or the styled `#sizeDock select`.
 - **Colour rows:** `.crow` — label left, `<input type="color">` swatch right.
 - **Toggles:** `.tog` — label left, small `.btn` right.
