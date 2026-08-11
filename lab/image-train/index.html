@@ -11,12 +11,13 @@
 
   /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
      same knobs. What differs is everything below the chrome. */
-  :root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
-    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
-    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:82px; --rail:290px; }
-  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
-    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
-    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  /* Layout tokens only. Colour tokens (--ink/--mute/--hair/--line/--track/--cell/--paper)
+     are owned by tool.css (loaded last) so the whole Lab shares one light shell.
+     --panel/--edge/--liton kept here as light values tool.css doesn't define.
+     The `dark` body class is legacy — tool.css keys its light topbar off it; it no
+     longer re-themes the rail, so there is no dark mode. */
+  :root{ --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --liton:#6f9bff;
+    --top:82px; --rail:290px; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
     font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
@@ -25,17 +26,7 @@
   #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
   #stage{ display:block; width:100%; height:100%; touch-action:none; }
 
-  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
-     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
-     so the shared chrome gets carried into the theme too. The brand link sets its colour
-     inline via mountTopbar, hence !important. */
-  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
-  body.dark .opal-brand{ color:var(--ink) !important; }
-  body.dark .opal-subhead__name{ color:var(--ink); }
-  body.dark .opal-brand .opal-product,
-  body.dark .opal-subhead__desc,
-  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
-  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+  /* Topbar chrome is owned by tool.css (light: white bar, dark ink) — no per-tool overrides. */
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
   body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
@@ -93,7 +84,7 @@
     display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
     width:100%; background:none; border:0; font-family:inherit; text-align:left; }
   .rowhead:hover{ opacity:1; }
-  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhint{ margin:0 0 2px; font-size:11px; line-height:1.55; color:var(--mute); letter-spacing:.01em; }
   .rowhead::before{ content:''; width:0; height:0; flex:none;
     border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
     transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
@@ -210,12 +201,8 @@
     font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); }
   body.fs #hint{ display:none; }
   #stagewrap{ top:0 !important; }
-  .opal-topbar, .opal-subhead{ -webkit-backdrop-filter:blur(22px) saturate(150%);
-    backdrop-filter:blur(22px) saturate(150%); background:rgba(9,10,16,.5) !important;
-    border-bottom-color:rgba(255,255,255,.08) !important; }
-  .opal-brand{ color:#f2f4f8 !important; } .opal-subhead__name{ color:#f2f4f8; }
-  .opal-brand .opal-product, .opal-subhead__desc, .opal-subhead__ver{ color:rgba(255,255,255,.5); }
-  .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+  /* Topbar left to tool.css (light shell). Canvas runs full-bleed behind the opaque
+     white bar; the rail tucks under it via padding-top. */
   .rail{ top:0 !important; padding-top:calc(var(--top) + 8px); }
   .rowhint{ opacity:.72; }
   #countdown{ position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
@@ -240,6 +227,7 @@
   body.idle #sizeDock{ opacity:0; pointer-events:none; }
   body.panels #sizeDock{ opacity:1; pointer-events:auto; }
 </style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
 </head>
 <body>
 
@@ -264,7 +252,7 @@
 </div>
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
-<div id="rail" class="rail rail-l">
+<div id="dock" class="rail rail-l">
   <div class="row" style="padding-bottom:6px">
     <div class="grp" data-tip="Prepopulate a ready-made layout, or save your own. Applies bands, type, colour and every placed piece."><label>Preset</label>
       <select id="preset"><option value="">Custom…</option><option value="event">Event</option></select>
@@ -1050,7 +1038,7 @@
       if(THEME==='light'&&state.bg==='#0a0b10'){ state.bg='#eef0f4'; $('bg').value=state.bg; } else if(THEME==='dark'&&state.bg==='#eef0f4'){ state.bg='#0a0b10'; $('bg').value=state.bg; } markDirty(); });
     $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
     $('exitFs').addEventListener('click',()=>setFs(false));
-    $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open'); $('rail').classList.toggle('open',open); document.body.classList.toggle('panels',open); $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
+    $('toggle').addEventListener('click',()=>{ const open=!$('dock').classList.contains('open'); $('dock').classList.toggle('open',open); document.body.classList.toggle('panels',open); $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
     ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>e.preventDefault()));
     addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(fs) [...fs].filter(f=>/^image\//.test(f.type)||isPDF(f)).forEach(addFile); });
     addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
@@ -1091,7 +1079,7 @@
   addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true);
 
   wire(); document.body.classList.add('dark');
-  $('rail').classList.add('open'); document.body.classList.add('panels'); $('toggle').setAttribute('aria-pressed','true');   // controls open by default
+  $('dock').classList.add('open'); document.body.classList.add('panels'); $('toggle').setAttribute('aria-pressed','true');   // controls open by default
   resize();
   /* sliders render natively as flat shell sliders — knob-wrapping disabled for Lab consistency (makeKnob/paintKnob kept but unused) */
   syncRes(); syncHint();
