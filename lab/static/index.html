@@ -47,6 +47,15 @@
     font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
     -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
 
+  /* record indicator — pinned at canvas-left, shown while recording */
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
+    padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
+    background:rgba(15,16,24,.92); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:#ff5468; animation:recblink 1s infinite; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  @keyframes recblink{ 50%{ opacity:.25; } }
+
   /* view controls — small icons under the size dock */
   #bar{ position:fixed; top:calc(var(--top) + 56px); right:20px; z-index:10; display:flex; gap:8px; }
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--line);
@@ -134,6 +143,7 @@
 <div id="wrap"><div id="stagewrap"><canvas id="stage"></canvas></div></div>
 <div id="status"></div>
 <div id="hint"></div>
+<div id="recDot"><i></i><b>0:00</b></div>
 
 <div id="sizeDock">
   <select id="aspect" title="Canvas size" data-tip="The shape of the working canvas — and the frame you export.">
@@ -213,14 +223,15 @@
     <div class="knob"><label>Subject <b id="photoName">none</b></label></div>
   </div>
 
-  <div class="group">
-    <div class="group__t">Export</div>
+  <div class="group out">
+    <div class="group__t">Output</div>
     <p class="ghelp">Aspect is set by the size dock, top-right. SVG stays sharp at any scale; PNG bakes it to pixels.</p>
-    <div class="knob" data-tip="Pixels across the long edge of the exported PNG. The line beside shows the print size at 300 DPI. For anything bigger than this, use SVG on the Waves mode — it prints sharp at any size."><label>Pixels <span class="kv"><b id="resR">6144</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></span></label><input id="res" type="range" min="1024" max="16384" step="512" value="6144" /></div>
     <div class="grid2">
-      <button class="btn" id="svgBtn" data-tip="Saves the Waves field as an SVG &#8212; real lines, sharp at any size, editable in Illustrator. Only Waves exports this way.">SVG</button>
-      <button class="btn" id="pngBtn" data-tip="Saves the picture as a high-resolution PNG at the pixel size above.">PNG</button>
+      <button class="btn" id="recBtn" aria-pressed="false" data-tip="Records the animated signal to a video file &#8212; MP4 where the browser supports it, WebM otherwise. Turns Animate on so there's motion to capture.">Record</button>
+      <button class="btn" id="saveBtn" data-tip="Saves the picture as a high-resolution PNG at the pixel size below.">Save</button>
     </div>
+    <div class="knob" data-tip="Pixels across the long edge of the exported PNG. The line beside shows the print size at 300 DPI. For anything bigger than this, use SVG on the Waves mode — it prints sharp at any size."><label>Pixels <span class="kv"><b id="resR">6144</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></span></label><input id="res" type="range" min="1024" max="16384" step="512" value="6144" /></div>
+    <button class="btn full" id="svgBtn" data-tip="Saves the Waves field as an SVG &#8212; real lines, sharp at any size, editable in Illustrator. Only Waves exports this way.">SVG</button>
   </div>
 </div>
 
@@ -800,6 +811,33 @@
     setTimeout(()=>setStatus(''), photo&&state.photoMix>0?3200:2200);
   }
 
+  // ---------- record (video) — capture the live canvas to MP4 (H.264), WebM fallback ----------
+  let rec=null, recChunks=[], recRAF=0, recStart=0, recTimer=0;
+  const recFmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+  function toggleRecord(){
+    if(rec&&rec.state==='recording'){ rec.stop(); return; }
+    if(!state.animate) setAnim(true);                 // give the recording something moving
+    // fixed-size even-dimension high-res buffer so output is crisp and consistent
+    const ar=(W/H)||16/9, long=1920, ev2=n=>n-(n&1);
+    const rw=ev2(ar>=1?long:Math.round(long*ar)), rh=ev2(ar>=1?Math.round(long/ar):long);
+    const recCv=document.createElement('canvas'); recCv.width=rw; recCv.height=rh;
+    const recCtx=recCv.getContext('2d'); recCtx.imageSmoothingEnabled=true; recCtx.imageSmoothingQuality='high';
+    const drawFrame=()=>{ recCtx.drawImage(cv,0,0,rw,rh); }; drawFrame();
+    const stream=recCv.captureStream(30);
+    const mime=['video/mp4;codecs=avc1.640029','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
+    const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
+    rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:40000000}); recChunks=[];
+    rec.ondataavailable=e=>{ if(e.data.size) recChunks.push(e.data); };
+    rec.onstop=()=>{ cancelAnimationFrame(recRAF); clearInterval(recTimer); $('recDot').classList.remove('on');
+      dl(new Blob(recChunks,{type:mime}), 'static-'+state.mode+'.'+ext);
+      const b=$('recBtn'); b.textContent='Record'; b.setAttribute('aria-pressed','false'); };
+    rec.start();
+    (function comp(){ drawFrame(); if(rec&&rec.state==='recording') recRAF=requestAnimationFrame(comp); })();
+    recStart=performance.now(); $('recDot').classList.add('on'); $('recDot').querySelector('b').textContent='0:00';
+    recTimer=setInterval(()=>{ $('recDot').querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250);
+    const b=$('recBtn'); b.textContent='Stop'; b.setAttribute('aria-pressed','true');
+  }
+
   // ---------- UI ----------
   function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
   function seg(id, key, attr, after){
@@ -821,7 +859,8 @@
     bind('grain','grain',v=>{ $('grainR').textContent = +v>0 ? v : 'off'; });
     bind('res','res',v=>{ $('resR').textContent=v; syncRes(); });
     $('svgBtn').addEventListener('click',exportSVG);
-    $('pngBtn').addEventListener('click',exportPNG);
+    $('saveBtn').addEventListener('click',exportPNG);
+    $('recBtn').addEventListener('click',toggleRecord);
     $('photoBtn').addEventListener('click',()=>$('photoInp').click());
     $('photoClear').addEventListener('click',clearPhoto);
     $('photoInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadPhoto(f); });

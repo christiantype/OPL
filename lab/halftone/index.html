@@ -88,6 +88,15 @@
   #status{ position:fixed; bottom:14px; left:calc(var(--rail) + 20px); z-index:5; pointer-events:none;
     font-size:11px; letter-spacing:.06em; color:var(--dim); display:none; }
 
+  /* record indicator — pinned at canvas-left, shown while recording */
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
+    padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
+    background:rgba(15,16,24,.92); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:#ff5468; animation:recblink 1s infinite; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  @keyframes recblink{ 50%{ opacity:.25; } }
+
   /* Halftone's own — colour inputs, marks, drop hint */
   #markRow{ display:flex; flex-direction:column; gap:9px; }
   .cin{ display:flex; align-items:center; gap:8px; }
@@ -126,6 +135,7 @@
 <div id="dropHint">drop a photo, or load one from the panel</div>
 <div id="status"></div>
 <div id="hint"></div>
+<div id="recDot"><i></i><b>0:00</b></div>
 
 <div id="sizeDock">
   <select id="aspect" title="Canvas size">
@@ -211,15 +221,16 @@
     </div>
   </div>
 
-  <!-- export -->
-  <div class="group">
-    <div class="group__t">Export</div>
+  <!-- output -->
+  <div class="group out">
+    <div class="group__t">Output</div>
     <p class="rowhint">SVG for Dots and Lines (real vector), PNG for anything.</p>
-    <div class="knob" data-tip="Pixels across the long edge of the PNG. The figure beside it is the print size at 300 DPI."><label>Pixels <b id="resR">4096</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></label><input id="res" type="range" min="1024" max="10240" step="256" value="4096" /></div>
     <div class="grid2">
-      <button class="btn" id="svgBtn" data-tip="Saves the halftone as an SVG — real dots or lines, sharp at any size. Dots and Lines only.">SVG</button>
-      <button class="btn" id="pngBtn" data-tip="Saves a high-resolution PNG.">PNG</button>
+      <button class="btn" id="recBtn" aria-pressed="false" data-tip="Records the canvas to a video file — MP4 where the browser supports it, WebM otherwise.">Record</button>
+      <button class="btn" id="saveBtn" data-tip="Saves a high-resolution PNG.">Save</button>
     </div>
+    <div class="knob" data-tip="Pixels across the long edge of the PNG. The figure beside it is the print size at 300 DPI."><label>Pixels <b id="resR">4096</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></label><input id="res" type="range" min="1024" max="10240" step="256" value="4096" /></div>
+    <button class="btn full" id="svgBtn" data-tip="Saves the halftone as an SVG — real dots or lines, sharp at any size. Dots and Lines only.">SVG</button>
   </div>
 
 </div>
@@ -510,6 +521,31 @@
     const [w,h]=exportDims(); dl(new Blob([buildSVG(w,h)],{type:'image/svg+xml'}), `halftone-${state.kind}-${Date.now()}.svg`);
     setStatus('saved SVG'); setTimeout(()=>setStatus(''),1800); }
 
+  // ---------- record (video) — capture the canvas to MP4 (H.264), WebM fallback ----------
+  let rec=null, recChunks=[], recRAF=0, recStart=0, recTimer=0;
+  const recFmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+  function toggleRecord(){
+    if(rec&&rec.state==='recording'){ rec.stop(); return; }
+    const [aw,ah]=desiredAspect(), ar=aw/ah, long=1920, ev2=n=>n-(n&1);
+    const rw=ev2(ar>=1?long:Math.round(long*ar)), rh=ev2(ar>=1?Math.round(long/ar):long);
+    const recCv=document.createElement('canvas'); recCv.width=rw; recCv.height=rh;
+    const recCtx=recCv.getContext('2d'); recCtx.imageSmoothingEnabled=true; recCtx.imageSmoothingQuality='high';
+    const drawFrame=()=>{ recCtx.drawImage(cv,0,0,rw,rh); }; drawFrame();
+    const stream=recCv.captureStream(30);
+    const mime=['video/mp4;codecs=avc1.640029','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
+    const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
+    rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:40000000}); recChunks=[];
+    rec.ondataavailable=e=>{ if(e.data.size) recChunks.push(e.data); };
+    rec.onstop=()=>{ cancelAnimationFrame(recRAF); clearInterval(recTimer); $('recDot').classList.remove('on');
+      dl(new Blob(recChunks,{type:mime}), 'halftone-'+state.kind+'.'+ext);
+      const b=$('recBtn'); b.textContent='Record'; b.setAttribute('aria-pressed','false'); };
+    rec.start();
+    (function comp(){ drawFrame(); if(rec&&rec.state==='recording') recRAF=requestAnimationFrame(comp); })();
+    recStart=performance.now(); $('recDot').classList.add('on'); $('recDot').querySelector('b').textContent='0:00';
+    recTimer=setInterval(()=>{ $('recDot').querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250);
+    const b=$('recBtn'); b.textContent='Stop'; b.setAttribute('aria-pressed','true');
+  }
+
   // ---------- image loading ----------
   function loadFile(f){ const url=URL.createObjectURL(f), im=new Image();
     im.onload=()=>{ img=im; document.body.classList.remove('nofile'); URL.revokeObjectURL(url); resize(); syncHint();
@@ -540,7 +576,8 @@
     $('loadBtn').addEventListener('click',()=>$('fileInp').click());
     $('sampleBtn').addEventListener('click',useSample);
     $('fileInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadFile(f); });
-    $('pngBtn').addEventListener('click',exportPNG); $('svgBtn').addEventListener('click',exportSVG);
+    $('saveBtn').addEventListener('click',exportPNG); $('svgBtn').addEventListener('click',exportSVG);
+    $('recBtn').addEventListener('click',toggleRecord);
     // drag & drop a photo
     ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>{ e.preventDefault(); }));
     addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(!fs||!fs.length) return;
