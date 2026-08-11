@@ -238,10 +238,11 @@
     <button id="playBtn" class="primary">Play</button>
     <span class="time" id="time">0:00 / 0:00</span>
     <div id="scrub"><div class="fill" id="scrubFill"></div></div>
-    <button id="recBtn" class="rec">Record</button>
     <button id="sheetR" class="sheet-toggle" aria-label="Effects panel">FX</button>
   </div>
 </main>
+
+<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
 
 <script src="/lab/shared/opal.js"></script>
 <script>
@@ -949,6 +950,11 @@ $('#recBtn').addEventListener('click',async()=>{
   // restart the track from the top so the whole song is captured
   audioEl.currentTime=0; if(audioEl.paused){await audioEl.play();$('#playBtn').textContent='Pause';$('#playBtn').classList.remove('primary');}
   recorder.start(); recording=true; $('#recBtn').textContent='Stop'; $('#recBtn').classList.remove('rec'); $('#recBtn').classList.add('primary');
+});
+
+/* ---- save a PNG snapshot of the canvas ---- */
+$('#saveBtn').addEventListener('click',()=>{
+  const a=document.createElement('a'); a.download='ships.png'; a.href=canvas.toDataURL('image/png'); a.click();
 });
 </script>
 </body>

@@ -846,10 +846,8 @@
       <button id="btn-sessions" title="Saved sessions">⧉ Sessions</button>
       <button id="btn-magic" title="Auto-animate the controls and record a clip">✨ Magic</button>
       <button id="btn-magic-cfg" class="magic-cfg" title="Clip settings — length, aspect, quality, speed" aria-expanded="false">⚙</button>
-      <button id="btn-record" title="Record the canvas to video (R)"><span class="rec-dot"></span> Record</button>
       <button id="btn-reroll">↻ Re-roll</button>
       <button id="btn-export-svg">Export SVG</button>
-      <button id="btn-export" class="btn-primary">Export PNG</button>
     </div>
     <!-- Clip settings popover (Magic + Record) -->
     <div class="magic-pop" id="magic-pop" hidden>
@@ -1424,6 +1422,8 @@
     </div>
   </aside>
 </div>
+
+<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
 
 <script>
 /* ============================================================
@@ -4578,7 +4578,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
 // while recording (sliders, drags, re-roll) lands in the video. Toggle with
 // the Record button or the R key.
 (function () {
-  const btn = $('btn-record');
+  const btn = $('recBtn');
   const indicator = $('rec-indicator');
   const timeEl = $('rec-time');
   const countEl = $('rec-countdown');
@@ -5240,7 +5240,7 @@ function refreshExportLabel() {
 }
 
 // Export: render at chosen size + aspect, download PNG
-$('btn-export').addEventListener('click', () => {
+$('saveBtn').addEventListener('click', () => {
   const { w, h } = loExportDims(state.params.export);
   const out = document.createElement('canvas');
   out.width = w; out.height = h;

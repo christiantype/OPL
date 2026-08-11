@@ -383,7 +383,6 @@
   <!-- Bottom timeline bar — export · play · transport -->
   <div id="tbar">
     <div class="tbar-grp">
-      <button id="pngBtn">PNG</button>
       <button id="svgBtn" class="primary">SVG</button>
     </div>
     <span class="sep"></span>
@@ -394,7 +393,6 @@
       <button id="randBtn">Randomize</button>
       <button id="audioBtn" title="Add a sound track to recordings — click to upload audio">♪ Sound</button>
       <input id="audioFile" type="file" accept="audio/*" hidden>
-      <button id="recBtn" class="rec">Record</button>
     </div>
   </div>
 </div>
@@ -402,6 +400,7 @@
 <script src="/lab/shared/opal.js"></script>
 <script>Opal.mountTopbar({ name: 'Flux', desc: 'Experimental type instrument', version: 'v1' });</script>
 <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
 <script>
 /* ===========================================================================
    Flux — experimental type instrument
@@ -2187,7 +2186,7 @@ $('#svgBtn').addEventListener('click',()=>{renderHiRes();
 </svg>`;
     downloadBlob('kinetic-art.svg',new Blob([svg],{type:'image/svg+xml'}));return;}
   downloadBlob('kinetic-type.svg',new Blob([lastSVG],{type:'image/svg+xml'}));});
-$('#pngBtn').addEventListener('click',()=>{renderHiRes();canvas.toBlob(b=>downloadBlob('kinetic-type.png',b));});
+$('#saveBtn').addEventListener('click',()=>{renderHiRes();canvas.toBlob(b=>downloadBlob('kinetic-type.png',b));});
 
 /* ---- optional sound track for recordings — upload an audio file ---- */
 let recAudioEl=null, recAudioSrc=null, recAudioCtx=null, audioReady=false;
