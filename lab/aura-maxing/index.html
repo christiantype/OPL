@@ -23,8 +23,9 @@
 
   /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
      wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
-  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; overflow:hidden; background:#050609; }
-  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; padding:24px; }
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; }
 
   #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
     font-size:13px; color:var(--dim); background:rgba(11,12,20,.7); padding:6px 14px; border-radius:999px;
@@ -93,7 +94,7 @@
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
   body.fs #exitFs{ display:flex; }
   body.fs #dock, body.fs #sizeDock, body.fs #hint, body.fs #recDot{ display:none !important; }
-  body.fs #wrap{ top:0; left:0; }
+  body.fs #wrap{ top:0; left:0; padding:0; }
   body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
 </style>
 <link rel="stylesheet" href="/lab/shared/tool.css" />
@@ -264,7 +265,12 @@
   }
   const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('wrap');
   let W=0,H=0,DPR=1;
-  function resize(){ const r=wrap.getBoundingClientRect(); DPR=Math.min(2,devicePixelRatio||1); W=r.width; H=r.height; cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); markDirty(); }
+  function resize(){ const r=wrap.getBoundingClientRect(), cs=getComputedStyle(wrap);
+    const padX=parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight), padY=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom);
+    const availW=Math.max(1,r.width-padX), availH=Math.max(1,r.height-padY), aspect=CW()/CH();
+    let w=availW, h=w/aspect; if(h>availH){ h=availH; w=h*aspect; } w=Math.round(w); h=Math.round(h);
+    DPR=Math.min(2,devicePixelRatio||1); W=w; H=h;
+    cv.style.width=w+'px'; cv.style.height=h+'px'; cv.width=Math.round(w*DPR); cv.height=Math.round(h*DPR); markDirty(); }
   addEventListener('resize',resize);
   function render(g,cw,ch,t,forExport){ g.setTransform(1,0,0,1,0,0);
     if(forExport){ renderComp(g,cw,ch,t); return; }
@@ -296,7 +302,7 @@
   const bind=(id,key,fn)=>{ const e=$(id); e.addEventListener('input',ev=>{ state[key]=+ev.target.value; const r=$(id+'R'); if(r)r.textContent=ev.target.value; if(fn)fn(); markDirty(); }); };
   function wire(){
     bindSeg('maskSeg','mask','m',bake); bindSeg('invSeg','invert','i',bake); bindSeg('gtypeSeg','gtype','g');
-    $('aspect').addEventListener('change',e=>{ state.size=e.target.value; syncRes(); syncHint(); markDirty(); });
+    $('aspect').addEventListener('change',e=>{ state.size=e.target.value; resize(); syncRes(); syncHint(); markDirty(); });
     bind('thresh','thresh',bake); bind('feat','feat',bake); bind('gang','gang'); bind('gspd','gspd'); bind('fill','fill'); bind('glow','glow');
     $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     ['c1','c2','c3','bg'].forEach(id=>$(id).addEventListener('input',e=>{ state[id]=e.target.value; markDirty(); }));

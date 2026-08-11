@@ -21,9 +21,10 @@
   body.dark .opal-subhead__name{ color:var(--ink); }
   body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
 
-  /* canvas area — inset to the right of the rail, composition letterboxes within */
-  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; }
-  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+  /* canvas area — inset to the right of the rail; a centered mat, the board letterboxes within */
+  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center; padding:24px; }
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; }
 
   #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
     font-size:13px; color:var(--dim); background:rgba(11,12,20,.7); padding:6px 14px; border-radius:999px;
@@ -324,7 +325,13 @@
   const cv=$('stage'), ctx=cv.getContext('2d'), wrap=$('stagewrap');
   const sampCv=document.createElement('canvas'), sampCx=sampCv.getContext('2d',{willReadFrequently:true});
   let W=0,H=0,DPR=1;
-  function resize(){ const r=wrap.getBoundingClientRect(); DPR=Math.min(2,devicePixelRatio||1); W=r.width; H=r.height;
+  const MAT=24;   // grey-mat margin around the board (matches #stagewrap padding)
+  function resize(){ const r=wrap.getBoundingClientRect(); DPR=Math.min(2,devicePixelRatio||1);
+    const availW=Math.max(1,r.width-MAT*2), availH=Math.max(1,r.height-MAT*2);
+    const [aw,ah]=desiredAspect(), da=aw/ah;
+    let cw=availW, ch=cw/da; if(ch>availH){ ch=availH; cw=ch*da; }
+    W=Math.round(cw); H=Math.round(ch);
+    cv.style.width=W+'px'; cv.style.height=H+'px';
     cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); markDirty(); }
   addEventListener('resize',resize);
 
@@ -505,11 +512,11 @@
 
   // ---------- image loading ----------
   function loadFile(f){ const url=URL.createObjectURL(f), im=new Image();
-    im.onload=()=>{ img=im; document.body.classList.remove('nofile'); URL.revokeObjectURL(url); markDirty(); syncHint();
+    im.onload=()=>{ img=im; document.body.classList.remove('nofile'); URL.revokeObjectURL(url); resize(); syncHint();
       setStatus(f.name+' loaded'); setTimeout(()=>setStatus(''),1600); };
     im.onerror=()=>{ setStatus('could not read that image'); setTimeout(()=>setStatus(''),2600); URL.revokeObjectURL(url); };
     im.src=url; }
-  function useSample(){ img=makeSample(); document.body.classList.remove('nofile'); markDirty(); }
+  function useSample(){ img=makeSample(); document.body.classList.remove('nofile'); resize(); }
 
   // ---------- UI ----------
   function setStatus(t){ const s=$('status'); s.textContent=t; s.style.display=t?'block':'none'; }
@@ -520,7 +527,7 @@
   function wire(){
     bindSeg('kindSeg','kind','k', syncKindCtls); bindSeg('fitSeg','fit','t'); bindSeg('invSeg','invert','i');
     bindSeg('assignSeg','assign','a');
-    $('aspect').addEventListener('change',e=>{ state.size=e.target.value; syncRes(); syncHint(); markDirty(); });
+    $('aspect').addEventListener('change',e=>{ state.size=e.target.value; syncRes(); syncHint(); resize(); });
     $('markAdd').addEventListener('click',()=>$('markInp').click());
     $('markClear').addEventListener('click',clearMarks);
     $('markInp').addEventListener('change',e=>{ [...e.target.files].forEach(addMark); e.target.value=''; });

@@ -73,10 +73,11 @@
     font-size:11px; line-height:1.5; letter-spacing:.005em; text-transform:none;
     pointer-events:none; opacity:0; transition:opacity .14s ease; }
 
-  /* Garden Variety's own — the canvas is a full-bleed drawing surface, filling the area
-     right of the dock (not a centred fixed-aspect bitmap), so it uses a fill wrapper. */
-  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; }
-  #stage{ display:block; width:100%; height:100%; touch-action:none; cursor:crosshair; }
+  /* Garden Variety's own — the canvas is a free-form drawing surface, but it sits as a
+     centred artboard on a light-grey mat (like Attractor): the wrapper pads + flex-centres it. */
+  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center; padding:24px; }
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; cursor:crosshair; }
   .fld{ display:block; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); margin-bottom:5px; }
   #status{ position:fixed; bottom:14px; left:calc(var(--rail) + 16px); z-index:5; pointer-events:none;
     font-size:11px; letter-spacing:.08em; color:var(--dim); display:none; }
@@ -190,7 +191,7 @@
   function resetPaint(){ pctx.setTransform(1,0,0,1,0,0); pctx.fillStyle=state.ground; pctx.fillRect(0,0,paint.width,paint.height);
     pctx.save(); pctx.scale(DPR,DPR); if(grainPat){ pctx.globalAlpha=1; pctx.fillStyle=grainPat; pctx.fillRect(0,0,W,H); } pctx.restore();
     pctx.setTransform(DPR,0,0,DPR,0,0); }
-  function resize(){ DPR=Math.min(window.devicePixelRatio||1,2); const r=wrap.getBoundingClientRect(); W=r.width; H=r.height;
+  function resize(){ DPR=Math.min(window.devicePixelRatio||1,2); const M=24, r=wrap.getBoundingClientRect(); W=Math.max(1,r.width-M*2); H=Math.max(1,r.height-M*2);
     stage.width=paint.width=Math.round(W*DPR); stage.height=paint.height=Math.round(H*DPR);
     stage.style.width=W+'px'; stage.style.height=H+'px'; view.setTransform(DPR,0,0,DPR,0,0); grainPat=makeGrain(); resetPaint(); layoutCrop(); blit(); }
   addEventListener('resize',()=>setTimeout(resize,120));
@@ -268,7 +269,7 @@
     const [rw,rh]=state.exp.split('x').map(Number), ar=rw/rh, padTop=108,padBottom=20,padX=16;
     const availW=W-padX*2, availH=H-padTop-padBottom; let h=availH,w=h*ar; if(w>availW){ w=availW; h=w/ar; }
     const x=(W-w)/2, y=padTop+(availH-h)/2; cropRect={x,y,w,h};
-    const wr=wrap.getBoundingClientRect();   // cropRect is canvas-relative; the overlay is viewport-fixed, so offset by the canvas origin
+    const wr=stage.getBoundingClientRect();   // cropRect is canvas-relative; the overlay is viewport-fixed, so offset by the canvas origin (canvas is inset within the mat)
     cropEl.style.left=(wr.left+x)+'px'; cropEl.style.top=(wr.top+y)+'px'; cropEl.style.width=w+'px'; cropEl.style.height=h+'px'; }
   function flashCrop(){ if(state.exp==='full'){ cropEl.classList.remove('show'); return; } layoutCrop(); cropEl.classList.add('show');
     clearTimeout(cropHideT); cropHideT=setTimeout(()=>{ if(!recording) cropEl.classList.remove('show'); },2600); }
