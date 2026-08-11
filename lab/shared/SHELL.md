@@ -90,10 +90,14 @@ Any tool with a **dark preview swatch** (e.g. white-on-dark shapes) keeps a dark
 
 ## 5. Output — Record + Export (IDENTICAL on every tool)
 
-Every tool carries **one OUTPUT island**, the **last** `.group` in the rail, marked `class="group out"`, so it sits in the **same fixed spot** — pinned to the bottom of the rail (`tool.css` gives `.group.out` `position:sticky; bottom:0; margin-top:auto`), always reachable while the controls above scroll. It contains, in this order, a `.grid2` of:
+Every tool carries **one OUTPUT panel**, pinned to the **bottom-right of the screen** — the exact same fixed spot on every tool (a compact 208×89 card, Record + Save, floating over the bottom-right corner). It holds ONLY the two universal actions; any tool-specific export config (SVG/PDF/Audio, pixel size, size segs) lives back in the rail.
+
+Two ways to mark it, both styled bottom-right (tool.css for shelled tools, ibm.css for the rest):
+- **Shelled tools:** the last `.group` in `#dock`, marked `class="group out"` (`tool.css` pins `#dock > .group.out` fixed bottom-right).
+- **Bespoke / ibm.css tools:** a body-level `<div id="output">` (ibm.css pins `#output` fixed bottom-right).
 
 ```html
-<div class="group out">
+<div id="output"><!-- or <div class="group out"> for #dock tools -->
   <div class="group__t">Output</div>
   <div class="grid2">
     <button class="btn" id="recBtn">Record</button>
@@ -105,6 +109,8 @@ Every tool carries **one OUTPUT island**, the **last** `.group` in the rail, mar
 - **`#recBtn` — Record.** `canvas.captureStream(30)` → `MediaRecorder`, H.264 MP4 (`video/mp4;codecs=avc1…`) then WebM; audio tools add the WebAudio `MediaStreamDestination` track. Toggles to "Stop" (`aria-pressed`). **Same id, same label, same place, every tool.**
 - **`#saveBtn` — Save.** PNG via `toDataURL`. Tools that also export vector may add a secondary `#svgBtn` in the same island, but PNG is the constant.
 - **`#recDot`** — the recording timer, pinned over the canvas top-left: `position:fixed; top:calc(var(--top)+14px); left:calc(var(--rail)+24px)`. Same on every tool (no top-right variants).
+
+**Uniform-shell rollout (2026-08, complete).** All 27 tools now share the shell — a floating-island rail (left, or left+right for lake-opeka/ships), white artboard on grey mat, top-right size dock, and the **identical bottom-right OUTPUT panel** (Record + Save). Tiers: the 17 `#dock` tools + the 4 flat-rail twins (ash/kirlian/letter-strings/scanner, rails now cards) + lake-opeka/ships/flux (Record/Export moved out of their bespoke bottom clusters) + the reels (open-reel/open-slots) + Projection (bottom console reworked into a left island rail). Record was ADDED to the still-image tools that lacked it. **One intentional exception:** `open-capture` is a 4-clip batch-recorder gallery, not a single-canvas instrument — it wears the IBM look but keeps its gallery layout.
 - **`#sizeDock`** — aspect `<select id="aspect">`, pinned top-right (`top:calc(var(--top)+12px); right:20px`). Same id, same offset, every tool.
 - Hide any on-canvas edit UI (handles, guides) during record + save. Records render to a fixed 1920-long-edge buffer.
 - **No over-canvas icon clusters** (`#bar` theme/pause/fullscreen). Theme/fullscreen, if a tool needs them, live as buttons in a rail island. The only things over the canvas are `#hint`, `#recDot`, `#sizeDock`.
