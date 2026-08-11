@@ -67,7 +67,7 @@ Chrome painted by `tool.css`: white topbar with a hairline under it; `#dock` = `
 
 - **Groups = islands.** `<div class="group">` with a `<div class="group__t">CAPTION</div>`. `tool.css` renders every group as a floating white **island** (Lake-Opeka style) — `border-radius:12px`, `padding:14px`, soft shadow — on the grey rail "water". Spacing is a **consistent 12px gap** between stacked islands (via `#dock { gap }`), the same left/right inset for all (via `#dock` padding). Put each logical section of controls in its own `.group`; do not add manual margins/dividers — the shell handles island radius, padding, margin and gap uniformly.
 - **Sliders:** `<div class="knob"><label>Name <b id="xR">val</b></label><input type="range" …></div>` — flat thin track, round `--ink` thumb. Wire the `<b>` readout on `input`.
-- **Buttons:** `.btn` (light), `.btn.primary` / `[aria-pressed="true"]` (inverted: `--ink` ground, white text), `.grid2` for two-up, `.btn.full`.
+- **Buttons:** `.btn` (light), `.btn.primary` / `[aria-pressed="true"]` (inverted: `--ink` ground, white text), `.grid2` for two-up, `.btn.full`. **Radius is a uniform 5px** for every `.btn` + `select` (enforced `!important` in tool.css). Segmented buttons inside a rounded `.seg` stay square (0px) by design; round colour swatches stay circular.
 - **Selects:** `select.btn` (full width) or the styled `#sizeDock select`.
 - **Colour rows:** `.crow` — label left, `<input type="color">` swatch right.
 - **Toggles:** `.tog` — label left, small `.btn` right.
