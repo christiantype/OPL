@@ -141,32 +141,48 @@
     z-index: 10;
   }
 
-  /* UI PANEL */
+  /* UI PANEL — left island rail */
   #ui-panel {
     position: fixed;
-    bottom: 0;
+    top: 82px;
     left: 0;
-    right: 0;
-    background: rgba(10, 10, 10, 0.92);
-    border-top: 1px solid rgba(240, 232, 212, 0.15);
-    padding: 12px 20px;
+    bottom: 0;
+    width: 300px;
+    overflow-y: auto;
+    background: #e8e8e8;
+    padding: 16px;
     display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
     z-index: 100;
-    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease;
   }
 
-  #ui-panel.hidden { transform: translateY(100%); }
+  #ui-panel.hidden { transform: translateX(-100%); }
+
+  /* island cards */
+  .oc-island {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.16);
+    padding: 14px;
+    box-shadow: 0 10px 30px -16px rgba(0,0,0,.22);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .oc-row { display: flex; gap: 8px; }
+  .oc-row .btn { flex: 1; }
+  .oc-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
 
   .btn {
-    background: transparent;
-    border: 1px solid rgba(240, 232, 212, 0.3);
-    color: var(--paper);
-    padding: 6px 14px;
-    font-size: 11px;
-    letter-spacing: 0.08em;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.28);
+    color: #161616;
+    padding: 8px 12px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.15s;
@@ -174,8 +190,8 @@
   }
 
   .btn:hover {
-    background: var(--paper);
-    color: var(--ink);
+    background: #161616;
+    color: #fff;
   }
 
   .btn.active {
@@ -201,18 +217,18 @@
   }
 
   #text-input {
-    background: transparent;
-    border: 1px solid rgba(240, 232, 212, 0.3);
-    color: var(--paper);
-    padding: 6px 12px;
-    font-size: 12px;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.28);
+    color: #161616;
+    padding: 8px 10px;
+    font-size: 13px;
     font-family: inherit;
-    width: 180px;
-    letter-spacing: 0.05em;
+    width: 100%;
+    letter-spacing: 0.03em;
   }
 
-  #text-input::placeholder { color: rgba(240, 232, 212, 0.3); }
-  #text-input:focus { outline: none; border-color: var(--amber); }
+  #text-input::placeholder { color: rgba(0,0,0,.4); }
+  #text-input:focus { outline: none; border-color: var(--accent, #0f62fe); }
 
   .color-btn {
     width: 24px;
@@ -224,9 +240,9 @@
 
   #size-slider {
     -webkit-appearance: none;
-    width: 80px;
+    width: 100%;
     height: 2px;
-    background: rgba(240, 232, 212, 0.3);
+    background: rgba(0,0,0,.25);
     outline: none;
   }
 
@@ -241,13 +257,15 @@
   /* TOGGLE UI HINT */
   #toggle-hint {
     position: fixed;
-    bottom: 70px;
-    right: 20px;
+    bottom: 20px;
+    left: 320px;
+    right: auto;
     font-size: 10px;
     letter-spacing: 0.1em;
-    color: rgba(240, 232, 212, 0.3);
+    color: rgba(240, 232, 212, 0.6);
     text-transform: uppercase;
     z-index: 99;
+    text-shadow: 0 1px 3px rgba(0,0,0,.6);
   }
 
   /* CAMERA OFF STATE */
@@ -290,11 +308,12 @@
     text-transform: uppercase;
   }
 
-  /* OPACITY CONTROL */
+  /* ISLAND GROUP LABEL */
   .label {
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    color: rgba(240, 232, 212, 0.4);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: #525252;
+    font-weight: 600;
     text-transform: uppercase;
   }
 
@@ -372,61 +391,71 @@
   <div id="elements-layer"></div>
 </div>
 
-<!-- UI Panel -->
+<!-- UI Panel — left island rail -->
 <div id="ui-panel">
   <!-- Camera -->
-  <button class="btn" id="btn-camera">Camera On</button>
-  <div class="divider"></div>
+  <div class="oc-island">
+    <span class="label">Camera</span>
+    <button class="btn" id="btn-camera">Camera On</button>
+  </div>
 
-  <!-- Text -->
-  <input type="text" id="text-input" placeholder="Type text..." maxlength="40">
-  <button class="btn" id="btn-add-text">Add Text</button>
-  <div class="divider"></div>
+  <!-- Add -->
+  <div class="oc-island">
+    <span class="label">Add</span>
+    <input type="text" id="text-input" placeholder="Type text..." maxlength="40">
+    <button class="btn" id="btn-add-text">Add Text</button>
+    <div class="oc-row">
+      <button class="btn" id="btn-circle">○ Circle</button>
+      <button class="btn" id="btn-rect">□ Rect</button>
+    </div>
+    <div class="oc-row">
+      <button class="btn" id="btn-line">— Line</button>
+      <button class="btn" id="btn-eye">👁 Eye</button>
+    </div>
+    <div class="oc-row">
+      <button class="btn" id="btn-upload-img">↑ Image</button>
+      <button class="btn" id="btn-upload-vid">↑ Video</button>
+    </div>
+    <input type="file" id="file-img" accept="image/*" style="display:none">
+    <input type="file" id="file-vid" accept="video/*" style="display:none">
+  </div>
 
-  <!-- Shapes -->
-  <button class="btn" id="btn-circle">○ Circle</button>
-  <button class="btn" id="btn-rect">□ Rect</button>
-  <button class="btn" id="btn-line">— Line</button>
-  <div class="divider"></div>
+  <!-- Style -->
+  <div class="oc-island">
+    <span class="label">Color</span>
+    <div class="oc-swatches">
+      <div class="color-btn" style="background:#f0e8d4" data-color="#f0e8d4" title="Paper"></div>
+      <div class="color-btn" style="background:#1c39bb" data-color="#1c39bb" title="Cobalt"></div>
+      <div class="color-btn" style="background:#f0a500" data-color="#f0a500" title="Amber"></div>
+      <div class="color-btn" style="background:#b94a2c" data-color="#b94a2c" title="Sienna"></div>
+      <div class="color-btn" style="background:#ffffff" data-color="#ffffff" title="White"></div>
+    </div>
+    <span class="label">Size</span>
+    <input type="range" id="size-slider" min="20" max="200" value="60">
+  </div>
 
-  <!-- Eye -->
-  <button class="btn" id="btn-eye">👁 Eye</button>
-  <div class="divider"></div>
+  <!-- Animate -->
+  <div class="oc-island">
+    <span class="label">Animate</span>
+    <div class="oc-row">
+      <button class="btn" id="btn-anim-drift">~ Drift</button>
+      <button class="btn" id="btn-anim-pulse">◉ Pulse</button>
+      <button class="btn" id="btn-anim-spin">↻ Spin</button>
+    </div>
+  </div>
 
-  <!-- Upload -->
-  <button class="btn" id="btn-upload-img">↑ Image</button>
-  <input type="file" id="file-img" accept="image/*" style="display:none">
-  <button class="btn" id="btn-upload-vid">↑ Video</button>
-  <input type="file" id="file-vid" accept="video/*" style="display:none">
-  <div class="divider"></div>
-
-  <!-- Colors -->
-  <span class="label">Color</span>
-  <div class="color-btn" style="background:#f0e8d4" data-color="#f0e8d4" title="Paper"></div>
-  <div class="color-btn" style="background:#1c39bb" data-color="#1c39bb" title="Cobalt"></div>
-  <div class="color-btn" style="background:#f0a500" data-color="#f0a500" title="Amber"></div>
-  <div class="color-btn" style="background:#b94a2c" data-color="#b94a2c" title="Sienna"></div>
-  <div class="color-btn" style="background:#ffffff" data-color="#ffffff" title="White"></div>
-  <div class="divider"></div>
-
-  <!-- Size -->
-  <span class="label">Size</span>
-  <input type="range" id="size-slider" min="20" max="200" value="60">
-  <div class="divider"></div>
-
-  <!-- Animations -->
-  <button class="btn" id="btn-anim-drift">~ Drift</button>
-  <button class="btn" id="btn-anim-pulse">◉ Pulse</button>
-  <button class="btn" id="btn-anim-spin">↻ Spin</button>
-  <div class="divider"></div>
-
-  <!-- Controls -->
-  <button class="btn danger" id="btn-delete">✕ Delete</button>
-  <button class="btn" id="btn-clear">Clear All</button>
-  <button class="btn" id="btn-hide">Hide UI</button>
+  <!-- Edit -->
+  <div class="oc-island">
+    <span class="label">Edit</span>
+    <button class="btn danger" id="btn-delete">✕ Delete</button>
+    <button class="btn" id="btn-clear">Clear All</button>
+    <button class="btn" id="btn-hide">Hide UI</button>
+  </div>
 </div>
 
 <div id="toggle-hint">Press H to toggle UI</div>
+
+<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
 
 <script>
   // STATE
@@ -770,7 +799,7 @@
       selectedEl.remove();
       selectedEl = null;
     }
-    if (e.key === 'h' || e.key === 'H') toggleUI();
+    if ((e.key === 'h' || e.key === 'H') && e.target.tagName !== 'INPUT') toggleUI();
     if (e.key === 'Escape' && selectedEl) {
       selectedEl.classList.remove('selected');
       selectedEl = null;
@@ -806,6 +835,20 @@
   let frame = 0;
   function drawCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // draw the live camera onto the overlay canvas (cover-fit) so the
+    // canvas holds the projection surface for Record/Save capture
+    if (cameraOn) {
+      const feed = document.getElementById('camera-feed');
+      if (feed && feed.readyState >= 2 && feed.videoWidth) {
+        try {
+          const cw = canvas.width, ch = canvas.height;
+          const vw = feed.videoWidth, vh = feed.videoHeight;
+          const scale = Math.max(cw / vw, ch / vh);
+          const dw = vw * scale, dh = vh * scale;
+          ctx.drawImage(feed, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+        } catch (err) { /* frame not ready */ }
+      }
+    }
     // subtle moving dot
     const t = frame * 0.01;
     const x = (Math.sin(t * 0.7) * 0.5 + 0.5) * canvas.width;
@@ -842,6 +885,51 @@
     if (selectedEl) selectedEl.classList.remove('selected');
     selectedEl = null;
   }, 300);
+
+  // OUTPUT — record + save the projection (overlay canvas)
+  let rec = null, recChunks = [], recMime = '';
+  const recBtn = document.getElementById('recBtn');
+  const saveBtn = document.getElementById('saveBtn');
+
+  function pickMime() {
+    return ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+      .find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+  }
+
+  recBtn.addEventListener('click', () => {
+    if (rec && rec.state === 'recording') { rec.stop(); return; }
+    if (!window.MediaRecorder) { alert('Recording is not supported in this browser.'); return; }
+    recMime = pickMime();
+    const stream = canvas.captureStream(30);
+    try {
+      rec = recMime ? new MediaRecorder(stream, { mimeType: recMime }) : new MediaRecorder(stream);
+    } catch (err) { alert('Recording is not supported in this browser.'); rec = null; return; }
+    recChunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+    rec.onstop = () => {
+      const type = (rec && rec.mimeType) || recMime || 'video/webm';
+      const blob = new Blob(recChunks, { type });
+      const ext = type.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'projection.' + ext;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+      rec = null;
+      recBtn.textContent = 'Record';
+      recBtn.classList.remove('active');
+    };
+    rec.start();
+    recBtn.textContent = 'Stop';
+    recBtn.classList.add('active');
+  });
+
+  saveBtn.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'projection.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
 </script>
 </body>
 </html>
