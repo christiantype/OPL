@@ -24,8 +24,8 @@
     font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
   /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
      wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
-  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; }
-  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; }
   /* let the field take the whole width when the rail is tucked away */
   body.norail #stagewrap{ left:0; }
 
@@ -44,7 +44,7 @@
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
   body.fs #dock, body.fs #bar, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
   body.norail #dock{ display:none; }
-  body.fs #stagewrap{ top:0; left:0; }
+  body.fs #stagewrap{ top:0; left:0; padding:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
   body.fs.hint #exitFs{ opacity:1; }
@@ -1000,8 +1000,10 @@
   function resize(){ DPR=Math.min(window.devicePixelRatio||1,2);
     // The wrapper is a normal block and does stretch to its inset box, so its rect is the
     // truth whether the rail is showing, hidden, or we're full-screen.
+    const pad=document.body.classList.contains('fs')?0:24;   // 24px mat inset (0 in full-screen)
     const r=wrap.getBoundingClientRect();
-    W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height));
+    W=Math.max(1,Math.round(r.width-2*pad)); H=Math.max(1,Math.round(r.height-2*pad));
+    cv.style.width=W+'px'; cv.style.height=H+'px';
     cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
     pl.width=W*DPR; pl.height=H*DPR; plx.setTransform(DPR,0,0,DPR,0,0);
     plx.fillStyle=PAPERC(); plx.fillRect(0,0,W,H); }

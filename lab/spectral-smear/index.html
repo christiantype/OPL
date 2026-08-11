@@ -27,12 +27,12 @@
   body.dark .opal-brand .opal-product, body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
   body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
 
-  /* canvas area — the piece sits centred with a soft shadow.
-     A canvas is a replaced element and won't stretch to an inset box, so it lives inside
-     #stagewrap, whose rect is the single source of truth for the working canvas size. */
-  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
-  #stagewrap{ box-shadow:0 10px 44px rgba(0,0,0,.55); max-width:100%; max-height:100%; border-radius:2px; overflow:hidden; background:#07080f; }
-  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+  /* canvas area — the board sits centred on a light-grey mat (#stagewrap), 24px margin, no shadow.
+     A canvas is a replaced element, so fit() sizes #stage directly (letterboxed to aspect) and
+     its rect is the single source of truth for the working canvas backing size. */
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; }
+  #stagewrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; border-radius:2px; }
 
   #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
     font-size:13px; color:var(--dim); background:var(--hintbg); padding:6px 14px; border-radius:999px;
@@ -88,7 +88,8 @@
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; }
   body.fs #exitFs{ display:inline-flex; }
   body.fs #dock, body.fs #sizeDock, body.fs .opal-topbar, body.fs .opal-subhead, body.fs #hint{ display:none !important; }
-  body.fs #wrap{ top:0; left:0; padding:0; }
+  body.fs #wrap{ top:0; left:0; }
+  body.fs #stagewrap{ padding:0; }
 
   /* splash */
   #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
@@ -230,14 +231,14 @@
   // ---------- draw ----------
   let W=0,H=0,DPR=1;
   let ASPECT=1920/1080;   // set by #sizeDock; reshapes the working canvas
-  function resize(){ const r=wrap.getBoundingClientRect(); DPR=Math.min(2,devicePixelRatio||1); W=r.width; H=r.height;
+  function resize(){ const r=cv.getBoundingClientRect(); DPR=Math.min(2,devicePixelRatio||1); W=r.width; H=r.height;
     cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); }
   // size the canvas box to the chosen aspect, centred in the available area (letterboxed in full screen)
   function fit(){ const cs=getComputedStyle(document.documentElement), fsOn=document.body.classList.contains('fs');
     const rail=fsOn?0:(parseInt(cs.getPropertyValue('--rail'))||290), top=fsOn?0:(parseInt(cs.getPropertyValue('--top'))||82), pad=fsOn?0:24;
     const availW=Math.max(40,innerWidth-rail-pad*2), availH=Math.max(40,innerHeight-top-pad*2);
     let w=availW, h=w/ASPECT; if(h>availH){ h=availH; w=h*ASPECT; }
-    wrap.style.width=Math.round(w)+'px'; wrap.style.height=Math.round(h)+'px'; resize(); }
+    cv.style.width=Math.round(w)+'px'; cv.style.height=Math.round(h)+'px'; resize(); }
   addEventListener('resize',fit);
   function draw(w,h,time){ if(!prog) return; gl.viewport(0,0,w,h); gl.useProgram(prog);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex); gl.uniform1i(uni.u_tex,0);
