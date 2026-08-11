@@ -10,7 +10,8 @@ The reference implementation is **[attractor/index.html](/lab/attractor/index.ht
 
 - **Light shell.** White/near-white ground, dark controls, dark `currentColor` wordmark. No dark mode.
 - **`tool.css` is the last stylesheet** in `<head>` — after the tool's own `<style>`. It overrides the (formerly dark) chrome and gives every tool identical tokens, buttons, sliders, docks, tooltips.
-- **The canvas is the tool's own.** The shell never restyles `#art`/the artwork — only the chrome around it.
+- **The canvas is the tool's own** artwork — the shell doesn't touch what's *drawn*. But the **artboard frame is standard**: the canvas (`#art`/`#gl`) is a **white** board (default) with a **thin `--line` border** and **NEVER a drop shadow**, sitting on a **light-grey mat** (`#wrap` background). A tool may paint its own ground inside `render()` (cream, dark paper, etc.); the CSS default stays white.
+- **No floating control islands over the canvas, and no bottom button bars over the artwork.** All controls live in the left `#dock` rail. The only things allowed over/around the canvas are the centered `#hint` pill, the top-right `#sizeDock`, and the `#recDot` — nothing else should overlap the artboard.
 - **Accessibility (WCAG AA).** Body/label text ≥ 4.5:1 on the shell; UI outlines (step cells, toggles, dividers) must be visibly filled/bordered, not hairlines. Muted grey is `#585860` (~6:1), never lighter for text.
 - **No small body fonts** (never `0.8em`/`0.875em`; omit `font-size` or use the token sizes below). Code/mono may be 12px.
 - **No zero-padded numbers** (`1, 2, 3` — never `01, 02`).
