@@ -217,6 +217,8 @@
 <button class="icon" id="exitFs" title="Exit (Esc)">&#10005;</button>
 <input id="file" type="file" accept="image/*" hidden />
 <div id="rail" class="rail rail-l"></div>
+<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
+
 <script src="/lab/shared/opal.js"></script>
 <script>Opal.mountTopbar({ name:'Scanner', desc:'A photocopier bed that scans your motion', version:'v1', about:'A scan bar sweeps across the canvas capturing one line at a time. Drag your image around while it scans and your motion smears into the output — like moving a photo on a flatbed. Rendered through a threshold + ordered-dither xerox look. Export a still or record the pass.' });</script>
 <script>
@@ -346,8 +348,8 @@ function buildPanel(){
   select(gC,'aspect','Aspect',[{t:'Portrait 4:5',v:'4:5'},{t:'Story 9:16',v:'9:16'},{t:'Square 1:1',v:'1:1'},{t:'Landscape 16:9',v:'16:9'}],()=>{ raw=null; resetScan(); });
   slider(gC,'longEdge','Long edge',720,1600,20,v=>v+' px',()=>{ raw=null; resetScan(); });
 
-  const gE=grp('Export','A still, or record the scanning.');
-  const eb=el('div',null,''); eb.style.cssText='display:flex;gap:6px'; const bp=el('button','btn','PNG'); bp.style.flex='1'; bp.onclick=savePNG; const br=el('button','btn','Record'); br.style.flex='1'; br.id='recBtn'; br.onclick=toggleRec; eb.appendChild(bp); eb.appendChild(br); gE.appendChild(eb);
+  // Output — Record + Save live in the bottom-right #output panel
+  document.getElementById('recBtn').onclick=toggleRec; document.getElementById('saveBtn').onclick=savePNG;
 
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
   setupFolds(); setupTooltips();

@@ -211,6 +211,8 @@
 </div>
 <button class="icon" id="exitFs" title="Exit (Esc)">&#10005;</button>
 <div id="rail" class="rail rail-l"></div>
+<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
+
 <script src="/lab/shared/opal.js"></script>
 <script>Opal.mountTopbar({ name:'Letter Strings', desc:'Strings of characters, blown by a wind you control', version:'v1', about:'Lines of text become little ropes of characters. Blow them with a wind that swings back and forth, wrap them onto a cylinder, sphere or 3D box, or switch to Clock mode where hands fling the letters. Colour individual words, upload your own font, drag to push. Export a still or the motion.' });</script>
 <script>
@@ -486,9 +488,10 @@ function buildPanel(){
   select(gCv,'aspect','Aspect',[{t:'Portrait 4:5',v:'4:5'},{t:'Story 9:16',v:'9:16'},{t:'Square 1:1',v:'1:1'},{t:'Landscape 16:9',v:'16:9'}],true);
   slider(gCv,'longEdge','Long edge',720,1600,20,v=>v+' px',true);
 
-  const gE=grp('Export','A still, or record the motion.');
-  const eb=el('div',null,''); eb.style.cssText='display:flex;gap:6px'; const bp=el('button','btn','PNG'); bp.style.flex='1'; bp.onclick=savePNG; const br=el('button','btn','Record'); br.style.flex='1'; br.id='recBtn'; br.onclick=toggleRec; eb.appendChild(bp); eb.appendChild(br); gE.appendChild(eb);
-  const rr=el('div',null,''); rr.style.cssText='display:flex;gap:6px;margin-top:6px'; const bReset=el('button','btn','Re-settle'); bReset.style.flex='1'; bReset.onclick=build; rr.appendChild(bReset); gE.appendChild(rr);
+  // Output — Record + Save live in the bottom-right #output panel
+  document.getElementById('recBtn').onclick=toggleRec; document.getElementById('saveBtn').onclick=savePNG;
+  const gE=grp('Motion','Re-settle the letters from scratch.');
+  const rr=el('div',null,''); rr.style.cssText='display:flex;gap:6px'; const bReset=el('button','btn','Re-settle'); bReset.style.flex='1'; bReset.onclick=build; rr.appendChild(bReset); gE.appendChild(rr);
 
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
   setupFolds(); setupTooltips(); refreshGate();
