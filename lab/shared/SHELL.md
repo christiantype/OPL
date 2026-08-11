@@ -88,11 +88,26 @@ Any tool with a **dark preview swatch** (e.g. white-on-dark shapes) keeps a dark
 
 ---
 
-## 5. Export (consistent across tools)
+## 5. Output — Record + Export (IDENTICAL on every tool)
 
-- **Record:** `canvas.captureStream(30)` → `MediaRecorder`, preferring H.264 MP4 (`video/mp4;codecs=avc1…`) then WebM; audio tools add the WebAudio `MediaStreamDestination` track. Show `#recDot` while recording.
-- **Save:** PNG via `toDataURL`. Hide any on-canvas edit UI (handles, guides) during record + save.
-- Records render to a fixed 1920-long-edge buffer for crisp output.
+Every tool carries **one OUTPUT island**, the **last** `.group` in the rail, marked `class="group out"`, so it sits in the **same fixed spot** — pinned to the bottom of the rail (`tool.css` gives `.group.out` `position:sticky; bottom:0; margin-top:auto`), always reachable while the controls above scroll. It contains, in this order, a `.grid2` of:
+
+```html
+<div class="group out">
+  <div class="group__t">Output</div>
+  <div class="grid2">
+    <button class="btn" id="recBtn">Record</button>
+    <button class="btn" id="saveBtn">Save</button>
+  </div>
+</div>
+```
+
+- **`#recBtn` — Record.** `canvas.captureStream(30)` → `MediaRecorder`, H.264 MP4 (`video/mp4;codecs=avc1…`) then WebM; audio tools add the WebAudio `MediaStreamDestination` track. Toggles to "Stop" (`aria-pressed`). **Same id, same label, same place, every tool.**
+- **`#saveBtn` — Save.** PNG via `toDataURL`. Tools that also export vector may add a secondary `#svgBtn` in the same island, but PNG is the constant.
+- **`#recDot`** — the recording timer, pinned over the canvas top-left: `position:fixed; top:calc(var(--top)+14px); left:calc(var(--rail)+24px)`. Same on every tool (no top-right variants).
+- **`#sizeDock`** — aspect `<select id="aspect">`, pinned top-right (`top:calc(var(--top)+12px); right:20px`). Same id, same offset, every tool.
+- Hide any on-canvas edit UI (handles, guides) during record + save. Records render to a fixed 1920-long-edge buffer.
+- **No over-canvas icon clusters** (`#bar` theme/pause/fullscreen). Theme/fullscreen, if a tool needs them, live as buttons in a rail island. The only things over the canvas are `#hint`, `#recDot`, `#sizeDock`.
 
 ---
 
