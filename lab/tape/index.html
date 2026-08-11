@@ -36,7 +36,7 @@
     -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
 
   /* canvas-size dock — pinned top-right on every tool */
-  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:9; }
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:9; }
   #sizeDock select{ background:var(--panel); color:var(--ink); border:1px solid var(--hair); border-radius:2px;
     font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
     width:auto; background-image:none; -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
@@ -74,7 +74,7 @@
   /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
      fixed right offset kept colliding with it. Stays put in full screen so a recording
      always shows its own timer. */
-  #recDot{ position:fixed; top:calc(var(--top) + 100px); right:14px; z-index:11;
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
     display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
     font-size:10px; letter-spacing:.12em; color:#ff4d5e;
     background:var(--panel); border:1px solid var(--hair);
@@ -276,13 +276,13 @@
     <div class="knob" data-tip="The built-in voice: a soft struck tone. Clicking the canvas plays one, low at the bottom and high at the top."><label>Voice pitch <b id="vpR">C3</b></label><input id="vp" type="range" min="36" max="72" value="48" /></div>
   </div>
 
-  <div class="group">
-    <div class="group__t">Out</div>
+  <div class="group out">
+    <div class="group__t">Output</div>
     <p class="rowhint">Level, and a way to keep what happened.</p>
     <div class="knob" data-tip="Output volume."><label>Master <b id="mstR">80</b></label><input id="mst" type="range" min="0" max="100" value="80" /></div>
     <div class="grid2">
-      <button class="btn" id="snapBtn" data-tip="Saves the canvas as a still image.">PNG</button>
-      <button class="btn" id="audBtn" data-tip="Records what you are hearing to an audio file. Press again to stop and save.">Audio</button>
+      <button class="btn" id="recBtn" data-tip="Records what you are hearing to an audio file. Press again to stop and save.">Record</button>
+      <button class="btn" id="saveBtn" data-tip="Saves the canvas as a still image.">Save</button>
     </div>
   </div>
 </div>
@@ -693,7 +693,7 @@
   const dl=(blob,name)=>{ const u=URL.createObjectURL(blob), a=document.createElement('a');
     a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(u),1500); };
-  $('snapBtn').addEventListener('click',()=>{
+  $('saveBtn').addEventListener('click',()=>{
     const c=document.createElement('canvas'); c.width=1080; c.height=1350;
     const g=c.getContext('2d'); const s=Math.max(1080/cv.width,1350/cv.height);
     g.fillStyle=PAPERC(); g.fillRect(0,0,1080,1350);
@@ -704,11 +704,11 @@
   const fmtClock=ms=>{ const t=Math.floor(ms/1000); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); };
   function pickMime(){ for(const m of ['audio/webm;codecs=opus','audio/webm','audio/mp4'])
     { try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(e){} } return ''; }
-  $('audBtn').addEventListener('click',()=>{
+  $('recBtn').addEventListener('click',()=>{
     if(state.recAudio){
       if(arec&&arec.state!=='inactive') arec.stop();
       state.recAudio=false; clearInterval(recTimer); $('recDot').classList.remove('on');
-      $('audBtn').textContent='Audio'; $('audBtn').setAttribute('aria-pressed','false'); return;
+      $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); return;
     }
     if(!A) return;
     const mime=pickMime();
@@ -722,7 +722,7 @@
     recStart=performance.now(); $('recLabel').textContent='AUDIO'; $('recTime').textContent='0:00';
     $('recDot').classList.add('on');
     recTimer=setInterval(()=>{ $('recTime').textContent=fmtClock(performance.now()-recStart); },250);
-    $('audBtn').textContent='Stop'; $('audBtn').setAttribute('aria-pressed','true');
+    $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
   });
 
   // ---------- knobs (same behaviour as Angel's, so the two tools feel the same) ----------
@@ -765,7 +765,7 @@
   const syncKnobs=()=>knobs.forEach(paintKnob);
 
   // ---------- folds + tooltips (same as Angel) ----------
-  const FOLD_KEY='tape-folded', FOLD_DEFAULT=['Out'];
+  const FOLD_KEY='tape-folded', FOLD_DEFAULT=['Output'];
   const readFold=()=>{ try{ return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]'); }catch(e){ return []; } };
   (function initFolds(){
     let stored=null; try{ stored=localStorage.getItem(FOLD_KEY); }catch(e){}

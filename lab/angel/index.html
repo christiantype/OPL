@@ -79,7 +79,7 @@
   /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
      fixed right offset kept colliding with it. Stays put in full screen so a recording
      always shows its own timer. */
-  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
     display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
     font-size:10px; letter-spacing:.12em; color:#ff4d5e;
     background:var(--panel); border:1px solid var(--hair);
@@ -120,6 +120,8 @@
     font-weight:600; }
   .rowhint{ margin:-3px 0 1px; font-size:11px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
   .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid2 .btn{ width:100%; }
   #dock input[type=range]{ width:100%; }
   #dock select{ width:100%; }
   #dock .seg{ width:100%; }
@@ -630,9 +632,17 @@
     <input id="impFile" type="file" accept="application/json,.json" hidden />
   </div>
 
-  <div class="group">
-    <div class="group__t">Export</div>
+  <div class="group out">
+    <div class="group__t">Output</div>
     <p class="rowhint">A still, a video of the canvas, or the audio on its own.</p>
+    <div class="grp"><div class="grid2">
+      <button class="btn" id="recBtn" data-tip="Records the canvas and the sound together as a video.">Record</button>
+      <button class="btn" id="saveBtn" data-tip="Saves the canvas as a still image.">Save</button>
+    </div></div>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="pdfBtn" style="flex:1" data-tip="Saves a high-resolution PDF at 300 DPI, three times the export size — a real print file.">PDF</button>
+      <button class="btn" id="audBtn" style="flex:1" data-tip="Records just the sound, with no picture.">Audio</button>
+    </div></div>
     <div class="grp" data-tip="Shape of the exported still or video — a phone story, a portrait post, or a square."><label>Size</label>
       <div class="seg" id="sizeSeg">
         <button data-z="RL" aria-pressed="true">9:16</button>
@@ -641,12 +651,6 @@
         <button data-z="LS" aria-pressed="false">16:9</button>
       </div>
     </div>
-    <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="snapBtn" style="flex:1" data-tip="Saves the canvas as a still image.">PNG</button>
-      <button class="btn" id="pdfBtn" style="flex:1" data-tip="Saves a high-resolution PDF at 300 DPI, three times the export size — a real print file.">PDF</button>
-      <button class="btn" id="recBtn" style="flex:1" data-tip="Records the canvas and the sound together as a video.">Video</button>
-      <button class="btn" id="audBtn" style="flex:1" data-tip="Records just the sound, with no picture.">Audio</button>
-    </div></div>
     <div class="grp"><div style="display:flex; gap:6px;">
       <button class="btn" id="clearOrbs" style="flex:1">Clear orbs</button>
       <button class="btn" id="clearSteps" style="flex:1">Clear steps</button>
@@ -1700,7 +1704,7 @@
     $('recBtn').setAttribute('aria-pressed',true); $('recBtn').textContent='Stop';
   }catch(e){ alert('Video recording is not available in this browser — PNG still works.'); } }
   function stopRec(){ if(mrec && mrec.state!=='inactive') mrec.stop(); state.recording=false; recCanvas=null; recCtx=null;
-    stopRecClock(); const b=$('recBtn'); b.setAttribute('aria-pressed',false); b.textContent='Video'; }
+    stopRecClock(); const b=$('recBtn'); b.setAttribute('aria-pressed',false); b.textContent='Record'; }
 
   /* Audio-only capture off the master bus. */
   let arec=null, achunks=[];
@@ -1850,7 +1854,7 @@
     orbs.forEach(o=>o.step=null); }));
   $('clearOrbs').addEventListener('click',()=>{ orbs.length=0; shards.length=0; });
   $('clearSteps').addEventListener('click',()=>{ lanes.forEach(l=>l.pattern.fill(null)); selStep=-1; refreshSteps(); });
-  $('snapBtn').addEventListener('click',savePNG);
+  $('saveBtn').addEventListener('click',savePNG);
   $('pdfBtn').addEventListener('click',savePDF);
   $('recBtn').addEventListener('click',()=>{ state.recording?stopRec():startRec(); });
   $('audBtn').addEventListener('click',()=>{ state.recAudio?stopAud():startAud(); });

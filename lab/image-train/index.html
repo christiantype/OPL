@@ -50,7 +50,7 @@
   /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
      fixed right offset kept colliding with it. Stays put in full screen so a recording
      always shows its own timer. */
-  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
     display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
     font-size:10px; letter-spacing:.12em; color:#ff4d5e;
     background:var(--panel); border:1px solid var(--hair);
@@ -209,19 +209,13 @@
     pointer-events:none; font:800 clamp(90px,22vw,220px)/1 ui-sans-serif,Helvetica,Arial,sans-serif;
     color:#fff; text-shadow:0 6px 40px rgba(0,0,0,.6); }
   #countdown.show{ display:flex; }
-  #recTag{ position:fixed; top:calc(var(--top) + 12px); left:50%; transform:translateX(-50%); z-index:12; display:none;
-    align-items:center; gap:7px; padding:6px 13px; border-radius:999px; font:600 10px/1 ui-monospace,Menlo,monospace;
-    letter-spacing:.14em; color:#ff4d5e; background:rgba(9,10,16,.6); border:1px solid rgba(255,77,94,.5);
-    -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); }
-  #recTag.show{ display:inline-flex; } #recTag::before{ content:''; width:7px; height:7px; border-radius:50%; background:#ff4d5e; animation:recblink 1s infinite; }
-  @keyframes recblink{ 50%{ opacity:.25; } }
   .cin{ display:flex; align-items:center; gap:8px; }
   .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
   .cin label{ font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); }
   #thumbs{ display:flex; flex-wrap:wrap; gap:5px; margin:2px 0 2px; }
   #thumbs img{ width:38px; height:38px; object-fit:cover; border-radius:4px; border:1px solid var(--hair); }
   /* canvas-size dock — pinned top-right, matches the tool's own theme */
-  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:190px; z-index:10; transition:opacity .5s ease; }
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:10; transition:opacity .5s ease; }
   #sizeDock select{ background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:4px;
     font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer; }
   body.idle #sizeDock{ opacity:0; pointer-events:none; }
@@ -235,7 +229,7 @@
 <div id="status"></div>
 <div id="hint"></div>
 <div id="countdown"></div>
-<div id="recTag">REC</div>
+<div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
 <div id="bar">
   <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
   <button class="icon" id="playBtn" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
@@ -243,7 +237,7 @@
   <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
 </div>
 <div id="sizeDock">
-  <select id="itAspect" title="Canvas size">
+  <select id="aspect" title="Canvas size">
     <option value="1080x1350">Portrait · 4:5</option>
     <option value="1080x1920">Story · 9:16</option>
     <option value="1080x1080">Square · 1:1</option>
@@ -390,9 +384,13 @@
     <div class="grp" data-tip="Overall sound level — ambience and music, live and in the recording."><label>Volume <b id="volR">85</b></label><input id="vol" type="range" min="0" max="100" value="85" /></div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Export</button>
+  <div class="row out">
+    <button type="button" class="rowhead" aria-expanded="true">Output</button>
     <p class="rowhint">A still, or the motion (with your track) as a video.</p>
+    <div class="grp"><div style="display:flex; gap:6px;">
+      <button class="btn" id="recBtn" style="flex:1" data-tip="Records the motion as a video (MP4 where supported).">Record</button>
+      <button class="btn" id="saveBtn" style="flex:1" data-tip="Saves the current frame as a high-resolution PNG.">Save</button>
+    </div></div>
     <div class="grp" data-tip="The shape of the exported file."><label>Size</label>
       <div class="seg" id="sizeSeg">
         <button data-z="1080x1350" aria-pressed="true">4:5</button>
@@ -402,10 +400,6 @@
       </div>
     </div>
     <div class="grp" data-tip="Pixels across the long edge of the PNG. The line beneath is the print size at 300 DPI."><label>Pixels <b id="resR">3200</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></label><input id="res" type="range" min="1024" max="8192" step="256" value="3200" /></div>
-    <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="pngBtn" style="flex:1" data-tip="Saves the current frame as a high-resolution PNG.">PNG</button>
-      <button class="btn" id="vidBtn" style="flex:1" data-tip="Records the motion as a video (MP4 where supported).">Record</button>
-    </div></div>
   </div>
 </div>
 
@@ -976,11 +970,11 @@
     mrec=new MediaRecorder(new MediaStream(tracks),{mimeType:mime,videoBitsPerSecond:bitrate}); mchunks=[];
     mrec.ondataavailable=e=>{ if(e.data.size) mchunks.push(e.data); };
     mrec.onstop=()=>{ if(audioEl){ try{ audioEl.pause(); }catch(e){} } const ext=mime.includes('mp4')?'mp4':'webm'; dl(new Blob(mchunks,{type:mime}),`image-train-${Date.now()}.${ext}`);
-      recState='idle'; $('vidBtn').textContent='Record'; $('vidBtn').classList.remove('on'); $('recTag').classList.remove('show');
+      recState='idle'; $('recBtn').textContent='Record'; $('recBtn').classList.remove('on'); $('recDot').classList.remove('on');
       setStatus('saved '+ext.toUpperCase()); setTimeout(()=>setStatus(''),2200); };
-    mrec.start(); recState='recording'; mrecStart=performance.now(); $('vidBtn').classList.add('on'); $('recTag').classList.add('show');
+    mrec.start(); recState='recording'; mrecStart=performance.now(); $('recBtn').classList.add('on'); $('recDot').classList.add('on');
     (function rf(){ if(recState!=='recording') return; renderComp(mrecG,mrecCv.width,mrecCv.height,clock);
-      const el=(performance.now()-mrecStart)/1000; $('vidBtn').textContent='Stop · '+fmtT(el); $('recTag').textContent='REC '+fmtT(el); mrecRAF=requestAnimationFrame(rf); })(); }
+      const el=(performance.now()-mrecStart)/1000; $('recBtn').textContent='Stop · '+fmtT(el); $('recTime').textContent=fmtT(el); mrecRAF=requestAnimationFrame(rf); })(); }
   function stopRec(){ if(recState!=='recording') return; cancelAnimationFrame(mrecRAF); try{ mrec.stop(); }catch(e){} }
 
   // ---- UI ----
@@ -1027,7 +1021,7 @@
     $('clearBtn').addEventListener('click',()=>{ imgs.length=0; bandsKey=''; renderThumbs(); markDirty(); });
     $('fileInp').addEventListener('change',e=>{ [...e.target.files].forEach(addFile); e.target.value=''; });
     $('shuffle').addEventListener('click',doShuffle);
-    $('pngBtn').addEventListener('click',exportPNG); $('vidBtn').addEventListener('click',toggleRec);
+    $('saveBtn').addEventListener('click',exportPNG); $('recBtn').addEventListener('click',toggleRec);
     $('musicBtn').addEventListener('click',()=>$('musicInp').click());
     $('musicInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadAudio(f); e.target.value=''; });
     $('musicClear').addEventListener('click',()=>{ if(audioEl){ try{ audioEl.pause(); }catch(e){} audioEl.removeAttribute('src'); } musicOn=false; $('trackName').textContent='no track'; });
@@ -1089,7 +1083,7 @@
 </script>
 <script>
 /* Top-right size dock → drives the existing #sizeSeg segmented control (kept in sync both ways). */
-(function(){ var sd=document.getElementById('itAspect'); if(!sd) return;
+(function(){ var sd=document.getElementById('aspect'); if(!sd) return;
   sd.addEventListener('change', function(){ var b=document.querySelector('#sizeSeg [data-z="'+sd.value+'"]'); if(b) b.click(); });
   var reflect=function(){ var cur=document.querySelector('#sizeSeg [data-z][aria-pressed="true"]'); if(cur) sd.value=cur.getAttribute('data-z'); };
   window.addEventListener('load', reflect); reflect();

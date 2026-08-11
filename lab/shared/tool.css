@@ -84,7 +84,10 @@ body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:var(--mute); 
 /* 4 — LEFT RAIL ============================================================= */
 /* a distinct grey panel, set apart from the white topbar + canvas · 16px grid */
 #dock{ background:var(--rail-bg); border-right:1px solid rgba(0,0,0,.14);
-  padding:16px !important; gap:16px !important; }
+  padding:16px !important; gap:16px !important;
+  /* kill the legacy frosted-rail blur — the rail is opaque now, and the blur
+     created a containing block that trapped the fixed bottom-right OUTPUT panel */
+  -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
 #panel{ background:#fff; border-left-color:var(--hair); }
 
 /* 5 — ISLANDS =============================================================== */
@@ -98,11 +101,15 @@ body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:var(--mute); 
 #dock > .row{ border-bottom:0 !important; }
 #dock > .group + .group{ margin-top:0 !important; padding-top:16px !important;
   border-top:0 !important; }
-/* the OUTPUT island (Record + Export) — the LAST island, pinned to the bottom of
-   the rail so it sits in the same fixed spot on every tool and stays reachable
-   while the controls above it scroll. Mark that group `.group out`. */
+/* the OUTPUT island (Record + Export) — pinned to the BOTTOM-RIGHT of the screen,
+   the exact same fixed spot on every tool. Mark that group `.group out` (or a
+   body-level `#output.out`). Island styling comes from the rule above. */
 #dock{ display:flex; flex-direction:column; }
-#dock > .group.out{ position:sticky; bottom:0; margin-top:auto; z-index:3; }
+#dock > .group.out, #dock > .row.out, #output.out{
+  position:fixed !important; right:20px; bottom:20px; left:auto; top:auto;
+  width:auto; min-width:208px; max-width:300px; margin:0 !important; z-index:20;
+  background:var(--island); border:1px solid var(--line); border-radius:var(--r-island);
+  padding:14px !important; box-shadow:0 14px 38px -12px rgba(0,0,0,.34); }
 
 /* 6 — GROUP HEADING + LABELS ================================================ */
 .group__t{ font-size:11px; letter-spacing:.02em; text-transform:uppercase;
