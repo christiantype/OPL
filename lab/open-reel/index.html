@@ -24,19 +24,9 @@
     #sky, #curtain{ position:absolute; inset:0; width:100%; height:100%; display:block; }
     #sky{ z-index:0; }
     #curtain{ z-index:1; }
-    /* record control — a DOM overlay; it is NOT part of the recorded canvas */
-    #rec-ui{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:10;
-      display:flex; align-items:center; gap:12px; color:#eef; }
-    #recBtn{ width:46px; height:46px; border-radius:50%; border:1.5px solid rgba(255,255,255,.6);
-      background:rgba(20,22,30,.5); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
-      cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.15s; }
-    #recBtn:hover{ background:rgba(40,44,58,.6); }
-    #recBtn i{ width:16px; height:16px; border-radius:50%; background:#ff4d5e; transition:.18s; }
-    #recBtn.on i{ border-radius:3px; width:14px; height:14px; }
-    #recTime{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; font-size:13px; opacity:0; transition:opacity .2s; }
-    #recTime.on{ opacity:1; }
-    #recHint{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; opacity:.5; }
-    #recHint.hide{ display:none; }
+    /* record timer — shown inside the standard Output panel while recording */
+    #output #recTime{ margin-top:8px; font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; font-size:13px; opacity:0; transition:opacity .2s; }
+    #output #recTime.on{ opacity:1; }
     /* let the shared nav keep its site-wide mix-blend-mode:difference (colour-inverts over the sky) */
     nav{ z-index:3; }
     /* soft scrim layer sits between the curtain and the identity block so fine text reads */
@@ -151,11 +141,6 @@
   <div id="frame">
     <canvas id="sky" aria-hidden="true"></canvas>
     <canvas id="curtain" aria-hidden="true"></canvas>
-  </div>
-  <div id="rec-ui">
-    <button id="recBtn" type="button" aria-label="Record"><i></i></button>
-    <span id="recTime">0:00</span>
-    <span id="recHint">record a reel · 1080×1920</span>
   </div>
 
   <script>
@@ -594,11 +579,13 @@
   })();
   </script>
 
+  <div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div><div id="recTime">0:00</div></div>
+
   <script>
   /* ─── record the reel: composite sky + curtain into a fixed 1080×1920 H.264 MP4 ─── */
   (function(){
     const sky=document.getElementById('sky'), curtain=document.getElementById('curtain');
-    const btn=document.getElementById('recBtn'), tEl=document.getElementById('recTime'), hint=document.getElementById('recHint');
+    const btn=document.getElementById('recBtn'), tEl=document.getElementById('recTime'), saveBtn=document.getElementById('saveBtn');
     const RW=1080, RH=1920;
     const comp=document.createElement('canvas'); comp.width=RW; comp.height=RH; const cx=comp.getContext('2d');
     let rec=null, chunks=[], raf=0, t0=0, timer=0;
@@ -617,11 +604,14 @@
       rec.onstop=()=>{ cancelAnimationFrame(raf); clearInterval(timer);
         const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a');
         a.href=URL.createObjectURL(blob); a.download='open-reel.'+ext; a.click();
-        btn.classList.remove('on'); tEl.classList.remove('on'); };
+        btn.classList.remove('on'); btn.textContent='Record'; tEl.classList.remove('on'); };
       rec.start(); raf=requestAnimationFrame(frame);
-      t0=performance.now(); tEl.textContent='0:00'; tEl.classList.add('on'); btn.classList.add('on'); hint.classList.add('hide');
+      t0=performance.now(); tEl.textContent='0:00'; tEl.classList.add('on'); btn.classList.add('on'); btn.textContent='Stop';
       timer=setInterval(()=>{ tEl.textContent=fmt(performance.now()-t0); }, 250);
     });
+    /* Save — grab one composited frame (sky + curtain) as a PNG */
+    if(saveBtn) saveBtn.addEventListener('click', ()=>{ frame();
+      const a=document.createElement('a'); a.download='open-reel.png'; a.href=comp.toDataURL('image/png'); a.click(); });
   })();
   </script>
 </body>

@@ -13,26 +13,14 @@
     height:min(100vh, 100vw*16/9); aspect-ratio:9/16; max-width:100vw; overflow:hidden;
     box-shadow:0 0 0 1px rgba(255,255,255,.06); }
   #c{ position:absolute; inset:0; width:100%; height:100%; display:block; }
-  #rec-ui{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:10; display:flex; align-items:center; gap:12px; color:#eef; }
-  #recBtn{ width:46px; height:46px; border-radius:50%; border:1.5px solid rgba(255,255,255,.6); background:rgba(20,22,30,.5);
-    -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.15s; }
-  #recBtn:hover{ background:rgba(40,44,58,.6); }
-  #recBtn i{ width:16px; height:16px; border-radius:50%; background:#ff4d5e; transition:.18s; }
-  #recBtn.on i{ border-radius:3px; width:14px; height:14px; }
-  #recTime{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; font-size:13px; opacity:0; transition:opacity .2s; }
-  #recTime.on{ opacity:1; }
-  #recHint{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; opacity:.5; }
-  #recHint.hide{ display:none; }
+  #output #recTime{ margin-top:8px; font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; font-size:13px; opacity:0; transition:opacity .2s; }
+  #output #recTime.on{ opacity:1; }
 </style>
   <link rel="stylesheet" href="/lab/shared/ibm.css" />
 </head>
 <body>
   <div id="frame"><canvas id="c" width="1080" height="1920"></canvas></div>
-  <div id="rec-ui">
-    <button id="recBtn" type="button" aria-label="Record"><i></i></button>
-    <span id="recTime">0:00</span>
-    <span id="recHint">record a reel · 1080×1920</span>
-  </div>
+  <div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div><div id="recTime">0:00</div></div>
   <script>
   (function(){
     const c=document.getElementById('c'), g=c.getContext('2d'); const W=1080,H=1920;
@@ -137,7 +125,7 @@
     requestAnimationFrame(frame);
 
     /* record the canvas (native 1080×1920) → H.264 MP4 */
-    const btn=document.getElementById('recBtn'), tEl=document.getElementById('recTime'), hint=document.getElementById('recHint');
+    const btn=document.getElementById('recBtn'), tEl=document.getElementById('recTime'), saveBtn=document.getElementById('saveBtn');
     let rec=null,chunks=[],timer=0,t0=0;
     const fmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
     btn.addEventListener('click',()=>{ if(rec&&rec.state==='recording'){ rec.stop(); return; }
@@ -147,10 +135,13 @@
       rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:40000000}); chunks=[];
       rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
       rec.onstop=()=>{ clearInterval(timer); const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a');
-        a.href=URL.createObjectURL(blob); a.download='open-slots.'+ext; a.click(); btn.classList.remove('on'); tEl.classList.remove('on'); };
-      rec.start(); t0=performance.now(); tEl.textContent='0:00'; tEl.classList.add('on'); btn.classList.add('on'); hint.classList.add('hide');
+        a.href=URL.createObjectURL(blob); a.download='open-slots.'+ext; a.click(); btn.classList.remove('on'); btn.textContent='Record'; tEl.classList.remove('on'); };
+      rec.start(); t0=performance.now(); tEl.textContent='0:00'; tEl.classList.add('on'); btn.classList.add('on'); btn.textContent='Stop';
       timer=setInterval(()=>{ tEl.textContent=fmt(performance.now()-t0); },250);
     });
+    /* Save — grab the current reel frame as a PNG */
+    if(saveBtn) saveBtn.addEventListener('click', ()=>{
+      const a=document.createElement('a'); a.download='open-slots.png'; a.href=c.toDataURL('image/png'); a.click(); });
   })();
   </script>
 </body>
