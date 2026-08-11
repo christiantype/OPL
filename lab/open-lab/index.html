@@ -78,6 +78,10 @@
   #shapes.mix .sh{ opacity:.28; }
   #shapes.mix .sh[aria-pressed="true"]{ opacity:1; }
   .tog{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--dim); }
+  .mhint{ font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); margin-top:2px; }
+  .mchips{ display:flex; flex-wrap:wrap; gap:5px; }
+  .mchip{ appearance:none; border:1px solid var(--line); background:transparent; color:var(--dim); font:inherit; font-size:10.5px; letter-spacing:.03em; text-transform:uppercase; padding:5px 8px; border-radius:2px; cursor:pointer; }
+  .mchip[aria-pressed="true"]{ background:var(--ink); color:#fff; border-color:var(--ink); }
   .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
     background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
     -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
@@ -104,18 +108,24 @@
 
     <!-- text -->
     <div class="group">
-      <div class="group__t">Words · line breaks and all</div>
+      <div class="group__t">Words · multiple fields · drag to place</div>
       <textarea id="text" rows="3" spellcheck="false">OPEN
 LAB
 SATURDAY</textarea>
-      <select id="font" class="btn" data-tip="The typeface the words are set in before they break into dots.">
+      <div class="grid2">
+        <button class="btn" id="addTextBtn" data-tip="Add another text field. Drag it to place, resize from the corner. This box edits whichever field is selected.">Add text field</button>
+        <button class="btn" id="rmTextBtn" data-tip="Remove the selected text field.">Remove field</button>
+      </div>
+      <select id="font" class="btn" data-tip="The typeface of the selected field.">
         <option value="Sidepiece, Georgia, serif" selected>Sidepiece — house display</option>
         <option value="Helvetica Neue, Arial, sans-serif">Helvetica — bold sans</option>
         <option value="Georgia, Times New Roman, serif">Georgia — serif</option>
         <option value="Impact, Haettenschweiler, sans-serif">Impact — heavy</option>
         <option value="Courier New, monospace">Courier — mono</option>
       </select>
-      <div class="knob" data-tip="How large the words are set in the frame."><label>Text size <b id="sizeR">62</b></label><input id="size" type="range" min="20" max="100" value="62" /></div>
+      <div class="knob" data-tip="Size of the selected field."><label>Text size <b id="sizeR">62</b></label><input id="size" type="range" min="8" max="130" value="62" /></div>
+      <div class="knob" data-tip="Letter-spacing of the selected field — tighten or open up the letters."><label>Letter-spacing <b id="trackR">0</b></label><input id="track" type="range" min="-40" max="120" value="0" /></div>
+      <div class="knob" data-tip="Line-height of the selected field — space between lines."><label>Line-height <b id="leadR">116</b></label><input id="lead" type="range" min="70" max="240" value="116" /></div>
     </div>
 
     <!-- halftone -->
@@ -161,7 +171,15 @@ SATURDAY</textarea>
       <div class="group__t">Motion · for the wall</div>
       <div class="knob" data-tip="A wave of size travels through the dots so the piece breathes on the wall."><label>Wave <b id="waveR">15</b></label><input id="wave" type="range" min="0" max="100" value="15" /></div>
       <div class="tog" data-tip="Slowly turn each dot in place."><label>Spin</label><button class="btn" id="spinBtn" aria-pressed="false">Off</button></div>
-      <div class="tog" data-tip="A performance: keeps sweeping every dial — cell, angle, contrast, scatter, wave — so the words drift in and out of legibility. Turns on automatically while you Record."><label>Auto-morph</label><button class="btn" id="morphBtn" aria-pressed="false">Off</button></div>
+      <div class="tog" data-tip="A performance: sweeps the dials you enable below so the words drift in and out of legibility. Turns on automatically while you Record."><label>Auto-morph</label><button class="btn" id="morphBtn" aria-pressed="false">Off</button></div>
+      <div class="mhint" data-tip="Choose which dials the Auto-morph sweeps. Anything left off holds at its current value.">Morph these dials:</div>
+      <div class="mchips" id="morphChips">
+        <button class="mchip" data-k="cell" aria-pressed="true">Cell</button>
+        <button class="mchip" data-k="angle" aria-pressed="true">Angle</button>
+        <button class="mchip" data-k="contrast" aria-pressed="true">Contrast</button>
+        <button class="mchip" data-k="jitter" aria-pressed="true">Scatter</button>
+        <button class="mchip" data-k="wave" aria-pressed="true">Wave</button>
+      </div>
     </div>
 
     <!-- colour -->
@@ -207,7 +225,7 @@ SATURDAY</textarea>
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2;
   let ASPECT=1920/1080, W=0,H=0,dpr=1;
-  const P={ size:62, cell:40, angle:50, contrast:55, jitter:0, wave:15 };
+  const P={ cell:40, angle:50, contrast:55, jitter:0, wave:15 };
   let FONT='Sidepiece, Georgia, serif', DEF='#f4f4f8', PAPER='#0a0a10';
   let mixOn=false, spinOn=false, baseIdx=0, seed1=1.7, seed2=9.3;
   // colour modes
@@ -276,18 +294,29 @@ SATURDAY</textarea>
   }
 
   // ---------- text coverage ----------
+  // ---------- text fields (multiple, placeable) ----------
+  const texts=[]; let selText=-1;
+  function makeText(content){ return { content, fcx:0.5, fcy:0.5, size:62, track:0, lead:116, font:FONT, _w:0, _h:0 }; }
   const covCv=document.createElement('canvas'); const covCtx=covCv.getContext('2d'); let covW=0,covH=0, covArr=null;
-  function rebuildText(){ const long=1000; covW=ASPECT>=1?long:Math.round(long*ASPECT); covH=ASPECT>=1?Math.round(long/ASPECT):long;
+  function drawLine(g,line,cx,y,trackPx,canSpace){
+    if(canSpace){ g.fillText(line,cx,y); return g.measureText(line).width; }
+    const prev=g.textAlign; g.textAlign='left'; const ch=[...line]; let widths=ch.map(c=>g.measureText(c).width); let total=widths.reduce((a,b)=>a+b,0)+trackPx*Math.max(0,ch.length-1);
+    let x=cx-total/2; for(let i=0;i<ch.length;i++){ g.fillText(ch[i],x,y); x+=widths[i]+trackPx; } g.textAlign=prev; return total; }
+  function drawTextBlock(g,t){
+    const wt=(''+t.font).indexOf('Sidepiece')>=0?'400':'800'; const fontPx=covH*(0.03+(t.size/100)*0.26);
+    g.font=wt+' '+fontPx+'px '+t.font; const trackPx=(t.track/100)*fontPx*0.5;
+    const canSpace=('letterSpacing' in g); if(canSpace) g.letterSpacing=trackPx+'px';
+    const lines=((t.content!=null?t.content:' ')+'').split('\n'); const lh=fontPx*(t.lead/100); const total=lh*lines.length;
+    const cx=t.fcx*covW; let y=t.fcy*covH-total/2+lh/2; let maxw=0;
+    for(const line of lines){ const w=drawLine(g,line||' ',cx,y,trackPx,canSpace); if(w>maxw) maxw=w; y+=lh; }
+    if(canSpace) g.letterSpacing='0px'; t._w=maxw; t._h=total; }
+  function rebuildText(){ const long=1200; covW=ASPECT>=1?long:Math.round(long*ASPECT); covH=ASPECT>=1?Math.round(long/ASPECT):long;
     covCv.width=covW; covCv.height=covH; const g=covCtx; g.fillStyle='#000'; g.fillRect(0,0,covW,covH);
-    const lines=($('text').value||' ').split('\n'); const n=Math.max(1,lines.length); const margin=covW*0.06;
-    const maxW=covW-margin*2, maxH=covH-margin*2; const wt=FONT.indexOf('Sidepiece')>=0?'400':'800';
-    let size=maxH/(1.16*n); g.font=wt+' '+size+'px '+FONT; let w=0; for(const l of lines) w=Math.max(w, g.measureText(l||' ').width);
-    if(w>maxW) size*=maxW/w; size*=(0.4+(P.size/100)*0.62);
-    g.font=wt+' '+size+'px '+FONT; g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
-    const lh=size*1.16, totalH=lh*n; let y=covH/2-totalH/2+lh/2;
-    for(const l of lines){ g.fillText(l, covW/2, y); y+=lh; }
+    g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
+    for(const t of texts) drawTextBlock(g,t);
     covArr=g.getImageData(0,0,covW,covH).data;
   }
+  function textRect(t){ const sc=W/covW; const w=t._w*sc, h=t._h*sc; return { x:t.fcx*W-w/2, y:t.fcy*H-h/2, w, h }; }
   function cov(x,y){ const px=Math.min(covW-1,Math.max(0,(x/W*covW)|0)), py=Math.min(covH-1,Math.max(0,(y/H*covH)|0)); return covArr[(py*covW+px)*4]/255; }
 
   // ---------- fit ----------
@@ -333,66 +362,85 @@ SATURDAY</textarea>
   }
 
   // ---------- placeable, pen-maskable images ----------
-  const photos=[]; let photoTool='move', selPhoto=-1, recActive=false, drag=null;
+  const photos=[]; let photoTool='move', selPhoto=-1, selWhich='none', recActive=false, drag=null;
   // ---------- record treatment: sweep every dial in and out of legibility ----------
   let userMorph=false, morphSeedT=0;
+  const morphSet={ cell:true, angle:true, contrast:true, jitter:true, wave:true };   // which dials the morph sweeps
   const perfOn=()=> userMorph || recActive;
   function effP(){ const o=(a,b,rate,ph)=> a + (b-a)*(0.5+0.5*Math.sin(T*rate+ph));
-    return { size:P.size,
-      cell:     o(8, 90, 0.23, 0.0),      // small crisp ↔ huge blocky
-      angle:    o(0,100, 0.11, 1.3),
-      contrast: o(24,96, 0.17, 2.1),      // legible high ↔ muddy low
-      jitter:   o(0, 82, 0.31, 0.7),      // scatter drifts in and out
-      wave:     o(0, 66, 0.19, 3.4) }; }
+    return {
+      cell:     morphSet.cell?     o(8, 90, 0.23, 0.0) : P.cell,       // small crisp ↔ huge blocky
+      angle:    morphSet.angle?    o(0,100, 0.11, 1.3) : P.angle,
+      contrast: morphSet.contrast? o(24,96, 0.17, 2.1) : P.contrast,   // legible high ↔ muddy low
+      jitter:   morphSet.jitter?   o(0, 82, 0.31, 0.7) : P.jitter,     // scatter drifts in and out
+      wave:     morphSet.wave?     o(0, 66, 0.19, 3.4) : P.wave }; }
   function photoRect(im){ const w=im.fw*W, h=w*(im.img.naturalHeight/Math.max(1,im.img.naturalWidth)); return { x:im.fcx*W-w/2, y:im.fcy*H-h/2, w, h }; }
   function maskPath(im,R){ ctx.beginPath(); im.mask.forEach((p,k)=>{ const mx=R.x+p.u*R.w, my=R.y+p.v*R.h; k?ctx.lineTo(mx,my):ctx.moveTo(mx,my); }); ctx.closePath(); }
   function drawPhotos(back){ for(const im of photos){ if(!!im.back!==back) continue; if(!im.img.complete||!im.img.naturalWidth) continue;
       const R=photoRect(im); ctx.save(); if(im.mask.length>=3){ maskPath(im,R); ctx.clip(); } ctx.drawImage(im.img,R.x,R.y,R.w,R.h); ctx.restore(); } }
-  function drawPhotoUI(){ if(document.fullscreenElement||recActive||selPhoto<0||!photos[selPhoto]) return;
-      const im=photos[selPhoto], R=photoRect(im);
-      ctx.save(); ctx.lineWidth=1.5; ctx.strokeStyle='rgba(0,120,255,.9)'; ctx.setLineDash([6,4]); ctx.strokeRect(R.x,R.y,R.w,R.h); ctx.setLineDash([]);
-      ctx.fillStyle='#fff'; ctx.fillRect(R.x+R.w-7,R.y+R.h-7,14,14); ctx.strokeRect(R.x+R.w-7,R.y+R.h-7,14,14);   // resize handle
-      if(im.mask.length){ ctx.strokeStyle='#0090ff'; ctx.lineWidth=2; ctx.beginPath(); im.mask.forEach((p,k)=>{ const mx=R.x+p.u*R.w,my=R.y+p.v*R.h; k?ctx.lineTo(mx,my):ctx.moveTo(mx,my); }); if(photoTool!=='pen'||im.penDone) ctx.closePath(); ctx.stroke();
-        im.mask.forEach((p,k)=>{ const mx=R.x+p.u*R.w,my=R.y+p.v*R.h; const first=(k===0&&photoTool==='pen'&&!im.penDone); ctx.fillStyle=first?'#ffd23f':'#0090ff'; ctx.beginPath(); ctx.arc(mx,my,first?5:3.5,0,TAU); ctx.fill(); }); }
-      ctx.restore(); }
+  function dashRect(R){ ctx.save(); ctx.lineWidth=1.5; ctx.strokeStyle='rgba(0,120,255,.9)'; ctx.setLineDash([6,4]); ctx.strokeRect(R.x,R.y,R.w,R.h); ctx.setLineDash([]);
+    ctx.fillStyle='#fff'; ctx.fillRect(R.x+R.w-7,R.y+R.h-7,14,14); ctx.strokeRect(R.x+R.w-7,R.y+R.h-7,14,14); ctx.restore(); }
+  function drawPhotoUI(){ if(document.fullscreenElement||recActive) return;
+    if(selWhich==='text' && texts[selText]){ dashRect(textRect(texts[selText])); }
+    else if(selWhich==='photo' && photos[selPhoto]){ const im=photos[selPhoto], R=photoRect(im); dashRect(R);
+      if(im.mask.length){ ctx.save(); ctx.strokeStyle='#0090ff'; ctx.lineWidth=2; ctx.beginPath(); im.mask.forEach((p,k)=>{ const mx=R.x+p.u*R.w,my=R.y+p.v*R.h; k?ctx.lineTo(mx,my):ctx.moveTo(mx,my); }); if(photoTool!=='pen'||im.penDone) ctx.closePath(); ctx.stroke();
+        im.mask.forEach((p,k)=>{ const mx=R.x+p.u*R.w,my=R.y+p.v*R.h; const first=(k===0&&photoTool==='pen'&&!im.penDone); ctx.fillStyle=first?'#ffd23f':'#0090ff'; ctx.beginPath(); ctx.arc(mx,my,first?5:3.5,0,TAU); ctx.fill(); }); ctx.restore(); } } }
   function setPen(on){ photoTool=on?'pen':'move'; $('penBtn').textContent=on?'On':'Off'; $('penBtn').setAttribute('aria-pressed',on?'true':'false'); cv.style.cursor=on?'crosshair':'default'; }
   function toCanvas(e){ const r=cv.getBoundingClientRect(); return { x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H }; }
+  function selRect(){ return selWhich==='photo'&&photos[selPhoto]?photoRect(photos[selPhoto]) : selWhich==='text'&&texts[selText]?textRect(texts[selText]) : null; }
   cv.addEventListener('pointerdown', e=>{ const q=toCanvas(e), px=q.x, py=q.y;
-    if(photoTool==='pen' && selPhoto>=0){ const im=photos[selPhoto], R=photoRect(im);
+    if(photoTool==='pen' && selWhich==='photo' && photos[selPhoto]){ const im=photos[selPhoto], R=photoRect(im);
       if(im.mask.length>=3){ const m0=im.mask[0]; if(Math.hypot(px-(R.x+m0.u*R.w), py-(R.y+m0.v*R.h))<15){ im.penDone=true; setPen(false); return; } }
       im.mask.push({ u:(px-R.x)/R.w, v:(py-R.y)/R.h }); im.penDone=false; return; }
-    if(selPhoto>=0){ const R=photoRect(photos[selPhoto]); if(Math.abs(px-(R.x+R.w))<14 && Math.abs(py-(R.y+R.h))<14){ drag={mode:'resize'}; cv.setPointerCapture(e.pointerId); return; } }
-    let hit=-1; for(let k=photos.length-1;k>=0;k--){ const R=photoRect(photos[k]); if(px>=R.x&&px<=R.x+R.w&&py>=R.y&&py<=R.y+R.h){ hit=k; break; } }
-    selPhoto=hit; if(hit>=0){ drag={mode:'move', ox:px-photos[hit].fcx*W, oy:py-photos[hit].fcy*H}; cv.setPointerCapture(e.pointerId); } });
-  cv.addEventListener('pointermove', e=>{ if(!drag||selPhoto<0) return; const q=toCanvas(e), im=photos[selPhoto];
-    if(drag.mode==='move'){ im.fcx=(q.x-drag.ox)/W; im.fcy=(q.y-drag.oy)/H; }
-    else { im.fw=Math.max(0.04, Math.min(2.5, 2*Math.abs(q.x-im.fcx*W)/W)); } });
+    const sR=selRect();
+    if(sR && Math.abs(px-(sR.x+sR.w))<14 && Math.abs(py-(sR.y+sR.h))<14){
+      drag={mode:'resize', d0:Math.max(1,Math.hypot(px-(sR.x+sR.w/2),py-(sR.y+sR.h/2))), s0:(selWhich==='text'?texts[selText].size:photos[selPhoto].fw)}; cv.setPointerCapture(e.pointerId); return; }
+    for(let k=photos.length-1;k>=0;k--){ const R=photoRect(photos[k]); if(px>=R.x&&px<=R.x+R.w&&py>=R.y&&py<=R.y+R.h){ selWhich='photo'; selPhoto=k; selText=-1; drag={mode:'move', ox:px-photos[k].fcx*W, oy:py-photos[k].fcy*H}; cv.setPointerCapture(e.pointerId); return; } }
+    for(let k=texts.length-1;k>=0;k--){ const R=textRect(texts[k]); if(px>=R.x-5&&px<=R.x+R.w+5&&py>=R.y-5&&py<=R.y+R.h+5){ selWhich='text'; selText=k; selPhoto=-1; loadTextControls(); drag={mode:'move', ox:px-texts[k].fcx*W, oy:py-texts[k].fcy*H}; cv.setPointerCapture(e.pointerId); return; } }
+    selWhich='none'; selPhoto=-1; selText=-1; });
+  cv.addEventListener('pointermove', e=>{ if(!drag) return; const q=toCanvas(e), px=q.x, py=q.y;
+    if(selWhich==='photo' && photos[selPhoto]){ const im=photos[selPhoto];
+      if(drag.mode==='move'){ im.fcx=(px-drag.ox)/W; im.fcy=(py-drag.oy)/H; }
+      else { im.fw=Math.max(0.04, Math.min(3, 2*Math.abs(px-im.fcx*W)/W)); } }
+    else if(selWhich==='text' && texts[selText]){ const t=texts[selText];
+      if(drag.mode==='move'){ t.fcx=(px-drag.ox)/W; t.fcy=(py-drag.oy)/H; }
+      else { const d=Math.hypot(px-t.fcx*W, py-t.fcy*H); t.size=Math.max(6, Math.min(160, drag.s0*(d/drag.d0))); const sI=$('size'); if(sI){ sI.value=Math.max(8,Math.min(130,Math.round(t.size))); $('sizeR').textContent=Math.round(t.size); } }
+      rebuildText(); } });
   addEventListener('pointerup', ()=>{ drag=null; });
-  cv.addEventListener('dblclick', ()=>{ if(photoTool==='pen'&&selPhoto>=0){ photos[selPhoto].penDone=true; setPen(false); } });
+  cv.addEventListener('dblclick', ()=>{ if(photoTool==='pen'&&selWhich==='photo'&&photos[selPhoto]){ photos[selPhoto].penDone=true; setPen(false); } });
   $('addPhotoBtn').addEventListener('click', ()=> $('photoFile').click());
   $('photoFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const img=new Image();
     img.onload=()=>{ photos.push({ img, fcx:0.5, fcy:0.5, fw:0.5, back:false, mask:[], penDone:false }); selPhoto=photos.length-1; }; img.src=URL.createObjectURL(f); e.target.value=''; $('hint').style.opacity=0; });
-  $('penBtn').addEventListener('click', ()=>{ if(selPhoto<0 && photos.length){ selPhoto=photos.length-1; } setPen(photoTool!=='pen'); });
-  $('clearMaskBtn').addEventListener('click', ()=>{ if(selPhoto>=0){ photos[selPhoto].mask=[]; photos[selPhoto].penDone=false; } });
-  $('delPhotoBtn').addEventListener('click', ()=>{ if(selPhoto>=0){ photos.splice(selPhoto,1); selPhoto=-1; } });
-  $('photoBackBtn').addEventListener('click', ()=>{ if(selPhoto>=0) photos[selPhoto].back=true; });
-  $('photoFrontBtn').addEventListener('click', ()=>{ if(selPhoto>=0) photos[selPhoto].back=false; });
+  $('photoFile').addEventListener('change', e=>{ if(photos.length){ selWhich='photo'; selText=-1; } });
+  $('penBtn').addEventListener('click', ()=>{ if(selWhich!=='photo' && photos.length){ selWhich='photo'; selPhoto=photos.length-1; selText=-1; } setPen(photoTool!=='pen'); });
+  $('clearMaskBtn').addEventListener('click', ()=>{ if(selWhich==='photo'&&photos[selPhoto]){ photos[selPhoto].mask=[]; photos[selPhoto].penDone=false; } });
+  $('delPhotoBtn').addEventListener('click', ()=>{ if(selWhich==='photo'&&selPhoto>=0){ photos.splice(selPhoto,1); selPhoto=-1; selWhich='none'; } });
+  $('photoBackBtn').addEventListener('click', ()=>{ if(selWhich==='photo'&&photos[selPhoto]) photos[selPhoto].back=true; });
+  $('photoFrontBtn').addEventListener('click', ()=>{ if(selWhich==='photo'&&photos[selPhoto]) photos[selPhoto].back=false; });
   addEventListener('keydown', e=>{ if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
-    if(e.key==='Escape'){ setPen(false); selPhoto=-1; }
-    else if((e.key==='Delete'||e.key==='Backspace') && selPhoto>=0){ photos.splice(selPhoto,1); selPhoto=-1; } });
+    if(e.key==='Escape'){ setPen(false); selWhich='none'; selPhoto=-1; selText=-1; }
+    else if((e.key==='Delete'||e.key==='Backspace')){ if(selWhich==='photo'&&selPhoto>=0){ photos.splice(selPhoto,1); selPhoto=-1; selWhich='none'; } else if(selWhich==='text'&&texts.length>1&&selText>=0){ texts.splice(selText,1); selText=-1; selWhich='none'; rebuildText(); } } });
   function tick(now){ requestAnimationFrame(tick); const dt=Math.min(0.05,(now-t0)/1000); t0=now; T+=dt;
     if(perfOn()){ morphSeedT+=dt; if(morphSeedT>2.6){ morphSeedT=0; seed1=Math.random()*1000; seed2=Math.random()*1000; } }
     render(); }
 
   // ---------- controls ----------
-  $('text').addEventListener('input', rebuildText);
-  $('font').addEventListener('change', e=>{ FONT=e.target.value; rebuildText(); });
-  [['size'],['cell'],['angle'],['contrast'],['jitter'],['wave']].forEach(([k])=>{ const inp=$(k), out=$(k+'R');
-    inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=P[k]; if(k==='size') rebuildText(); }); });
+  const selT=()=> selText>=0? texts[selText] : null;
+  function loadTextControls(){ const t=selT()||texts[0]; if(!t) return; $('text').value=t.content; $('font').value=t.font;
+    $('size').value=Math.max(8,Math.min(130,Math.round(t.size))); $('sizeR').textContent=Math.round(t.size);
+    $('track').value=t.track; $('trackR').textContent=t.track; $('lead').value=t.lead; $('leadR').textContent=t.lead; }
+  $('text').addEventListener('input', ()=>{ const t=selT()||texts[0]; if(t){ t.content=$('text').value; rebuildText(); } });
+  $('font').addEventListener('change', e=>{ FONT=e.target.value; const t=selT()||texts[0]; if(t){ t.font=e.target.value; rebuildText(); } });
+  $('addTextBtn').addEventListener('click', ()=>{ const t=makeText('TEXT'); t.fcx=0.5; t.fcy=0.3+Math.random()*0.4; texts.push(t); selText=texts.length-1; selWhich='text'; selPhoto=-1; loadTextControls(); rebuildText(); $('hint').style.opacity=0; });
+  $('rmTextBtn').addEventListener('click', ()=>{ if(texts.length>1 && selText>=0){ texts.splice(selText,1); selText=texts.length-1; selWhich='text'; loadTextControls(); rebuildText(); } });
+  [['size'],['track'],['lead']].forEach(([k])=>{ const inp=$(k), out=$(k+'R'); inp.addEventListener('input', ()=>{ out.textContent=inp.value; const t=selT()||texts[0]; if(t){ t[k==='size'?'size':k]=+inp.value; rebuildText(); } }); });
+  [['cell'],['angle'],['contrast'],['jitter'],['wave']].forEach(([k])=>{ const inp=$(k), out=$(k+'R');
+    inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=P[k]; }); });
   $('shapeCol').addEventListener('input', e=>{ const s=SH[baseIdx]; if(!s) return; s.colour=e.target.value; if(s.type==='img'&&s.img) s.cache=tintCache(s.img, s.colour); buildShapeButtons(); });
   $('mixBtn').addEventListener('click', ()=>{ mixOn=!mixOn; $('mixBtn').textContent=mixOn?'On':'Off'; $('mixBtn').setAttribute('aria-pressed',mixOn?'true':'false'); buildShapeButtons(); });
   $('spinBtn').addEventListener('click', ()=>{ spinOn=!spinOn; $('spinBtn').textContent=spinOn?'On':'Off'; $('spinBtn').setAttribute('aria-pressed',spinOn?'true':'false'); });
   $('morphBtn').addEventListener('click', ()=>{ userMorph=!userMorph; $('morphBtn').textContent=userMorph?'On':'Off'; $('morphBtn').setAttribute('aria-pressed',userMorph?'true':'false'); });
+  $('morphChips').addEventListener('click', e=>{ const b=e.target.closest('.mchip'); if(!b) return; const k=b.dataset.k; morphSet[k]=!morphSet[k]; b.setAttribute('aria-pressed', morphSet[k]?'true':'false'); });
   $('randBtn').addEventListener('click', ()=>{ seed1=Math.random()*1000; seed2=Math.random()*1000; });
   $('svgBtn').addEventListener('click', ()=> $('svgFile').click());
   $('svgFile').addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>addSVGShape(rd.result, f.name.replace(/\.svg$/i,'')); rd.readAsText(f); });
@@ -447,6 +495,7 @@ SATURDAY</textarea>
   addEventListener('pointerdown', hideTip); addEventListener('scroll', hideTip, true);
 
   // ---------- go ----------
+  texts.push(makeText($('text').value)); selText=0; selWhich='text';
   buildBuiltins(); syncShapeCol(); buildShapeButtons(); fit(); requestAnimationFrame(tick);
   // re-measure once web fonts (Sidepiece) are ready
   if(document.fonts){ try{ document.fonts.load("40px Sidepiece").then(rebuildText).catch(()=>{}); document.fonts.ready.then(rebuildText); }catch(e){} }
