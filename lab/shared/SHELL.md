@@ -2,7 +2,9 @@
 
 Every tool in `/lab/` must wear the **same shell**: one white, high-contrast, accessible chrome so the whole Lab reads as a single product. This file is the source of truth. When a tool looks different, it's wrong — bring it here.
 
-The reference implementation is **[attractor/index.html](/lab/attractor/index.html)**. Its `<style>` block is the structural template; copy it. The shared **[shared/tool.css](/lab/shared/tool.css)** is loaded LAST in every tool and paints the light theme + control language on top of that structure.
+The reference implementation is **[attractor/index.html](/lab/attractor/index.html)**. Its `<style>` block is the structural template; copy it. The shared **[shared/tool.css](/lab/shared/tool.css)** is loaded LAST in every tool and is the **complete component layer** — it paints the light theme *and* owns the geometry of every control (buttons, sliders, group headings, colour rows, swatches, toggles). A tool supplies its canvas + layout; it should not need to restyle a control.
+
+The living spec is **[lab-design-system/](/lab/lab-design-system/)** (LAB Design System, OP-LAB-028) — it renders every token, element and pattern live through this same `tool.css`, with the standing audit. When in doubt, open it.
 
 ---
 
@@ -86,9 +88,10 @@ Any tool with a **dark preview swatch** (e.g. white-on-dark shapes) keeps a dark
 
 ---
 
-## 6. Conformance status (2026-08)
+## 6. Conformance status (2026-08 audit)
 
-- **Full standard (all interactive tools):** Attractor (ref), Fence, Putty, Sequins, Static, Tape, Halftone, Spectral-Smear, Aura-Maxing, Garden-Variety, Windchime, Visual Poetry, OPEN LAB, Hand Shader, Angel, Image-Train, Second-Thought.
+All 17 interactive tools passed a full component audit: **Attractor** (ref), **Fence, Putty, Sequins, Static, Tape, Halftone, Spectral-Smear, Aura-Maxing, Garden-Variety, Windchime, Visual Poetry, OPEN LAB, Hand Shader, Angel, Image-Train, Second-Thought**. The audit promoted every control's geometry (headings, sliders, colour rows, swatches, toggles) into `tool.css` so it can't drift, unified button/select radius to 5px, relit tools that had leaked their old dark theme (notably Spectral-Smear, which was rendering fully dark), and raised sub-10px labels (Image-Train, Angel, Tape) to the 10px floor. Full findings + conformance table live in the **[LAB Design System](/lab/lab-design-system/)** tool.
+
 - **Intentionally outside the shell:** reels/captures with fixed output (open-reel, open-slots, open-capture, scanner, ash, kirlian, letter-strings, lake-opeka, ships-in-the-night, flux) and the full-bleed **Projection** tool. These stay as-is by design.
 
 To bring a light-touch tool to full standard: rebuild its rail to the `#dock` + `.group`/`.knob` structure above, convert dials → sliders, keep the generative/render/record logic and every JS id, verify with a screenshot.

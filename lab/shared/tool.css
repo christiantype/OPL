@@ -1,79 +1,159 @@
-/* Shared control language for the lab tools — LIGHT shell.
-   Loaded AFTER a tool's own <style>, so it overrides the bespoke (formerly dark)
-   chrome while leaving each tool's canvas + layout intact. One white shell for all. */
+/* ============================================================================
+   OP/AL LAB — tool.css   ·   the one shared shell
+   ----------------------------------------------------------------------------
+   Loaded LAST in every tool (after the tool's own <style>), so this file is the
+   single source of truth for the LIGHT theme AND the geometry of every control.
+   A tool supplies its canvas + art; it should not need to restyle a button,
+   slider, island, heading, swatch or toggle — they all live here.
 
+   Spec + rationale: shared/SHELL.md   ·   Live reference: lab/lab-design-system/
+   Legacy note: tools carry <body class="dark"> — the class name is historical;
+   the theming below keys off it. Keep it.
+
+   Contents
+     1  Tokens            5  Islands (rail cards)     9  Segmented
+     2  Base + canvas     6  Group heading + labels  10  Selects + fields
+     3  Topbar            7  Sliders                 11  Colour rows + swatches
+     4  Left rail         8  Buttons                 12  Toggles · tips · dock
+   ========================================================================== */
+
+/* 1 — TOKENS ================================================================ */
 :root{
-  /* text/greys chosen for WCAG AA (>=4.5:1 on the near-white shell) */
-  --ink:#16171c;            /* body/labels-strong — ~15:1 */
-  --dim:#585860;            /* muted labels — ~6:1 */
-  --mute:#585860;
-  --hair:rgba(0,0,0,.18); --line:rgba(0,0,0,.16); --track:rgba(0,0,0,.28);
-  --paper:#f4f4f6; --cell:rgba(0,0,0,.05);
+  /* ink + greys — every value clears WCAG AA (>=4.5:1) on the near-white shell */
+  --ink:#16171c;                 /* text, slider thumbs, primary ground  ~15:1 */
+  --dim:#585860; --mute:#585860; /* muted labels / captions              ~6:1  */
+  --line:rgba(0,0,0,.16);        /* borders + dividers                         */
+  --hair:rgba(0,0,0,.18);        /* panel edges                                */
+  --track:rgba(0,0,0,.28);       /* slider tracks                              */
+  --paper:#f4f4f6;               /* body ground                                */
+  --cell:rgba(0,0,0,.05);        /* button / input ground                      */
+  /* surfaces (named so they never collide with a tool's layout --rail/--top) */
+  --mat:#ececf0;                 /* canvas mat behind the artboard             */
+  --rail-bg:#e1e3e9;             /* the left rail "water"                      */
+  --island:rgba(255,255,255,.97);/* a control card floating on the rail        */
+  --rec:#c01f34;                 /* record indicator (AA red)                  */
+  /* radii — the whole Lab uses exactly these four */
+  --r-island:12px;               /* rail cards                                 */
+  --r-control:5px;               /* buttons + selects                          */
+  --r-input:4px;                 /* text fields + colour swatches              */
+  --r-seg:2px;                   /* segmented wrappers                         */
 }
+
+/* 2 — BASE + CANVAS ========================================================= */
 html, body{ background:var(--paper); color:var(--ink); }
 
-/* ---- canvas / artboard: a white board with a thin border on a light-grey mat, NEVER a drop shadow ---- */
-#wrap, #stagewrap, #canvasArea{ background:#ececf0; }
-#art, #gl, #stage, #view{ background:#fff; border:1px solid rgba(0,0,0,.2); box-shadow:none !important; }  /* fixed border so tools with their own theme tokens can't wash it out */
+/* the artboard: a WHITE board with a thin border on a light-grey mat,
+   NEVER a drop shadow. Fixed border colour so a tool's own tokens can't wash
+   it out. A tool may still paint its own ground inside render(). */
+#wrap, #stagewrap, #canvasArea{ background:var(--mat); }
+#art, #gl, #stage, #view{ background:#fff; border:1px solid rgba(0,0,0,.2);
+  box-shadow:none !important; }
 #art:fullscreen, #gl:fullscreen, #stage:fullscreen, #view:fullscreen{ border:0; }
 
-/* topbar reads dark-on-white (the wordmark is currentColor, so it follows) — a crisp white bar with a hairline under it */
-body.dark .opal-topbar{ background:#ffffff; border:none; border-bottom:1px solid var(--line); color:var(--ink); }
+/* 3 — TOPBAR ================================================================ */
+/* a crisp white bar with a hairline under it; wordmark is currentColor */
+body.dark .opal-topbar{ background:#fff; border:none;
+  border-bottom:1px solid var(--line); color:var(--ink); }
 body.dark .opal-subhead__name{ color:var(--ink); }
-body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:#585860; }
+body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:var(--mute); }
 
-/* left rail — a distinct light-grey panel, clearly set apart from the white topbar + canvas */
+/* 4 — LEFT RAIL ============================================================= */
+/* a distinct grey panel, clearly set apart from the white topbar + canvas */
+#dock{ background:var(--rail-bg); border-right:1px solid rgba(0,0,0,.14);
+  padding:16px 14px 22px !important; gap:12px !important;
+  box-shadow:1px 0 0 rgba(0,0,0,.03); }
 #panel{ background:#fff; border-left-color:var(--hair); }
 
-/* ---- islands: the rail is water, each control group is a floating card ---- */
-/* consistent radius / padding / left-right inset / gap for every island, in every tool */
-#dock{ background:#e1e3e9; border-right:1px solid rgba(0,0,0,.14);
-  padding:16px 14px 22px !important; gap:12px !important; box-shadow:1px 0 0 rgba(0,0,0,.03); }
-/* a section is a `.group` (standard) OR a top-level `.row` (image-train) — as a direct child of #dock,
-   so inner button-rows nested inside a group are never turned into islands. */
-#dock > .group, #dock > .row{ background:rgba(255,255,255,.97); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
-  border:1px solid var(--line); border-radius:12px; padding:14px !important;
+/* 5 — ISLANDS =============================================================== */
+/* the rail is water; each control group is a floating white card. One radius,
+   one padding, one inset, one 12px gap — for every island, in every tool.
+   A section is a direct-child `.group` (standard) OR `.row` (image-train);
+   button-rows nested *inside* a group are never promoted to islands. */
+#dock > .group, #dock > .row{
+  background:var(--island); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  border:1px solid var(--line); border-radius:var(--r-island); padding:14px !important;
   box-shadow:0 10px 30px -16px rgba(0,0,0,.22); }
 #dock > .row{ border-bottom:0 !important; }
-/* the old flush-list dividers are removed — the 12px gap gives the spacing between stacked islands */
-#dock > .group + .group{ margin-top:0 !important; padding-top:14px !important; border-top:0 !important; }
-#sizeDock select{ background:rgba(249,249,251,.96); color:var(--ink); border-color:var(--line); }
-#recDot{ background:rgba(249,249,251,.96); border-color:var(--line); color:#c01f34; }   /* darker red for AA */
-#recDot i{ background:#c01f34; }
-/* the over-canvas caption pill — light, high-contrast (was dark-on-dark) */
-#hint{ background:rgba(250,250,252,.94); color:var(--ink); border:1px solid var(--line);
-  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
-.tip{ background:rgba(252,252,253,.98); color:var(--ink); border-color:var(--line);
-  box-shadow:0 16px 40px -20px rgba(0,0,0,.28); }
+/* kill the old flush-list dividers — the 12px gap is the only separation */
+#dock > .group + .group{ margin-top:0 !important; padding-top:14px !important;
+  border-top:0 !important; }
 
-/* buttons — sharp, uppercase, letter-spaced */
+/* 6 — GROUP HEADING + LABELS ================================================ */
+/* the caption at the top of an island */
+.group__t{ font-size:10px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--mute); font-weight:600; }
+/* every control micro-label */
+.knob label, .warp label, h4{ font-size:10px; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--mute); }
+.knob b, .warp b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+
+/* 7 — SLIDERS =============================================================== */
+/* geometry lives HERE now (was copied into every tool): a 2px track and a
+   14px round ink thumb, dark-on-light. */
+.knob{ display:flex; flex-direction:column; gap:2px; }
+.knob label{ display:flex; justify-content:space-between; }
+input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:20px;
+  background:transparent; cursor:pointer; }
+input[type=range]::-webkit-slider-runnable-track{ height:2px; background:var(--track); border-radius:2px; }
+input[type=range]::-moz-range-track{ height:2px; background:var(--track); border-radius:2px; }
+input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px;
+  margin-top:-6px; border-radius:50%; background:var(--ink); border:0; }
+input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
+
+/* 8 — BUTTONS =============================================================== */
+/* sharp, uppercase, letter-spaced — ONE 5px radius for every button + select in
+   the Lab (!important so no tool's own rule can drift it). */
 .btn{ appearance:none; background:var(--cell); border:1px solid var(--line); color:var(--ink);
   font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
-  padding:8px 12px; border-radius:5px !important; cursor:pointer; transition:background .15s; white-space:nowrap; }
-/* one radius for every button + select in the Lab — !important so no tool's own rule can drift */
-#dock .btn, #dock select, #sizeDock select{ border-radius:5px !important; }
+  padding:8px 12px; border-radius:var(--r-control) !important; cursor:pointer;
+  transition:background .15s; white-space:nowrap; }
+#dock .btn, #dock select, #sizeDock select{ border-radius:var(--r-control) !important; }
 .btn:hover{ background:rgba(0,0,0,.09); }
 .btn[aria-pressed="true"], .btn.primary, .btn.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
 .btn.on{ outline:none; }
 .chip{ font-size:11px; padding:7px 10px; }
 .sep{ background:var(--line); }
 
-/* segmented rows */
-.seg{ border:1px solid var(--line); border-radius:2px; overflow:hidden; }
+/* 9 — SEGMENTED ============================================================= */
+/* a rounded wrapper holding flush, square inner buttons */
+.seg{ border:1px solid var(--line); border-radius:var(--r-seg); overflow:hidden; }
 .seg button{ font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink); }
 .seg button[aria-pressed="true"]{ background:var(--ink); color:#fff; }
 
-/* selects + text fields */
-select{ background:var(--cell); color:var(--ink); border:1px solid var(--line); border-radius:2px;
-  font:inherit; font-size:11px; letter-spacing:.04em; text-transform:uppercase; padding:7px 8px; }
-textarea, input[type=text], input[type=number]{ background:#fff; color:var(--ink); border-color:var(--line); }
+/* 10 — SELECTS + TEXT FIELDS ================================================ */
+select{ background:var(--cell); color:var(--ink); border:1px solid var(--line);
+  border-radius:var(--r-control); font:inherit; font-size:11px; letter-spacing:.04em;
+  text-transform:uppercase; padding:7px 8px; }
+textarea, input[type=text], input[type=number]{ background:#fff; color:var(--ink);
+  border:1px solid var(--line); border-radius:var(--r-input); }
 
-/* labels */
-.knob label, .warp label, h4{ font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--mute); }
-.knob b, .warp b{ color:var(--ink); }
+/* 11 — COLOUR ROWS + SWATCHES =============================================== */
+/* a labelled row with a colour well on the right */
+.crow{ display:flex; align-items:center; justify-content:space-between; }
+.crow label{ font-size:12px; color:var(--ink); text-transform:none; letter-spacing:0; }
+input[type=color]{ width:44px; height:24px; border:1px solid var(--line);
+  border-radius:var(--r-input); background:none; padding:0; cursor:pointer; }
+input[type=color]::-webkit-color-swatch-wrapper{ padding:2px; }
+input[type=color]::-webkit-color-swatch{ border:none; border-radius:2px; }
+input[type=color]::-moz-color-swatch{ border:none; border-radius:2px; }
+/* a round preset swatch (palette dots) */
+.sw{ width:22px; height:22px; border-radius:50%; border:1px solid var(--line);
+  padding:0; cursor:pointer; }
+.sw[aria-pressed="true"], .sw.on{ outline:2px solid var(--ink); outline-offset:2px; }
 
-/* sliders — thin track, small ink thumb (dark on light) */
-input[type=range]::-webkit-slider-runnable-track{ background:var(--track); }
-input[type=range]::-moz-range-track{ background:var(--track); }
-input[type=range]::-webkit-slider-thumb{ background:var(--ink); }
-input[type=range]::-moz-range-thumb{ background:var(--ink); }
+/* 12 — TOGGLES · TOOLTIPS · OVER-CANVAS DOCK =============================== */
+/* a labelled on/off row: text left, small .btn right */
+.tog{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.tog > span, .tog > label{ font-size:12px; color:var(--ink); }
+
+.tip{ background:rgba(252,252,253,.98); color:var(--ink); border-color:var(--line);
+  box-shadow:0 16px 40px -20px rgba(0,0,0,.28); }
+
+/* the caption pill centred over the canvas — light, high-contrast */
+#hint{ background:rgba(250,250,252,.94); color:var(--ink); border:1px solid var(--line);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+/* aspect selector, pinned top-right */
+#sizeDock select{ background:rgba(249,249,251,.96); color:var(--ink); border-color:var(--line); }
+/* record indicator */
+#recDot{ background:rgba(249,249,251,.96); border-color:var(--line); color:var(--rec); }
+#recDot i{ background:var(--rec); }

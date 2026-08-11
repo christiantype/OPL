@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>LAB DESIGN SYSTEM — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  @font-face{ font-family:'Sidepiece'; src:url('/shared/fonts/Sidepiece-HoneyPie.woff2') format('woff2'), url('/shared/fonts/Sidepiece-HoneyPie.ttf') format('truetype'); font-weight:normal; font-display:swap; }
+  :root{ --rail:300px; --top:82px; }
+  @media (max-width:560px){ :root{ --top:74px; } }
+  *{ box-sizing:border-box; }
+
+  /* ---- shell frame (rail + scrolling doc) ---- */
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
+    overflow-y:auto; display:flex; flex-direction:column; }
+  #dock .navttl{ font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--mute);
+    font-weight:600; margin-bottom:4px; }
+  #dock nav a{ display:block; padding:7px 10px; border-radius:6px; color:var(--ink);
+    text-decoration:none; font-size:12.5px; letter-spacing:.01em; }
+  #dock nav a:hover{ background:rgba(0,0,0,.05); }
+  #dock nav a.sub{ padding-left:20px; color:var(--dim); font-size:12px; }
+  #dock .railfoot{ margin-top:auto; font-size:11px; color:var(--dim); line-height:1.5; }
+
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; overflow-y:auto;
+    background:var(--mat); }
+  .doc{ max-width:940px; margin:0 auto; padding:40px 40px 120px; }
+  @media (max-width:720px){ .doc{ padding:28px 20px 100px; } }
+
+  /* ---- masthead ---- */
+  .mast{ padding:14px 0 30px; border-bottom:1px solid var(--line); margin-bottom:34px; }
+  .mast h1{ font-family:'Sidepiece', Georgia, serif; font-weight:400; font-size:clamp(42px,7vw,74px);
+    line-height:.98; letter-spacing:-.01em; margin:0 0 14px; color:var(--ink); }
+  .mast p{ margin:0; max-width:56ch; font-size:15px; line-height:1.6; color:var(--dim); }
+  .mast .meta{ margin-top:18px; display:flex; flex-wrap:wrap; gap:8px; }
+  .mast .meta b{ font-weight:600; color:var(--ink); }
+  .pill{ display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border:1px solid var(--line);
+    border-radius:999px; background:#fff; font-size:11.5px; color:var(--dim); }
+
+  /* ---- section rhythm ---- */
+  section{ margin:52px 0 0; scroll-margin-top:24px; }
+  .eyebrow{ font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim);
+    font-weight:600; margin:0 0 6px; }
+  h2{ font-size:26px; letter-spacing:-.01em; margin:0 0 10px; color:var(--ink); font-weight:600; }
+  h3{ font-size:14px; letter-spacing:.01em; margin:30px 0 12px; color:var(--ink); font-weight:600; }
+  .lede{ margin:0 0 20px; max-width:64ch; font-size:14.5px; line-height:1.65; color:var(--dim); }
+  p.note{ font-size:13px; line-height:1.6; color:var(--dim); margin:12px 0 0; max-width:64ch; }
+  code.k{ font-family:'the-future-mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;
+    background:rgba(0,0,0,.05); border:1px solid var(--line); border-radius:4px; padding:1px 6px; color:var(--ink); }
+
+  /* ---- specimen sheet: a white artboard on the mat, thin border, NO shadow ---- */
+  .sheet{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:24px; margin:0 0 16px; }
+  .sheet + .sheet{ margin-top:16px; }
+  .spec-head{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:16px; }
+  .spec-head .t{ font-size:13px; font-weight:600; color:var(--ink); letter-spacing:.01em; }
+  .spec-head .cls{ font-family:'the-future-mono', ui-monospace, monospace; font-size:11.5px; color:var(--dim); }
+  .demo{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .demo.col{ flex-direction:column; align-items:stretch; gap:12px; max-width:280px; }
+  .specnote{ margin-top:16px; padding-top:14px; border-top:1px solid var(--line);
+    font-size:12.5px; line-height:1.6; color:var(--dim); }
+  .specnote b{ color:var(--ink); font-weight:600; }
+
+  /* ---- token grids ---- */
+  .swgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  .sw-card{ border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff; }
+  .sw-card .chip{ height:64px; border-bottom:1px solid var(--line); }
+  .sw-card .meta{ padding:9px 11px; }
+  .sw-card .nm{ font-size:12px; font-weight:600; color:var(--ink); }
+  .sw-card .vl{ font-family:'the-future-mono', ui-monospace, monospace; font-size:11px; color:var(--dim);
+    margin-top:2px; word-break:break-all; }
+  .sw-card .us{ font-size:11.5px; color:var(--dim); margin-top:5px; line-height:1.4; }
+
+  .radgrid{ display:flex; flex-wrap:wrap; gap:18px; }
+  .rad{ text-align:center; }
+  .rad .box{ width:76px; height:76px; background:var(--cell); border:1px solid var(--line); }
+  .rad .lb{ font-size:11.5px; color:var(--ink); font-weight:600; margin-top:9px; }
+  .rad .lb small{ display:block; color:var(--dim); font-weight:400; font-size:11px; margin-top:1px;
+    font-family:'the-future-mono', monospace; }
+
+  /* spacing ruler */
+  .spacerow{ display:flex; align-items:center; gap:14px; margin:9px 0; }
+  .spacerow .bar{ height:14px; background:var(--ink); border-radius:2px; }
+  .spacerow .lb{ font-size:12.5px; color:var(--ink); }
+  .spacerow .lb small{ color:var(--dim); }
+
+  /* type ramp */
+  .ramp > div{ padding:12px 0; border-bottom:1px solid var(--line); display:flex; align-items:baseline;
+    justify-content:space-between; gap:20px; }
+  .ramp > div:last-child{ border-bottom:0; }
+  .ramp .lbl{ font-size:11.5px; color:var(--dim); font-family:'the-future-mono', monospace; flex:0 0 auto; }
+
+  /* mini rail (island demo) */
+  .ds-rail{ background:var(--rail-bg); border:1px solid var(--line); border-radius:12px; padding:16px 14px;
+    display:flex; flex-direction:column; gap:12px; max-width:280px; }
+  .ds-rail .group{ background:var(--island); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    border:1px solid var(--line); border-radius:12px; padding:14px; box-shadow:0 10px 30px -16px rgba(0,0,0,.22);
+    display:flex; flex-direction:column; gap:9px; }
+
+  /* mini artboard */
+  .ds-stage{ background:var(--mat); border:1px solid var(--line); border-radius:10px; padding:24px;
+    display:flex; align-items:center; justify-content:center; }
+  .ds-board{ width:180px; height:120px; background:#fff; border:1px solid rgba(0,0,0,.2); }
+
+  /* static over-canvas specimens */
+  .ovr-hint{ display:inline-flex; padding:7px 13px; border-radius:999px; font-size:13px;
+    background:rgba(250,250,252,.94); color:var(--ink); border:1px solid var(--line); }
+  .ovr-rec{ display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:999px;
+    background:rgba(249,249,251,.96); border:1px solid var(--line); color:var(--rec); font-size:12px; }
+  .ovr-rec i{ width:7px; height:7px; border-radius:50%; background:var(--rec); display:inline-block; }
+  .ovr-rec b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+
+  /* audit table */
+  .tbl-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:#fff; }
+  table{ border-collapse:collapse; width:100%; min-width:640px; font-size:12.5px; }
+  th, td{ text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); color:var(--ink); }
+  th{ font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--mute); font-weight:600;
+    background:rgba(0,0,0,.02); }
+  tr:last-child td{ border-bottom:0; }
+  td .ok{ color:#0c8b50; font-weight:600; }
+  td .dim{ color:var(--dim); }
+  .ledger{ list-style:none; margin:14px 0 0; padding:0; }
+  .ledger li{ padding:11px 0; border-bottom:1px solid var(--line); font-size:13.5px; line-height:1.55;
+    color:var(--ink); display:flex; gap:11px; }
+  .ledger li:last-child{ border-bottom:0; }
+  .ledger .tag{ flex:0 0 auto; font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    font-weight:600; color:#0c8b50; padding-top:2px; width:64px; }
+  .ledger .tag.keep{ color:var(--dim); }
+</style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
+</head>
+<body class="dark">
+
+<div id="dock">
+  <div class="navttl">Contents</div>
+  <nav>
+    <a href="#principles">Principles</a>
+    <a href="#found">Foundations</a>
+    <a class="sub" href="#color">Ink &amp; greys</a>
+    <a class="sub" href="#surf">Surfaces</a>
+    <a class="sub" href="#radius">Radius</a>
+    <a class="sub" href="#space">Spacing</a>
+    <a class="sub" href="#type">Type</a>
+    <a href="#comp">Components</a>
+    <a class="sub" href="#c-island">Islands</a>
+    <a class="sub" href="#c-btn">Buttons</a>
+    <a class="sub" href="#c-seg">Segmented</a>
+    <a class="sub" href="#c-slide">Sliders</a>
+    <a class="sub" href="#c-select">Selects &amp; fields</a>
+    <a class="sub" href="#c-colour">Colour &amp; swatches</a>
+    <a class="sub" href="#c-tog">Toggles</a>
+    <a class="sub" href="#c-over">Over-canvas</a>
+    <a href="#pattern">Patterns</a>
+    <a href="#audit">Audit</a>
+  </nav>
+  <div class="railfoot">OP/AL Lab · shared shell<br>Source: <code class="k" style="font-size:10.5px">shared/tool.css</code></div>
+</div>
+
+<div id="wrap">
+<div class="doc">
+
+  <div class="mast">
+    <h1>The Lab kit</h1>
+    <p>One shell for every tool in the Lab — the tokens, controls and patterns that make seventeen different instruments read as a single product. Everything on this page is drawn by the same stylesheet the tools use, so what you see is exactly what ships.</p>
+    <div class="meta">
+      <span class="pill">Version <b>1.0</b></span>
+      <span class="pill"><b>17</b> tools on the shell</span>
+      <span class="pill">Source · <b>shared/tool.css</b></span>
+      <span class="pill">Spec · <b>shared/SHELL.md</b></span>
+    </div>
+  </div>
+
+  <!-- PRINCIPLES -->
+  <section id="principles">
+    <p class="eyebrow">Foundations</p>
+    <h2>Principles</h2>
+    <p class="lede">Five rules the whole Lab holds to. When a tool breaks one, it's the tool that's wrong — bring it back here.</p>
+    <div class="swgrid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+      <div class="sheet" style="margin:0;padding:18px">
+        <div class="spec-head" style="margin-bottom:8px"><span class="t">One shell</span></div>
+        <p class="note" style="margin:0">Every tool loads <code class="k">tool.css</code> last. It owns the theme and the geometry of every control, so no tool restyles a button or a slider.</p>
+      </div>
+      <div class="sheet" style="margin:0;padding:18px">
+        <div class="spec-head" style="margin-bottom:8px"><span class="t">Light &amp; legible</span></div>
+        <p class="note" style="margin:0">White chrome, dark controls. Every text and outline clears WCAG AA — muted grey is <code class="k">#585860</code>, never lighter, and labels never fall below 10px.</p>
+      </div>
+      <div class="sheet" style="margin:0;padding:18px">
+        <div class="spec-head" style="margin-bottom:8px"><span class="t">Islands, not chrome</span></div>
+        <p class="note" style="margin:0">Controls live in white cards floating on the grey rail. No panels butt together, no bottom bars sit over the artwork.</p>
+      </div>
+      <div class="sheet" style="margin:0;padding:18px">
+        <div class="spec-head" style="margin-bottom:8px"><span class="t">The artboard is sacred</span></div>
+        <p class="note" style="margin:0">The canvas is a white board with a thin border on a grey mat — and <b>never</b> a drop shadow. The shell frames the art; it doesn't decorate it.</p>
+      </div>
+      <div class="sheet" style="margin:0;padding:18px">
+        <div class="spec-head" style="margin-bottom:8px"><span class="t">Plain language</span></div>
+        <p class="note" style="margin:0">Labels say what a control does — Width, Softness, Density. No math, no jargon, no zero-padded numbers.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOUNDATIONS -->
+  <section id="found">
+    <p class="eyebrow">Foundations</p>
+    <h2>Tokens</h2>
+    <p class="lede">The design decisions, named once. Tools reference these — they don't hardcode values.</p>
+  </section>
+
+  <section id="color">
+    <h3>Ink &amp; greys</h3>
+    <div class="swgrid">
+      <div class="sw-card"><div class="chip" style="background:#16171c"></div><div class="meta"><div class="nm">--ink</div><div class="vl">#16171c</div><div class="us">Text, slider thumbs, primary ground · ~15:1</div></div></div>
+      <div class="sw-card"><div class="chip" style="background:#585860"></div><div class="meta"><div class="nm">--dim / --mute</div><div class="vl">#585860</div><div class="us">Muted labels &amp; captions · ~6:1 (AA)</div></div></div>
+      <div class="sw-card"><div class="chip" style="background:rgba(0,0,0,.16)"></div><div class="meta"><div class="nm">--line</div><div class="vl">rgba(0,0,0,.16)</div><div class="us">Borders &amp; dividers</div></div></div>
+      <div class="sw-card"><div class="chip" style="background:rgba(0,0,0,.18)"></div><div class="meta"><div class="nm">--hair</div><div class="vl">rgba(0,0,0,.18)</div><div class="us">Panel edges</div></div></div>
+      <div class="sw-card"><div class="chip" style="background:rgba(0,0,0,.28)"></div><div class="meta"><div class="nm">--track</div><div class="vl">rgba(0,0,0,.28)</div><div class="us">Slider tracks</div></div></div>
+      <div class="sw-card"><div class="chip" style="background:rgba(0,0,0,.05)"></div><div class="meta"><div class="nm">--cell</div><div class="vl">rgba(0,0,0,.05)</div><div class="us">Button &amp; input ground</div></div></div>
+    </div>
+  </section>
+
+  <section id="surf">
+    <h3>Surfaces</h3>
+    <div class="swgrid">
+      <div class="sw-card"><div class="chip" style="background:#f4f4f6"></div><div class="meta"><div class="nm">--paper</div><div class="vl">#f4f4f6</div><div class="us">Body ground</div></div></div>
+      <div class="sw-card"><div class="chip" style="background:#ececf0"></div><div class="meta"><div class="nm">--mat</div><div class="vl">#ececf0</div><div class="us">Mat behind the artboard</div></div></div>
+      <div class="sw-card"><div class="chip" style="background:#e1e3e9"></div><div class="meta"><div class="nm">--rail-bg</div><div class="vl">#e1e3e9</div><div class="us">The left rail "water"</div></div></div>
+      <div class="sw-card"><div class="chip" style="background:#fff"></div><div class="meta"><div class="nm">--island</div><div class="vl">rgba(255,255,255,.97)</div><div class="us">A control card · also the artboard</div></div></div>
+      <div class="sw-card"><div class="chip" style="background:#c01f34"></div><div class="meta"><div class="nm">--rec</div><div class="vl">#c01f34</div><div class="us">Record indicator (AA red)</div></div></div>
+    </div>
+  </section>
+
+  <section id="radius">
+    <h3>Radius</h3>
+    <p class="lede">The whole Lab bends on exactly four radii.</p>
+    <div class="sheet"><div class="radgrid">
+      <div class="rad"><div class="box" style="border-radius:12px"></div><div class="lb">Island<small>--r-island · 12px</small></div></div>
+      <div class="rad"><div class="box" style="border-radius:5px"></div><div class="lb">Control<small>--r-control · 5px</small></div></div>
+      <div class="rad"><div class="box" style="border-radius:4px"></div><div class="lb">Input<small>--r-input · 4px</small></div></div>
+      <div class="rad"><div class="box" style="border-radius:2px"></div><div class="lb">Segment<small>--r-seg · 2px</small></div></div>
+    </div>
+    <p class="specnote"><b>Buttons and selects are one radius — 5px — everywhere.</b> It's enforced <code class="k">!important</code> so no tool can drift it. Segmented buttons stay square inside their rounded wrapper; colour swatches stay circular.</p>
+    </div>
+  </section>
+
+  <section id="space">
+    <h3>Spacing</h3>
+    <p class="lede">A small, repeated set of gaps. Islands and their contents breathe on the same rhythm in every tool.</p>
+    <div class="sheet">
+      <div class="spacerow"><div class="bar" style="width:2px"></div><div class="lb">Slider stack <small>· 2px — label to track</small></div></div>
+      <div class="spacerow"><div class="bar" style="width:9px"></div><div class="lb">Control gap <small>· 9px — rows inside an island</small></div></div>
+      <div class="spacerow"><div class="bar" style="width:12px"></div><div class="lb">Island gap <small>· 12px — between stacked cards</small></div></div>
+      <div class="spacerow"><div class="bar" style="width:14px"></div><div class="lb">Island padding <small>· 14px — inside every card</small></div></div>
+      <div class="spacerow"><div class="bar" style="width:24px"></div><div class="lb">Canvas mat <small>· 24px — board inset from the rail</small></div></div>
+    </div>
+    <p class="note">Layout frame: the rail is <code class="k">--rail 300px</code> wide, the topbar <code class="k">--top 82px</code> tall. These are the only geometry a tool defines itself.</p>
+  </section>
+
+  <section id="type">
+    <h3>Type</h3>
+    <p class="lede">System sans for the interface; Sidepiece for display. Small caps carry the labels, tabular numerals carry the readouts.</p>
+    <div class="sheet ramp">
+      <div><span style="font-family:'Sidepiece',Georgia,serif;font-size:40px;line-height:1;color:var(--ink)">Display</span><span class="lbl">Sidepiece · clamp 42–74px</span></div>
+      <div><span style="font-size:26px;font-weight:600;color:var(--ink)">Heading</span><span class="lbl">26px / 600</span></div>
+      <div><span style="font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;color:var(--mute)">Group heading</span><span class="lbl">10px · .09em · uppercase · --mute</span></div>
+      <div><span style="font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute)">Control label</span><span class="lbl">10px · .07em · uppercase · --mute</span></div>
+      <div><span style="font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)">128</span><span class="lbl">Readout · 11px · tabular · --ink</span></div>
+      <div><span style="font-size:13px;color:var(--ink)">Body &amp; row labels</span><span class="lbl">12–13px · --ink</span></div>
+      <div><span style="font-family:'the-future-mono',monospace;font-size:12px;color:var(--ink)">mono / code</span><span class="lbl">the-future-mono · 12px</span></div>
+    </div>
+    <p class="note">Never <code class="k">0.8em</code> body text; never a zero-padded number. Uppercase micro-labels bottom out at 10px.</p>
+  </section>
+
+  <!-- COMPONENTS -->
+  <section id="comp">
+    <p class="eyebrow">Library</p>
+    <h2>Components</h2>
+    <p class="lede">Every control the Lab uses, rendered live by <code class="k">tool.css</code>. Drop the class in and it looks like this — nowhere does a tool restyle one.</p>
+  </section>
+
+  <section id="c-island">
+    <h3>Islands</h3>
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Control group</span><span class="cls">.group + .group__t</span></div>
+      <div class="demo">
+        <div class="ds-rail">
+          <div class="group">
+            <div class="group__t">Field</div>
+            <div class="knob"><label>Density <b>64</b></label><input type="range" min="0" max="100" value="64"></div>
+            <div class="knob"><label>Softness <b>28</b></label><input type="range" min="0" max="100" value="28"></div>
+          </div>
+          <div class="group">
+            <div class="group__t">Export</div>
+            <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button class="btn">Save</button><button class="btn primary">Record</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="specnote">The rail is water; each <b>.group</b> is a white island — one radius (12px), one padding (14px), one 12px gap, in every tool. A <b>.group__t</b> captions it. Tools never add manual margins or dividers; the shell spaces the islands.</p>
+    </div>
+  </section>
+
+  <section id="c-btn">
+    <h3>Buttons</h3>
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Button</span><span class="cls">.btn · .btn.primary · [aria-pressed]</span></div>
+      <div class="demo">
+        <button class="btn">Default</button>
+        <button class="btn primary">Primary</button>
+        <button class="btn" aria-pressed="true">Pressed</button>
+        <button class="btn chip">Chip</button>
+      </div>
+      <div class="demo" style="margin-top:12px">
+        <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:280px">
+          <button class="btn">Reset</button><button class="btn">Shuffle</button>
+        </div>
+      </div>
+      <p class="specnote">11px uppercase, .05em tracking, <b>5px radius</b>. Active / primary invert to the <b>--ink</b> ground with white text. <b>.grid2</b> lays two side by side; <b>.chip</b> is the compact variant.</p>
+    </div>
+  </section>
+
+  <section id="c-seg">
+    <h3>Segmented</h3>
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Segmented control</span><span class="cls">.seg</span></div>
+      <div class="demo">
+        <div class="seg" style="display:inline-flex">
+          <button style="padding:8px 14px;background:transparent;border:0">Draw</button>
+          <button style="padding:8px 14px;background:transparent;border:0" aria-pressed="true">Move</button>
+          <button style="padding:8px 14px;background:transparent;border:0">Erase</button>
+        </div>
+      </div>
+      <p class="specnote">A rounded 2px wrapper holding flush, square inner buttons. The active segment fills with <b>--ink</b>. Use it for a small set of exclusive modes.</p>
+    </div>
+  </section>
+
+  <section id="c-slide">
+    <h3>Sliders</h3>
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Slider</span><span class="cls">.knob</span></div>
+      <div class="demo col">
+        <div class="knob"><label>Width <b>1.4</b></label><input type="range" min="0" max="100" value="42"></div>
+        <div class="knob"><label>Wander <b>0.30</b></label><input type="range" min="0" max="100" value="30"></div>
+        <div class="knob"><label>Flow <b>88</b></label><input type="range" min="0" max="100" value="88"></div>
+      </div>
+      <p class="specnote">A 2px track (<b>--track</b>) with a 14px round <b>--ink</b> thumb. Label left, tabular readout right in the same row; the readout updates on <code class="k">input</code>. This geometry now lives in <code class="k">tool.css</code> — tools no longer copy it.</p>
+    </div>
+  </section>
+
+  <section id="c-select">
+    <h3>Selects &amp; fields</h3>
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Select &amp; text field</span><span class="cls">select · textarea · input</span></div>
+      <div class="demo col">
+        <select style="width:100%">
+          <option>Portrait · 4:5</option><option>Story · 9:16</option><option>Square · 1:1</option>
+        </select>
+        <textarea rows="2" style="width:100%;padding:9px 10px;font:inherit;resize:vertical">OPEN LAB SATURDAY</textarea>
+        <input type="text" value="Untitled" style="width:100%;padding:8px 10px;font:inherit">
+      </div>
+      <p class="specnote">Selects share the 5px button radius; text fields sit on white with a 4px radius. Aspect selects follow the standard set — Portrait, Story, Square, Landscape.</p>
+    </div>
+  </section>
+
+  <section id="c-colour">
+    <h3>Colour &amp; swatches</h3>
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Colour row</span><span class="cls">.crow · input[type=color]</span></div>
+      <div class="demo col">
+        <div class="crow"><label>Ink</label><input type="color" value="#16171c"></div>
+        <div class="crow"><label>Paper</label><input type="color" value="#f4f4f6"></div>
+      </div>
+      <div class="spec-head" style="margin:22px 0 12px"><span class="t">Preset swatches</span><span class="cls">.sw</span></div>
+      <div class="demo">
+        <button class="sw" style="background:#e0483c"></button>
+        <button class="sw" style="background:#e8c020" aria-pressed="true"></button>
+        <button class="sw" style="background:#2f6fed"></button>
+        <button class="sw" style="background:#16171c"></button>
+        <button class="sw" style="background:#f4f4f6"></button>
+      </div>
+      <p class="specnote">A labelled <b>.crow</b> pairs a name with a 44×24 colour well (4px radius). Preset <b>.sw</b> swatches are 22px circles; the chosen one gets an ink outline. Two idioms, one job — pick the well for free colour, swatches for a fixed palette.</p>
+    </div>
+  </section>
+
+  <section id="c-tog">
+    <h3>Toggles</h3>
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Toggle row</span><span class="cls">.tog</span></div>
+      <div class="demo col">
+        <div class="tog"><span>Loop</span><button class="btn" aria-pressed="true">On</button></div>
+        <div class="tog"><span>Grain</span><button class="btn">Off</button></div>
+      </div>
+      <p class="specnote">Label left, a small <b>.btn</b> right that inverts when on. For on/off state that isn't one of a set — otherwise reach for segmented.</p>
+    </div>
+  </section>
+
+  <section id="c-over">
+    <h3>Over-canvas</h3>
+    <div class="sheet">
+      <div class="spec-head"><span class="t">The only things allowed over the artwork</span><span class="cls">#hint · #recDot · #sizeDock</span></div>
+      <div class="demo" style="gap:16px">
+        <span class="ovr-hint">Drag to explore the shape</span>
+        <span class="ovr-rec"><i></i><b>0:07</b></span>
+        <select style="background:rgba(249,249,251,.96)"><option>Square · 1:1</option></select>
+      </div>
+      <p class="specnote">A centred caption pill (<b>#hint</b>), the record indicator (<b>#recDot</b>, top-left of the canvas), and the aspect selector (<b>#sizeDock</b>, pinned top-right). Nothing else overlaps the board — all other controls live in the rail.</p>
+    </div>
+  </section>
+
+  <!-- PATTERNS -->
+  <section id="pattern">
+    <p class="eyebrow">Library</p>
+    <h2>Patterns</h2>
+    <p class="lede">How the pieces come together — the shapes every tool is built from.</p>
+
+    <div class="sheet">
+      <div class="spec-head"><span class="t">The artboard</span></div>
+      <div class="ds-stage"><div class="ds-board"></div></div>
+      <p class="specnote">A white board with a thin <b>1px</b> border, centred on a light-grey mat with a 24px inset — and <b>no drop shadow, ever</b>. A tool may paint its own ground inside <code class="k">render()</code> (cream, dark paper); the frame stays the same.</p>
+    </div>
+
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Rail of islands</span></div>
+      <p class="note" style="margin-top:0">Left rail, 300px, scrolls. Each logical section is its own island; the topbar carries the wordmark, the aspect selector sits top-right of the canvas. This is the frame — see the components above for the pieces.</p>
+    </div>
+
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Export</span></div>
+      <p class="note" style="margin-top:0"><b>Record</b> captures the canvas at 30fps to H.264 MP4 (WebM fallback); audio tools add the WebAudio track. <b>Save</b> writes a PNG. Both hide on-canvas edit handles first, and render to a fixed 1920-long-edge buffer for crisp output. The record dot shows while capturing.</p>
+    </div>
+
+    <div class="sheet">
+      <div class="spec-head"><span class="t">Direct manipulation &amp; performance</span></div>
+      <p class="note" style="margin-top:0">Where a tool places elements on the canvas, selection is unified — click to focus, drag to move, handles to resize, and edit UI hides during capture. Tools with an auto-morph / performance mode animate a chosen set of dials while recording, so the piece drifts between legible and abstract on its own.</p>
+    </div>
+  </section>
+
+  <!-- AUDIT -->
+  <section id="audit">
+    <p class="eyebrow">2026-08</p>
+    <h2>Audit</h2>
+    <p class="lede">A pass across all seventeen tools on the shell. The finding was consistent: the theme was right, but each tool carried its own copy of the control geometry — so headings, sliders and swatches had quietly drifted. The fix was to make <code class="k">tool.css</code> the complete component layer, then correct the handful of tools that had leaked their old dark theme.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Tool</th><th>Shell</th><th>Islands</th><th>Artboard</th><th>Controls</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Attractor <span class="dim">(reference)</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">The template</td></tr>
+          <tr><td>Fence</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Circular preset swatches</td></tr>
+          <tr><td>Putty</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Thumb normalised 15→14px</td></tr>
+          <tr><td>Sequins</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Clean</td></tr>
+          <tr><td>Static</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Relit dark status pill + icons</td></tr>
+          <tr><td>Tape</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Raised 9px labels to 10px</td></tr>
+          <tr><td>Halftone</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Heading tracking normalised</td></tr>
+          <tr><td>Spectral-Smear</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Was rendering dark — relit</td></tr>
+          <tr><td>Aura-Maxing</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Clean</td></tr>
+          <tr><td>Garden-Variety</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Blue crop-frame → ink</td></tr>
+          <tr><td>Windchime</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Dark tooltip relit</td></tr>
+          <tr><td>Visual Poetry</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Dark tooltip relit</td></tr>
+          <tr><td>OPEN LAB</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Morph chips 10.5→11px; dark shape chips kept by design</td></tr>
+          <tr><td>Hand Shader</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Rail surface normalised</td></tr>
+          <tr><td>Angel</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Raised 9px labels to 10px</td></tr>
+          <tr><td>Image-Train</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Raised 8–9px labels to 10px</td></tr>
+          <tr><td>Second-Thought</td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td><span class="ok">✓</span></td><td class="dim">Islands; 12px control labels</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>What this pass changed</h3>
+    <ul class="ledger">
+      <li><span class="tag">Added</span><span><b>tool.css is now the complete component layer.</b> Slider geometry, group headings, colour rows, preset swatches and toggles were promoted out of the seventeen tools into one place, so they can no longer drift.</span></li>
+      <li><span class="tag">Fixed</span><span><b>Headings unified.</b> Every <code class="k">.group__t</code> had its own tracking (.11 / .12 / .16em) and colour — now one heading spec, shell-wide.</span></li>
+      <li><span class="tag">Fixed</span><span><b>Buttons &amp; selects to a single 5px radius</b>, enforced <code class="k">!important</code> so no tool overrides it.</span></li>
+      <li><span class="tag">Fixed</span><span><b>Spectral-Smear was rendering in its old dark theme</b> — it self-applied <code class="k">body.dark</code> tokens above the shell. Relit to match.</span></li>
+      <li><span class="tag">Fixed</span><span><b>Dark leftovers cleared</b> — Static's status pill &amp; icon buttons, Garden-Variety's blue crop frame, and the dark tooltips in Windchime / Visual Poetry.</span></li>
+      <li><span class="tag">Fixed</span><span><b>Accessibility.</b> Sub-10px control labels in Image-Train (down to 8px), Angel and Tape were raised to 10px; OPEN LAB's morph chips to 11px.</span></li>
+      <li><span class="tag keep">Kept</span><span><b>Intentional exceptions.</b> OPEN LAB's dark shape-preview chips stay dark inside the light shell. Fixed-output captures (open-reel, open-slots, scanner, lake-opeka, ships-in-the-night…) and the full-bleed Projection tool sit outside the shell by design.</span></li>
+    </ul>
+    <p class="note">Source of truth for all of the above: <code class="k">shared/tool.css</code> and <code class="k">shared/SHELL.md</code>. This page is drawn by that same stylesheet — if a token changes there, it changes here.</p>
+  </section>
+
+</div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'LAB DESIGN SYSTEM', desc:'One shell for every tool',
+  about:'The tokens, controls and patterns shared by every tool in the OP/AL Lab — rendered live by the same stylesheet the tools use. Source: shared/tool.css + shared/SHELL.md.',
+  version:'v1' });</script>
+</body>
+</html>
