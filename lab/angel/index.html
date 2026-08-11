@@ -15,7 +15,7 @@
      in the tree for dark mode. */
   html:root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
     --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
-    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:82px; --rail:290px; }
+    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:82px; --rail:300px; }
   body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
     --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
     --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
@@ -24,8 +24,10 @@
     font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
   /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
      wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
-  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
+  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; }
   #stage{ display:block; width:100%; height:100%; touch-action:none; }
+  /* let the field take the whole width when the rail is tucked away */
+  body.norail #stagewrap{ left:0; }
 
   /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
      In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
@@ -40,7 +42,8 @@
   body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
-  body.fs .rail, body.fs #bar, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #dock, body.fs #bar, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.norail #dock{ display:none; }
   body.fs #stagewrap{ top:0; left:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
@@ -63,7 +66,7 @@
     -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
     background-image:none; }
   /* centered caption over the canvas — fades once you get going */
-  #hint{ position:fixed; top:calc(var(--top) + 14px); left:50%; transform:translateX(-50%); z-index:7;
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); z-index:7;
     font-size:12px; letter-spacing:.02em; color:var(--mute); background:var(--panel);
     padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .5s ease;
     -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid var(--hair); }
@@ -101,47 +104,28 @@
   body.fs #recDot{ top:14px; }
   @keyframes blink{ 50%{opacity:.2;} }
 
-  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
-     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
-     work with. */
-  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
-    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
-    background:var(--panel);
+  /* One flush-left rail — the shared shell standard. Both former rails collapse into this
+     single column; the playable field sits to its right. Frosted so the panel reads apart
+     from the white topbar. */
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
+    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:var(--panel); border-right:1px solid var(--edge);
     -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
-    display:flex; flex-direction:column; transition:transform .28s ease; }
-  .rail-l{ left:0; border-right:1px solid var(--edge); }
-  .rail-r{ right:0; border-left:1px solid var(--edge); }
-  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
-    padding:14px 0; border-bottom:1px solid var(--edge); }
-  .row:last-of-type{ border-bottom:0; }
-  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
-     past when you only want two of them. */
-  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
-    font-weight:600; opacity:.9; padding-bottom:2px;
-    display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
-    width:100%; background:none; border:0; font-family:inherit; text-align:left; }
-  .rowhead:hover{ opacity:1; }
-  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
-  .rowhead::before{ content:''; width:0; height:0; flex:none;
-    border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
-    transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
-  .row.folded .rowhead::before{ transform:rotate(0deg); }
-  .row.folded > *:not(.rowhead){ display:none; }
-  .row.folded{ padding-bottom:10px; }
+    display:flex; flex-direction:column; gap:0; }
+  body.dark #dock{ background:var(--panel); border-right-color:var(--edge); }
+  /* labelled sections — dividers come free between them */
+  .group{ display:flex; flex-direction:column; align-items:stretch; gap:11px; }
+  .group + .group{ margin-top:16px; padding-top:16px; border-top:1px solid var(--edge); }
+  .group__t{ text-transform:uppercase; letter-spacing:.12em; font-size:10px; color:var(--ink);
+    font-weight:600; }
+  .rowhint{ margin:-3px 0 1px; font-size:11px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
   .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
-  .rail input[type=range]{ width:100%; }
-  .rail select{ width:100%; }
-  .rail .seg{ width:100%; }
-  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  #dock input[type=range]{ width:100%; }
+  #dock select{ width:100%; }
+  #dock .seg{ width:100%; }
+  #dock .seg button{ flex:1; text-align:center; padding:7px 4px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
-  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
-     nothing between you and the piece unless you ask for it. */
-  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
-  .rail-l{ transform:translateX(-100%); }
-  .rail-r{ transform:translateX(100%); }
-  .rail.open{ transform:none; }
 
   /* Chrome fades out while you listen and comes back on movement. */
   #bar{ transition:opacity .5s ease; }
@@ -149,7 +133,7 @@
   body.panels #bar{ opacity:1; pointer-events:auto; }
 
   /* Mood — the one control that stays reachable. */
-  #mood{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:9;
+  #mood{ position:fixed; left:calc(50% + var(--rail)/2); bottom:26px; transform:translateX(-50%); z-index:9;
     display:flex; align-items:center; gap:12px; padding:9px 16px; border-radius:999px;
     border:1px solid var(--hair); background:var(--panel); color:var(--ink); cursor:pointer;
     -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
@@ -162,7 +146,7 @@
   body.kbd #mood{ bottom:168px; }
 
   /* Playable keyboard — plays the selected lane's voice; computer keys or clicks. */
-  #kbd{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:9;
+  #kbd{ position:fixed; left:calc(50% + var(--rail)/2); bottom:26px; transform:translateX(-50%); z-index:9;
     display:flex; flex-direction:column; gap:7px; padding:9px; border-radius:10px; user-select:none;
     max-width:calc(100vw - 32px);
     background:var(--panel); -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
@@ -189,7 +173,7 @@
     letter-spacing:.04em; color:var(--mute); opacity:.75; pointer-events:none; }
   .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
     color:var(--mute); white-space:nowrap; }
-  .rail .grp > label{ white-space:normal; }
+  #dock .grp > label{ white-space:normal; }
   .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
   .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
   .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
@@ -237,25 +221,19 @@
     font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
     background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
     background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
-  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
-     it's just visually replaced, so listeners and readouts are untouched. */
-  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
-  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
-    opacity:0; margin:0; pointer-events:none; }
-  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
-  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
-  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
-    transition:stroke-dasharray .04s linear; }
-  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
-  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
-  .knob:focus-visible{ outline:none; }
-  .knob:focus-visible .k-hub{ stroke:var(--ink); }
-  .knob.drag .k-vl{ stroke-width:3.6; }
-  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
-  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
-  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
-    color:var(--mute); text-align:center; white-space:nowrap; }
-  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  /* Flat sliders — the shared-shell control (rotary dials removed). The real <input type=range>
+     drives every existing handler and readout unchanged; the wrapper just lays out label + value. */
+  .knob{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .knob > label{ display:flex; justify-content:space-between; gap:8px; align-items:baseline;
+    text-transform:uppercase; letter-spacing:.1em; font-size:10px; line-height:1.2; color:var(--mute); }
+  .knob > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:20px;
+    background:transparent; cursor:pointer; margin:0; }
+  input[type=range]::-webkit-slider-runnable-track{ height:2px; background:var(--track); border-radius:2px; }
+  input[type=range]::-moz-range-track{ height:2px; background:var(--track); border-radius:2px; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px;
+    margin-top:-6px; border-radius:50%; background:var(--ink); }
+  input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
   .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
     color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
     padding:8px 12px; cursor:pointer; border-radius:2px; }
@@ -282,7 +260,7 @@
 
   /* Arrangement strip. It sits above the mood button rather than in a rail, because a
      timeline you cannot see while you play is not a timeline. */
-  #arr{ position:fixed; left:50%; bottom:76px; transform:translateX(-50%); z-index:9;
+  #arr{ position:fixed; left:calc(50% + var(--rail)/2); bottom:76px; transform:translateX(-50%); z-index:9;
     display:none; align-items:center; gap:9px; padding:7px 11px; border-radius:999px;
     width:min(620px, calc(100vw - 40px));
     background:var(--panel); border:1px solid var(--hair);
@@ -350,9 +328,9 @@
 </div>
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
-<div id="rail" class="rail rail-l">
-<div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Lane</button>
+<div id="dock">
+<div class="group">
+    <div class="group__t">Lane</div>
     <p class="rowhint">Four rings, each its own instrument and rhythm. Right-click a lane to recolour it.</p>
     <div class="grp" data-tip="Which of the four rings you are editing. Everything in this section applies to it alone."><div class="seg lanes" id="laneSeg"></div></div>
     <div class="grp" data-tip="Silences one ring without deleting it. It keeps turning, so you can hear what it was holding up."><label>Mute <b style="font-weight:400;opacity:.55">drop a lane out of the mix</b></label>
@@ -377,18 +355,18 @@
       </select>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="How many places around the ring can hold a note. More steps, finer rhythm."><label>Steps <b id="stepsR">8</b></label><input id="steps" type="range" min="2" max="32" value="8" /></div>
-      <div class="grp" data-tip="How fast this ring turns. Steps multiplied by Speed is how many notes a second you get, so rings with matching products stay locked together."><label>Speed <b id="lspeedR">6.00&#215;</b></label><input id="lspeed" type="range" min="5" max="600" value="600" /></div>
+      <div class="knob" data-tip="How many places around the ring can hold a note. More steps, finer rhythm."><label>Steps <b id="stepsR">8</b></label><input id="steps" type="range" min="2" max="32" value="8" /></div>
+      <div class="knob" data-tip="How fast this ring turns. Steps multiplied by Speed is how many notes a second you get, so rings with matching products stay locked together."><label>Speed <b id="lspeedR">6.00&#215;</b></label><input id="lspeed" type="range" min="5" max="600" value="600" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Rolls the top off this ring alone. Left is muffled and distant, right is bright and forward."><label>Filter <b id="lcutR">open</b></label><input id="lcut" type="range" min="0" max="100" value="100" /></div>
-      <div class="grp" data-tip="Emphasis right at the filter point. Turn it up and a cutoff sweep starts to whistle and squelch instead of just getting duller."><label>Reso <b id="lresR">0.7</b></label><input id="lres" type="range" min="1" max="140" value="7" /></div>
-      <div class="grp" data-tip="How loud this ring sits against the other three."><label>Level <b id="lvolR">80</b></label><input id="lvol" type="range" min="0" max="100" value="80" /></div>
+      <div class="knob" data-tip="Rolls the top off this ring alone. Left is muffled and distant, right is bright and forward."><label>Filter <b id="lcutR">open</b></label><input id="lcut" type="range" min="0" max="100" value="100" /></div>
+      <div class="knob" data-tip="Emphasis right at the filter point. Turn it up and a cutoff sweep starts to whistle and squelch instead of just getting duller."><label>Reso <b id="lresR">0.7</b></label><input id="lres" type="range" min="1" max="140" value="7" /></div>
+      <div class="knob" data-tip="How loud this ring sits against the other three."><label>Level <b id="lvolR">80</b></label><input id="lvol" type="range" min="0" max="100" value="80" /></div>
     </div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Steps</button>
+  <div class="group">
+    <div class="group__t">Steps</div>
     <p class="rowhint">Click a cell to place a note. Click again to select it, once more to clear. Right-click a cell to send the playhead there. A step holding a recording only clears from Clear, so a stray click cannot lose a take.</p>
     <div class="grp" data-tip="One cell per step. Click to place a note, click again to select it for editing, once more to clear it. Steps holding a recording are kept — clear those with the Clear button."><div id="stepRow"></div></div>
     <div class="grp" data-tip="Sends the playheads back to the top so the four rings line up again. They drift apart by design — this is how you put them back."><div style="display:flex; gap:6px;">
@@ -413,8 +391,8 @@
       </div>
     </div>
   </div>
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Sample</button>
+  <div class="group">
+    <div class="group__t">Sample</div>
     <p class="rowhint">Give a single step its own recording, so one lane can hold a different sound per step.</p>
     <div class="grp" data-tip="Which step a recording will land on. Select a step first, then record or load into it."><label>Target <b id="sampTarget">no step selected</b></label></div>
     <div class="grp"><div style="display:flex; gap:6px;">
@@ -445,31 +423,29 @@
     <input id="sampFile" type="file" accept="audio/*" hidden />
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Envelope</button>
+  <div class="group">
+    <div class="group__t">Envelope</div>
     <p class="rowhint">How each note swells and fades. Long attack for pads, short for plucks.</p>
     <div class="quad">
-      <div class="grp" data-tip="How long a note takes to reach full volume. Instant for a pluck, slow for something that swells in."><label>Attack <b id="eaR">—</b></label><input id="ea" type="range" min="0" max="100" value="52" /></div>
-      <div class="grp" data-tip="How quickly it falls away from that first peak."><label>Decay <b id="edR">—</b></label><input id="ed" type="range" min="0" max="100" value="55" /></div>
-      <div class="grp" data-tip="The level it holds at while the note lasts. At zero every note is a short hit."><label>Sustain <b id="esR">—</b></label><input id="es" type="range" min="0" max="100" value="50" /></div>
-      <div class="grp" data-tip="How long the tail takes to disappear once the note ends."><label>Release <b id="erR">—</b></label><input id="er" type="range" min="0" max="100" value="87" /></div>
+      <div class="knob" data-tip="How long a note takes to reach full volume. Instant for a pluck, slow for something that swells in."><label>Attack <b id="eaR">—</b></label><input id="ea" type="range" min="0" max="100" value="52" /></div>
+      <div class="knob" data-tip="How quickly it falls away from that first peak."><label>Decay <b id="edR">—</b></label><input id="ed" type="range" min="0" max="100" value="55" /></div>
+      <div class="knob" data-tip="The level it holds at while the note lasts. At zero every note is a short hit."><label>Sustain <b id="esR">—</b></label><input id="es" type="range" min="0" max="100" value="50" /></div>
+      <div class="knob" data-tip="How long the tail takes to disappear once the note ends."><label>Release <b id="erR">—</b></label><input id="er" type="range" min="0" max="100" value="87" /></div>
     </div>
     <div class="seg" id="envPre">
       <button data-e="pluck">Pluck</button><button data-e="key">Key</button>
       <button data-e="pad">Pad</button><button data-e="swell">Swell</button>
     </div>
   </div>
-</div>
 
-<div id="railR" class="rail rail-r">
-<div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">LFO</button>
+  <div class="group">
+    <div class="group__t">LFO</div>
     <p class="rowhint">One shape, free-running. Slow rates drift a passage; fast ones wobble the filter.</p>
     <div id="modWrap"></div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Visual</button>
+  <div class="group">
+    <div class="group__t">Visual</div>
     <p class="rowhint">How the piece looks. Each mode is its own medium — the controls beneath follow whichever is selected.</p>
     <div class="grp" data-tip="How the piece looks. Each mode is its own medium rather than a filter over the same picture."><label>Visual</label>
       <div class="seg" id="visSeg">
@@ -489,22 +465,22 @@
       </div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="How strong the colour is. At zero everything falls to grey."><label>Saturation <b id="satR">88</b></label><input id="sat" type="range" min="0" max="140" value="88" /></div>
+      <div class="knob" data-tip="How strong the colour is. At zero everything falls to grey."><label>Saturation <b id="satR">88</b></label><input id="sat" type="range" min="0" max="140" value="88" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="How big and soft every glow is — the steps, the orbs, the delay shards. Low is a pinpoint; high is a wash of light."><label>Bloom <b id="bloomR">100</b></label><input id="bloom" type="range" min="10" max="240" value="100" /></div>
-      <div class="grp" data-tip="How present the ring scaffolding is. Down to nothing leaves only the marks; up makes the geometry as much of the picture as the light."><label>Line <b id="weightR">100</b></label><input id="weight" type="range" min="0" max="220" value="100" /></div>
+      <div class="knob" data-tip="How big and soft every glow is — the steps, the orbs, the delay shards. Low is a pinpoint; high is a wash of light."><label>Bloom <b id="bloomR">100</b></label><input id="bloom" type="range" min="10" max="240" value="100" /></div>
+      <div class="knob" data-tip="How present the ring scaffolding is. Down to nothing leaves only the marks; up makes the geometry as much of the picture as the light."><label>Line <b id="weightR">100</b></label><input id="weight" type="range" min="0" max="220" value="100" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Film grain over the finished frame, in any mode. The soft modes carry a little of their own; this adds to it."><label>Grain <b id="grainR">off</b></label><input id="grainAmt" type="range" min="0" max="100" value="0" /></div>
-      <div class="grp" data-tip="Rings drawn around each orb, widening as it sounds. At zero an orb is a bare glow."><label>Orb rings <b id="orbRingsR">2</b></label><input id="orbRings" type="range" min="0" max="5" value="2" /></div>
+      <div class="knob" data-tip="Film grain over the finished frame, in any mode. The soft modes carry a little of their own; this adds to it."><label>Grain <b id="grainR">off</b></label><input id="grainAmt" type="range" min="0" max="100" value="0" /></div>
+      <div class="knob" data-tip="Rings drawn around each orb, widening as it sounds. At zero an orb is a bare glow."><label>Orb rings <b id="orbRingsR">2</b></label><input id="orbRings" type="range" min="0" max="5" value="2" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Blurs each frame into the next, so movement leaves a soft wake behind it. At zero every frame is clean."><label>Smear <b id="smearR">0</b></label><input id="smear" type="range" min="0" max="60" value="0" /></div>
+      <div class="knob" data-tip="Blurs each frame into the next, so movement leaves a soft wake behind it. At zero every frame is clean."><label>Smear <b id="smearR">0</b></label><input id="smear" type="range" min="0" max="60" value="0" /></div>
     </div>
     <div class="duo" id="grungeCtls">
-      <div class="grp" data-tip="Size of the grain blocks in the Grunge mode. Bigger blocks, coarser picture."><label>Pixel <b id="pixR">7</b></label><input id="pixel" type="range" min="2" max="26" value="7" /></div>
-      <div class="grp" data-tip="How hard the grain bites — how far the picture is crushed down towards flat colour."><label>Grit <b id="gritR">45</b></label><input id="grit" type="range" min="0" max="100" value="45" /></div>
+      <div class="knob" data-tip="Size of the grain blocks in the Grunge mode. Bigger blocks, coarser picture."><label>Pixel <b id="pixR">7</b></label><input id="pixel" type="range" min="2" max="26" value="7" /></div>
+      <div class="knob" data-tip="How hard the grain bites — how far the picture is crushed down towards flat colour."><label>Grit <b id="gritR">45</b></label><input id="grit" type="range" min="0" max="100" value="45" /></div>
     </div>
     <div id="camCtls" style="display:none">
       <div class="grp" data-tip="Turns on your camera and makes the picture the ground the piece is drawn on. The video never leaves this page — nothing is uploaded, recorded or sent anywhere.">
@@ -534,22 +510,22 @@
         <input id="camFaceSize" type="range" min="0" max="100" value="50" />
       </div>
       <div class="duo">
-        <div class="grp" data-tip="How much of the last frame survives into the next. High values take a long time to settle and turn any movement into a trail."><label>Feedback <b id="camFbR">72</b></label><input id="camFb" type="range" min="0" max="98" value="72" /></div>
-        <div class="grp" data-tip="How much the fed-back frame grows each time. This is what pulls the image into a tunnel; at zero it stays put and simply ghosts."><label>Zoom <b id="camZmR">14</b></label><input id="camZm" type="range" min="-40" max="60" value="14" /></div>
+        <div class="knob" data-tip="How much of the last frame survives into the next. High values take a long time to settle and turn any movement into a trail."><label>Feedback <b id="camFbR">72</b></label><input id="camFb" type="range" min="0" max="98" value="72" /></div>
+        <div class="knob" data-tip="How much the fed-back frame grows each time. This is what pulls the image into a tunnel; at zero it stays put and simply ghosts."><label>Zoom <b id="camZmR">14</b></label><input id="camZm" type="range" min="-40" max="60" value="14" /></div>
       </div>
       <div class="duo">
-        <div class="grp" data-tip="How much the fed-back frame turns each time. A little makes it spiral; a lot makes it a pinwheel."><label>Spin <b id="camSpR">6</b></label><input id="camSp" type="range" min="-50" max="50" value="6" /></div>
-        <div class="grp" data-tip="Pushes the red and blue channels apart. It follows the music — the harder a step lands, the further they split."><label>Bleed <b id="camBlR">30</b></label><input id="camBl" type="range" min="0" max="100" value="30" /></div>
+        <div class="knob" data-tip="How much the fed-back frame turns each time. A little makes it spiral; a lot makes it a pinwheel."><label>Spin <b id="camSpR">6</b></label><input id="camSp" type="range" min="-50" max="50" value="6" /></div>
+        <div class="knob" data-tip="Pushes the red and blue channels apart. It follows the music — the harder a step lands, the further they split."><label>Bleed <b id="camBlR">30</b></label><input id="camBl" type="range" min="0" max="100" value="30" /></div>
       </div>
       <div class="duo">
-        <div class="grp" data-tip="Crushes the picture toward black and white. Right for hard graphic shapes, left to leave the photograph alone."><label>Contrast <b id="camCtR">40</b></label><input id="camCt" type="range" min="0" max="100" value="40" /></div>
-        <div class="grp" data-tip="How much the picture answers to the sound. At zero the camera does its own thing; turn it up and every step kicks the zoom and the colour split."><label>Reactive <b id="camRxR">60</b></label><input id="camRx" type="range" min="0" max="100" value="60" /></div>
+        <div class="knob" data-tip="Crushes the picture toward black and white. Right for hard graphic shapes, left to leave the photograph alone."><label>Contrast <b id="camCtR">40</b></label><input id="camCt" type="range" min="0" max="100" value="40" /></div>
+        <div class="knob" data-tip="How much the picture answers to the sound. At zero the camera does its own thing; turn it up and every step kicks the zoom and the colour split."><label>Reactive <b id="camRxR">60</b></label><input id="camRx" type="range" min="0" max="100" value="60" /></div>
       </div>
     </div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Sound</button>
+  <div class="group">
+    <div class="group__t">Sound</div>
     <p class="rowhint">Key, tempo and the global feel — filter, reverb, delay and output level.</p>
     <div class="grp" data-tip="The four lane colours. Right-clicking a lane sets just that one."><label>Palette</label>
       <div class="seg" id="palSeg">
@@ -569,28 +545,28 @@
       </div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="How fast all four rings turn. The one control that changes the pace of the whole piece."><label>Tempo <b id="tempoR">40</b></label><input id="tempo" type="range" min="1" max="100" value="40" /></div>
-      <div class="grp" data-tip="The key. Moves every note up or down together."><label>Pitch <b id="pitchR">C3</b></label><input id="pitch" type="range" min="36" max="60" value="48" /></div>
+      <div class="knob" data-tip="How fast all four rings turn. The one control that changes the pace of the whole piece."><label>Tempo <b id="tempoR">40</b></label><input id="tempo" type="range" min="1" max="100" value="40" /></div>
+      <div class="knob" data-tip="The key. Moves every note up or down together."><label>Pitch <b id="pitchR">C3</b></label><input id="pitch" type="range" min="36" max="60" value="48" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Lets the piece quietly rewrite itself — notes move, voices change. Off leaves it exactly as you set it."><label>Evolve <b id="evoR">42</b></label><input id="evolve" type="range" min="0" max="100" value="42" /></div>
+      <div class="knob" data-tip="Lets the piece quietly rewrite itself — notes move, voices change. Off leaves it exactly as you set it."><label>Evolve <b id="evoR">42</b></label><input id="evolve" type="range" min="0" max="100" value="42" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="One filter over everything. Sweep it down and the whole piece goes muffled and far away."><label>Master <b id="cutR">&#8212;</b></label><input id="cutoff" type="range" min="0" max="100" value="72" /></div>
-      <div class="grp" data-tip="Output volume."><label>Level <b id="levelR">78</b></label><input id="level" type="range" min="0" max="100" value="78" /></div>
+      <div class="knob" data-tip="One filter over everything. Sweep it down and the whole piece goes muffled and far away."><label>Master <b id="cutR">&#8212;</b></label><input id="cutoff" type="range" min="0" max="100" value="72" /></div>
+      <div class="knob" data-tip="Output volume."><label>Level <b id="levelR">78</b></label><input id="level" type="range" min="0" max="100" value="78" /></div>
     </div>
     <div class="duo">
-      <div class="grp" data-tip="Puts the sound in a room. Right for a large, distant, washed space; left for dry and close."><label>Reverb <b id="revR">30</b></label><input id="revWet" type="range" min="0" max="100" value="30" /></div>
-      <div class="grp" data-tip="Echoes that repeat and fade. Off means none at all."><label>Delay <b id="delR">off</b></label><input id="delFb" type="range" min="0" max="72" value="0" /></div>
+      <div class="knob" data-tip="Puts the sound in a room. Right for a large, distant, washed space; left for dry and close."><label>Reverb <b id="revR">30</b></label><input id="revWet" type="range" min="0" max="100" value="30" /></div>
+      <div class="knob" data-tip="Echoes that repeat and fade. Off means none at all."><label>Delay <b id="delR">off</b></label><input id="delFb" type="range" min="0" max="72" value="0" /></div>
     </div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Orbs</button>
+  <div class="group">
+    <div class="group__t">Orbs</div>
     <p class="rowhint">Free-floating voices. They sound when they hit an edge; tap one to remove it.</p>
     <div class="duo">
-      <div class="grp" data-tip="How loud the orbs sit against the four rings."><label>Level <b id="orbLvlR">70</b></label><input id="orbLvl" type="range" min="0" max="100" value="70" /></div>
-      <div class="grp" data-tip="How fast the orbs drift, and so how often they reach an edge and sound. All the way down they stop where they are and go quiet."><label>Speed <b id="orbSpdR">1.00&#215;</b></label><input id="orbSpd" type="range" min="0" max="150" value="50" /></div>
+      <div class="knob" data-tip="How loud the orbs sit against the four rings."><label>Level <b id="orbLvlR">70</b></label><input id="orbLvl" type="range" min="0" max="100" value="70" /></div>
+      <div class="knob" data-tip="How fast the orbs drift, and so how often they reach an edge and sound. All the way down they stop where they are and go quiet."><label>Speed <b id="orbSpdR">1.00&#215;</b></label><input id="orbSpd" type="range" min="0" max="150" value="50" /></div>
     </div>
     <div class="grp" data-tip="What an orb does when it hits an edge. On its own voice it plays a note from the scale. Pointed at a ring, each bounce fires the next note that ring is holding — samples included — so the orbs play what you have already written."><label>Strikes</label>
       <div class="seg" id="orbTgt">
@@ -620,15 +596,15 @@
       </select>
     </div>
     <div class="quad">
-      <div class="grp" data-tip="How long an orb note takes to reach full volume."><label>Attack <b id="oaR">—</b></label><input id="oa" type="range" min="0" max="100" value="5" /></div>
-      <div class="grp" data-tip="How quickly an orb note falls from its peak."><label>Decay <b id="odR">—</b></label><input id="od" type="range" min="0" max="100" value="47" /></div>
-      <div class="grp" data-tip="The level an orb note holds at. At zero each bounce is a short hit."><label>Sustain <b id="osR">—</b></label><input id="os" type="range" min="0" max="100" value="0" /></div>
-      <div class="grp" data-tip="How long an orb note takes to fade out."><label>Release <b id="orR">—</b></label><input id="or" type="range" min="0" max="100" value="55" /></div>
+      <div class="knob" data-tip="How long an orb note takes to reach full volume."><label>Attack <b id="oaR">—</b></label><input id="oa" type="range" min="0" max="100" value="5" /></div>
+      <div class="knob" data-tip="How quickly an orb note falls from its peak."><label>Decay <b id="odR">—</b></label><input id="od" type="range" min="0" max="100" value="47" /></div>
+      <div class="knob" data-tip="The level an orb note holds at. At zero each bounce is a short hit."><label>Sustain <b id="osR">—</b></label><input id="os" type="range" min="0" max="100" value="0" /></div>
+      <div class="knob" data-tip="How long an orb note takes to fade out."><label>Release <b id="orR">—</b></label><input id="or" type="range" min="0" max="100" value="55" /></div>
     </div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Arrangement</button>
+  <div class="group">
+    <div class="group__t">Arrangement</div>
     <p class="rowhint">Records what you do, not what it sounds like &#8212; every knob, tap and note with its timing, so it plays back exactly and saves with the track.</p>
     <div class="grp" data-tip="Hit record (or press R) and everything you touch is kept with its timing. Press it again to stop, then Play to watch it happen again. The strip above the mood button is the timeline &#8212; click anywhere on it to jump there."><label>Take <b id="arrInfo">nothing recorded</b></label></div>
     <div class="grp"><div style="display:flex; gap:6px;">
@@ -637,8 +613,8 @@
     </div></div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Track</button>
+  <div class="group">
+    <div class="group__t">Track</div>
     <p class="rowhint">Save an exploration to this browser and come back to it. Export shares it as a file.</p>
     <div class="grp" data-tip="Name this exploration so you can find it again."><input id="trackName" type="text" placeholder="track name" spellcheck="false" /></div>
     <div class="grp"><div style="display:flex; gap:6px;">
@@ -654,8 +630,8 @@
     <input id="impFile" type="file" accept="application/json,.json" hidden />
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Export</button>
+  <div class="group">
+    <div class="group__t">Export</div>
     <p class="rowhint">A still, a video of the canvas, or the audio on its own.</p>
     <div class="grp" data-tip="Shape of the exported still or video — a phone story, a portrait post, or a square."><label>Size</label>
       <div class="seg" id="sizeSeg">
@@ -1792,45 +1768,16 @@
   $('pixel').addEventListener('input',e=>{ state.pixel=+e.target.value; $('pixR').textContent=e.target.value; });
   $('grit').addEventListener('input',e=>{ state.grit=+e.target.value; $('gritR').textContent=e.target.value; });
   $('sat').addEventListener('input',e=>{ state.sat=+e.target.value; $('satR').textContent=e.target.value; });
-  /* Fold / unfold rail sections, remembered between visits. */
-  const FOLD_KEY='angel-folded';
-  const readFold=()=>{ try{ return JSON.parse(localStorage.getItem(FOLD_KEY)||'[]'); }catch(e){ return []; } };
-  // Everything you need to make a sound is open; the sections you go looking for start
-  // folded. Only applies on a first visit — after that your own folding is what is restored.
-  const FOLD_DEFAULT=['Envelope','Orbs','Sample','Arrangement','Track','Export'];
-  // Some things need their section in front of you — a recording arriving in a folded
-  // panel is a recording you never see.
+  // Every section is always visible in the single dock (no folds). This just scrolls the
+  // named section into view so a control that acts elsewhere — a recording arriving in the
+  // Sample section — is on screen when it does.
   function openRow(title){
-    document.querySelectorAll('.rail .rowhead').forEach(h=>{
+    document.querySelectorAll('#dock .group__t').forEach(h=>{
       if(h.textContent.trim()!==title) return;
-      const row=h.closest('.row'); if(!row) return;
-      if(!row.classList.contains('folded')){
-        requestAnimationFrame(()=>{ try{ row.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(e){} });
-        return; }
-      row.classList.remove('folded'); h.setAttribute('aria-expanded','true');
-      const cur=new Set(readFold()); cur.delete(title);
-      try{ localStorage.setItem(FOLD_KEY, JSON.stringify([...cur])); }catch(e){}
-      requestAnimationFrame(()=>{ try{ row.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(e){} });
+      const g=h.closest('.group'); if(!g) return;
+      requestAnimationFrame(()=>{ try{ g.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(e){} });
     });
   }
-  function initFolds(){
-    let stored=null; try{ stored=localStorage.getItem(FOLD_KEY); }catch(e){}
-    if(stored==null){ try{ localStorage.setItem(FOLD_KEY, JSON.stringify(FOLD_DEFAULT)); }catch(e){} }
-    const saved=new Set(stored==null ? FOLD_DEFAULT : readFold());
-    document.querySelectorAll('.rail .rowhead').forEach(h=>{
-      const row=h.closest('.row'); if(!row) return;
-      const name=h.textContent.trim();
-      if(saved.has(name)){ row.classList.add('folded'); h.setAttribute('aria-expanded','false'); }
-      h.addEventListener('click',()=>{
-        const folded=row.classList.toggle('folded');
-        h.setAttribute('aria-expanded', String(!folded));
-        const cur=new Set(readFold());
-        folded ? cur.add(name) : cur.delete(name);
-        try{ localStorage.setItem(FOLD_KEY, JSON.stringify([...cur])); }catch(e){}
-      });
-    });
-  }
-  initFolds();
 
   /* ---------- tooltips ----------
      Every control says what it is for in a sentence. Written for someone who has not used a
@@ -1908,11 +1855,12 @@
   if(!(typeof MediaRecorder!=='undefined' && HTMLCanvasElement.prototype.captureStream)){
     ['recBtn','audBtn'].forEach(id=>{ const b=$(id); b.disabled=true; b.title='Recording is not available in this browser'; }); }
   /* ---------- rail / full-screen / theme ---------- */
-  $('toggle').addEventListener('click',()=>{ const open=!$('rail').classList.contains('open');
-    document.querySelectorAll('.rail').forEach(r=>r.classList.toggle('open',open));
-    document.body.classList.toggle('panels',open);
-    if(open) document.body.classList.remove('idle');
-    $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
+  // The rail is now the persistent flush-left dock. This button tucks it away for a
+  // distraction-free full-width field and brings it back — the field reclaims the width.
+  $('toggle').addEventListener('click',()=>{ const hidden=document.body.classList.toggle('norail');
+    document.body.classList.toggle('panels',!hidden);
+    if(!hidden) document.body.classList.remove('idle');
+    $('toggle').setAttribute('aria-pressed',String(!hidden)); requestAnimationFrame(resize); });
 
   function setTheme(t){ THEME=t; document.body.classList.toggle('dark',t==='dark');
     try{ localStorage.setItem('angel-theme',t); }catch(e){}
@@ -2219,7 +2167,10 @@
       else if(e.key==='Home') bump(+inp.min-+inp.value); else if(e.key==='End') bump(+inp.max-+inp.value);
       else return; e.preventDefault(); });
   }
-  const knobify=root=>(root||document).querySelectorAll('input[type=range]:not([data-knob])').forEach(makeKnob);
+  // Rotary dials retired for the shared-shell flat sliders: knobify is now a no-op, so every
+  // <input type=range> stays a native slider. makeKnob/paintKnob remain defined but unused,
+  // and the knobs[] array stays empty so syncKnobs() is a harmless no-op.
+  const knobify=root=>{};
   const syncKnobs=()=>knobs.forEach(paintKnob);
 
   /* ---------- LFO ----------
@@ -2970,10 +2921,10 @@
     return '#'+host.id+' > '+el.tagName.toLowerCase()+':nth-of-type('+(i+1)+')';
   }
   addEventListener('input',e=>{ const el=e.target;
-    if(!el.id || !el.closest || !el.closest('.rail')) return;
+    if(!el.id || !el.closest || !el.closest('#dock')) return;
     arrPush({k:'in', id:el.id, v:el.value}); },true);
   addEventListener('change',e=>{ const el=e.target;
-    if(!el.id || el.tagName!=='SELECT' || !el.closest || !el.closest('.rail')) return;
+    if(!el.id || el.tagName!=='SELECT' || !el.closest || !el.closest('#dock')) return;
     arrPush({k:'ch', id:el.id, v:el.value}); },true);
   addEventListener('click',e=>{
     const b=e.target.closest && e.target.closest('button'); if(!b) return;

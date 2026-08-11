@@ -88,8 +88,8 @@ Any tool with a **dark preview swatch** (e.g. white-on-dark shapes) keeps a dark
 
 ## 6. Conformance status (2026-08)
 
-- **Full standard:** Attractor (ref), Fence, Putty, Sequins, Static, Tape, Halftone, Spectral-Smear, Aura-Maxing, Garden-Variety, Windchime, Visual Poetry, OPEN LAB, Hand Shader.
-- **Light-touch** (kept a bespoke rich/instrument layout, but got the shared control language + size dock — a full single-rail rebuild is a follow-up): **Angel** (still rotary dials, not sliders), **Image-Train**, **Second-Thought**.
+- **Full standard:** Attractor (ref), Fence, Putty, Sequins, Static, Tape, Halftone, Spectral-Smear, Aura-Maxing, Garden-Variety, Windchime, Visual Poetry, OPEN LAB, Hand Shader, **Angel** (single rail + flat sliders now), **Image-Train**.
+- **In progress:** Second-Thought (single-rail rebuild).
 - **Intentionally outside the shell:** reels/captures with fixed output (open-reel, open-slots, open-capture, scanner, ash, kirlian, letter-strings, lake-opeka, ships-in-the-night, flux) and the full-bleed **Projection** tool. These stay as-is by design.
 
 To bring a light-touch tool to full standard: rebuild its rail to the `#dock` + `.group`/`.knob` structure above, convert dials → sliders, keep the generative/render/record logic and every JS id, verify with a screenshot.
