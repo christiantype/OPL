@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OP/AL — Projection Tool</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --cobalt: #1c39bb;
+    --sienna: #b94a2c;
+    --amber: #f0a500;
+    --paper: #f0e8d4;
+    --ink: #0e0e0e;
+  }
+
+  body {
+    background: #000;
+    color: var(--paper);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* STAGE */
+  #stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #camera-feed {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+
+  #camera-feed.active { opacity: 1; }
+
+  #canvas-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* ELEMENTS LAYER */
+  #elements-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .projection-element {
+    position: absolute;
+    cursor: move;
+    pointer-events: all;
+    user-select: none;
+    transform-origin: center center;
+  }
+
+  .projection-element.selected {
+    outline: 1px solid rgba(240, 165, 0, 0.6);
+  }
+
+  /* TEXT ELEMENT */
+  .text-element {
+    font-size: 60px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--paper);
+    text-transform: uppercase;
+    white-space: nowrap;
+    mix-blend-mode: screen;
+  }
+
+  /* SHAPE ELEMENT */
+  .shape-element svg {
+    display: block;
+  }
+
+  /* EYE ELEMENT */
+  .eye-element {
+    width: 120px;
+    height: 70px;
+  }
+
+  /* ANIMATIONS */
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(10px, -15px) rotate(1deg); }
+    75% { transform: translate(-8px, 10px) rotate(-1deg); }
+  }
+
+  @keyframes pulse-opacity {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  @keyframes blink {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.05); }
+  }
+
+  @keyframes rotate-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes typewriter {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0% 0 0); }
+  }
+
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+  }
+
+  /* SCANLINE OVERLAY */
+  .scanline {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* UI PANEL */
+  #ui-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(10, 10, 10, 0.92);
+    border-top: 1px solid rgba(240, 232, 212, 0.15);
+    padding: 12px 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  #ui-panel.hidden { transform: translateY(100%); }
+
+  .btn {
+    background: transparent;
+    border: 1px solid rgba(240, 232, 212, 0.3);
+    color: var(--paper);
+    padding: 6px 14px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+
+  .btn:hover {
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .btn.active {
+    background: var(--amber);
+    color: var(--ink);
+    border-color: var(--amber);
+  }
+
+  .btn.danger {
+    border-color: var(--sienna);
+    color: var(--sienna);
+  }
+
+  .btn.danger:hover {
+    background: var(--sienna);
+    color: var(--paper);
+  }
+
+  .divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(240, 232, 212, 0.15);
+  }
+
+  #text-input {
+    background: transparent;
+    border: 1px solid rgba(240, 232, 212, 0.3);
+    color: var(--paper);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: inherit;
+    width: 180px;
+    letter-spacing: 0.05em;
+  }
+
+  #text-input::placeholder { color: rgba(240, 232, 212, 0.3); }
+  #text-input:focus { outline: none; border-color: var(--amber); }
+
+  .color-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px solid rgba(255,255,255,0.2);
+    cursor: pointer;
+    border-radius: 0;
+  }
+
+  #size-slider {
+    -webkit-appearance: none;
+    width: 80px;
+    height: 2px;
+    background: rgba(240, 232, 212, 0.3);
+    outline: none;
+  }
+
+  #size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--amber);
+    cursor: pointer;
+  }
+
+  /* TOGGLE UI HINT */
+  #toggle-hint {
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: rgba(240, 232, 212, 0.3);
+    text-transform: uppercase;
+    z-index: 99;
+  }
+
+  /* CAMERA OFF STATE */
+  #no-camera {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink);
+  }
+
+  #no-camera-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(28,57,187,0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(28,57,187,0.1) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  #opal-mark {
+    position: relative;
+    text-align: center;
+  }
+
+  #opal-mark h1 {
+    font-size: 14px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(240, 232, 212, 0.4);
+    font-weight: 400;
+  }
+
+  #opal-mark p {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: rgba(240, 232, 212, 0.2);
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+
+  /* OPACITY CONTROL */
+  .label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: rgba(240, 232, 212, 0.4);
+    text-transform: uppercase;
+  }
+
+  /* ANIMATION BADGE */
+  .anim-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 16px;
+    height: 16px;
+    background: var(--amber);
+    border-radius: 50%;
+    font-size: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  /* RESIZE HANDLE */
+  .resize-handle {
+    position: absolute;
+    bottom: -6px;
+    right: -6px;
+    width: 12px;
+    height: 12px;
+    background: var(--amber);
+    cursor: se-resize;
+    display: none;
+  }
+
+  .projection-element.selected .resize-handle { display: block; }
+
+  /* VIDEO ELEMENT */
+  .video-element video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    mix-blend-mode: screen;
+  }
+
+  /* IMAGE ELEMENT */
+  .image-element img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <!-- Camera / background -->
+  <video id="camera-feed" autoplay muted playsinline></video>
+
+  <!-- No camera placeholder -->
+  <div id="no-camera">
+    <div id="no-camera-grid"></div>
+    <div id="opal-mark">
+      <h1>OP/AL Projection</h1>
+      <p>Enable camera to begin</p>
+    </div>
+  </div>
+
+  <!-- Canvas for mesh/effects -->
+  <canvas id="canvas-overlay"></canvas>
+
+  <!-- Scanline overlay -->
+  <div class="scanline"></div>
+
+  <!-- Draggable elements layer -->
+  <div id="elements-layer"></div>
+</div>
+
+<!-- UI Panel -->
+<div id="ui-panel">
+  <!-- Camera -->
+  <button class="btn" id="btn-camera">Camera On</button>
+  <div class="divider"></div>
+
+  <!-- Text -->
+  <input type="text" id="text-input" placeholder="Type text..." maxlength="40">
+  <button class="btn" id="btn-add-text">Add Text</button>
+  <div class="divider"></div>
+
+  <!-- Shapes -->
+  <button class="btn" id="btn-circle">○ Circle</button>
+  <button class="btn" id="btn-rect">□ Rect</button>
+  <button class="btn" id="btn-line">— Line</button>
+  <div class="divider"></div>
+
+  <!-- Eye -->
+  <button class="btn" id="btn-eye">👁 Eye</button>
+  <div class="divider"></div>
+
+  <!-- Upload -->
+  <button class="btn" id="btn-upload-img">↑ Image</button>
+  <input type="file" id="file-img" accept="image/*" style="display:none">
+  <button class="btn" id="btn-upload-vid">↑ Video</button>
+  <input type="file" id="file-vid" accept="video/*" style="display:none">
+  <div class="divider"></div>
+
+  <!-- Colors -->
+  <span class="label">Color</span>
+  <div class="color-btn" style="background:#f0e8d4" data-color="#f0e8d4" title="Paper"></div>
+  <div class="color-btn" style="background:#1c39bb" data-color="#1c39bb" title="Cobalt"></div>
+  <div class="color-btn" style="background:#f0a500" data-color="#f0a500" title="Amber"></div>
+  <div class="color-btn" style="background:#b94a2c" data-color="#b94a2c" title="Sienna"></div>
+  <div class="color-btn" style="background:#ffffff" data-color="#ffffff" title="White"></div>
+  <div class="divider"></div>
+
+  <!-- Size -->
+  <span class="label">Size</span>
+  <input type="range" id="size-slider" min="20" max="200" value="60">
+  <div class="divider"></div>
+
+  <!-- Animations -->
+  <button class="btn" id="btn-anim-drift">~ Drift</button>
+  <button class="btn" id="btn-anim-pulse">◉ Pulse</button>
+  <button class="btn" id="btn-anim-spin">↻ Spin</button>
+  <div class="divider"></div>
+
+  <!-- Controls -->
+  <button class="btn danger" id="btn-delete">✕ Delete</button>
+  <button class="btn" id="btn-clear">Clear All</button>
+  <button class="btn" id="btn-hide">Hide UI</button>
+</div>
+
+<div id="toggle-hint">Press H to toggle UI</div>
+
+<script>
+  // STATE
+  let cameraOn = false;
+  let selectedEl = null;
+  let currentColor = '#f0e8d4';
+  let currentSize = 60;
+  const layer = document.getElementById('elements-layer');
+  const panel = document.getElementById('ui-panel');
+  const hint = document.getElementById('toggle-hint');
+
+  // CAMERA
+  document.getElementById('btn-camera').addEventListener('click', async () => {
+    if (cameraOn) {
+      const feed = document.getElementById('camera-feed');
+      const stream = feed.srcObject;
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      feed.srcObject = null;
+      feed.classList.remove('active');
+      document.getElementById('no-camera').style.display = 'flex';
+      document.getElementById('btn-camera').textContent = 'Camera On';
+      cameraOn = false;
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        const feed = document.getElementById('camera-feed');
+        feed.srcObject = stream;
+        feed.classList.add('active');
+        document.getElementById('no-camera').style.display = 'none';
+        document.getElementById('btn-camera').textContent = 'Camera Off';
+        cameraOn = true;
+      } catch(e) {
+        alert('Camera access denied or unavailable.');
+      }
+    }
+  });
+
+  // COLOR SELECTION
+  document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentColor = btn.dataset.color;
+      document.querySelectorAll('.color-btn').forEach(b => b.style.outline = 'none');
+      btn.style.outline = '2px solid #f0a500';
+      if (selectedEl) applyColorToSelected();
+    });
+  });
+
+  // SIZE SLIDER
+  document.getElementById('size-slider').addEventListener('input', e => {
+    currentSize = parseInt(e.target.value);
+    if (selectedEl) {
+      const textEl = selectedEl.querySelector('.text-element');
+      if (textEl) textEl.style.fontSize = currentSize + 'px';
+    }
+  });
+
+  // MAKE ELEMENT DRAGGABLE
+  function makeDraggable(el) {
+    let isDragging = false;
+    let startX, startY, origX, origY;
+
+    el.addEventListener('mousedown', e => {
+      if (e.target.classList.contains('resize-handle')) return;
+      selectElement(el);
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      origX = parseInt(el.style.left) || 0;
+      origY = parseInt(el.style.top) || 0;
+      e.stopPropagation();
+    });
+
+    // Touch support
+    el.addEventListener('touchstart', e => {
+      selectElement(el);
+      isDragging = true;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      origX = parseInt(el.style.left) || 0;
+      origY = parseInt(el.style.top) || 0;
+      e.stopPropagation();
+    }, { passive: true });
+
+    document.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      el.style.left = (origX + e.clientX - startX) + 'px';
+      el.style.top = (origY + e.clientY - startY) + 'px';
+    });
+
+    document.addEventListener('touchmove', e => {
+      if (!isDragging) return;
+      el.style.left = (origX + e.touches[0].clientX - startX) + 'px';
+      el.style.top = (origY + e.touches[0].clientY - startY) + 'px';
+    }, { passive: true });
+
+    document.addEventListener('mouseup', () => { isDragging = false; });
+    document.addEventListener('touchend', () => { isDragging = false; });
+
+    // Resize handle
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    el.appendChild(handle);
+
+    let isResizing = false;
+    let resizeStartX, resizeStartY, resizeOrigW, resizeOrigH;
+
+    handle.addEventListener('mousedown', e => {
+      isResizing = true;
+      resizeStartX = e.clientX;
+      resizeStartY = e.clientY;
+      resizeOrigW = el.offsetWidth;
+      resizeOrigH = el.offsetHeight;
+      e.stopPropagation();
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!isResizing) return;
+      const newW = Math.max(40, resizeOrigW + (e.clientX - resizeStartX));
+      const newH = Math.max(20, resizeOrigH + (e.clientY - resizeStartY));
+      el.style.width = newW + 'px';
+      el.style.height = newH + 'px';
+    });
+
+    document.addEventListener('mouseup', () => { isResizing = false; });
+  }
+
+  // SELECT ELEMENT
+  function selectElement(el) {
+    if (selectedEl) selectedEl.classList.remove('selected');
+    selectedEl = el;
+    el.classList.add('selected');
+  }
+
+  // DESELECT ON STAGE CLICK
+  document.getElementById('stage').addEventListener('click', e => {
+    if (e.target === document.getElementById('stage') ||
+        e.target === document.getElementById('canvas-overlay') ||
+        e.target === document.getElementById('camera-feed') ||
+        e.target.id === 'no-camera' ||
+        e.target.id === 'no-camera-grid') {
+      if (selectedEl) {
+        selectedEl.classList.remove('selected');
+        selectedEl = null;
+      }
+    }
+  });
+
+  // CREATE BASE ELEMENT
+  function createBaseElement(className) {
+    const el = document.createElement('div');
+    el.className = 'projection-element ' + className;
+    el.style.left = (Math.random() * (window.innerWidth - 200) + 50) + 'px';
+    el.style.top = (Math.random() * (window.innerHeight - 200) + 50) + 'px';
+    makeDraggable(el);
+    layer.appendChild(el);
+    selectElement(el);
+    return el;
+  }
+
+  // ADD TEXT
+  document.getElementById('btn-add-text').addEventListener('click', () => {
+    const input = document.getElementById('text-input');
+    const text = input.value.trim() || 'ATTENTION';
+    const el = createBaseElement('text-element');
+    el.textContent = text;
+    el.style.fontSize = currentSize + 'px';
+    el.style.color = currentColor;
+    input.value = '';
+  });
+
+  document.getElementById('text-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-add-text').click();
+  });
+
+  // ADD CIRCLE
+  document.getElementById('btn-circle').addEventListener('click', () => {
+    const el = createBaseElement('shape-element');
+    const size = currentSize * 2;
+    el.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 4}" fill="none" stroke="${currentColor}" stroke-width="2"/>
+    </svg>`;
+  });
+
+  // ADD RECT
+  document.getElementById('btn-rect').addEventListener('click', () => {
+    const el = createBaseElement('shape-element');
+    const w = currentSize * 2.5;
+    const h = currentSize * 1.5;
+    el.innerHTML = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+      <rect x="2" y="2" width="${w-4}" height="${h-4}" fill="none" stroke="${currentColor}" stroke-width="2"/>
+    </svg>`;
+  });
+
+  // ADD LINE
+  document.getElementById('btn-line').addEventListener('click', () => {
+    const el = createBaseElement('shape-element');
+    const w = currentSize * 3;
+    el.innerHTML = `<svg width="${w}" height="20" viewBox="0 0 ${w} 20">
+      <line x1="0" y1="10" x2="${w}" y2="10" stroke="${currentColor}" stroke-width="1.5"/>
+    </svg>`;
+  });
+
+  // ADD ANIMATED EYE
+  document.getElementById('btn-eye').addEventListener('click', () => {
+    const el = createBaseElement('eye-element');
+    const scale = currentSize / 60;
+    const w = 120 * scale;
+    const h = 70 * scale;
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+
+    const eyeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    eyeSvg.setAttribute('width', w);
+    eyeSvg.setAttribute('height', h);
+    eyeSvg.setAttribute('viewBox', '0 0 120 70');
+    eyeSvg.style.display = 'block';
+    eyeSvg.style.overflow = 'visible';
+
+    eyeSvg.innerHTML = `
+      <style>
+        .eyelid { animation: blink-anim 3.5s infinite ease-in-out; transform-origin: 60px 35px; }
+        @keyframes blink-anim {
+          0%, 85%, 100% { transform: scaleY(1); }
+          92% { transform: scaleY(0.04); }
+        }
+      </style>
+      <g class="eyelid">
+        <ellipse cx="60" cy="35" rx="55" ry="30" fill="none" stroke="${currentColor}" stroke-width="1.5"/>
+        <circle cx="60" cy="35" r="14" fill="none" stroke="${currentColor}" stroke-width="1.5"/>
+        <circle cx="60" cy="35" r="5" fill="${currentColor}"/>
+        <circle cx="65" cy="30" r="2" fill="${currentColor}" opacity="0.6"/>
+      </g>
+    `;
+
+    el.appendChild(eyeSvg);
+  });
+
+  // UPLOAD IMAGE
+  document.getElementById('btn-upload-img').addEventListener('click', () => {
+    document.getElementById('file-img').click();
+  });
+
+  document.getElementById('file-img').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const el = createBaseElement('image-element');
+    el.style.width = '300px';
+    el.style.height = '200px';
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+    img.style.mixBlendMode = 'screen';
+    el.appendChild(img);
+    e.target.value = '';
+  });
+
+  // UPLOAD VIDEO
+  document.getElementById('btn-upload-vid').addEventListener('click', () => {
+    document.getElementById('file-vid').click();
+  });
+
+  document.getElementById('file-vid').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const el = createBaseElement('video-element');
+    el.style.width = '400px';
+    el.style.height = '300px';
+    const vid = document.createElement('video');
+    vid.src = url;
+    vid.autoplay = true;
+    vid.loop = true;
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.style.width = '100%';
+    vid.style.height = '100%';
+    vid.style.objectFit = 'cover';
+    vid.style.mixBlendMode = 'screen';
+    el.appendChild(vid);
+    vid.play();
+    e.target.value = '';
+  });
+
+  // ANIMATIONS
+  function applyAnimation(animClass) {
+    if (!selectedEl) return;
+    selectedEl.classList.remove('anim-drift', 'anim-pulse', 'anim-spin');
+    const existing = selectedEl.querySelector('.anim-badge');
+    if (existing) existing.remove();
+    selectedEl.classList.add(animClass);
+    const badge = document.createElement('div');
+    badge.className = 'anim-badge';
+    badge.textContent = '~';
+    selectedEl.appendChild(badge);
+  }
+
+  // Inject animation keyframes dynamically
+  const animStyle = document.createElement('style');
+  animStyle.textContent = `
+    .anim-drift { animation: drift 4s ease-in-out infinite; }
+    .anim-pulse { animation: pulse-opacity 2s ease-in-out infinite; }
+    .anim-spin { animation: rotate-slow 8s linear infinite; }
+  `;
+  document.head.appendChild(animStyle);
+
+  document.getElementById('btn-anim-drift').addEventListener('click', () => applyAnimation('anim-drift'));
+  document.getElementById('btn-anim-pulse').addEventListener('click', () => applyAnimation('anim-pulse'));
+  document.getElementById('btn-anim-spin').addEventListener('click', () => applyAnimation('anim-spin'));
+
+  // COLOR TO SELECTED
+  function applyColorToSelected() {
+    if (!selectedEl) return;
+    const textEl = selectedEl.querySelector('.text-element') || selectedEl;
+    if (selectedEl.classList.contains('text-element')) {
+      selectedEl.style.color = currentColor;
+    }
+    // SVG elements
+    selectedEl.querySelectorAll('circle, ellipse, line, rect').forEach(shape => {
+      if (shape.getAttribute('fill') && shape.getAttribute('fill') !== 'none') {
+        shape.setAttribute('fill', currentColor);
+      }
+      if (shape.getAttribute('stroke') && shape.getAttribute('stroke') !== 'none') {
+        shape.setAttribute('stroke', currentColor);
+      }
+    });
+  }
+
+  // DELETE
+  document.getElementById('btn-delete').addEventListener('click', () => {
+    if (selectedEl) {
+      selectedEl.remove();
+      selectedEl = null;
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEl && e.target.tagName !== 'INPUT') {
+      selectedEl.remove();
+      selectedEl = null;
+    }
+    if (e.key === 'h' || e.key === 'H') toggleUI();
+    if (e.key === 'Escape' && selectedEl) {
+      selectedEl.classList.remove('selected');
+      selectedEl = null;
+    }
+  });
+
+  // CLEAR ALL
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    layer.innerHTML = '';
+    selectedEl = null;
+  });
+
+  // HIDE UI
+  function toggleUI() {
+    panel.classList.toggle('hidden');
+    hint.style.opacity = panel.classList.contains('hidden') ? '0.6' : '0.3';
+  }
+
+  document.getElementById('btn-hide').addEventListener('click', toggleUI);
+
+  // CANVAS — subtle animated grid
+  const canvas = document.getElementById('canvas-overlay');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  let frame = 0;
+  function drawCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // subtle moving dot
+    const t = frame * 0.01;
+    const x = (Math.sin(t * 0.7) * 0.5 + 0.5) * canvas.width;
+    const y = (Math.cos(t * 0.5) * 0.5 + 0.5) * canvas.height;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, 300);
+    grad.addColorStop(0, 'rgba(28, 57, 187, 0.06)');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    frame++;
+    requestAnimationFrame(drawCanvas);
+  }
+
+  drawCanvas();
+
+  // SEED WITH OPAL TEXT
+  setTimeout(() => {
+    const el = createBaseElement('text-element');
+    el.textContent = 'ATTENTION';
+    el.style.fontSize = '80px';
+    el.style.color = '#f0e8d4';
+    el.style.left = '10vw';
+    el.style.top = '20vh';
+    el.classList.add('anim-pulse');
+    if (selectedEl) selectedEl.classList.remove('selected');
+    selectedEl = null;
+
+    const el2 = createBaseElement('text-element');
+    el2.textContent = 'IS THE PRACTICE';
+    el2.style.fontSize = '40px';
+    el2.style.color = '#f0a500';
+    el2.style.left = '10vw';
+    el2.style.top = '34vh';
+    if (selectedEl) selectedEl.classList.remove('selected');
+    selectedEl = null;
+  }, 300);
+</script>
+</body>
+</html>
