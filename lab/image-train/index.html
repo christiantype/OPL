@@ -29,7 +29,7 @@
   /* Topbar chrome is owned by tool.css (light: white bar, dark ink) — no per-tool overrides. */
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
-  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs .rail, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
   body.fs #stagewrap{ top:0; left:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
@@ -40,8 +40,7 @@
   #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
     font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
 
-  /* one hairline control strip — everything else is off until asked for */
-  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  /* theme / play-pause / full screen now live in the rail's View row; #exitFs keeps the .icon look */
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
     background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
@@ -107,14 +106,8 @@
   /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
      nothing between you and the piece unless you ask for it. */
   .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
-  .rail-l{ transform:translateX(-100%); }
-  .rail-r{ transform:translateX(100%); }
+  /* #dock (rail-l) is always open now — the collapse toggle is gone, so it no longer slides off-screen. */
   .rail.open{ transform:none; }
-
-  /* Chrome fades out while you listen and comes back on movement. */
-  #bar{ transition:opacity .5s ease; }
-  body.idle #bar{ opacity:0; pointer-events:none; }
-  body.panels #bar{ opacity:1; pointer-events:auto; }
 
   /* Mood — the one control that stays reachable. */
 
@@ -230,12 +223,6 @@
 <div id="hint"></div>
 <div id="countdown"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
-<div id="bar">
-  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
-  <button class="icon" id="playBtn" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
-  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
-  <button class="icon" id="toggle" aria-label="controls" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
-</div>
 <div id="sizeDock">
   <select id="aspect" title="Canvas size">
     <option value="1080x1350">Portrait · 4:5</option>
@@ -247,6 +234,15 @@
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
 <div id="dock" class="rail rail-l">
+  <div class="row" style="padding-bottom:6px">
+    <div class="grp"><label>View</label>
+      <div style="display:flex; gap:6px;">
+        <button class="btn" id="themeBtn" style="flex:1" aria-label="light or dark" title="Light / dark" data-tip="Switches the interface between light and dark.">Theme</button>
+        <button class="btn" id="playBtn" style="flex:1" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true" data-tip="Pauses the motion and holds the frame still. Press again, or Space, to carry on.">Pause</button>
+        <button class="btn" id="fsBtn" style="flex:1" aria-label="full screen" title="Full screen &#8212; canvas only" data-tip="Fills the screen with the canvas alone. Press Esc or F to leave.">Full screen</button>
+      </div>
+    </div>
+  </div>
   <div class="row" style="padding-bottom:6px">
     <div class="grp" data-tip="Prepopulate a ready-made layout, or save your own. Applies bands, type, colour and every placed piece."><label>Preset</label>
       <select id="preset"><option value="">Custom…</option><option value="event">Event</option></select>
@@ -1037,7 +1033,6 @@
       if(THEME==='light'&&state.bg==='#0a0b10'){ state.bg='#eef0f4'; $('bg').value=state.bg; } else if(THEME==='dark'&&state.bg==='#eef0f4'){ state.bg='#0a0b10'; $('bg').value=state.bg; } markDirty(); });
     $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
     $('exitFs').addEventListener('click',()=>setFs(false));
-    $('toggle').addEventListener('click',()=>{ const open=!$('dock').classList.contains('open'); $('dock').classList.toggle('open',open); document.body.classList.toggle('panels',open); $('toggle').setAttribute('aria-pressed',String(open)); requestAnimationFrame(resize); });
     ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>e.preventDefault()));
     addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(fs) [...fs].filter(f=>/^image\//.test(f.type)||isPDF(f)).forEach(addFile); });
     addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
@@ -1078,7 +1073,7 @@
   addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true);
 
   wire(); document.body.classList.add('dark');
-  $('dock').classList.add('open'); document.body.classList.add('panels'); $('toggle').setAttribute('aria-pressed','true');   // controls open by default
+  $('dock').classList.add('open'); document.body.classList.add('panels');   // rail is always open now (toggle removed)
   resize();
   /* sliders render natively as flat shell sliders — knob-wrapping disabled for Lab consistency (makeKnob/paintKnob kept but unused) */
   syncRes(); syncHint();

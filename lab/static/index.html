@@ -56,8 +56,7 @@
   #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
   @keyframes recblink{ 50%{ opacity:.25; } }
 
-  /* view controls — small icons under the size dock */
-  #bar{ position:fixed; top:calc(var(--top) + 56px); right:20px; z-index:10; display:flex; gap:8px; }
+  /* view controls now live in the rail's View island; #exitFs keeps the .icon look */
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--line);
     background:var(--panel); color:var(--ink); cursor:pointer;
     -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px);
@@ -72,8 +71,6 @@
     padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
     background:var(--panel); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
     border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; transition:transform .28s ease; }
-  body.dockclosed #dock{ transform:translateX(-100%); }
-  body.dockclosed #wrap{ left:0; }
 
   /* grouped sections — a clean, labelled stack with dividers */
   .group{ display:flex; flex-direction:column; gap:9px; }
@@ -122,7 +119,7 @@
     pointer-events:none; opacity:0; transition:opacity .14s ease; }
 
   /* full screen — canvas only */
-  body.fs #dock, body.fs #bar, body.fs #sizeDock, body.fs .opal-topbar, body.fs .opal-subhead,
+  body.fs #dock, body.fs #sizeDock, body.fs .opal-topbar, body.fs .opal-subhead,
   body.fs #hint, body.fs #status{ display:none !important; }
   body.fs #wrap{ top:0; left:0; }
 
@@ -154,11 +151,6 @@
   </select>
 </div>
 
-<div id="bar">
-  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
-  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
-  <button class="icon" id="toggle" aria-label="controls" aria-pressed="true" title="Show / hide controls">&#183;&#183;&#183;</button>
-</div>
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
 <div id="dock">
@@ -166,6 +158,14 @@
   <div class="group">
     <button class="btn primary full" id="animBtn" aria-pressed="false" data-tip="Play the signal — the static rolls, the bands drift, the tear crawls. Off holds a single still frame.">Animate</button>
     <button class="btn full" id="seedBtn" data-tip="Rolls a fresh random pattern from a new seed — a different break-up of the same settings.">New pattern</button>
+  </div>
+
+  <div class="group">
+    <div class="group__t">View</div>
+    <div class="grid2">
+      <button class="btn" id="themeBtn" aria-label="light or dark" title="Light / dark" data-tip="Switches the interface between light and dark.">Theme</button>
+      <button class="btn" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only" data-tip="Fills the screen with the canvas alone — the controls step out of the way. Press Esc or F to leave.">Full screen</button>
+    </div>
   </div>
 
   <div class="group">
@@ -876,8 +876,6 @@
     $('animBtn').addEventListener('click',()=>setAnim(!state.animate));
     $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
     $('exitFs').addEventListener('click',()=>setFs(false));
-    $('toggle').addEventListener('click',()=>{ const closed=document.body.classList.toggle('dockclosed');
-      $('toggle').setAttribute('aria-pressed',String(!closed)); requestAnimationFrame(resize); });
     addEventListener('keydown',e=>{
       if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
       if(e.key==='Escape'&&document.body.classList.contains('fs')){ setFs(false); return; }

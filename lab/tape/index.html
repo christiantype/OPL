@@ -54,7 +54,7 @@
   body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
-  body.fs #dock, body.fs #bar, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #dock, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
   body.fs #stagewrap{ top:0; left:0; padding:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:1; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
@@ -64,8 +64,7 @@
   #status{ position:fixed; bottom:14px; left:calc(var(--rail) + 16px); z-index:5; pointer-events:none;
     font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
 
-  /* icon strip — theme / pause / full screen, sitting just below the size dock */
-  #bar{ position:fixed; top:calc(var(--top) + 56px); right:14px; z-index:10; display:flex; gap:8px; }
+  /* theme / pause / full screen now live in the rail's View island; #exitFs keeps the .icon look */
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
     background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
@@ -205,14 +204,17 @@
 <div id="status"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
 <div id="reels"></div>
-<div id="bar">
-  <button class="icon" id="themeBtn" aria-label="light or dark" title="Light / dark">&#9681;</button>
-  <button class="icon" id="pauseBtn" aria-label="pause" title="Pause / play &#183; space" aria-pressed="false"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
-  <button class="icon" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only">&#9974;</button>
-</div>
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
 <div id="dock">
+  <div class="group">
+    <div class="group__t">View</div>
+    <div class="grid2">
+      <button class="btn" id="themeBtn" aria-label="light or dark" title="Light / dark" data-tip="Switches the interface between light and dark.">Theme</button>
+      <button class="btn" id="pauseBtn" aria-label="pause" title="Pause / play &#183; space" aria-pressed="false" data-tip="Pauses the loops and holds the picture still. Press again, or Space, to carry on.">Pause</button>
+      <button class="btn" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only" data-tip="Fills the screen with the canvas alone. Press Esc or F to leave.">Full screen</button>
+    </div>
+  </div>
   <div class="group">
     <div class="group__t">Loops</div>
     <p class="rowhint">Four loops of different lengths, all running at once. Arm one and whatever you play goes onto it.</p>
