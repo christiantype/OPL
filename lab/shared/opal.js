@@ -154,10 +154,91 @@ const Opal = (() => {
     t.dataset.acc='1';
     t.addEventListener('click', ()=>g.classList.toggle('collapsed'));
   }
+  // --- recording timer: mirror the #recDot elapsed time onto the Record button ---
+  function wireRecTimer(){
+    const dot = document.getElementById('recDot'), btn = document.getElementById('recBtn');
+    if(!dot || !btn || btn.dataset.recTimer) return;
+    btn.dataset.recTimer = '1';
+    const sync = () => {
+      if(dot.classList.contains('on')){
+        const t = (dot.querySelector('b')||{}).textContent || '0:00';
+        btn.textContent = '■ ' + t; btn.classList.add('is-recording');
+      } else if(btn.classList.contains('is-recording')){
+        btn.classList.remove('is-recording');
+      }
+    };
+    try{ new MutationObserver(sync).observe(dot,{attributes:true, subtree:true, childList:true, characterData:true}); }catch(e){}
+    sync();
+  }
+
+  // --- Save dialog: choose PNG / JPG / PDF, a scale, quality and DPI ------------
+  function dataURLBytes(u){ const s=atob(u.split(',')[1]), a=new Uint8Array(s.length); for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a; }
+  function buildPDF(jpeg, w, h, dpi){
+    const pw = w/dpi*72, ph = h/dpi*72, enc = new TextEncoder();
+    const chunks=[]; let len=0; const off=[];
+    const push = s => { const b = typeof s==='string'?enc.encode(s):s; chunks.push(b); len+=b.length; };
+    const obj = () => off.push(len);
+    push('%PDF-1.4\n');
+    obj(); push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+    obj(); push('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+    obj(); push(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw.toFixed(2)} ${ph.toFixed(2)}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
+    obj(); push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`); push(jpeg); push('\nendstream\nendobj\n');
+    const content = `q ${pw.toFixed(2)} 0 0 ${ph.toFixed(2)} 0 0 cm /Im0 Do Q`;
+    obj(); push(`5 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
+    const xrefAt = len;
+    let xref = 'xref\n0 6\n0000000000 65535 f \n';
+    for(const o of off) xref += String(o).padStart(10,'0') + ' 00000 n \n';
+    push(xref); push(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF`);
+    const out = new Uint8Array(len); let p=0; for(const c of chunks){ out.set(c,p); p+=c.length; }
+    return new Blob([out], {type:'application/pdf'});
+  }
+  function scaledCanvas(src, mult){
+    if(mult===1) return src;
+    const c=document.createElement('canvas'); c.width=Math.round(src.width*mult); c.height=Math.round(src.height*mult);
+    const x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+    x.drawImage(src,0,0,c.width,c.height); return c;
+  }
+  function saveDialog(canvas, basename){
+    basename = basename || 'export';
+    if(document.getElementById('opal-save')) return;
+    const wrap=document.createElement('div'); wrap.id='opal-save';
+    wrap.innerHTML = `
+      <div class="opal-save__panel" role="dialog" aria-label="Save">
+        <div class="opal-save__t">Save image</div>
+        <label class="opal-save__row"><span>Format</span>
+          <select id="osv-fmt"><option value="png">PNG · lossless</option><option value="jpg">JPG · photo</option><option value="pdf">PDF · print</option></select></label>
+        <label class="opal-save__row"><span>Resolution</span>
+          <select id="osv-scale"><option value="1">1× · ${canvas.width}×${canvas.height}</option><option value="2">2× · ${canvas.width*2}×${canvas.height*2}</option><option value="3">3× · ${canvas.width*3}×${canvas.height*3}</option></select></label>
+        <label class="opal-save__row" id="osv-qrow" hidden><span>Quality</span><input id="osv-q" type="range" min="60" max="100" value="92"><b id="osv-qv">92</b></label>
+        <label class="opal-save__row" id="osv-drow" hidden><span>DPI</span><select id="osv-dpi"><option>150</option><option selected>300</option><option>600</option></select></label>
+        <div class="opal-save__foot"><button class="btn" id="osv-x">Cancel</button><button class="btn primary" id="osv-go">Save</button></div>
+      </div>`;
+    document.body.appendChild(wrap);
+    const $=id=>wrap.querySelector(id);
+    const fmt=$('#osv-fmt'), qrow=$('#osv-qrow'), drow=$('#osv-drow'), q=$('#osv-q'), qv=$('#osv-qv');
+    const syncFmt=()=>{ qrow.hidden = !(fmt.value==='jpg'); drow.hidden = !(fmt.value==='pdf'); };
+    fmt.addEventListener('change', syncFmt); syncFmt();
+    q.addEventListener('input', ()=>qv.textContent=q.value);
+    const close=()=>wrap.remove();
+    $('#osv-x').addEventListener('click', close);
+    wrap.addEventListener('click', e=>{ if(e.target===wrap) close(); });
+    $('#osv-go').addEventListener('click', ()=>{
+      const mult=+$('#osv-scale').value, c=scaledCanvas(canvas, mult);
+      const dl=(href, ext)=>{ const a=document.createElement('a'); a.download=`${basename}@${c.width}x${c.height}.${ext}`; a.href=href; a.click(); };
+      if(fmt.value==='png'){ dl(c.toDataURL('image/png'),'png'); }
+      else if(fmt.value==='jpg'){ dl(c.toDataURL('image/jpeg', (+q.value)/100),'jpg'); }
+      else { const dpi=+$('#osv-dpi').value, url=c.toDataURL('image/jpeg',0.95);
+        const blob=buildPDF(dataURLBytes(url), c.width, c.height, dpi);
+        const a=document.createElement('a'); a.download=`${basename}.pdf`; a.href=URL.createObjectURL(blob); a.click(); }
+      close();
+    });
+  }
+
   function enhance(){
     try{
       document.querySelectorAll('.seg').forEach(segToSelect);
       document.querySelectorAll('#dock > .group:not(.out)').forEach(makeAccordion);
+      wireRecTimer();
     }catch(e){}
   }
   let _q=false;
@@ -167,5 +248,5 @@ const Opal = (() => {
   window.addEventListener('load', enhanceSoon);
   try{ new MutationObserver(enhanceSoon).observe(document.documentElement,{childList:true,subtree:true}); }catch(e){}
 
-  return { mountTopbar, fitCover, wrapText, attachDrag, downloadCanvas, LOGO_PATH, enhance };
+  return { mountTopbar, fitCover, wrapText, attachDrag, downloadCanvas, saveDialog, LOGO_PATH, enhance };
 })();

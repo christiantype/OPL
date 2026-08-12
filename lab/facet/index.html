@@ -159,7 +159,7 @@
     else { const im=new Image(); im.onload=()=>loadImage(im); im.src=url; } });
   ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'&&e.dataTransfer.files[0]){ $('file').files=e.dataTransfer.files; $('file').dispatchEvent(new Event('change')); } }));
 
-  $('saveBtn').addEventListener('click',()=>{ const a=document.createElement('a'); a.download='facet.png'; a.href=cv.toDataURL('image/png'); a.click(); });
+  $('saveBtn').addEventListener('click',()=>Opal.saveDialog(cv,'facet'));
   let rec=null,rt=0,tk=0;
   $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
     const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
@@ -171,7 +171,7 @@
     tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
 
   addEventListener('resize',fit);
-  sample(); frame();
+  fit(); sample(); frame();   // size the canvas up front (media load no longer calls fit)
 })();
 </script>
 </body>
