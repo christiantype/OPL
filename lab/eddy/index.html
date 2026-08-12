@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Eddy — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --rail:300px; --top:82px; }
+  @media (max-width:560px){ :root{ --top:74px; } }
+  *{ box-sizing:border-box; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #gl{ max-width:100%; max-height:100%; cursor:crosshair; touch-action:none; }
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); font-size:13px; padding:7px 13px; pointer-events:none; z-index:7; white-space:nowrap; }
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; } #sizeDock select{ padding:7px 10px; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; } #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); } #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  .group{ display:flex; flex-direction:column; gap:9px; } .knob{ display:flex; flex-direction:column; gap:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; } select.full{ width:100%; } .tog{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+</style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
+</head>
+<body class="dark">
+
+<div id="wrap"><canvas id="gl"></canvas></div>
+<div id="hint">Drag to stir · Auto-pilot flows on its own</div>
+<div id="recDot"><i></i><b>0:00</b></div>
+<div id="sizeDock"><select id="aspect" title="Canvas size">
+  <option value="1080/1350">Portrait · 4:5</option>
+  <option value="1080/1920">Story · 9:16</option>
+  <option value="1080/1080" selected>Square · 1:1</option>
+  <option value="1920/1080">Landscape · 16:9</option>
+</select></div>
+
+<div id="dock">
+  <div class="group">
+    <div class="group__t">Brush</div>
+    <div class="tog"><span>Auto-pilot</span><button class="btn" id="auto" aria-pressed="true">On</button></div>
+    <div class="knob"><label>Radius <b id="brR">0.25</b></label><input id="br" type="range" min="2" max="80" value="25"></div>
+    <div class="knob"><label>Swirl <b id="swR">2.3</b></label><input id="sw" type="range" min="0" max="60" value="23"></div>
+    <div class="knob"><label>Viscosity <b id="viR">0.61</b></label><input id="vi" type="range" min="0" max="100" value="61"></div>
+    <div class="knob"><label>Vorticity <b id="voR">3</b></label><input id="vo" type="range" min="0" max="40" value="3"></div>
+    <div class="knob"><label>Edge <b id="egR">1.7</b></label><input id="eg" type="range" min="0" max="40" value="17"></div>
+  </div>
+  <div class="group">
+    <div class="group__t">Colour</div>
+    <select class="full" id="cmode"><option value="multi" selected>Multi-colour</option><option value="grad">Gradient</option></select>
+    <div class="knob"><label>Retention <b id="reR">0.99</b></label><input id="re" type="range" min="90" max="100" value="99"></div>
+    <div class="grid2"><input type="color" class="sw" id="c1" value="#ffb14e" style="width:100%"><input type="color" class="sw" id="c2" value="#9a60ff" style="width:100%"></div>
+    <div class="knob"><label>Flow speed <b id="fsR">1.2</b></label><input id="fs" type="range" min="0" max="40" value="12"></div>
+  </div>
+  <div class="group">
+    <div class="group__t">Field</div>
+    <div class="grid2"><button class="btn" id="clear">Clear</button><button class="btn" id="splatBtn">Splash</button></div>
+  </div>
+  <div class="group out">
+    <div class="group__t">Output</div>
+    <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
+  </div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'Eddy', desc:'Ink, stirred into moving water',
+  about:'A real-time fluid — dye advected through a velocity field with vorticity (curly swirls), viscosity and soft watercolour edges. Drag to stir, or let the auto-pilot wander. Multi-colour or a two-stop gradient. A rebuild of Brik’s Fluid in Motion on the OP/AL shell.',
+  version:'v1' });</script>
+<script>
+(()=>{
+  const $=id=>document.getElementById(id);
+  const cv=$('gl'); const gl=cv.getContext('webgl2',{preserveDrawingBuffer:true,alpha:false});
+  const ext=gl.getExtension('EXT_color_buffer_float'); gl.getExtension('OES_texture_float_linear');
+  const P={ auto:true, radius:0.25, swirl:2.3, visc:0.61, vort:3, edge:1.7, cmode:'multi', ret:0.99, c1:'#ffb14e', c2:'#9a60ff', speed:1.2, size:'1080/1080' };
+  let W=1080,H=1080; const SIM=Math.min(256,256), DYE=512;
+
+  const VS=`#version 300 es
+  in vec2 p; out vec2 vUv,vL,vR,vT,vB; uniform vec2 texel;
+  void main(){ vUv=p*0.5+0.5; vL=vUv-vec2(texel.x,0.); vR=vUv+vec2(texel.x,0.); vT=vUv+vec2(0.,texel.y); vB=vUv-vec2(0.,texel.y); gl_Position=vec4(p,0.,1.); }`;
+  function prog(fsrc){ const p=gl.createProgram(); const v=gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(v,VS); gl.compileShader(v); const f=gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(f,fsrc); gl.compileShader(f);
+    if(!gl.getShaderParameter(f,gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(f)); gl.attachShader(p,v); gl.attachShader(p,f); gl.linkProgram(p);
+    const u={}; const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS); for(let i=0;i<n;i++){ const nm=gl.getActiveUniform(p,i).name; u[nm]=gl.getUniformLocation(p,nm); } return {p,u}; }
+  const H0=`#version 300 es
+  precision highp float; precision highp sampler2D; in vec2 vUv,vL,vR,vT,vB; out vec4 o;`;
+
+  const advect=prog(H0+`uniform sampler2D uVel,uSrc; uniform vec2 texel; uniform float dt,diss;
+    void main(){ vec2 v=texture(uVel,vUv).xy; vec2 c=vUv-dt*v*texel; o=diss*texture(uSrc,c); }`);
+  const splat=prog(H0+`uniform sampler2D uT; uniform vec3 col; uniform vec2 pt; uniform float rad; uniform float aspect;
+    void main(){ vec2 d=vUv-pt; d.x*=aspect; float s=exp(-dot(d,d)/rad); o=texture(uT,vUv)+vec4(col*s,1.0); }`);
+  const curl=prog(H0+`uniform sampler2D uVel;
+    void main(){ float l=texture(uVel,vL).y,r=texture(uVel,vR).y,t=texture(uVel,vT).x,b=texture(uVel,vB).x; o=vec4(0.5*((r-l)-(t-b)),0.,0.,1.); }`);
+  const vort=prog(H0+`uniform sampler2D uVel,uCurl; uniform float dt,curlAmt;
+    void main(){ float l=texture(uCurl,vL).x,r=texture(uCurl,vR).x,t=texture(uCurl,vT).x,b=texture(uCurl,vB).x,c=texture(uCurl,vUv).x;
+      vec2 f=vec2(abs(t)-abs(b),abs(r)-abs(l)); f/= (length(f)+1e-4); f*=curlAmt*c; f.y*=-1.;
+      vec2 v=texture(uVel,vUv).xy + f*dt; o=vec4(clamp(v,-1000.,1000.),0.,1.); }`);
+  const diverg=prog(H0+`uniform sampler2D uVel;
+    void main(){ float l=texture(uVel,vL).x,r=texture(uVel,vR).x,t=texture(uVel,vT).y,b=texture(uVel,vB).y; o=vec4(0.5*((r-l)+(t-b)),0.,0.,1.); }`);
+  const jac=prog(H0+`uniform sampler2D uP,uDiv;
+    void main(){ float l=texture(uP,vL).x,r=texture(uP,vR).x,t=texture(uP,vT).x,b=texture(uP,vB).x,d=texture(uDiv,vUv).x; o=vec4((l+r+t+b-d)*0.25,0.,0.,1.); }`);
+  const grad=prog(H0+`uniform sampler2D uP,uVel;
+    void main(){ float l=texture(uP,vL).x,r=texture(uP,vR).x,t=texture(uP,vT).x,b=texture(uP,vB).x; vec2 v=texture(uVel,vUv).xy - vec2(r-l,t-b); o=vec4(v,0.,1.); }`);
+  const disp=prog(H0+`uniform sampler2D uDye; uniform float edge;
+    void main(){ vec3 c=texture(uDye,vUv).rgb; c=pow(c, vec3(1.0/max(0.2,edge*0.6+0.6))); o=vec4(c,1.0); }`);
+
+  const quad=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,quad); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  function fbo(w,h){ const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,w,h,0,gl.RGBA,gl.HALF_FLOAT,null);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    const f=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,f); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+    return {t,f,w,h}; }
+  function dbl(w,h){ let a=fbo(w,h),b=fbo(w,h); return { get r(){return a;}, get w(){return b;}, swap(){const t=a;a=b;b=t;} }; }
+  let vel=dbl(SIM,SIM), dye=dbl(DYE,DYE), prs=dbl(SIM,SIM), div=fbo(SIM,SIM), crl=fbo(SIM,SIM);
+  function use(pr){ gl.useProgram(pr.p); gl.bindBuffer(gl.ARRAY_BUFFER,quad); const l=gl.getAttribLocation(pr.p,'p'); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,2,gl.FLOAT,false,0,0); }
+  function blit(t){ gl.bindFramebuffer(gl.FRAMEBUFFER, t?t.f:null); gl.viewport(0,0, t?t.w:W, t?t.h:H); gl.drawArrays(gl.TRIANGLES,0,3); }
+  function bindTex(pr,name,tx,unit){ gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(gl.TEXTURE_2D,tx); gl.uniform1i(pr.u[name],unit); }
+
+  const hex=h=>{ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h); return m?[parseInt(m[1],16)/255,parseInt(m[2],16)/255,parseInt(m[3],16)/255]:[1,1,1]; };
+  function hsv(h){ h*=6; const c=[Math.abs(h-3)-1, 2-Math.abs(h-2), 2-Math.abs(h-4)]; return c.map(v=>Math.max(0,Math.min(1,v))); }
+  let hue=0;
+  function pickColor(){ if(P.cmode==='gradient'){ const a=hex(P.c1),b=hex(P.c2); const t=(Math.sin(hue*6.28)*0.5+0.5); return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]; } hue=(hue+0.11)%1; return hsv(hue); }
+
+  function splatAt(x,y,dx,dy){ const c=pickColor(); const strength=P.swirl*0.6;
+    use(splat); bindTex(splat,'uT',vel.r.t,0); gl.uniform1f(splat.u['aspect'],W/H); gl.uniform2f(splat.u['pt'],x,y);
+    gl.uniform1f(splat.u['rad'],(P.radius/W)*(P.radius/W)*40.0+0.0002); gl.uniform3f(splat.u['col'],dx*strength,dy*strength,0.0); blit(vel.w); vel.swap();
+    use(splat); bindTex(splat,'uT',dye.r.t,0); gl.uniform1f(splat.u['aspect'],W/H); gl.uniform2f(splat.u['pt'],x,y);
+    gl.uniform1f(splat.u['rad'],(P.radius/W)*(P.radius/W)*40.0+0.0002); gl.uniform3f(splat.u['col'],c[0],c[1],c[2]); blit(dye.w); dye.swap(); }
+
+  // auto-pilot pointer
+  const ap={x:0.5,y:0.5,px:0.5,py:0.5,ang:0}; let dragging=false,lp={x:0.5,y:0.5};
+  function step(dt){
+    // input
+    if(P.auto){ ap.ang+=0.03*P.speed; ap.px=ap.x; ap.py=ap.y;
+      ap.x=0.5+0.35*Math.cos(ap.ang*1.3)+0.12*Math.sin(ap.ang*2.7); ap.y=0.5+0.35*Math.sin(ap.ang)+0.12*Math.cos(ap.ang*2.1);
+      splatAt(ap.x,ap.y,(ap.x-ap.px)*12*P.speed,(ap.y-ap.py)*12*P.speed); }
+    // curl + vorticity
+    use(curl); bindTex(curl,'uVel',vel.r.t,0); blit(crl);
+    use(vort); bindTex(vort,'uVel',vel.r.t,0); bindTex(vort,'uCurl',crl.t,1); gl.uniform1f(vort.u['dt'],dt); gl.uniform1f(vort.u['curlAmt'],P.vort); blit(vel.w); vel.swap();
+    // divergence + pressure
+    use(diverg); bindTex(diverg,'uVel',vel.r.t,0); blit(div);
+    for(let i=0;i<24;i++){ use(jac); bindTex(jac,'uP',prs.r.t,0); bindTex(jac,'uDiv',div.t,1); blit(prs.w); prs.swap(); }
+    use(grad); bindTex(grad,'uP',prs.r.t,0); bindTex(grad,'uVel',vel.r.t,1); blit(vel.w); vel.swap();
+    // advect velocity + dye
+    const tx=[1/SIM,1/SIM];
+    use(advect); gl.uniform2f(advect.u['texel'],tx[0],tx[1]); gl.uniform1f(advect.u['dt'],dt); gl.uniform1f(advect.u['diss'],0.2+P.visc*0.8);
+    bindTex(advect,'uVel',vel.r.t,0); bindTex(advect,'uSrc',vel.r.t,1); blit(vel.w); vel.swap();
+    use(advect); gl.uniform2f(advect.u['texel'],1/DYE,1/DYE); gl.uniform1f(advect.u['dt'],dt); gl.uniform1f(advect.u['diss'],P.ret);
+    bindTex(advect,'uVel',vel.r.t,0); bindTex(advect,'uSrc',dye.r.t,1); blit(dye.w); dye.swap();
+    // display
+    use(disp); bindTex(disp,'uDye',dye.r.t,0); gl.uniform1f(disp.u['edge'],P.edge); blit(null);
+  }
+
+  let last=performance.now();
+  function loop(){ requestAnimationFrame(loop); const now=performance.now(); const dt=Math.min(0.03,(now-last)/1000); last=now; step(dt*(0.6+P.speed*0.5)); }
+
+  function clearAll(){ [vel,dye,prs].forEach(d=>{ [d.r,d.w].forEach(t=>{ gl.bindFramebuffer(gl.FRAMEBUFFER,t.f); gl.viewport(0,0,t.w,t.h); gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT); }); }); }
+  function fit(){ const [a,b]=P.size.split('/').map(Number); const ar=a/b, long=1000; if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
+    cv.width=W; cv.height=H; const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H); cv.style.width=(W*sc)+'px'; cv.style.height=(H*sc)+'px'; }
+
+  // pointer
+  cv.addEventListener('pointerdown',e=>{ dragging=true; const r=cv.getBoundingClientRect(); lp={x:(e.clientX-r.left)/r.width,y:1-(e.clientY-r.top)/r.height}; });
+  cv.addEventListener('pointermove',e=>{ if(!dragging) return; const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width,y=1-(e.clientY-r.top)/r.height; splatAt(x,y,(x-lp.x)*30,(y-lp.y)*30); lp={x,y}; });
+  addEventListener('pointerup',()=>dragging=false);
+
+  function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; }); }
+  bind('br','brR',v=>P.radius=v,v=>(v/100).toFixed(2)); bind('sw','swR',v=>P.swirl=v/10,v=>(v/10).toFixed(1));
+  bind('vi','viR',v=>P.visc=v/100,v=>(v/100).toFixed(2)); bind('vo','voR',v=>P.vort=v); bind('eg','egR',v=>P.edge=v/10,v=>(v/10).toFixed(1));
+  bind('re','reR',v=>P.ret=v/100,v=>(v/100).toFixed(2)); bind('fs','fsR',v=>P.speed=v/10,v=>(v/10).toFixed(1));
+  $('cmode').addEventListener('change',e=>P.cmode=e.target.value); $('c1').addEventListener('input',e=>P.c1=e.target.value); $('c2').addEventListener('input',e=>P.c2=e.target.value);
+  $('auto').addEventListener('click',e=>{ P.auto=!P.auto; e.target.textContent=P.auto?'On':'Off'; e.target.setAttribute('aria-pressed',P.auto); });
+  $('clear').addEventListener('click',clearAll);
+  $('splatBtn').addEventListener('click',()=>{ for(let i=0;i<6;i++) splatAt(Math.random(),Math.random(),(Math.random()-0.5)*20,(Math.random()-0.5)*20); });
+  $('aspect').addEventListener('change',e=>{P.size=e.target.value;fit();});
+
+  $('saveBtn').addEventListener('click',()=>{ const a=document.createElement('a'); a.download='eddy.png'; a.href=cv.toDataURL('image/png'); a.click(); });
+  let rec=null,rt=0,tk=0;
+  $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
+    const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+    rec=new MediaRecorder(cv.captureStream(30), mime?{mimeType:mime}:undefined); const ch=[];
+    rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+    rec.onstop=()=>{ clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
+      const bl=new Blob(ch,{type:ch[0]?.type||'video/webm'}); const a=document.createElement('a'); a.download='eddy.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); rec=null; };
+    rec.start(); rt=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
+    tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
+
+  addEventListener('resize',fit);
+  fit(); clearAll(); for(let i=0;i<5;i++) splatAt(Math.random(),Math.random(),(Math.random()-0.5)*16,(Math.random()-0.5)*16); loop();
+})();
+</script>
+</body>
+</html>
