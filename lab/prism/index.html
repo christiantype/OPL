@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Prism — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --rail:300px; --top:82px; }
+  @media (max-width:560px){ :root{ --top:74px; } }
+  *{ box-sizing:border-box; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center; padding:24px; }
+  #gl{ max-width:100%; max-height:100%; cursor:crosshair; touch-action:none; }
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
+    font-size:13px; padding:7px 13px; pointer-events:none; z-index:7; white-space:nowrap; }
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
+  #sizeDock select{ padding:7px 10px; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .crow{ display:flex; align-items:center; justify-content:space-between; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .seg{ display:flex; }
+  .seg button{ flex:1; appearance:none; background:var(--cell); border:1px solid var(--line);
+    color:var(--ink); padding:8px 6px; cursor:pointer; font:inherit; font-size:11px; border-right:0; }
+  .seg button:last-child{ border-right:1px solid var(--line); }
+  .sw{ width:44px; height:24px; border:1px solid var(--line); padding:0; cursor:pointer; background:none; }
+  textarea{ width:100%; padding:8px 10px; font:inherit; resize:vertical; min-height:44px; }
+</style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
+</head>
+<body class="dark">
+
+<div id="wrap"><canvas id="gl"></canvas></div>
+<div id="hint">Drag to smear the light · Auto sweeps on its own</div>
+<div id="recDot"><i></i><b>0:00</b></div>
+<div id="sizeDock">
+  <select id="aspect" title="Canvas size">
+    <option value="1080/1350">Portrait · 4:5</option>
+    <option value="1080/1920">Story · 9:16</option>
+    <option value="1080/1080" selected>Square · 1:1</option>
+    <option value="1920/1080">Landscape · 16:9</option>
+  </select>
+</div>
+
+<div id="dock">
+  <div class="group">
+    <div class="group__t">Content</div>
+    <div class="seg" id="ctSeg" role="group" aria-label="Content">
+      <button data-ct="Text" aria-pressed="true">Text</button>
+      <button data-ct="Image" aria-pressed="false">Image</button>
+    </div>
+    <textarea id="text">OP/AL</textarea>
+    <div class="knob"><label>Size <b id="fsR">220</b></label><input id="fs" type="range" min="40" max="520" value="220"></div>
+    <button class="btn" id="loadBtn" style="display:none">Add image</button>
+    <input type="file" id="file" accept="image/*" hidden>
+    <div class="knob"><label>Scale <b id="scR">100</b></label><input id="sc" type="range" min="10" max="200" value="100"></div>
+    <div class="knob"><label>Blur <b id="blR">0</b></label><input id="bl" type="range" min="0" max="24" value="0"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Smear</div>
+    <div class="knob"><label>Intensity <b id="siR">0.50</b></label><input id="si" type="range" min="0" max="200" value="50"></div>
+    <div class="knob"><label>Trail <b id="dcR">0.98</b></label><input id="dc" type="range" min="80" max="99" value="98"></div>
+    <div class="knob"><label>Exposure <b id="exR">1.2</b></label><input id="ex" type="range" min="20" max="300" value="120"></div>
+    <div class="knob"><label>Radius <b id="raR">0.10</b></label><input id="ra" type="range" min="2" max="60" value="10"></div>
+    <div class="knob"><label>Warp <b id="wiR">0.02</b></label><input id="wi" type="range" min="0" max="12" value="2"></div>
+    <div class="knob"><label>Warp scale <b id="wsR">3.0</b></label><input id="ws" type="range" min="1" max="120" value="30"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Glow</div>
+    <div class="crow"><label>Core</label><input type="color" class="sw" id="pg" value="#ffffff"></div>
+    <div class="crow"><label>Edge</label><input type="color" class="sw" id="sg" value="#4a9eff"></div>
+    <div class="knob"><label>Bloom <b id="gsR">2.0</b></label><input id="gs" type="range" min="0" max="60" value="20"></div>
+    <div class="knob"><label>Aberration <b id="abR">0.010</b></label><input id="ab" type="range" min="0" max="40" value="10"></div>
+    <div class="knob"><label>Grain <b id="gnR">0.05</b></label><input id="gn" type="range" min="0" max="30" value="5"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Motion</div>
+    <div class="grid2">
+      <button class="btn primary" id="play" aria-pressed="true">Pause</button>
+      <button class="btn" id="clear">Clear</button>
+    </div>
+    <div class="seg" id="mSeg" role="group" aria-label="Mode">
+      <button data-m="Auto" aria-pressed="true">Auto</button>
+      <button data-m="Draw" aria-pressed="false">Draw</button>
+    </div>
+    <div class="knob" id="spRow"><label>Auto speed <b id="spR">8</b></label><input id="sp" type="range" min="1" max="30" value="8"></div>
+    <select id="dir">
+      <option>Left to Right</option><option>Right to Left</option><option>Top to Bottom</option><option>Bottom to Top</option>
+    </select>
+    <select id="ease">
+      <option>Sine</option><option>Linear</option><option>Ease In</option><option>Ease Out</option><option>Ease In Out</option>
+    </select>
+  </div>
+
+  <div class="group out">
+    <div class="group__t">Output</div>
+    <div class="grid2">
+      <button class="btn" id="recBtn">Record</button>
+      <button class="btn" id="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'Prism', desc:'Smear light from a word or a shape',
+  about:'A word or an image, smeared into glowing light through a feedback buffer — chromatic aberration, a brightness→glow gradient, bloom, burnt-white cores and film grain. Drag to paint, or let Auto sweep it. Original: a Brik prismatic-pixel-press, rebuilt on the OP/AL shell.',
+  version:'v1' });</script>
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.170.0';
+const $=id=>document.getElementById(id);
+const cv=$('gl'), wrap=$('wrap');
+const renderer=new THREE.WebGLRenderer({ canvas:cv, antialias:true, alpha:true, preserveDrawingBuffer:true });
+renderer.setPixelRatio(1);
+const scene=new THREE.Scene(), camera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+let W=1080,H=1080;
+const P={ ct:'Text', text:'OP/AL', fs:220, scale:100, blur:0,
+  si:0.5, decay:0.98, exposure:1.2, radius:0.10, warp:0.02, warpScale:3.0,
+  bloom:2.0, ab:0.010, grain:0.05, core:'#ffffff', edge:'#4a9eff',
+  playing:true, mode:'Auto', speed:8, dir:'Left to Right', ease:'Sine', size:'1080/1080' };
+
+// content mask canvas
+const cc=document.createElement('canvas'); const cg=cc.getContext('2d',{willReadFrequently:true});
+let contentTex=new THREE.CanvasTexture(cc); contentTex.minFilter=THREE.LinearFilter; contentTex.magFilter=THREE.LinearFilter;
+let loadedImg=null;
+
+function processMask(){
+  const id=cg.getImageData(0,0,cc.width,cc.height), d=id.data; let hasA=false;
+  for(let i=3;i<d.length;i+=4){ if(d[i]<250){ hasA=true; break; } }
+  if(hasA){ for(let i=0;i<d.length;i+=4){ const a=d[i+3]; d[i]=d[i+1]=d[i+2]=a; d[i+3]=255; } }
+  else{ let tot=0; for(let i=0;i<d.length;i+=4) tot+=(d[i]+d[i+1]+d[i+2])/3; const avg=tot/(d.length/4), inv=avg>127;
+    for(let i=0;i<d.length;i+=4){ let b=(d[i]+d[i+1]+d[i+2])/3; if(inv)b=255-b; d[i]=d[i+1]=d[i+2]=b; d[i+3]=255; } }
+  cg.putImageData(id,0,0);
+}
+function buildContent(){
+  const ar=W/H, ih=1024, iw=Math.round(ih*ar); cc.width=iw; cc.height=ih;
+  cg.clearRect(0,0,iw,ih); cg.filter=P.blur>0?`blur(${P.blur}px)`:'none';
+  if(P.ct==='Text'){
+    cg.fillStyle='white'; cg.font=`bold ${P.fs}px "IBM Plex Sans", sans-serif`; cg.textAlign='center'; cg.textBaseline='middle';
+    P.text.split('\n').forEach((ln,i,arr)=>cg.fillText(ln, iw/2, ih/2 + (i-(arr.length-1)/2)*P.fs*1.05));
+    cg.filter='none'; processMask();
+  } else if(loadedImg){
+    const scale=P.scale/100, imgW=loadedImg.naturalWidth||loadedImg.width, imgH=loadedImg.naturalHeight||loadedImg.height;
+    const fit=Math.min(iw,ih)/Math.max(imgW,imgH), fs=fit*scale, w=imgW*fs, h=imgH*fs;
+    cg.drawImage(loadedImg,(iw-w)/2,(ih-h)/2,w,h); cg.filter='none'; processMask();
+  } else { cg.filter='none'; }
+  contentTex.dispose(); contentTex=new THREE.CanvasTexture(cc); contentTex.minFilter=THREE.LinearFilter; contentTex.magFilter=THREE.LinearFilter;
+  fbMat.uniforms.tContent.value=contentTex;
+}
+
+// ping-pong buffers
+let type = renderer.capabilities.isWebGL2 ? THREE.HalfFloatType : THREE.UnsignedByteType;
+function mkRT(){ return new THREE.WebGLRenderTarget(W,H,{ minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, format:THREE.RGBAFormat, type }); }
+let read=mkRT(), write=mkRT();
+const V=`varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position,1.0); }`;
+const FB=`uniform sampler2D tPrev,tContent; uniform vec2 uMouse,uPrevMouse; uniform float uIntensity,uDecay,uExposure,uRadius,uAspect,uTime,uWarpIntensity,uWarpScale; uniform bool uClear; varying vec2 vUv;
+float noise(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+void main(){ if(uClear){ gl_FragColor=vec4(0.0); return; }
+  vec2 uv=vUv; float n=noise(uv*uWarpScale+uTime*0.1); vec2 warp=vec2(cos(n*6.28),sin(n*6.28))*uWarpIntensity; vec2 wuv=uv+warp;
+  vec2 dir=uMouse-uPrevMouse; float dm=distance(vec2(uv.x*uAspect,uv.y),vec2(uMouse.x*uAspect,uMouse.y));
+  float inf=smoothstep(uRadius,0.0,dm); vec2 duv=wuv-dir*uIntensity*inf; vec4 prev=texture2D(tPrev,duv);
+  vec4 content=texture2D(tContent,uv); vec4 color=prev*uDecay; color+=content*inf*uExposure; gl_FragColor=clamp(color,0.0,2.0); }`;
+const DISP=`uniform sampler2D tFeedback; uniform float uGlow,uAberration,uGrain,uTime; uniform vec3 uPrimaryGlow,uSecondaryGlow; varying vec2 vUv;
+float rnd(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+void main(){ vec2 uv=vUv;
+  float r=texture2D(tFeedback,uv+vec2(uAberration,0.0)).r; float g=texture2D(tFeedback,uv).g; float b=texture2D(tFeedback,uv-vec2(uAberration,0.0)).b;
+  vec4 color=vec4(r,g,b,1.0); float br=(color.r+color.g+color.b)/3.0;
+  vec3 glowColor=mix(uSecondaryGlow,uPrimaryGlow,clamp(br*1.5,0.0,1.0)); vec3 glow=color.rgb*uGlow*br;
+  vec3 fc=(color.rgb+glow)*glowColor; if(br>0.8) fc=mix(fc,vec3(1.0),(br-0.8)*5.0);
+  float grain=(rnd(uv+uTime)-0.5)*uGrain; fc+=grain; gl_FragColor=vec4(fc,clamp(br*2.0,0.0,1.0)); }`;
+const fbMat=new THREE.ShaderMaterial({ uniforms:{ tPrev:{value:null},tContent:{value:contentTex},uMouse:{value:new THREE.Vector2(.5,.5)},uPrevMouse:{value:new THREE.Vector2(.5,.5)},uIntensity:{value:.5},uDecay:{value:.98},uExposure:{value:1.2},uRadius:{value:.1},uAspect:{value:1},uTime:{value:0},uWarpIntensity:{value:.02},uWarpScale:{value:3},uClear:{value:false} }, vertexShader:V, fragmentShader:FB });
+const dpMat=new THREE.ShaderMaterial({ uniforms:{ tFeedback:{value:null},uGlow:{value:2},uPrimaryGlow:{value:new THREE.Color(0xffffff)},uSecondaryGlow:{value:new THREE.Color(0x4a9eff)},uAberration:{value:.01},uGrain:{value:.05},uTime:{value:0} }, vertexShader:V, fragmentShader:DISP, transparent:true });
+const quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2), fbMat); scene.add(quad);
+
+const mouse=new THREE.Vector2(.5,.5), pmouse=new THREE.Vector2(.5,.5);
+const abPos=new THREE.Vector2(.5,.5), abPrev=new THREE.Vector2(.5,.5);
+let dragging=false;
+function setMouse(e){ const r=cv.getBoundingClientRect(); const x=(e.touches?e.touches[0].clientX:e.clientX)-r.left, y=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+  pmouse.copy(mouse); mouse.x=x/r.width; mouse.y=1-y/r.height; }
+cv.addEventListener('pointerdown',e=>{ dragging=true; setMouse(e); pmouse.copy(mouse); });
+cv.addEventListener('pointermove',e=>{ if(P.mode==='Draw'&&!dragging) return; setMouse(e); });
+addEventListener('pointerup',()=>dragging=false);
+
+function ease(v,t){ if(t==='Sine')return Math.sin((v-.5)*Math.PI)*.5+.5; if(t==='Ease In')return v*v; if(t==='Ease Out')return 1-(1-v)*(1-v); if(t==='Ease In Out')return v<.5?2*v*v:1-Math.pow(-2*v+2,2)/2; return v; }
+let time=0, autoT=0;
+function frame(){ requestAnimationFrame(frame);
+  renderer.setSize(W,H,false);
+  const s=Math.min(wrap.clientWidth/W, wrap.clientHeight/H); cv.style.width=(W*s)+'px'; cv.style.height=(H*s)+'px';
+  if(!P.playing) return; time+=0.01;
+  if(P.mode==='Auto'){ autoT+=(P.speed/15)*0.01; const prog=Math.abs((autoT%2)-1), e=ease(prog,P.ease); abPrev.copy(abPos);
+    if(P.dir==='Left to Right'){abPos.x=-.2+e*1.4;abPos.y=.5;} else if(P.dir==='Right to Left'){abPos.x=1.2-e*1.4;abPos.y=.5;}
+    else if(P.dir==='Top to Bottom'){abPos.x=.5;abPos.y=1.2-e*1.4;} else {abPos.x=.5;abPos.y=-.2+e*1.4;}
+    if(abPos.distanceTo(abPrev)>.4) abPrev.copy(abPos);
+    fbMat.uniforms.uMouse.value.copy(abPos); fbMat.uniforms.uPrevMouse.value.copy(abPrev);
+  } else { fbMat.uniforms.uMouse.value.copy(mouse); fbMat.uniforms.uPrevMouse.value.copy(pmouse); }
+  const u=fbMat.uniforms; u.uIntensity.value=P.si; u.uDecay.value=P.decay; u.uExposure.value=P.exposure; u.uRadius.value=P.radius;
+  u.uAspect.value=W/H; u.uTime.value=time; u.uWarpIntensity.value=P.warp; u.uWarpScale.value=P.warpScale;
+  const d=dpMat.uniforms; d.uGlow.value=P.bloom; d.uPrimaryGlow.value.set(P.core); d.uSecondaryGlow.value.set(P.edge); d.uAberration.value=P.ab; d.uGrain.value=P.grain; d.uTime.value=time;
+  quad.material=fbMat; u.tPrev.value=read.texture; renderer.setRenderTarget(write); renderer.render(scene,camera);
+  if(u.uClear.value) u.uClear.value=false;
+  quad.material=dpMat; d.tFeedback.value=write.texture; renderer.setRenderTarget(null); renderer.render(scene,camera);
+  const t=read; read=write; write=t; pmouse.copy(mouse);
+}
+
+function resize(){ const [a,b]=P.size.split('/').map(Number); const ar=a/b, long=1000;
+  if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
+  renderer.setSize(W,H,false); read.setSize(W,H); write.setSize(W,H);
+  fbMat.uniforms.uClear.value=true; buildContent(); }
+
+// ---- wire ----
+function bind(id,rid,fn,fmt){ const el=$(id),out=$(rid); el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(out)out.textContent=fmt?fmt(el.value):el.value; }); }
+bind('fs','fsR',v=>{P.fs=v;buildContent();}); bind('sc','scR',v=>{P.scale=v;buildContent();}); bind('bl','blR',v=>{P.blur=v;buildContent();});
+bind('si','siR',v=>P.si=v/100,v=>(v/100).toFixed(2)); bind('dc','dcR',v=>P.decay=v/100,v=>(v/100).toFixed(2));
+bind('ex','exR',v=>P.exposure=v/100,v=>(v/100).toFixed(1)); bind('ra','raR',v=>P.radius=v/100,v=>(v/100).toFixed(2));
+bind('wi','wiR',v=>P.warp=v/100,v=>(v/100).toFixed(2)); bind('ws','wsR',v=>P.warpScale=v/10,v=>(v/10).toFixed(1));
+bind('gs','gsR',v=>P.bloom=v/10,v=>(v/10).toFixed(1)); bind('ab','abR',v=>P.ab=v/1000,v=>(v/1000).toFixed(3)); bind('gn','gnR',v=>P.grain=v/100,v=>(v/100).toFixed(2));
+$('text').addEventListener('input',e=>{P.text=e.target.value;buildContent();});
+$('pg').addEventListener('input',e=>P.core=e.target.value); $('sg').addEventListener('input',e=>P.edge=e.target.value);
+$('dir').addEventListener('change',e=>P.dir=e.target.value); $('ease').addEventListener('change',e=>P.ease=e.target.value);
+$('sp').addEventListener('input',e=>{P.speed=+e.target.value;$('spR').textContent=e.target.value;});
+$('aspect').addEventListener('change',e=>{P.size=e.target.value;resize();});
+$('play').addEventListener('click',e=>{ P.playing=!P.playing; e.target.textContent=P.playing?'Pause':'Play'; e.target.setAttribute('aria-pressed',P.playing); });
+$('clear').addEventListener('click',()=>{ fbMat.uniforms.uClear.value=true; });
+// content type
+function setCT(ct,btn){ P.ct=ct; document.querySelectorAll('#ctSeg button').forEach(b=>b.setAttribute('aria-pressed',b===btn?'true':'false'));
+  $('text').style.display=ct==='Text'?'block':'none'; $('fs').closest('.knob').style.display=ct==='Text'?'flex':'none';
+  $('loadBtn').style.display=ct==='Image'?'block':'none'; $('sc').closest('.knob').style.display=ct==='Image'?'flex':'none'; buildContent(); }
+document.querySelectorAll('#ctSeg button').forEach(b=>b.addEventListener('click',()=>setCT(b.dataset.ct,b)));
+$('sc').closest('.knob').style.display='none';
+// mode
+function setMode(m,btn){ P.mode=m; document.querySelectorAll('#mSeg button').forEach(b=>b.setAttribute('aria-pressed',b===btn?'true':'false'));
+  $('spRow').style.display=m==='Auto'?'flex':'none'; $('dir').style.display=m==='Auto'?'block':'none'; $('ease').style.display=m==='Auto'?'block':'none'; }
+document.querySelectorAll('#mSeg button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.m,b)));
+$('loadBtn').addEventListener('click',()=>$('file').click());
+$('file').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f)return; const im=new Image(); im.onload=()=>{loadedImg=im;buildContent();}; im.src=URL.createObjectURL(f); });
+
+// ---- save + record ----
+$('saveBtn').addEventListener('click',()=>{ const a=document.createElement('a'); a.download='prism.png'; a.href=cv.toDataURL('image/png'); a.click(); });
+let rec=null,t0=0,tk=0;
+$('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
+  const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+  rec=new MediaRecorder(cv.captureStream(30), mime?{mimeType:mime}:undefined); const ch=[];
+  rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+  rec.onstop=()=>{ clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
+    const bl=new Blob(ch,{type:ch[0]?.type||'video/webm'}); const a=document.createElement('a'); a.download='prism.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); rec=null; };
+  rec.start(); t0=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
+  tk=setInterval(()=>{ const s=Math.floor((Date.now()-t0)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
+
+addEventListener('resize',resize);
+resize(); frame();
+</script>
+</body>
+</html>
