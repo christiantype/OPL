@@ -119,5 +119,45 @@ const Opal = (() => {
     a.click();
   }
 
-  return { mountTopbar, fitCover, wrapText, attachDrag, downloadCanvas, LOGO_PATH };
+  // --- shell enhancements: segmented>3 -> dropdown, and collapsible islands ---
+  function isActive(b){ return b.getAttribute('aria-pressed')==='true'
+    || b.classList.contains('active') || b.classList.contains('on') || b.classList.contains('primary'); }
+  function segToSelect(seg){
+    if (seg.dataset.segchecked) return;           // decide ONCE, never re-evaluate (protects multi-toggles)
+    seg.dataset.segchecked = '1';
+    const btns = [...seg.querySelectorAll('button')];
+    if (btns.length <= 3) return;                 // 3 or fewer stay segmented
+    if (btns.filter(isActive).length !== 1) return; // only single-select rows (exactly one active); leave multi-toggle rows (mute/hold) alone
+    seg.dataset.autosel = '1';
+    const sel = document.createElement('select');
+    sel.className = 'seg-select';
+    btns.forEach((b,i)=>{ const o=document.createElement('option'); o.value=String(i);
+      o.textContent=(b.textContent||'').trim()||('Option '+(i+1)); if(isActive(b)) o.selected=true; sel.appendChild(o); });
+    sel.addEventListener('change', ()=>{ const b=btns[+sel.value]; if(b) b.click(); });
+    seg.style.display='none';                       // keep buttons (hidden) so tool wiring still fires
+    seg.setAttribute('aria-hidden','true');
+    if (seg.parentNode) seg.parentNode.insertBefore(sel, seg.nextSibling);
+    try{ const mo=new MutationObserver(()=>{ const i=btns.findIndex(isActive);
+      if(i>=0 && String(sel.value)!==String(i)) sel.value=String(i); });
+      btns.forEach(b=>mo.observe(b,{attributes:true, attributeFilter:['aria-pressed','class']})); }catch(e){}
+  }
+  function makeAccordion(g){
+    const t = g.querySelector(':scope > .group__t'); if(!t || t.dataset.acc) return;
+    t.dataset.acc='1';
+    t.addEventListener('click', ()=>g.classList.toggle('collapsed'));
+  }
+  function enhance(){
+    try{
+      document.querySelectorAll('.seg').forEach(segToSelect);
+      document.querySelectorAll('#dock > .group:not(.out)').forEach(makeAccordion);
+    }catch(e){}
+  }
+  let _q=false;
+  function enhanceSoon(){ if(_q) return; _q=true; requestAnimationFrame(()=>{ _q=false; enhance(); }); }
+  if (document.readyState!=='loading') enhanceSoon();
+  else document.addEventListener('DOMContentLoaded', enhanceSoon);
+  window.addEventListener('load', enhanceSoon);
+  try{ new MutationObserver(enhanceSoon).observe(document.documentElement,{childList:true,subtree:true}); }catch(e){}
+
+  return { mountTopbar, fitCover, wrapText, attachDrag, downloadCanvas, LOGO_PATH, enhance };
 })();

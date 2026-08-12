@@ -38,7 +38,7 @@
   body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
-  body.fs .rail, body.fs #bar, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs .rail, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
   body.fs #stagewrap{ top:0; left:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
@@ -49,8 +49,7 @@
   #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
     font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
 
-  /* one hairline control strip — everything else is off until asked for */
-  #bar{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:10; display:flex; gap:8px; }
+  /* the floating control strip is retired — its buttons now live in the rail's View section */
   .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
     background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
@@ -59,7 +58,7 @@
   /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
      fixed right offset kept colliding with it. Stays put in full screen so a recording
      always shows its own timer. */
-  #recDot{ position:fixed; top:calc(var(--top) + 58px); right:14px; z-index:11;
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
     display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
     font-size:10px; letter-spacing:.12em; color:#ff4d5e;
     background:var(--panel); border:1px solid var(--hair);
@@ -115,10 +114,7 @@
   .rail-r{ transform:translateX(100%); }
   .rail.open{ transform:none; }
 
-  /* Chrome fades out while you listen and comes back on movement. */
-  #bar{ transition:opacity .5s ease; }
-  body.idle #bar{ opacity:0; pointer-events:none; }
-  body.panels #bar{ opacity:1; pointer-events:auto; }
+  /* (chrome-fade rules removed along with the floating bar) */
 
   /* Mood — the one control that stays reachable. */
 
@@ -203,14 +199,9 @@
 <div id="stagewrap"><canvas id="stage"></canvas></div>
 <div id="hint"></div>
 <div id="recDot"><i></i><b>REC</b></div>
-<div id="bar">
-  <button class="icon" id="themeBtn" title="Light / dark">&#9681;</button>
-  <button class="icon" id="playBtn" title="Play / pause &#183; space" aria-pressed="true"><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg></button>
-  <button class="icon" id="fsBtn" title="Full screen">&#9974;</button>
-  <button class="icon" id="toggle" aria-pressed="false" title="Controls">&#183;&#183;&#183;</button>
-</div>
+<!-- control bar retired: theme / play / full screen now live in the rail's View section -->
 <button class="icon" id="exitFs" title="Exit (Esc)">&#10005;</button>
-<div id="rail" class="rail rail-l"></div>
+<div id="rail" class="rail rail-l open"></div>
 <div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
 
 <script src="/lab/shared/opal.js"></script>
@@ -493,6 +484,13 @@ function buildPanel(){
   const gE=grp('Motion','Re-settle the letters from scratch.');
   const rr=el('div',null,''); rr.style.cssText='display:flex;gap:6px'; const bReset=el('button','btn','Re-settle'); bReset.style.flex='1'; bReset.onclick=build; rr.appendChild(bReset); gE.appendChild(rr);
 
+  // View — theme, playback and full screen, moved off the floating bar into the rail
+  const gV=grp('View','Theme, playback and full screen.');
+  const vbtn=(id,label)=>{ const b=el('button','btn',label); b.id=id; b.style.width='100%'; gV.appendChild(b); return b; };
+  vbtn('themeBtn','Theme');
+  vbtn('playBtn','Pause');
+  vbtn('fsBtn','Full screen');
+
   document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
   setupFolds(); setupTooltips(); refreshGate();
 }
@@ -501,14 +499,7 @@ function syncPanel(){ refs.forEach(o=>{ if(o.r){ o.r.value=P[o.key]; o.v.textCon
   else if(o.kind==='color'){ o.inp.value=P[o.key]; } else if(o.kind==='seg'){ [...o.seg.children].forEach((c,i)=>c.setAttribute('aria-pressed',String(o.opts[i].v==P[o.key]))); } else if(o.kind==='sel'){ o.sel.value=P[o.key]; } }); refreshGate(); setPlayIcon(); }
 
 // ---------------- shared shell scaffolding ----------------
-function makeKnob(inp){ if(inp.dataset.knob) return; inp.dataset.knob='1'; const w=document.createElement('div'); w.className='knob'; w.tabIndex=0; w.setAttribute('role','slider');
-  inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
-  w.insertAdjacentHTML('beforeend','<svg viewBox="0 0 44 44" width="42" height="42" aria-hidden="true"><path class="k-tr" d="M9 35 A18 18 0 1 1 35 35"/><path class="k-vl" d="M9 35 A18 18 0 1 1 35 35"/><circle class="k-hub" cx="22" cy="22" r="9"/><line class="k-pt" x1="22" y1="22" x2="22" y2="14"/></svg>');
-  const k={el:w,inp}; inp.repaintKnob=()=>paintKnob(k); const set=v=>{ inp.value=String(v); inp.dispatchEvent(new Event('input',{bubbles:true})); paintKnob(k); };
-  let dy=0,dv=0; w.addEventListener('pointerdown',e=>{ e.preventDefault(); w.setPointerCapture(e.pointerId); w.classList.add('drag'); dy=e.clientY; dv=+inp.value; });
-  w.addEventListener('pointermove',e=>{ if(!w.classList.contains('drag'))return; const span=(+inp.max)-(+inp.min),st=+inp.step||1; set(clamp(Math.round((dv+(dy-e.clientY)/150*span)/st)*st,+inp.min,+inp.max)); });
-  const up=()=>w.classList.remove('drag'); w.addEventListener('pointerup',up); w.addEventListener('pointercancel',up);
-  w.addEventListener('keydown',e=>{ const st=+inp.step||1; if(e.key==='ArrowUp'||e.key==='ArrowRight'){ e.preventDefault(); set(clamp(+inp.value+st,+inp.min,+inp.max)); } if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ e.preventDefault(); set(clamp(+inp.value-st,+inp.min,+inp.max)); } }); paintKnob(k); }
+function makeKnob(inp){ /* Flat sliders across the Lab — the rotary dial is retired; slider() already builds the flat control, so there is nothing to wrap. */ }
 function paintKnob(k){ const inp=k.inp,mn=+inp.min,mx=+inp.max,v=+inp.value,f=(v-mn)/(mx-mn||1); const path=k.el.querySelector('.k-vl'),len=path.getTotalLength();
   path.style.strokeDasharray=len; path.style.strokeDashoffset=len*(1-f); const a=(-135+270*f)*Math.PI/180,pt=k.el.querySelector('.k-pt'); pt.setAttribute('x2',(22+Math.sin(a)*8).toFixed(2)); pt.setAttribute('y2',(22-Math.cos(a)*8).toFixed(2)); }
 function setupFolds(){ const KEY='ls-folded'; const saved=new Set((()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}})());
@@ -522,14 +513,13 @@ function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opac
 function showTip(host){ const text=host.getAttribute('data-tip'); if(!text)return; if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
   tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0'; const r=host.getBoundingClientRect(),t=tipEl.getBoundingClientRect();
   let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8,r.bottom+8); tipEl.style.left=Math.max(8,Math.min(r.left,innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
-function setPlayIcon(){ const b=document.getElementById('playBtn'); if(!b)return; b.setAttribute('aria-pressed',String(P.play));
-  b.innerHTML=P.play?'<svg viewBox="0 0 12 12" width="11" height="11"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>':'<svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 1.8 L10 6 L3 10.2 Z" fill="currentColor"/></svg>'; }
+function setPlayIcon(){ const b=document.getElementById('playBtn'); if(!b)return; b.setAttribute('aria-pressed',String(P.play)); b.textContent=P.play?'Pause':'Play'; }
 function setFs(on){ document.body.classList.toggle('fs',on); if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{}); else if(!on&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{}); }
 function wireBar(){ document.getElementById('playBtn').onclick=()=>{ P.play=!P.play; setPlayIcon(); };
   document.getElementById('themeBtn').onclick=()=>{ document.body.classList.toggle('dark'); };
   document.getElementById('fsBtn').onclick=()=>setFs(!document.body.classList.contains('fs'));
   document.getElementById('exitFs').onclick=()=>setFs(false);
-  document.getElementById('toggle').onclick=()=>{ const r=document.getElementById('rail'); const open=!r.classList.contains('open'); r.classList.toggle('open',open); document.body.classList.toggle('panels',open); document.getElementById('toggle').setAttribute('aria-pressed',String(open)); };
+  // (the rail is always open now — the show/hide toggle was removed with the floating bar)
   document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement&&document.body.classList.contains('fs')) setFs(false); });
   setPlayIcon(); }
 

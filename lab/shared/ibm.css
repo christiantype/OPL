@@ -43,13 +43,32 @@ button, input, select, textarea, .btn{ font-family:inherit; }
 /* mono for numerals / code, where a tool marks them */
 code, kbd, samp, pre, .mono, [data-mono]{ font-family:var(--mono); }
 
+/* no drop-shadows anywhere in the UI */
+*{ box-shadow:none !important; }
+
+/* labels + headings: sentence case, never uppercase, never bold (matches tool.css) */
+.group__t, .rowhead, .oc-lbl, .lo-subhead, .sec > h3, h3, h4{
+  text-transform:none !important; letter-spacing:0 !important; font-weight:500 !important; }
+.rowhead{ font-size:11px !important; }
+.knob label, .warp label, label, .grp > label, .sec label, .ctrl label{
+  text-transform:none !important; letter-spacing:0 !important; font-weight:400 !important; }
+.btn, button, .seg button, select{ text-transform:none !important; letter-spacing:0 !important; }
+.seg-select{ width:100%; }
+
 /* square everything that's clearly a control — corners only, never layout */
 button, .btn, input, select, textarea,
 input[type=color]::-webkit-color-swatch, input[type=color]::-webkit-color-swatch-wrapper{
   border-radius:0 !important; }
-/* square the slider rails too (bespoke pill tracks); the round thumb stays */
-input[type=range]::-webkit-slider-runnable-track,
-input[type=range]::-moz-range-track{ border-radius:0 !important; }
+/* sliders — the exact same flat geometry as the shelled tools (tool.css): a 2px
+   ink track + a 14px round ink thumb. !important overrides any bespoke pill track. */
+input[type=range]{ -webkit-appearance:none !important; appearance:none !important;
+  height:20px !important; background:transparent !important; }
+input[type=range]::-webkit-slider-runnable-track{ height:2px !important; background:rgba(0,0,0,.28) !important; border-radius:0 !important; border:0 !important; }
+input[type=range]::-moz-range-track{ height:2px !important; background:rgba(0,0,0,.28) !important; border-radius:0 !important; border:0 !important; }
+input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none !important; width:14px !important; height:14px !important;
+  margin-top:-6px !important; border-radius:50% !important; background:#161616 !important; border:0 !important; box-shadow:none !important; }
+input[type=range]::-moz-range-thumb{ width:14px !important; height:14px !important; border:0 !important;
+  border-radius:50% !important; background:#161616 !important; box-shadow:none !important; }
 
 /* the one blue accent — selected controls + a crisp focus ring */
 button[aria-pressed="true"], .btn[aria-pressed="true"], .btn.on, .btn.active, .btn.primary, button.active{

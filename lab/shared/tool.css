@@ -64,6 +64,10 @@
 /* 2 — BASE + CANVAS ========================================================= */
 html, body{ background:var(--paper); color:var(--ink); font-family:var(--font); }
 
+/* no drop-shadows anywhere in the UI — the art lives on the canvas, the chrome
+   stays flat (borders define the cards) */
+*{ box-shadow:none !important; }
+
 /* the artboard: a WHITE board with a thin border on a grey mat, NEVER a drop
    shadow. Fixed border colour so a tool's own tokens can't wash it out. */
 #wrap, #stagewrap, #canvasArea{ background:var(--mat); }
@@ -97,7 +101,7 @@ body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:var(--mute); 
    child `.group` (standard) OR `.row` (image-train). */
 #dock > .group, #dock > .row{ background:var(--island);
   border:1px solid var(--line); border-radius:var(--r-island); padding:16px !important;
-  box-shadow:0 10px 30px -16px rgba(0,0,0,.22); }
+  box-shadow:none; }
 #dock > .row{ border-bottom:0 !important; }
 #dock > .group + .group{ margin-top:0 !important; padding-top:16px !important;
   border-top:0 !important; }
@@ -109,15 +113,26 @@ body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:var(--mute); 
   position:fixed !important; right:20px; bottom:20px; left:auto; top:auto;
   width:auto; min-width:208px; max-width:300px; margin:0 !important; z-index:20;
   background:var(--island); border:1px solid var(--line); border-radius:var(--r-island);
-  padding:14px !important; box-shadow:0 14px 38px -12px rgba(0,0,0,.34); }
+  padding:14px !important; box-shadow:none; }
 
 /* 6 — GROUP HEADING + LABELS ================================================ */
-.group__t{ font-size:11px; letter-spacing:.02em; text-transform:uppercase;
-  color:var(--mute); font-weight:600; }
-.knob label, .warp label, h4{ font-size:11px; letter-spacing:.01em;
-  text-transform:uppercase; color:var(--mute); }
+/* sentence case, never uppercase, never bold */
+.group__t{ font-size:12px; letter-spacing:0; text-transform:none;
+  color:var(--mute); font-weight:500; }
+.knob label, .warp label, h4{ font-size:11px; letter-spacing:0;
+  text-transform:none; color:var(--mute); font-weight:400; }
 .knob b, .warp b{ color:var(--ink); font-weight:500; font-family:var(--mono);
   font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+
+/* collapsible islands (accordion) — click the heading to shrink; caret shows state */
+#dock > .group:not(.out) > .group__t{ cursor:pointer; user-select:none;
+  display:flex; align-items:center; justify-content:space-between; gap:8px; }
+#dock > .group:not(.out) > .group__t::after{ content:'▾'; font-size:9px; color:var(--mute);
+  transition:transform .15s ease; flex:none; }
+#dock > .group.collapsed > .group__t::after{ transform:rotate(-90deg); }
+#dock > .group.collapsed > *:not(.group__t){ display:none !important; }
+/* a segmented row auto-collapsed to a dropdown (opal.js does this at >3 options) */
+.seg-select{ width:100%; }
 
 /* 7 — SLIDERS =============================================================== */
 /* a 2px track and a 14px round ink thumb, dark-on-light; the accent shows on
@@ -132,13 +147,13 @@ input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; he
   margin-top:-6px; border-radius:50%; background:var(--ink); border:0; }
 input[type=range]::-moz-range-thumb{ width:14px; height:14px; border:0; border-radius:50%; background:var(--ink); }
 input[type=range]:focus-visible{ outline:none; }
-input[type=range]:focus-visible::-webkit-slider-thumb{ box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--accent); }
+input[type=range]:focus-visible::-webkit-slider-thumb{ outline:none; }
 
 /* 8 — BUTTONS + FOCUS ======================================================= */
 /* square, uppercase, letter-spaced. Default is quiet; primary + selected go
    IBM Blue. Zero radius, !important so no tool's own rule can drift it. */
 .btn{ appearance:none; background:var(--cell); border:1px solid var(--line); color:var(--ink);
-  font:inherit; font-family:var(--font); font-size:11px; letter-spacing:.03em; text-transform:uppercase;
+  font:inherit; font-family:var(--font); font-size:11px; letter-spacing:.03em; text-transform:none;
   text-align:center; padding:8px 12px; border-radius:var(--r-control) !important; cursor:pointer;
   transition:background .12s, border-color .12s; white-space:nowrap; }
 #dock .btn, #dock select, #sizeDock select{ border-radius:var(--r-control) !important; }
@@ -160,13 +175,13 @@ input[type=color]:focus-visible, .sw:focus-visible{
 
 /* 9 — SEGMENTED ============================================================= */
 .seg{ border:1px solid var(--line); border-radius:var(--r-seg); overflow:hidden; }
-.seg button{ font-family:var(--font); font-size:11px; letter-spacing:.02em; text-transform:uppercase; color:var(--ink); }
+.seg button{ font-family:var(--font); font-size:11px; letter-spacing:.02em; text-transform:none; color:var(--ink); }
 .seg button[aria-pressed="true"]{ background:var(--accent); color:var(--on-accent); }
 
 /* 10 — SELECTS + TEXT FIELDS ================================================ */
 select{ background:var(--cell); color:var(--ink); border:1px solid var(--line);
   border-radius:var(--r-control); font:inherit; font-family:var(--font); font-size:11px;
-  letter-spacing:.02em; text-transform:uppercase; padding:7px 8px; }
+  letter-spacing:.02em; text-transform:none; padding:7px 8px; }
 textarea, input[type=text], input[type=number]{ background:#fff; color:var(--ink);
   border:1px solid var(--line); border-radius:var(--r-input); font-family:var(--font); }
 
