@@ -27,10 +27,10 @@
 <div id="wrap"><canvas id="gl"></canvas></div>
 <div id="hint">Drag to stir · Auto-pilot flows on its own</div>
 <div id="recDot"><i></i><b>0:00</b></div>
-<div id="sizeDock"><select id="aspect" title="Canvas size">
+<div id="sizeDock"><span id="dimReadout">1080 × 1920</span><select id="aspect" title="Canvas size">
+  <option value="1080/1920" selected>Story · 9:16</option>
   <option value="1080/1350">Portrait · 4:5</option>
-  <option value="1080/1920">Story · 9:16</option>
-  <option value="1080/1080" selected>Square · 1:1</option>
+  <option value="1080/1080">Square · 1:1</option>
   <option value="1920/1080">Landscape · 16:9</option>
 </select></div>
 
@@ -38,7 +38,7 @@
   <div class="group">
     <div class="group__t">Brush</div>
     <div class="tog"><span>Auto-pilot</span><button class="btn" id="auto" aria-pressed="true">On</button></div>
-    <div class="knob"><label>Radius <b id="brR">0.25</b></label><input id="br" type="range" min="2" max="80" value="25"></div>
+    <div class="knob"><label>Radius <b id="brR">0.20</b></label><input id="br" type="range" min="2" max="80" value="20"></div>
     <div class="knob"><label>Swirl <b id="swR">2.3</b></label><input id="sw" type="range" min="0" max="60" value="23"></div>
     <div class="knob"><label>Viscosity <b id="viR">0.61</b></label><input id="vi" type="range" min="0" max="100" value="61"></div>
     <div class="knob"><label>Vorticity <b id="voR">3</b></label><input id="vo" type="range" min="0" max="40" value="3"></div>
@@ -47,8 +47,9 @@
   <div class="group">
     <div class="group__t">Colour</div>
     <select class="full" id="cmode"><option value="multi" selected>Multi-colour</option><option value="grad">Gradient</option></select>
-    <div class="knob"><label>Retention <b id="reR">0.99</b></label><input id="re" type="range" min="90" max="100" value="99"></div>
-    <div class="grid2"><input type="color" class="sw" id="c1" value="#ffb14e" style="width:100%"><input type="color" class="sw" id="c2" value="#9a60ff" style="width:100%"></div>
+    <div class="knob"><label>Retention <b id="reR">0.975</b></label><input id="re" type="range" min="900" max="1000" value="975"></div>
+    <div class="grid2"><input type="color" class="sw" id="c1" value="#e23b1e" style="width:100%"><input type="color" class="sw" id="c2" value="#f4c23a" style="width:100%"></div>
+    <div class="crow"><label>Paper</label><input type="color" class="sw" id="paper" value="#f6f4ee"></div>
     <div class="knob"><label>Flow speed <b id="fsR">1.2</b></label><input id="fs" type="range" min="0" max="40" value="12"></div>
   </div>
   <div class="group">
@@ -70,8 +71,9 @@
   const $=id=>document.getElementById(id);
   const cv=$('gl'); const gl=cv.getContext('webgl2',{preserveDrawingBuffer:true,alpha:false});
   const ext=gl.getExtension('EXT_color_buffer_float'); gl.getExtension('OES_texture_float_linear');
-  const P={ auto:true, radius:0.25, swirl:2.3, visc:0.61, vort:3, edge:1.7, cmode:'multi', ret:0.99, c1:'#ffb14e', c2:'#9a60ff', speed:1.2, size:'1080/1080' };
-  let W=1080,H=1080; const SIM=Math.min(256,256), DYE=512;
+  const P={ auto:true, radius:20, swirl:2.3, visc:0.61, vort:3, edge:1.7, cmode:'multi', ret:0.97,
+    c1:'#e23b1e', c2:'#f4c23a', paper:'#f6f4ee', speed:1.2, size:'1080/1920' };
+  let W=1080,H=1920; const SIM=Math.min(256,256), DYE=512;
 
   const VS=`#version 300 es
   in vec2 p; out vec2 vUv,vL,vR,vT,vB; uniform vec2 texel;
@@ -98,8 +100,10 @@
     void main(){ float l=texture(uP,vL).x,r=texture(uP,vR).x,t=texture(uP,vT).x,b=texture(uP,vB).x,d=texture(uDiv,vUv).x; o=vec4((l+r+t+b-d)*0.25,0.,0.,1.); }`);
   const grad=prog(H0+`uniform sampler2D uP,uVel;
     void main(){ float l=texture(uP,vL).x,r=texture(uP,vR).x,t=texture(uP,vT).x,b=texture(uP,vB).x; vec2 v=texture(uVel,vUv).xy - vec2(r-l,t-b); o=vec4(v,0.,1.); }`);
-  const disp=prog(H0+`uniform sampler2D uDye; uniform float edge;
-    void main(){ vec3 c=texture(uDye,vUv).rgb; c=pow(c, vec3(1.0/max(0.2,edge*0.6+0.6))); o=vec4(c,1.0); }`);
+  // Watercolour: the dye buffer accumulates ABSORBANCE; pigment darkens/tints white paper (Beer–Lambert).
+  const disp=prog(H0+`uniform sampler2D uDye; uniform float edge; uniform vec3 paper;
+    void main(){ vec3 a=texture(uDye,vUv).rgb; vec3 col=paper*exp(-a*(edge*1.0+3.0));
+      o=vec4(clamp(col,0.0,1.0),1.0); }`);
 
   const quad=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,quad); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
   function fbo(w,h){ const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
@@ -117,20 +121,29 @@
   const hex=h=>{ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h); return m?[parseInt(m[1],16)/255,parseInt(m[2],16)/255,parseInt(m[3],16)/255]:[1,1,1]; };
   function hsv(h){ h*=6; const c=[Math.abs(h-3)-1, 2-Math.abs(h-2), 2-Math.abs(h-4)]; return c.map(v=>Math.max(0,Math.min(1,v))); }
   let hue=0;
-  function pickColor(){ if(P.cmode==='gradient'){ const a=hex(P.c1),b=hex(P.c2); const t=(Math.sin(hue*6.28)*0.5+0.5); return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]; } hue=(hue+0.11)%1; return hsv(hue); }
+  function pickColor(){
+    if(P.cmode==='grad'){ const a=hex(P.c1),b=hex(P.c2); const t=(Math.sin(hue*6.28)*0.5+0.5); hue=(hue+0.02)%1;
+      return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]; }
+    // multi: drift across a warm band (red → orange → amber → yellow)
+    hue=(hue+0.017)%1; const wh=0.015+0.13*(Math.sin(hue*6.283)*0.5+0.5); return hsv(wh);
+  }
 
-  function splatAt(x,y,dx,dy){ const c=pickColor(); const strength=P.swirl*0.6;
+  function splatAt(x,y,dx,dy){ const c=pickColor(); const strength=P.swirl*0.12;
+    const rad=(P.radius/W)*(P.radius/W)*40.0+0.0002;
+    // pigment as absorbance, laid down gently so build-up stays translucent then darkens to a black core where it pools
+    const DEP=0.03; const ab=[(1.0-0.82*c[0])*DEP, (1.0-0.82*c[1])*DEP, (1.0-0.82*c[2])*DEP];
     use(splat); bindTex(splat,'uT',vel.r.t,0); gl.uniform1f(splat.u['aspect'],W/H); gl.uniform2f(splat.u['pt'],x,y);
-    gl.uniform1f(splat.u['rad'],(P.radius/W)*(P.radius/W)*40.0+0.0002); gl.uniform3f(splat.u['col'],dx*strength,dy*strength,0.0); blit(vel.w); vel.swap();
+    gl.uniform1f(splat.u['rad'],rad); gl.uniform3f(splat.u['col'],dx*strength,dy*strength,0.0); blit(vel.w); vel.swap();
     use(splat); bindTex(splat,'uT',dye.r.t,0); gl.uniform1f(splat.u['aspect'],W/H); gl.uniform2f(splat.u['pt'],x,y);
-    gl.uniform1f(splat.u['rad'],(P.radius/W)*(P.radius/W)*40.0+0.0002); gl.uniform3f(splat.u['col'],c[0],c[1],c[2]); blit(dye.w); dye.swap(); }
+    gl.uniform1f(splat.u['rad'],rad); gl.uniform3f(splat.u['col'],ab[0],ab[1],ab[2]); blit(dye.w); dye.swap(); }
 
   // auto-pilot pointer
   const ap={x:0.5,y:0.5,px:0.5,py:0.5,ang:0}; let dragging=false,lp={x:0.5,y:0.5};
   function step(dt){
     // input
     if(P.auto){ ap.ang+=0.03*P.speed; ap.px=ap.x; ap.py=ap.y;
-      ap.x=0.5+0.35*Math.cos(ap.ang*1.3)+0.12*Math.sin(ap.ang*2.7); ap.y=0.5+0.35*Math.sin(ap.ang)+0.12*Math.cos(ap.ang*2.1);
+      // stay near centre so pigment pools into one wandering blob rather than streaking edge-to-edge
+      ap.x=0.5+0.12*Math.cos(ap.ang*1.3)+0.05*Math.sin(ap.ang*2.7); ap.y=0.44+0.15*Math.sin(ap.ang)+0.05*Math.cos(ap.ang*2.1);
       splatAt(ap.x,ap.y,(ap.x-ap.px)*12*P.speed,(ap.y-ap.py)*12*P.speed); }
     // curl + vorticity
     use(curl); bindTex(curl,'uVel',vel.r.t,0); blit(crl);
@@ -141,12 +154,13 @@
     use(grad); bindTex(grad,'uP',prs.r.t,0); bindTex(grad,'uVel',vel.r.t,1); blit(vel.w); vel.swap();
     // advect velocity + dye
     const tx=[1/SIM,1/SIM];
-    use(advect); gl.uniform2f(advect.u['texel'],tx[0],tx[1]); gl.uniform1f(advect.u['dt'],dt); gl.uniform1f(advect.u['diss'],0.2+P.visc*0.8);
+    use(advect); gl.uniform2f(advect.u['texel'],tx[0],tx[1]); gl.uniform1f(advect.u['dt'],dt); gl.uniform1f(advect.u['diss'],0.35-P.visc*0.28);
     bindTex(advect,'uVel',vel.r.t,0); bindTex(advect,'uSrc',vel.r.t,1); blit(vel.w); vel.swap();
     use(advect); gl.uniform2f(advect.u['texel'],1/DYE,1/DYE); gl.uniform1f(advect.u['dt'],dt); gl.uniform1f(advect.u['diss'],P.ret);
     bindTex(advect,'uVel',vel.r.t,0); bindTex(advect,'uSrc',dye.r.t,1); blit(dye.w); dye.swap();
     // display
-    use(disp); bindTex(disp,'uDye',dye.r.t,0); gl.uniform1f(disp.u['edge'],P.edge); blit(null);
+    use(disp); bindTex(disp,'uDye',dye.r.t,0); gl.uniform1f(disp.u['edge'],P.edge);
+    { const pp=hex(P.paper); gl.uniform3f(disp.u['paper'],pp[0],pp[1],pp[2]); } blit(null);
   }
 
   let last=performance.now();
@@ -154,7 +168,8 @@
 
   function clearAll(){ [vel,dye,prs].forEach(d=>{ [d.r,d.w].forEach(t=>{ gl.bindFramebuffer(gl.FRAMEBUFFER,t.f); gl.viewport(0,0,t.w,t.h); gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT); }); }); }
   function fit(){ const [a,b]=P.size.split('/').map(Number); const ar=a/b, long=1000; if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
-    cv.width=W; cv.height=H; const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H); cv.style.width=(W*sc)+'px'; cv.style.height=(H*sc)+'px'; }
+    cv.width=W; cv.height=H; const dr=$('dimReadout'); if(dr) dr.textContent=`${a} × ${b}`;
+    const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H); cv.style.width=(W*sc)+'px'; cv.style.height=(H*sc)+'px'; }
 
   // pointer
   cv.addEventListener('pointerdown',e=>{ dragging=true; const r=cv.getBoundingClientRect(); lp={x:(e.clientX-r.left)/r.width,y:1-(e.clientY-r.top)/r.height}; });
@@ -164,8 +179,9 @@
   function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; }); }
   bind('br','brR',v=>P.radius=v,v=>(v/100).toFixed(2)); bind('sw','swR',v=>P.swirl=v/10,v=>(v/10).toFixed(1));
   bind('vi','viR',v=>P.visc=v/100,v=>(v/100).toFixed(2)); bind('vo','voR',v=>P.vort=v); bind('eg','egR',v=>P.edge=v/10,v=>(v/10).toFixed(1));
-  bind('re','reR',v=>P.ret=v/100,v=>(v/100).toFixed(2)); bind('fs','fsR',v=>P.speed=v/10,v=>(v/10).toFixed(1));
+  bind('re','reR',v=>P.ret=v/1000,v=>(v/1000).toFixed(3)); bind('fs','fsR',v=>P.speed=v/10,v=>(v/10).toFixed(1));
   $('cmode').addEventListener('change',e=>P.cmode=e.target.value); $('c1').addEventListener('input',e=>P.c1=e.target.value); $('c2').addEventListener('input',e=>P.c2=e.target.value);
+  $('paper').addEventListener('input',e=>P.paper=e.target.value);
   $('auto').addEventListener('click',e=>{ P.auto=!P.auto; e.target.textContent=P.auto?'On':'Off'; e.target.setAttribute('aria-pressed',P.auto); });
   $('clear').addEventListener('click',clearAll);
   $('splatBtn').addEventListener('click',()=>{ for(let i=0;i<6;i++) splatAt(Math.random(),Math.random(),(Math.random()-0.5)*20,(Math.random()-0.5)*20); });
@@ -183,7 +199,7 @@
     tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
 
   addEventListener('resize',fit);
-  fit(); clearAll(); for(let i=0;i<5;i++) splatAt(Math.random(),Math.random(),(Math.random()-0.5)*16,(Math.random()-0.5)*16); loop();
+  fit(); clearAll(); for(let i=0;i<4;i++){ const a=i/4*6.28; splatAt(0.5+0.08*Math.cos(a),0.5+0.1*Math.sin(a),Math.cos(a)*8,Math.sin(a)*8); } loop();
 })();
 </script>
 </body>
