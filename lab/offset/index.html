@@ -27,19 +27,16 @@
   .knob{ display:flex; flex-direction:column; gap:2px; }
   .crow{ display:flex; align-items:center; justify-content:space-between; }
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .seg{ display:flex; }
-  .seg button{ flex:1; appearance:none; background:var(--cell); border:1px solid var(--line);
-    color:var(--ink); padding:8px 6px; cursor:pointer; font:inherit; font-size:11px; border-right:0; }
-  .seg button:last-child{ border-right:1px solid var(--line); }
   .filebtn{ display:block; text-align:center; }
   .sw{ width:44px; height:24px; border:1px solid var(--line); padding:0; cursor:pointer; background:none; }
+  select.full{ width:100%; }
 </style>
 <link rel="stylesheet" href="/lab/shared/tool.css" />
 </head>
 <body class="dark">
 
 <div id="wrap"><canvas id="art"></canvas></div>
-<div id="hint">An image, reprinted in drifting riso bands</div>
+<div id="hint">A photo, run through a grid of print screens</div>
 <div id="recDot"><i></i><b>0:00</b></div>
 <div id="sizeDock">
   <select id="aspect" title="Canvas size">
@@ -54,7 +51,7 @@
 <div id="dock">
   <div class="group">
     <div class="group__t">Source</div>
-    <p class="rowhint" style="margin:0;font-size:12px;color:var(--mute)">Drop a photo, or load one — it becomes a printed field of bands. Nothing leaves this page.</p>
+    <p class="rowhint" style="margin:0;font-size:12px;color:var(--mute)">Drop a photo, or load one. Nothing leaves this page.</p>
     <div class="grid2">
       <button class="btn filebtn" id="loadBtn">Add image</button>
       <button class="btn" id="sampleBtn">Sample</button>
@@ -63,30 +60,46 @@
   </div>
 
   <div class="group">
-    <div class="group__t">Bands</div>
-    <div class="knob"><label>Columns <b id="colR">40</b></label><input id="col" type="range" min="6" max="160" value="40"></div>
-    <div class="knob"><label>Merge <b id="mrgR">30</b></label><input id="mrg" type="range" min="0" max="90" value="30"></div>
-    <div class="knob"><label>Min height <b id="mhR">10</b></label><input id="mh" type="range" min="2" max="60" value="10"></div>
-    <div class="knob"><label>Bleed <b id="ctrR">0</b></label><input id="ctr" type="range" min="0" max="60" value="0"></div>
+    <div class="group__t">Grid</div>
+    <div class="knob"><label>Columns <b id="colR">6</b></label><input id="col" type="range" min="1" max="24" value="6"></div>
+    <div class="knob"><label>Rows <b id="rowR">7</b></label><input id="row" type="range" min="1" max="24" value="7"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Screen</div>
+    <select class="full" id="mode">
+      <option value="cycle" selected>Random cycle</option>
+      <option value="halftone">Halftone</option>
+      <option value="dither">Dither</option>
+      <option value="pixel">Pixel</option>
+      <option value="photo">Photo</option>
+    </select>
+    <div class="knob"><label>Fine <b id="mnR">6</b></label><input id="mn" type="range" min="2" max="30" value="6"></div>
+    <div class="knob"><label>Coarse <b id="mxR">34</b></label><input id="mx" type="range" min="8" max="90" value="34"></div>
+    <select class="full" id="dir">
+      <option value="radial" selected>Scale · radial</option>
+      <option value="linear">Scale · linear</option>
+      <option value="random">Scale · random</option>
+      <option value="flat">Scale · flat</option>
+    </select>
+    <div class="knob"><label>Mix bias <b id="bxR">0.9</b></label><input id="bx" type="range" min="0" max="100" value="90"></div>
   </div>
 
   <div class="group">
     <div class="group__t">Ink</div>
-    <div class="seg" role="group" aria-label="Colour mode">
-      <button data-mode="Full" aria-pressed="true">Full</button>
-      <button data-mode="Monochrome" aria-pressed="false">Mono</button>
-      <button data-mode="Riso Duotone" aria-pressed="false">Duotone</button>
-    </div>
-    <div class="crow" id="duoA"><label>Ink A</label><input type="color" class="sw" id="colA" value="#164a9c"></div>
-    <div class="crow" id="duoB"><label>Ink B</label><input type="color" class="sw" id="colB" value="#e0483c"></div>
-    <div class="knob"><label>Overlap <b id="ovlR">0</b></label><input id="ovl" type="range" min="0" max="100" value="0"></div>
+    <div class="crow"><label>Ink</label><input type="color" class="sw" id="ink" value="#003300"></div>
+    <div class="crow"><label>Paper</label><input type="color" class="sw" id="paper" value="#ccffcc"></div>
+    <div class="knob"><label>Contrast <b id="ctR">0.9</b></label><input id="ct" type="range" min="0" max="200" value="90"></div>
+    <div class="knob"><label>Gamma <b id="gmR">1.4</b></label><input id="gm" type="range" min="40" max="260" value="140"></div>
   </div>
 
   <div class="group">
-    <div class="group__t">Grain</div>
-    <div class="knob"><label>Riso grain <b id="grnR">40</b></label><input id="grn" type="range" min="0" max="100" value="40"></div>
-    <div class="knob"><label>Density <b id="denR">50</b></label><input id="den" type="range" min="0" max="100" value="50"></div>
-    <div class="knob"><label>Misregister <b id="misR">4</b></label><input id="mis" type="range" min="0" max="24" value="4"></div>
+    <div class="group__t">Animate</div>
+    <div class="grid2">
+      <button class="btn" id="play" aria-pressed="false">Play</button>
+      <button class="btn" id="reroll">Re-roll</button>
+    </div>
+    <div class="knob"><label>Speed <b id="spR">1.0</b></label><input id="sp" type="range" min="1" max="40" value="10"></div>
   </div>
 
   <div class="group out">
@@ -99,154 +112,134 @@
 </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name:'Offset', desc:'A photo, reprinted in riso bands',
-  about:'An image, sliced into vertical columns, merged into colour-similar bands and reprinted as dark→light gradients with riso grain, misregistration, ink overlap and duotone palettes — on warm paper. Drop a photo and press. Original: a Brik experimental-print, rebuilt on the OP/AL shell.',
+<script>Opal.mountTopbar({ name:'Offset', desc:'A photo, run through a grid of print screens',
+  about:'An image diced into a grid, each cell reprinted as a different screen — halftone dots, ordered dither, pixel blocks or straight photo — the dot scale drifting radially from centre to edge, in a two-ink duotone on paper. Random-cycle animates the screens. A rebuild of Brik’s Experimental Print on the OP/AL shell.',
   version:'v1' });</script>
 <script>
 (()=>{
   const $=id=>document.getElementById(id);
-  const art=$('art'), ctx=art.getContext('2d', { willReadFrequently:true });
-  const P={ cols:40, merge:30, minH:10, bleed:0, mode:'Full', overlap:0, grain:0.40, density:50, misreg:4,
-    inkA:'#164a9c', inkB:'#e0483c', size:'source' };
-  let src=null;                 // {data, w, h} source pixels
-  let W=1080, H=1350;           // working / render size
+  const art=$('art'), ctx=art.getContext('2d',{ willReadFrequently:true });
+  const P={ cols:6, rows:7, mode:'cycle', fine:6, coarse:34, dir:'radial', bias:0.9,
+    ink:'#003300', paper:'#ccffcc', contrast:0.9, gamma:1.4, playing:false, speed:1.0, size:'source', seed:1 };
+  let src=null, W=1080, H=1350;
 
-  function hexToRgb(hex){ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:{r:0,g:0,b:0}; }
-  function rnd(seed){ const x=Math.sin(seed)*10000; return x-Math.floor(x); }
-  function lerp(a,b,t){ return a+(b-a)*t; }
+  const hex=h=>{ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h); return m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[0,0,0]; };
+  function rnd(s){ const x=Math.sin(s*127.1+311.7)*43758.5453; return x-Math.floor(x); }
+  const BAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]].map(r=>r.map(v=>(v+0.5)/16));
 
-  // sample the source image at normalised (x/W, y/H) + optional offset
-  function px(x,y,ox=0,oy=0){
-    if(!src) return [0,0,0];
-    const nx=Math.max(0,Math.min(1,(x+ox)/W)), ny=Math.max(0,Math.min(1,(y+oy)/H));
-    const sx=Math.floor(nx*(src.w-1)), sy=Math.floor(ny*(src.h-1));
-    const i=(sy*src.w+sx)*4; return [src.data[i],src.data[i+1],src.data[i+2]];
+  // graded luminance 0..1 (dark->0) at canvas px
+  function lum(x,y){
+    if(!src) return 1;
+    const sx=Math.min(src.w-1, Math.max(0, (x/W*src.w)|0)), sy=Math.min(src.h-1, Math.max(0,(y/H*src.h)|0));
+    const i=(sy*src.w+sx)*4; let L=(src.data[i]*0.299+src.data[i+1]*0.587+src.data[i+2]*0.114)/255;
+    L=(L-0.5)*(0.4+P.contrast*1.6)+0.5;
+    L=Math.max(0,Math.min(1,L)); L=Math.pow(L, 1/Math.max(0.1,P.gamma));
+    return Math.max(0,Math.min(1,L));
+  }
+  function avgLum(x0,y0,w,h){ let s=0,n=0; const st=Math.max(1,(Math.min(w,h)/4)|0);
+    for(let y=y0;y<y0+h;y+=st)for(let x=x0;x<x0+w;x+=st){ s+=lum(x,y); n++; } return n?s/n:1; }
+
+  function cellEffect(c,r,phase){
+    if(P.mode!=='cycle') return P.mode;
+    const effs=['halftone','dither','pixel','photo'];
+    const k=rnd(c*31.7+r*57.3+phase*1.13);
+    const b=P.bias;
+    const w=[0.30+b*0.20, Math.max(0.03,0.24-b*0.10), Math.max(0.03,0.24-b*0.10), 0.22];
+    const sum=w.reduce((a,v)=>a+v,0); let acc=0;
+    for(let i=0;i<4;i++){ acc+=w[i]/sum; if(k<acc) return effs[i]; }
+    return 'halftone';
+  }
+  function cellScale(c,r){
+    let d; const nx=(c+0.5)/P.cols-0.5, ny=(r+0.5)/P.rows-0.5;
+    if(P.dir==='radial') d=Math.min(1, Math.hypot(nx,ny)/0.55);
+    else if(P.dir==='linear') d=(c+0.5)/P.cols;
+    else if(P.dir==='random') d=rnd(c*12.3+r*7.7+P.seed);
+    else d=0.5;
+    return P.fine + (P.coarse-P.fine)*d;
   }
 
-  function draw(){
-    if(!src){ ctx.fillStyle='#8a8a90'; ctx.font='13px system-ui'; ctx.textAlign='center';
-      ctx.fillText('Loading…', W/2, H/2); return; }
-    const cols=Math.floor(P.cols), merge=P.merge, minH=P.minH, misreg=P.misreg,
-      overlap=P.overlap/100, mode=P.mode, contrast=P.bleed/100;
-    const pal=[hexToRgb(P.inkA), hexToRgb(P.inkB)];
-    const colW=W/cols, step=4;
-
-    // warm paper + speckle
-    ctx.fillStyle='#fdfaf0'; ctx.fillRect(0,0,W,H);
-    for(let i=0;i<5000;i++){ const gx=rnd(123+i)*W, gy=rnd(123+i*2)*H;
-      ctx.fillStyle=`rgba(0,0,0,${0.02+rnd(123+i*3)*0.02})`; ctx.fillRect(gx,gy,1,1); }
-
-    for(let i=0;i<cols;i++){
-      const x=i*colW; let y0=0, cy=0, last=px(x+colW/2,0), seg=0;
-      while(cy<H){
-        cy+=step; const cur=px(x+colW/2,cy);
-        const d=Math.sqrt((cur[0]-last[0])**2+(cur[1]-last[1])**2+(cur[2]-last[2])**2);
-        const bottom=cy+step>=H, h=cy-y0;
-        if(d>merge || bottom){
-          if(h<minH && !bottom) continue;
-          const y=y0, seed=i*1000+seg;
-          const o1={x:rnd(seed)*misreg-misreg/2,y:rnd(seed+1)*misreg-misreg/2};
-          const o2={x:rnd(seed+2)*misreg-misreg/2,y:rnd(seed+3)*misreg-misreg/2};
-          let [r1,g1,b1]=px(x+colW*0.25,y+h/2,o1.x,o1.y);
-          let [r2,g2,b2]=px(x+colW*0.75,y+h/2,o2.x,o2.y);
-          if(mode==='Monochrome'){ const a1=(r1+g1+b1)/3,a2=(r2+g2+b2)/3; r1=g1=b1=a1; r2=g2=b2=a2; }
-          else if(mode==='Riso Duotone'){ const l1=(r1+g1+b1)/765,l2=(r2+g2+b2)/765;
-            r1=lerp(pal[0].r,pal[1].r,l1);g1=lerp(pal[0].g,pal[1].g,l1);b1=lerp(pal[0].b,pal[1].b,l1);
-            r2=lerp(pal[0].r,pal[1].r,l2);g2=lerp(pal[0].g,pal[1].g,l2);b2=lerp(pal[0].b,pal[1].b,l2); }
-          const bv1=(r1+g1+b1)/3, bv2=(r2+g2+b2)/3;
-          let L,R; if(bv1<bv2){ L={r:r1,g:g1,b:b1}; R={r:r2,g:g2,b:b2}; } else { L={r:r2,g:g2,b:b2}; R={r:r1,g:g1,b:b1}; }
-          ctx.save();
-          if(overlap>0){ ctx.globalCompositeOperation='multiply'; ctx.globalAlpha=0.8+(1-overlap)*0.2; }
-          const grad=ctx.createLinearGradient(x,y,x+colW,y);
-          const fL={r:Math.max(0,L.r*(1-contrast))|0,g:Math.max(0,L.g*(1-contrast))|0,b:Math.max(0,L.b*(1-contrast))|0};
-          const fR={r:Math.min(255,lerp(R.r,255,contrast))|0,g:Math.min(255,lerp(R.g,255,contrast))|0,b:Math.min(255,lerp(R.b,255,contrast))|0};
-          grad.addColorStop(0,`rgb(${fL.r},${fL.g},${fL.b})`); grad.addColorStop(1,`rgb(${fR.r},${fR.g},${fR.b})`);
-          ctx.fillStyle=grad; ctx.fillRect(x,y,colW+0.5,h+0.5); ctx.restore();
-          y0=cy; last=cur; seg++;
-        }
+  function draw(phase){
+    if(!src){ ctx.fillStyle='#8a8a90'; ctx.font='13px system-ui'; ctx.textAlign='center'; ctx.fillText('Loading…',W/2,H/2); return; }
+    const [ir,ig,ib]=hex(P.ink), [pr,pg,pb]=hex(P.paper);
+    ctx.fillStyle=`rgb(${pr},${pg},${pb})`; ctx.fillRect(0,0,W,H);
+    const cw=W/P.cols, ch=H/P.rows;
+    for(let r=0;r<P.rows;r++)for(let c=0;c<P.cols;c++){
+      const x0=Math.round(c*cw), y0=Math.round(r*ch), w=Math.round((c+1)*cw)-x0, h=Math.round((r+1)*ch)-y0;
+      const eff=cellEffect(c,r,phase), s=Math.max(2,cellScale(c,r));
+      ctx.save(); ctx.beginPath(); ctx.rect(x0,y0,w,h); ctx.clip();
+      if(eff==='photo'){
+        for(let y=y0;y<y0+h;y+=2)for(let x=x0;x<x0+w;x+=2){ const L=lum(x,y);
+          ctx.fillStyle=`rgb(${(ir+(pr-ir)*L)|0},${(ig+(pg-ig)*L)|0},${(ib+(pb-ib)*L)|0})`; ctx.fillRect(x,y,2,2); }
+      } else if(eff==='pixel'){
+        for(let y=y0;y<y0+h;y+=s)for(let x=x0;x<x0+w;x+=s){ const L=avgLum(x,y,s,s);
+          ctx.fillStyle=`rgb(${(ir+(pr-ir)*L)|0},${(ig+(pg-ig)*L)|0},${(ib+(pb-ib)*L)|0})`; ctx.fillRect(x,y,Math.ceil(s),Math.ceil(s)); }
+      } else if(eff==='dither'){
+        const step=Math.max(1,(s/3)|0);
+        for(let y=y0;y<y0+h;y+=step)for(let x=x0;x<x0+w;x+=step){ const L=avgLum(x,y,step,step);
+          const on=L<BAYER[((y/step)|0)%4][((x/step)|0)%4];
+          ctx.fillStyle= on?`rgb(${ir},${ig},${ib})`:`rgb(${pr},${pg},${pb})`; ctx.fillRect(x,y,step,step); }
+      } else {
+        ctx.fillStyle=`rgb(${ir},${ig},${ib})`;
+        for(let y=y0+s/2;y<y0+h+s;y+=s)for(let x=x0+s/2;x<x0+w+s;x+=s){ const L=avgLum(x-s/2,y-s/2,s,s);
+          const rad=(s*0.62)*Math.sqrt(Math.max(0,1-L)); if(rad>0.3){ ctx.beginPath(); ctx.arc(x,y,rad,0,6.2832); ctx.fill(); } }
       }
+      ctx.restore();
     }
-
-    // riso grain pass
-    if(P.grain>0){ const id=ctx.getImageData(0,0,W,H), dat=id.data, inten=P.grain*120, dens=P.density/100;
-      for(let i=0;i<dat.length;i+=4){ if(rnd(i)<dens){ const n=(rnd(i+1)-0.5)*inten;
-        dat[i]=Math.max(0,Math.min(255,dat[i]+n)); dat[i+1]=Math.max(0,Math.min(255,dat[i+1]+n)); dat[i+2]=Math.max(0,Math.min(255,dat[i+2]+n));
-        const dk=rnd(i+2)*(inten*0.2); dat[i]=Math.max(0,dat[i]-dk); dat[i+1]=Math.max(0,dat[i+1]-dk); dat[i+2]=Math.max(0,dat[i+2]-dk); } }
-      ctx.putImageData(id,0,0); }
   }
 
   function fit(){
     let ar = P.size==='source' && src ? src.w/src.h : (()=>{ const [a,b]=P.size.split('/').map(Number); return a/b; })();
     const long=1400; if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
     art.width=W; art.height=H;
-    // CSS fit into #wrap
-    const wrap=$('wrap').getBoundingClientRect();
-    const s=Math.min(wrap.width/W, wrap.height/H);
-    art.style.width=(W*s)+'px'; art.style.height=(H*s)+'px';
-    draw();
+    const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H);
+    art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px'; draw(0);
   }
+  function loadImage(im){ const c=document.createElement('canvas'); c.width=im.width; c.height=im.height;
+    const cc=c.getContext('2d',{willReadFrequently:true}); cc.drawImage(im,0,0);
+    src={ data:cc.getImageData(0,0,im.width,im.height).data, w:im.width, h:im.height }; fit(); }
+  function loadURL(u){ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>loadImage(im); im.src=u; }
+  function sample(){ const c=document.createElement('canvas'); c.width=900; c.height=1120; const g=c.getContext('2d');
+    const gr=g.createLinearGradient(0,0,700,1120); gr.addColorStop(0,'#e9e4d6'); gr.addColorStop(1,'#3a3a44'); g.fillStyle=gr; g.fillRect(0,0,900,1120);
+    for(const a of [[300,340,240,'#fff'],[620,700,300,'#111'],[500,300,150,'#d8d8d8'],[250,860,190,'#eee'],[720,980,150,'#000']]){
+      const rg=g.createRadialGradient(a[0],a[1],0,a[0],a[1],a[2]); rg.addColorStop(0,a[3]); rg.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=rg; g.beginPath(); g.arc(a[0],a[1],a[2],0,7); g.fill(); }
+    loadImage(c); }
 
-  function loadImage(image){
-    const c=document.createElement('canvas'); c.width=image.width; c.height=image.height;
-    const cc=c.getContext('2d', { willReadFrequently:true }); cc.drawImage(image,0,0);
-    src={ data:cc.getImageData(0,0,image.width,image.height).data, w:image.width, h:image.height };
-    fit();
-  }
-  function loadURL(url){ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>loadImage(im); im.src=url; }
+  let raf=0, t0=0;
+  function loop(){ raf=requestAnimationFrame(loop); const phase=Math.floor((performance.now()-t0)/1000*P.speed); draw(phase); }
+  function setPlay(on){ P.playing=on; $('play').textContent=on?'Pause':'Play'; $('play').setAttribute('aria-pressed',on);
+    if(on){ t0=performance.now(); loop(); } else { cancelAnimationFrame(raf); draw(0); } }
 
-  // procedural sample so the effect shows immediately
-  function sample(){
-    const c=document.createElement('canvas'); c.width=900; c.height=1120; const g=c.getContext('2d');
-    const grd=g.createLinearGradient(0,0,900,1120);
-    grd.addColorStop(0,'#12306b'); grd.addColorStop(.45,'#c74d3a'); grd.addColorStop(.7,'#e8b23a'); grd.addColorStop(1,'#0f5138');
-    g.fillStyle=grd; g.fillRect(0,0,900,1120);
-    for(const [cx,cy,r,col] of [[300,360,260,'#f2e6c8'],[640,720,300,'#1b2b4d'],[520,300,140,'#e0483c'],[240,820,180,'#2f8f6a']]){
-      const rg=g.createRadialGradient(cx,cy,0,cx,cy,r); rg.addColorStop(0,col); rg.addColorStop(1,'rgba(0,0,0,0)');
-      g.fillStyle=rg; g.beginPath(); g.arc(cx,cy,r,0,7); g.fill(); }
-    loadImage(c);
-  }
-
-  // ---- wire controls ----
-  function bind(id,rid,fn,fmt){ const el=$(id), out=$(rid);
-    el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(out) out.textContent=fmt?fmt(el.value):el.value; draw(); }); }
-  bind('col','colR',v=>P.cols=v); bind('mrg','mrgR',v=>P.merge=v); bind('mh','mhR',v=>P.minH=v);
-  bind('ctr','ctrR',v=>P.bleed=v); bind('ovl','ovlR',v=>P.overlap=v);
-  bind('grn','grnR',v=>P.grain=v/100, v=>v); bind('den','denR',v=>P.density=v); bind('mis','misR',v=>P.misreg=v);
-  $('colA').addEventListener('input',e=>{P.inkA=e.target.value; draw();});
-  $('colB').addEventListener('input',e=>{P.inkB=e.target.value; draw();});
-  // colour mode segmented
-  const duoRows=[$('duoA'),$('duoB')];
-  function setMode(m,btn){ P.mode=m; [...document.querySelectorAll('.seg button')].forEach(b=>b.setAttribute('aria-pressed', b===btn?'true':'false'));
-    duoRows.forEach(r=>r.style.display = m==='Riso Duotone'?'flex':'none'); draw(); }
-  document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode,b)));
-  duoRows.forEach(r=>r.style.display='none');
-  $('aspect').addEventListener('change',e=>{ P.size=e.target.value; fit(); });
-  // image load
+  function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; if(!P.playing)draw(0); }); }
+  bind('col','colR',v=>{P.cols=v;}); bind('row','rowR',v=>{P.rows=v;});
+  bind('mn','mnR',v=>P.fine=v); bind('mx','mxR',v=>P.coarse=v);
+  bind('bx','bxR',v=>P.bias=v/100,v=>(v/100).toFixed(2));
+  bind('ct','ctR',v=>P.contrast=v/100,v=>(v/100).toFixed(2)); bind('gm','gmR',v=>P.gamma=v/100,v=>(v/100).toFixed(1));
+  bind('sp','spR',v=>P.speed=v/10,v=>(v/10).toFixed(1));
+  $('mode').addEventListener('change',e=>{P.mode=e.target.value; if(!P.playing)draw(0);});
+  $('dir').addEventListener('change',e=>{P.dir=e.target.value; if(!P.playing)draw(0);});
+  $('ink').addEventListener('input',e=>{P.ink=e.target.value; if(!P.playing)draw(0);});
+  $('paper').addEventListener('input',e=>{P.paper=e.target.value; if(!P.playing)draw(0);});
+  $('aspect').addEventListener('change',e=>{P.size=e.target.value; fit();});
   $('loadBtn').addEventListener('click',()=>$('file').click());
   $('sampleBtn').addEventListener('click',sample);
+  $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(rnd(P.seed+7)*9999); if(!P.playing)draw(0); });
+  $('play').addEventListener('click',()=>setPlay(!P.playing));
   $('file').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadURL(URL.createObjectURL(f)); });
-  // drag-drop
-  ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault();
-    if(ev==='drop'&&e.dataTransfer.files[0]) loadURL(URL.createObjectURL(e.dataTransfer.files[0])); }));
+  ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'&&e.dataTransfer.files[0]) loadURL(URL.createObjectURL(e.dataTransfer.files[0])); }));
 
-  // ---- save + record ----
-  $('saveBtn').addEventListener('click',()=>{ const a=document.createElement('a');
-    a.download='offset.png'; a.href=art.toDataURL('image/png'); a.click(); });
-  let rec=null, t0=0, tick=0;
-  $('recBtn').addEventListener('click',()=>{
-    if(rec){ rec.stop(); return; }
+  $('saveBtn').addEventListener('click',()=>{ const a=document.createElement('a'); a.download='offset.png'; a.href=art.toDataURL('image/png'); a.click(); });
+  let rec=null,rt=0,tk=0;
+  $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
+    if(!P.playing) setPlay(true);
     const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
-    const st=art.captureStream(30); rec=new MediaRecorder(st, mime?{mimeType:mime}:undefined); const chunks=[];
-    rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
-    rec.onstop=()=>{ clearInterval(tick); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
-      const blob=new Blob(chunks,{type:chunks[0]?.type||'video/webm'}); const a=document.createElement('a');
-      a.download='offset.'+((blob.type.indexOf('mp4')>=0)?'mp4':'webm'); a.href=URL.createObjectURL(blob); a.click(); rec=null; };
-    rec.start(); t0=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
-    tick=setInterval(()=>{ const s=Math.floor((Date.now()-t0)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250);
-  });
+    rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime}:undefined); const ch=[];
+    rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+    rec.onstop=()=>{ clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
+      const bl=new Blob(ch,{type:ch[0]?.type||'video/webm'}); const a=document.createElement('a'); a.download='offset.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); rec=null; };
+    rec.start(); rt=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
+    tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
 
-  window.addEventListener('resize',()=>{ if(src) fit(); });
+  addEventListener('resize',()=>{ if(src) fit(); });
   sample();
 })();
 </script>
