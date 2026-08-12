@@ -47,10 +47,10 @@
   --track:rgba(0,0,0,.28);       /* slider tracks                              */
   --paper:#f4f4f4;               /* body ground (Carbon gray-10)               */
   --cell:rgba(0,0,0,.05);        /* button / input ground                      */
-  /* surfaces (named so they never collide with a tool's layout --rail/--top) */
-  --mat:#e0e0e0;                 /* canvas mat behind the artboard (gray-20)   */
-  --rail-bg:#e8e8e8;             /* the left rail                              */
-  --island:#ffffff;              /* a control card · also the artboard         */
+  /* ONE surface — every ground is the same Gray 10; borders alone delineate  */
+  --mat:var(--paper);            /* canvas mat behind the artboard             */
+  --rail-bg:var(--paper);        /* the left rail                              */
+  --island:var(--paper);         /* a control card · also the artboard         */
   --rec:#da1e28;                 /* record indicator (Carbon red-60, AA)       */
   /* the one interactive accent — IBM Blue */
   --accent:#0f62fe;              /* Blue 60 — primary, selected, focus         */
@@ -58,15 +58,15 @@
   --accent-active:#002d9c;       /* Blue 80                                    */
   --on-accent:#ffffff;
   /* radii — Carbon is square. One token, zero. */
-  --r-island:0; --r-control:0; --r-input:0; --r-seg:0;
+  --r-island:12px; --r-control:8px; --r-input:6px; --r-seg:8px;
+  --shadow:0 1px 2px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.07);        /* islands */
+  --shadow-float:0 2px 6px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.12); /* floating panels */
 }
 
 /* 2 — BASE + CANVAS ========================================================= */
 html, body{ background:var(--paper); color:var(--ink); font-family:var(--font); }
 
-/* no drop-shadows anywhere in the UI — the art lives on the canvas, the chrome
-   stays flat (borders define the cards) */
-*{ box-shadow:none !important; }
+/* islands carry a subtle drop-shadow to lift them off the single flat surface */
 
 /* the artboard: a WHITE board with a thin border on a grey mat, NEVER a drop
    shadow. Fixed border colour so a tool's own tokens can't wash it out. */
@@ -79,11 +79,21 @@ html, body{ background:var(--paper); color:var(--ink); font-family:var(--font); 
 /* white bar with a hairline under it; wordmark is currentColor. Covered both
    with and without the legacy body.dark hook so tools that don't carry the
    class (angel, image-train, tape) still get the shell topbar. */
-.opal-topbar, body.dark .opal-topbar{ background:#fff; border:none;
-  border-bottom:1px solid var(--line); color:var(--ink); }
-.opal-subhead__name, body.dark .opal-subhead__name{ color:var(--ink); }
-.opal-subhead__desc, .opal-subhead__ver,
-body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:var(--mute); }
+.opal-topbar, body.dark .opal-topbar{ background:var(--paper); border:none; color:var(--ink); }
+/* sub-header band BELOW the topbar — the tool's identity (name · desc · info · version) */
+.opal-subhead{ position:fixed; top:82px; left:0; right:0; z-index:9; height:38px; box-sizing:border-box;
+  display:flex; align-items:center; gap:12px; padding:0 160px;
+  background:var(--paper); border-bottom:1px solid var(--line); }
+.opal-subhead__id{ display:flex; align-items:center; gap:11px; min-width:0; }
+.opal-subhead__name, body.dark .opal-subhead__name{ color:var(--ink); font-size:13px; font-weight:600; white-space:nowrap; }
+.opal-subhead__desc, body.dark .opal-subhead__desc{ color:var(--mute); font-size:12px; text-transform:none;
+  letter-spacing:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.opal-subhead__ver, body.dark .opal-subhead__ver{ color:var(--mute); font-size:11px; margin-left:auto; }
+@media (max-width:900px){ .opal-subhead{ padding:0 64px; } }
+@media (max-width:560px){ .opal-subhead{ padding:0 20px; top:74px; } }
+/* every tool's content clears the topbar (82) + subhead (38) */
+:root{ --top:120px; }
+@media (max-width:560px){ :root{ --top:112px; } }
 
 /* 4 — LEFT RAIL ============================================================= */
 /* a distinct grey panel, set apart from the white topbar + canvas · 16px grid */
@@ -95,16 +105,14 @@ body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:var(--mute); 
 #panel{ background:#fff; border-left-color:var(--hair); }
 
 /* 5 — ISLANDS =============================================================== */
-/* the rail holds square white cards that FLOAT — square corners (IBM), but a
-   soft drop-shadow lifts them off the grey rail so they read as islands. One
-   inset, one 16px gap, for every island, in every tool. A section is a direct-
-   child `.group` (standard) OR `.row` (image-train). */
+/* the rail holds rounded cards that FLOAT — a subtle drop-shadow lifts them off
+   the single flat surface so they read as islands. One inset, one 16px gap, for
+   every island, in every tool. A section is a direct-child `.group` (standard)
+   OR `.row` (image-train). */
 #dock > .group, #dock > .row{ background:var(--island);
   border:1px solid var(--line); border-radius:var(--r-island); padding:16px !important;
-  box-shadow:none; }
+  box-shadow:var(--shadow); }
 #dock > .row{ border-bottom:0 !important; }
-#dock > .group + .group{ margin-top:0 !important; padding-top:16px !important;
-  border-top:0 !important; }
 /* the OUTPUT island (Record + Export) — pinned to the BOTTOM-RIGHT of the screen,
    the exact same fixed spot on every tool. Mark that group `.group out` (or a
    body-level `#output.out`). Island styling comes from the rule above. */
@@ -113,7 +121,7 @@ body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:var(--mute); 
   position:fixed !important; right:20px; bottom:20px; left:auto; top:auto;
   width:auto; min-width:208px; max-width:300px; margin:0 !important; z-index:20;
   background:var(--island); border:1px solid var(--line); border-radius:var(--r-island);
-  padding:14px !important; box-shadow:none; }
+  padding:14px !important; box-shadow:var(--shadow-float); }
 
 /* 6 — GROUP HEADING + LABELS ================================================ */
 /* sentence case, never uppercase, never bold */
@@ -163,9 +171,9 @@ input[type=range]:focus-visible::-webkit-slider-thumb{ outline:none; }
 .btn.on{ outline:none; }
 .chip{ font-size:11px; padding:7px 10px; }
 .sep{ background:var(--line); }
-/* over-canvas icon buttons (theme / pause / fullscreen / •••) — square like the
+/* over-canvas icon buttons (theme / pause / fullscreen / •••) — rounded like the
    rest of the system, active goes IBM Blue (matches bespoke tools on ibm.css) */
-.icon{ border-radius:0 !important; }
+.icon{ border-radius:var(--r-control) !important; }
 .icon[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
 /* one focus ring, IBM Blue, for every interactive control */
 .btn:focus-visible, select:focus-visible, textarea:focus-visible,
@@ -202,22 +210,22 @@ input[type=color]::-moz-color-swatch{ border:none; border-radius:0; }
 .tog{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .tog > span, .tog > label{ font-size:12px; color:var(--ink); }
 
-.tip{ background:#161616; color:#fff; border-color:#161616; border-radius:0;
-  box-shadow:none; }  /* Carbon tooltips are solid dark, square */
+.tip{ background:#161616; color:#fff; border-color:#161616; border-radius:var(--r-input);
+  box-shadow:none; }  /* solid dark tooltip */
 
-/* the caption pill centred over the canvas — light, high-contrast, square */
-#hint{ background:rgba(250,250,250,.96); color:var(--ink); border:1px solid var(--line);
-  border-radius:0; -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+/* the over-canvas caption toast is removed everywhere */
+#hint{ display:none !important; }
 /* Size control is a floating island centred BELOW the canvas (not top-right) — uniform across every tool */
 #sizeDock{
   position:fixed !important; top:auto !important; bottom:18px !important; right:auto !important;
   left:calc(50% + var(--rail, 0px) / 2) !important; transform:translateX(-50%) !important;
   display:flex !important; align-items:center; gap:10px; z-index:9 !important;
-  background:var(--island,#fff); border:1px solid var(--line); border-radius:0; padding:6px 9px 6px 13px;
+  background:var(--island,#f4f4f4); border:1px solid var(--line); border-radius:var(--r-island); padding:6px 9px 6px 13px;
+  box-shadow:var(--shadow-float);
 }
 #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
 #sizeDock select{ background:rgba(249,249,249,.96); color:var(--ink); border-color:var(--line); }
 #sizeDock select{ padding:6px 9px !important; }
 @media (max-width:560px){ #sizeDock{ left:50% !important; } }
-#recDot{ background:rgba(249,249,249,.96); border-color:var(--line); color:var(--rec); border-radius:0; }
+#recDot{ background:rgba(249,249,249,.96); border-color:var(--line); color:var(--rec); border-radius:var(--r-control); }
 #recDot i{ background:var(--rec); }

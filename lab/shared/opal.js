@@ -38,26 +38,33 @@ const Opal = (() => {
     bar.className = 'opal-topbar';
     bar.innerHTML = `
       <a href="/lab/" class="opal-brand" aria-label="Tools home" style="color:inherit;text-decoration:none;">${WORDMARK}</a>
-      <div class="opal-topid">
-        ${name ? `<span class="opal-subhead__name">${name}</span>` : ''}
-        ${desc ? `<span class="opal-subhead__desc">${desc}</span>` : ''}
-        ${version ? `<span class="opal-subhead__ver">${version}</span>` : ''}
-      </div>
     `;
+
+    // Sub-header band BELOW the topbar: tool name · description · info · version — same on every tool.
+    let sub = null;
+    if (name || desc || version) {
+      sub = document.createElement('div');
+      sub.className = 'opal-subhead';
+      sub.innerHTML = `
+        <div class="opal-subhead__id">
+          ${name ? `<span class="opal-subhead__name">${name}</span>` : ''}
+          ${desc ? `<span class="opal-subhead__desc">${desc}</span>` : ''}
+        </div>
+        ${version ? `<span class="opal-subhead__ver">${version}</span>` : ''}
+      `;
+    }
     // Info tooltip beside the tool name — hover to show, click to pin.
-    const idRow = bar.querySelector('.opal-topid');
-    if (idRow && (about || desc)) {
+    if (sub && (about || desc)) {
+      const idRow = sub.querySelector('.opal-subhead__id');
       const btn = document.createElement('button');
       btn.className = 'opal-info'; btn.type = 'button'; btn.textContent = 'i';
       btn.setAttribute('aria-label', 'About this tool'); btn.setAttribute('aria-expanded', 'false');
       const pop = document.createElement('div');
       pop.className = 'opal-about'; pop.hidden = true; pop.textContent = about || desc;
-      const ver = idRow.querySelector('.opal-subhead__ver');
-      ver ? idRow.insertBefore(btn, ver) : idRow.appendChild(btn);
-      document.body.appendChild(pop);
+      idRow.appendChild(btn); document.body.appendChild(pop);
       let pinned = false;
       const place = () => { const r = btn.getBoundingClientRect();
-        pop.style.right = Math.max(12, window.innerWidth - r.right) + 'px'; pop.style.left = 'auto'; pop.style.top = (r.bottom + 8) + 'px'; };
+        pop.style.left = Math.max(12, r.left) + 'px'; pop.style.right = 'auto'; pop.style.top = (r.bottom + 8) + 'px'; };
       const show = () => { place(); pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); };
       const hide = () => { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
       btn.addEventListener('pointerenter', show);
@@ -67,7 +74,8 @@ const Opal = (() => {
       window.addEventListener('keydown', e => { if (e.key === 'Escape') { pinned = false; hide(); } });
       window.addEventListener('scroll', () => { pinned = false; hide(); }, true);
     }
-    document.body.prepend(bar);
+    if (sub) document.body.prepend(sub);
+    document.body.prepend(bar);   // prepend last so the topbar sits above the subhead
   }
 
   // Image utilities for tools that render to canvas.
