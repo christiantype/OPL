@@ -157,11 +157,11 @@
 
   <div class="mast">
     <h1>The Lab kit</h1>
-    <p>One shell for every tool in the Lab — the tokens, controls and patterns that make seventeen different instruments read as a single product. Skinned in the vein of IBM: IBM Plex, square corners, one blue accent. Everything on this page is drawn by the same stylesheet the tools use, so what you see is exactly what ships.</p>
+    <p>One shell for every tool in the Lab — the tokens, controls and patterns that make every instrument read as a single product. Skinned in the vein of IBM: IBM Plex, square corners, one blue accent. Everything on this page is drawn by the same stylesheet the tools use, so what you see is exactly what ships.</p>
     <div class="meta">
       <span class="pill">Version <b>1.1</b></span>
       <span class="pill">Skin · <b>IBM Plex + Carbon</b></span>
-      <span class="pill"><b>17</b> tools on the shell</span>
+      <span class="pill"><b id="toolCount">17</b> tools on the shell</span>
       <span class="pill">Source · <b>shared/tool.css</b></span>
     </div>
   </div>
@@ -437,7 +437,7 @@
   <section id="audit">
     <p class="eyebrow">2026-08</p>
     <h2>Audit</h2>
-    <p class="lede">A pass across all seventeen tools on the shell. The finding was consistent: the theme was right, but each tool carried its own copy of the control geometry — so headings, sliders and swatches had quietly drifted. The fix was to make <code class="k">tool.css</code> the complete component layer, correct the tools that had leaked their old dark theme, then re-skin the whole system in the vein of IBM.</p>
+    <p class="lede">A pass across every tool on the shell. The finding was consistent: the theme was right, but each tool carried its own copy of the control geometry — so headings, sliders and swatches had quietly drifted. The fix was to make <code class="k">tool.css</code> the complete component layer, correct the tools that had leaked their old dark theme, then re-skin the whole system in the vein of IBM.</p>
 
     <div class="tbl-wrap">
       <table>
@@ -467,7 +467,7 @@
     <h3>What this pass changed</h3>
     <ul class="ledger">
       <li><span class="tag">IBM skin</span><span><b>Re-skinned the whole shell in the vein of IBM.</b> IBM Plex Sans + Plex Mono (self-hosted), square corners everywhere, one IBM-Blue accent for primary / selected / focus, neutral greys, an 8/16/24 grid, and a Carbon-style dark tooltip.</span></li>
-      <li><span class="tag">Added</span><span><b>tool.css is now the complete component layer.</b> Slider geometry, group headings, colour rows, preset swatches and toggles were promoted out of the seventeen tools into one place, so they can no longer drift.</span></li>
+      <li><span class="tag">Added</span><span><b>tool.css is now the complete component layer.</b> Slider geometry, group headings, colour rows, preset swatches and toggles were promoted out of the individual tools into one place, so they can no longer drift.</span></li>
       <li><span class="tag">Fixed</span><span><b>Headings unified.</b> Every <code class="k">.group__t</code> had its own tracking (.11 / .12 / .16em) and colour — now one heading spec, shell-wide.</span></li>
       <li><span class="tag">Fixed</span><span><b>Spectral-Smear was rendering in its old dark theme</b> — it self-applied <code class="k">body.dark</code> tokens above the shell. Relit to match.</span></li>
       <li><span class="tag">Fixed</span><span><b>Dark leftovers cleared</b> — Static's status pill &amp; icon buttons, Garden-Variety's blue crop frame, and the dark tooltips in Windchime / Visual Poetry.</span></li>
@@ -480,6 +480,13 @@
 </div>
 </div>
 
+<script>
+  // Live count of tools on the shell — read straight from the Lab index so it can never go stale
+  fetch('/lab/').then(r=>r.text()).then(html=>{
+    const n=new DOMParser().parseFromString(html,'text/html').querySelectorAll('a.tool-tile').length;
+    const el=document.getElementById('toolCount'); if(el && n) el.textContent=n;
+  }).catch(()=>{});
+</script>
 <script src="/lab/shared/opal.js"></script>
 <script>Opal.mountTopbar({ name:'LAB DESIGN SYSTEM', desc:'One shell for every tool',
   about:'The tokens, controls and patterns shared by every tool in the OP/AL Lab — skinned in the vein of IBM (Plex, square corners, one blue accent) and rendered live by the same stylesheet the tools use. Source: shared/tool.css + shared/SHELL.md.',
