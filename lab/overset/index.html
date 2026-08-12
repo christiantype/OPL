@@ -35,17 +35,22 @@
 <div id="wrap"><canvas id="art"></canvas></div>
 <div id="hint">A word, set in living type</div>
 <div id="recDot"><i></i><b>0:00</b></div>
-<div id="sizeDock"><select id="aspect" title="Canvas size">
-  <option value="1080/1350">Portrait · 4:5</option>
+<div id="sizeDock"><span id="dimReadout">1080 × 1350</span><select id="aspect" title="Canvas size">
+  <option value="1080/1350" selected>Portrait · 4:5</option>
+  <option value="1080/1080">Square · 1:1</option>
   <option value="1080/1920">Story · 9:16</option>
-  <option value="1080/1080" selected>Square · 1:1</option>
   <option value="1920/1080">Landscape · 16:9</option>
 </select></div>
 
 <div id="dock">
   <div class="group">
     <div class="group__t">Type</div>
-    <textarea id="text">Why do we continue creating when no one asked us to</textarea>
+    <textarea id="text">Why do
+we continue
+creating
+when no
+one asked
+us to</textarea>
     <select class="full" id="font">
       <option value="system-ui" selected>System</option>
       <option value="'Arial Black', Impact, sans-serif">Heavy</option>
@@ -110,11 +115,11 @@
   const art=$('art'), ctx=art.getContext('2d');
   const tc=document.createElement('canvas'), tg=tc.getContext('2d');       // text layer
   let tex=null;                                                            // paper texture
-  const P={ text:'Why do we continue creating when no one asked us to', font:'system-ui', fs:200, ls:-8, lh:0.53, align:'center',
+  const P={ text:'Why do\nwe continue\ncreating\nwhen no\none asked\nus to', font:'system-ui', fs:200, ls:-8, lh:0.53, align:'center',
     fill:'#fe4608', oline:'#7177ff', fx:'outline', speed:0.65, inten:0.9, spread:4, ow:10, warp:100,
     top:'No One Asked', ts:20, bot:'We Made It Anyway', bs:20, dist:100, sc:'#ffffff',
-    bg:'solid', bg1:'#460d03', bg2:'#12305f', tex:true, texAmt:0.29, playing:true, size:'1080/1080', seed:3 };
-  let W=1080,H=1080;
+    bg:'solid', bg1:'#460d03', bg2:'#12305f', tex:true, texAmt:0.29, playing:true, size:'1080/1350', seed:3 };
+  let W=1080,H=1350;
 
   function noise(x){ const s=Math.sin(x*12.9898)*43758.5453; return s-Math.floor(s); }
   function makeTexture(){ const c=document.createElement('canvas'); c.width=c.height=512; const g=c.getContext('2d');
@@ -131,9 +136,9 @@
     const ax = P.align==='center'?W/2:(P.align==='left'?W*0.08:W*0.92);
     lines.forEach((ln,i)=>{ const y=y0+i*lh; drawSpacedLine(ln, ax, y); });
   }
-  function wrap(line){ // wrap by width at current font
+  function wrap(line){ // respect manual breaks; only wrap when a single line runs very long (letters may overflow, as in the reference)
     tg.font=`bold ${P.fs}px ${P.font}`; const words=line.split(' '); const out=[]; let cur='';
-    const maxW=W*0.86;
+    const maxW=W*1.5;
     for(const w of words){ const t=cur?cur+' '+w:w; if(measure(t)>maxW && cur){ out.push(cur); cur=w; } else cur=t; }
     if(cur) out.push(cur); return out.length?out:[''];
   }
@@ -192,7 +197,8 @@
 
   function fit(){ const [a,b]=P.size.split('/').map(Number); const ar=a/b, long=1200;
     if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
-    art.width=W; art.height=H; const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H);
+    art.width=W; art.height=H; const dr=$('dimReadout'); if(dr) dr.textContent=`${a} × ${b}`;
+    const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H);
     art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px'; if(!P.playing) draw(0); }
 
   let raf=0,t0=0;

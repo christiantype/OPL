@@ -28,12 +28,11 @@
 <div id="wrap"><canvas id="gl"></canvas></div>
 <div id="hint">A picture, seen through a grid of glass</div>
 <div id="recDot"><i></i><b>0:00</b></div>
-<div id="sizeDock"><select id="aspect" title="Canvas size">
-  <option value="source" selected>Source · original</option>
+<div id="sizeDock"><span id="dimReadout">1920 × 1080</span><select id="aspect" title="Canvas size">
+  <option value="1920/1080" selected>Landscape · 16:9</option>
+  <option value="1080/1080">Square · 1:1</option>
   <option value="1080/1350">Portrait · 4:5</option>
   <option value="1080/1920">Story · 9:16</option>
-  <option value="1080/1080">Square · 1:1</option>
-  <option value="1920/1080">Landscape · 16:9</option>
 </select></div>
 
 <div id="dock">
@@ -51,10 +50,10 @@
   <div class="group">
     <div class="group__t">Lens</div>
     <select class="full" id="shape"><option value="0" selected>Prismatic</option><option value="1">Round</option><option value="2">Bevel</option></select>
-    <div class="knob"><label>Refraction <b id="rfR">0.05</b></label><input id="rf" type="range" min="0" max="120" value="48"></div>
-    <div class="knob"><label>Zoom <b id="zmR">0.24</b></label><input id="zm" type="range" min="0" max="80" value="24"></div>
-    <div class="knob"><label>Aberration <b id="abR">0.004</b></label><input id="ab" type="range" min="0" max="60" value="8"></div>
-    <div class="knob"><label>Edge softness <b id="egR">0.13</b></label><input id="eg" type="range" min="0" max="50" value="13"></div>
+    <div class="knob"><label>Refraction <b id="rfR">0.02</b></label><input id="rf" type="range" min="0" max="120" value="20"></div>
+    <div class="knob"><label>Zoom <b id="zmR">0.10</b></label><input id="zm" type="range" min="0" max="80" value="10"></div>
+    <div class="knob"><label>Aberration <b id="abR">0.000</b></label><input id="ab" type="range" min="0" max="60" value="0"></div>
+    <div class="knob"><label>Edge softness <b id="egR">0.11</b></label><input id="eg" type="range" min="0" max="50" value="11"></div>
   </div>
   <div class="group">
     <div class="group__t">Animate</div>
@@ -75,8 +74,8 @@
 (()=>{
   const $=id=>document.getElementById(id);
   const cv=$('gl'); const gl=cv.getContext('webgl2',{preserveDrawingBuffer:true, premultipliedAlpha:false});
-  const P={ cols:16, rows:9, shape:0, refr:0.048, zoom:0.24, aber:0.004, edge:0.13, pulse:false, pspeed:0.10, size:'source' };
-  let W=1080,H=1080, srcAR=1, video=null;
+  const P={ cols:16, rows:9, shape:0, refr:0.02, zoom:0.10, aber:0.000, edge:0.11, pulse:false, pspeed:0.10, size:'1920/1080' };
+  let W=1920,H=1080, srcAR=1, video=null;
 
   const vs=`#version 300 es
   in vec2 p; out vec2 vUv; void main(){ vUv=vec2(p.x*0.5+0.5, 0.5-p.y*0.5); gl_Position=vec4(p,0.,1.); }`;
@@ -103,12 +102,9 @@
     vec2 ca = dir*uAber;
     float r=texture(tex,suv+ca).r, g=texture(tex,suv).g, b=texture(tex,suv-ca).b;
     vec3 col=vec3(r,g,b);
-    // soft edge blend to straight
+    // soft edge blend to straight — also dissolves any cell seam, so the grid is never drawn
     float e=smoothstep(0.5, 0.5-max(0.001,uEdge), dist);
     col=mix(texture(tex,uv).rgb, col, e);
-    // faint facet seam
-    float seam=smoothstep(0.0,0.03,min(local.x,min(local.y,min(1.0-local.x,1.0-local.y))));
-    col*= (0.9+0.1*seam);
     o=vec4(col,1.0);
   }`;
   function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(o)); return o; }
@@ -122,16 +118,18 @@
 
   function setTexFromEl(el){ gl.bindTexture(gl.TEXTURE_2D,tex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
     try{ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,el); }catch(e){} }
-  function loadImage(im){ srcAR=im.width/im.height; video=null; setTexFromEl(im); fit(); }
-  function loadVideo(v){ video=v; srcAR=(v.videoWidth||16)/(v.videoHeight||9); fit(); }
+  function loadImage(im){ srcAR=im.width/im.height; video=null; setTexFromEl(im); }
+  function loadVideo(v){ video=v; srcAR=(v.videoWidth||16)/(v.videoHeight||9); }
   function sample(){ const c=document.createElement('canvas'); c.width=1200; c.height=1200; const g=c.getContext('2d');
     const gr=g.createLinearGradient(0,0,1200,1200); gr.addColorStop(0,'#123a8f'); gr.addColorStop(.4,'#c74d3a'); gr.addColorStop(.7,'#e8b23a'); gr.addColorStop(1,'#0f5138'); g.fillStyle=gr; g.fillRect(0,0,1200,1200);
     for(const a of [[400,480,340,'#f2e6c8'],[820,900,380,'#1b2b4d'],[680,380,190,'#e0483c'],[320,980,240,'#2f8f6a'],[980,300,180,'#ffd23f']]){ const rg=g.createRadialGradient(a[0],a[1],0,a[0],a[1],a[2]); rg.addColorStop(0,a[3]); rg.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=rg; g.beginPath(); g.arc(a[0],a[1],a[2],0,7); g.fill(); }
     const im=new Image(); im.onload=()=>loadImage(im); im.src=c.toDataURL(); }
 
-  function fit(){ let ar = (P.size==='source') ? srcAR : (()=>{ const [a,b]=P.size.split('/').map(Number); return a/b; })();
+  // Canvas size follows ONLY the selected aspect — media never reshapes it.
+  function fit(){ const [a,b]=P.size.split('/').map(Number); const ar=a/b;
     const long=1200; if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
     cv.width=W; cv.height=H; gl.viewport(0,0,W,H);
+    const dr=$('dimReadout'); if(dr) dr.textContent=`${a} × ${b}`;
     const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H); cv.style.width=(W*sc)+'px'; cv.style.height=(H*sc)+'px'; }
 
   let t0=performance.now();

@@ -29,11 +29,10 @@
 <div id="wrap"><canvas id="art"></canvas></div>
 <div id="hint">A photo, pressed in three inks</div>
 <div id="recDot"><i></i><b>0:00</b></div>
-<div id="sizeDock"><select id="aspect" title="Canvas size">
-  <option value="source" selected>Source · original</option>
-  <option value="1080/1350">Portrait · 4:5</option>
-  <option value="1080/1920">Story · 9:16</option>
+<div id="sizeDock"><span id="dimReadout">1080 × 1350</span><select id="aspect" title="Canvas size">
+  <option value="1080/1350" selected>Portrait · 4:5</option>
   <option value="1080/1080">Square · 1:1</option>
+  <option value="1080/1920">Story · 9:16</option>
   <option value="1920/1080">Landscape · 16:9</option>
 </select></div>
 
@@ -73,7 +72,7 @@
 (()=>{
   const $=id=>document.getElementById(id);
   const art=$('art'), ctx=art.getContext('2d');
-  const P={ dot:'round', screen:10, angle:15, contrast:1.0, gain:1.0, i1:'#00a8ff', i2:'#ff007f', i3:'#ffd700', paper:'#f4f0e6', size:'source' };
+  const P={ dot:'round', screen:10, angle:15, contrast:1.0, gain:1.0, i1:'#00a8ff', i2:'#ff007f', i3:'#ffd700', paper:'#f4f0e6', size:'1080/1350' };
   let src=null, W=1080, H=1350;
   const hex=h=>{ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h); return m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[0,0,0]; };
   function samp(x,y){ if(!src) return [255,255,255]; const sx=Math.min(src.w-1,Math.max(0,(x/W*src.w)|0)), sy=Math.min(src.h-1,Math.max(0,(y/H*src.h)|0)); const i=(sy*src.w+sx)*4; return [src.data[i],src.data[i+1],src.data[i+2]]; }
@@ -102,9 +101,11 @@
     screen(P.i2,1,P.angle*5);        // magenta at 5x angle (75° when angle=15)
   }
 
-  function fit(){ let ar=P.size==='source'&&src?src.w/src.h:(()=>{const[a,b]=P.size.split('/').map(Number);return a/b;})();
+  // Canvas size follows ONLY the selected aspect — an added photo never reshapes it.
+  function fit(){ const[a,b]=P.size.split('/').map(Number); const ar=a/b;
     const long=1400; if(ar>=1){W=long;H=Math.round(long/ar);}else{H=long;W=Math.round(long*ar);}
-    art.width=W; art.height=H; const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W,box.height/H); art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px'; draw(); }
+    art.width=W; art.height=H; const dr=$('dimReadout'); if(dr) dr.textContent=`${a} × ${b}`;
+    const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W,box.height/H); art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px'; draw(); }
   function loadImage(im){ const c=document.createElement('canvas'); c.width=im.width; c.height=im.height; const cc=c.getContext('2d',{willReadFrequently:true}); cc.drawImage(im,0,0); src={data:cc.getImageData(0,0,im.width,im.height).data,w:im.width,h:im.height}; fit(); }
   function loadURL(u){ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>loadImage(im); im.src=u; }
   function sample(){ const c=document.createElement('canvas'); c.width=1000; c.height=1250; const g=c.getContext('2d');

@@ -15,8 +15,11 @@
   #art{ max-width:100%; max-height:100%; }
   #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
     font-size:13px; padding:7px 13px; border-radius:0; pointer-events:none; z-index:7; white-space:nowrap; }
-  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
+  #sizeDock{ position:fixed; bottom:18px; left:calc((100% + var(--rail))/2); transform:translateX(-50%); z-index:8;
+    display:flex; align-items:center; gap:10px; background:var(--island); border:1px solid var(--line); padding:6px 8px 6px 13px; }
+  #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
   #sizeDock select{ padding:7px 10px; }
+  @media (max-width:560px){ #sizeDock{ left:50%; } }
   #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
     display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
   #recDot.on{ display:flex; }
@@ -39,11 +42,11 @@
 <div id="hint">A photo, run through a grid of print screens</div>
 <div id="recDot"><i></i><b>0:00</b></div>
 <div id="sizeDock">
+  <span id="dimReadout">1080 × 1080</span>
   <select id="aspect" title="Canvas size">
-    <option value="source" selected>Source · original</option>
+    <option value="1080/1080" selected>Square · 1:1</option>
     <option value="1080/1350">Portrait · 4:5</option>
     <option value="1080/1920">Story · 9:16</option>
-    <option value="1080/1080">Square · 1:1</option>
     <option value="1920/1080">Landscape · 16:9</option>
   </select>
 </div>
@@ -70,6 +73,7 @@
     <select class="full" id="mode">
       <option value="cycle" selected>Random cycle</option>
       <option value="halftone">Halftone</option>
+      <option value="checker">Checkerboard</option>
       <option value="dither">Dither</option>
       <option value="pixel">Pixel</option>
       <option value="photo">Photo</option>
@@ -87,8 +91,8 @@
 
   <div class="group">
     <div class="group__t">Ink</div>
-    <div class="crow"><label>Ink</label><input type="color" class="sw" id="ink" value="#003300"></div>
-    <div class="crow"><label>Paper</label><input type="color" class="sw" id="paper" value="#ccffcc"></div>
+    <div class="crow"><label>Ink</label><input type="color" class="sw" id="ink" value="#93ff9e"></div>
+    <div class="crow"><label>Paper</label><input type="color" class="sw" id="paper" value="#0a140a"></div>
     <div class="knob"><label>Contrast <b id="ctR">0.9</b></label><input id="ct" type="range" min="0" max="200" value="90"></div>
     <div class="knob"><label>Gamma <b id="gmR">1.4</b></label><input id="gm" type="range" min="40" max="260" value="140"></div>
   </div>
@@ -120,8 +124,8 @@
   const $=id=>document.getElementById(id);
   const art=$('art'), ctx=art.getContext('2d',{ willReadFrequently:true });
   const P={ cols:6, rows:7, mode:'cycle', fine:6, coarse:34, dir:'radial', bias:0.9,
-    ink:'#003300', paper:'#ccffcc', contrast:0.9, gamma:1.4, playing:false, speed:1.0, size:'source', seed:1 };
-  let src=null, W=1080, H=1350;
+    ink:'#93ff9e', paper:'#0a140a', contrast:0.9, gamma:1.4, playing:false, speed:1.0, size:'1080/1080', seed:1 };
+  let src=null, W=1080, H=1080;
 
   const hex=h=>{ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h); return m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[0,0,0]; };
   function rnd(s){ const x=Math.sin(s*127.1+311.7)*43758.5453; return x-Math.floor(x); }
@@ -139,15 +143,15 @@
   function avgLum(x0,y0,w,h){ let s=0,n=0; const st=Math.max(1,(Math.min(w,h)/4)|0);
     for(let y=y0;y<y0+h;y+=st)for(let x=x0;x<x0+w;x+=st){ s+=lum(x,y); n++; } return n?s/n:1; }
 
+  // Photo-dominant: most cells stay a recognizable fine halftone of the source ('base');
+  // a minority (1 - bias) 'corrupt' into a coarse alternate screen.
   function cellEffect(c,r,phase){
     if(P.mode!=='cycle') return P.mode;
-    const effs=['halftone','dither','pixel','photo'];
     const k=rnd(c*31.7+r*57.3+phase*1.13);
-    const b=P.bias;
-    const w=[0.30+b*0.20, Math.max(0.03,0.24-b*0.10), Math.max(0.03,0.24-b*0.10), 0.22];
-    const sum=w.reduce((a,v)=>a+v,0); let acc=0;
-    for(let i=0;i<4;i++){ acc+=w[i]/sum; if(k<acc) return effs[i]; }
-    return 'halftone';
+    if(k < P.bias) return 'base';
+    const corr=['pixel','checker','halftone','dither'];
+    const j=rnd(c*13.1+r*29.7+phase*2.7+9.3);
+    return corr[Math.min(corr.length-1,(j*corr.length)|0)];
   }
   function cellScale(c,r){
     let d; const nx=(c+0.5)/P.cols-0.5, ny=(r+0.5)/P.rows-0.5;
@@ -158,39 +162,50 @@
     return P.fine + (P.coarse-P.fine)*d;
   }
 
+  // ink = printed colour (bright), paper = substrate (dark). Bright source -> more ink.
   function draw(phase){
     if(!src){ ctx.fillStyle='#8a8a90'; ctx.font='13px system-ui'; ctx.textAlign='center'; ctx.fillText('Loading…',W/2,H/2); return; }
     const [ir,ig,ib]=hex(P.ink), [pr,pg,pb]=hex(P.paper);
-    ctx.fillStyle=`rgb(${pr},${pg},${pb})`; ctx.fillRect(0,0,W,H);
+    const mix=(L)=>`rgb(${(pr+(ir-pr)*L)|0},${(pg+(ig-pg)*L)|0},${(pb+(ib-pb)*L)|0})`;
+    const INK=`rgb(${ir},${ig},${ib})`, PAPER=`rgb(${pr},${pg},${pb})`;
+    ctx.fillStyle=PAPER; ctx.fillRect(0,0,W,H);
     const cw=W/P.cols, ch=H/P.rows;
     for(let r=0;r<P.rows;r++)for(let c=0;c<P.cols;c++){
       const x0=Math.round(c*cw), y0=Math.round(r*ch), w=Math.round((c+1)*cw)-x0, h=Math.round((r+1)*ch)-y0;
-      const eff=cellEffect(c,r,phase), s=Math.max(2,cellScale(c,r));
+      let eff=cellEffect(c,r,phase), s;
+      if(eff==='base'){ eff='halftone'; s=Math.max(2,P.fine); }         // recognizable fine screen
+      else s=Math.max(3,cellScale(c,r));                                 // corrupted -> coarse
       ctx.save(); ctx.beginPath(); ctx.rect(x0,y0,w,h); ctx.clip();
       if(eff==='photo'){
-        for(let y=y0;y<y0+h;y+=2)for(let x=x0;x<x0+w;x+=2){ const L=lum(x,y);
-          ctx.fillStyle=`rgb(${(ir+(pr-ir)*L)|0},${(ig+(pg-ig)*L)|0},${(ib+(pb-ib)*L)|0})`; ctx.fillRect(x,y,2,2); }
+        for(let y=y0;y<y0+h;y+=2)for(let x=x0;x<x0+w;x+=2){ ctx.fillStyle=mix(lum(x,y)); ctx.fillRect(x,y,2,2); }
       } else if(eff==='pixel'){
-        for(let y=y0;y<y0+h;y+=s)for(let x=x0;x<x0+w;x+=s){ const L=avgLum(x,y,s,s);
-          ctx.fillStyle=`rgb(${(ir+(pr-ir)*L)|0},${(ig+(pg-ig)*L)|0},${(ib+(pb-ib)*L)|0})`; ctx.fillRect(x,y,Math.ceil(s),Math.ceil(s)); }
+        for(let y=y0;y<y0+h;y+=s)for(let x=x0;x<x0+w;x+=s){ ctx.fillStyle=mix(avgLum(x,y,s,s)); ctx.fillRect(x,y,Math.ceil(s),Math.ceil(s)); }
       } else if(eff==='dither'){
         const step=Math.max(1,(s/3)|0);
         for(let y=y0;y<y0+h;y+=step)for(let x=x0;x<x0+w;x+=step){ const L=avgLum(x,y,step,step);
-          const on=L<BAYER[((y/step)|0)%4][((x/step)|0)%4];
-          ctx.fillStyle= on?`rgb(${ir},${ig},${ib})`:`rgb(${pr},${pg},${pb})`; ctx.fillRect(x,y,step,step); }
-      } else {
-        ctx.fillStyle=`rgb(${ir},${ig},${ib})`;
+          const on=L>=BAYER[((y/step)|0)%4][((x/step)|0)%4];
+          ctx.fillStyle= on?INK:PAPER; ctx.fillRect(x,y,step,step); }
+      } else if(eff==='checker'){
+        const step=Math.max(4,s|0);
+        for(let y=y0;y<y0+h;y+=step)for(let x=x0;x<x0+w;x+=step){ const L=avgLum(x,y,step,step);
+          const chk=(((x/step)|0)+((y/step)|0))&1;
+          const on = chk ? (L>=0.5) : (L<0.5);
+          ctx.fillStyle= on?INK:PAPER; ctx.fillRect(x,y,step,step); }
+      } else { // halftone — ink dots sized by brightness on paper
+        ctx.fillStyle=INK;
         for(let y=y0+s/2;y<y0+h+s;y+=s)for(let x=x0+s/2;x<x0+w+s;x+=s){ const L=avgLum(x-s/2,y-s/2,s,s);
-          const rad=(s*0.62)*Math.sqrt(Math.max(0,1-L)); if(rad>0.3){ ctx.beginPath(); ctx.arc(x,y,rad,0,6.2832); ctx.fill(); } }
+          const rad=(s*0.62)*Math.sqrt(Math.max(0,L)); if(rad>0.3){ ctx.beginPath(); ctx.arc(x,y,rad,0,6.2832); ctx.fill(); } }
       }
       ctx.restore();
     }
   }
 
+  // Canvas size is driven ONLY by the selected aspect — adding an image never resizes it.
   function fit(){
-    let ar = P.size==='source' && src ? src.w/src.h : (()=>{ const [a,b]=P.size.split('/').map(Number); return a/b; })();
+    const [a,b]=P.size.split('/').map(Number); const ar=a/b;
     const long=1400; if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
     art.width=W; art.height=H;
+    const dr=$('dimReadout'); if(dr) dr.textContent=`${a} × ${b}`;
     const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H);
     art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px'; draw(0);
   }
