@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Overset — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --rail:300px; --top:82px; }
+  @media (max-width:560px){ :root{ --top:74px; } }
+  *{ box-sizing:border-box; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #art{ max-width:100%; max-height:100%; }
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
+    font-size:13px; padding:7px 13px; pointer-events:none; z-index:7; white-space:nowrap; }
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
+  #sizeDock select{ padding:7px 10px; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; } #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); } #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .crow{ display:flex; align-items:center; justify-content:space-between; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .seg{ display:flex; } .seg button{ flex:1; appearance:none; background:var(--cell); border:1px solid var(--line); color:var(--ink); padding:8px 6px; cursor:pointer; font:inherit; font-size:11px; border-right:0; } .seg button:last-child{ border-right:1px solid var(--line); }
+  .sw{ width:44px; height:24px; border:1px solid var(--line); padding:0; cursor:pointer; background:none; }
+  select.full{ width:100%; } textarea{ width:100%; padding:8px 10px; font:inherit; resize:vertical; min-height:60px; }
+  input[type=text]{ width:100%; padding:7px 9px; font:inherit; }
+</style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
+</head>
+<body class="dark">
+
+<div id="wrap"><canvas id="art"></canvas></div>
+<div id="hint">A word, set in living type</div>
+<div id="recDot"><i></i><b>0:00</b></div>
+<div id="sizeDock"><select id="aspect" title="Canvas size">
+  <option value="1080/1350">Portrait · 4:5</option>
+  <option value="1080/1920">Story · 9:16</option>
+  <option value="1080/1080" selected>Square · 1:1</option>
+  <option value="1920/1080">Landscape · 16:9</option>
+</select></div>
+
+<div id="dock">
+  <div class="group">
+    <div class="group__t">Type</div>
+    <textarea id="text">Why do we continue creating when no one asked us to</textarea>
+    <select class="full" id="font">
+      <option value="system-ui" selected>System</option>
+      <option value="'Arial Black', Impact, sans-serif">Heavy</option>
+      <option value="Georgia, serif">Serif</option>
+      <option value="'the-future-mono', monospace">Mono</option>
+    </select>
+    <div class="knob"><label>Size <b id="fsR">200</b></label><input id="fs" type="range" min="30" max="360" value="200"></div>
+    <div class="knob"><label>Letter spacing <b id="lsR">-8</b></label><input id="ls" type="range" min="-30" max="40" value="-8"></div>
+    <div class="knob"><label>Line height <b id="lhR">0.53</b></label><input id="lh" type="range" min="40" max="180" value="53"></div>
+    <div class="seg" id="alSeg"><button data-al="left">Left</button><button data-al="center" aria-pressed="true">Center</button><button data-al="right">Right</button></div>
+    <div class="crow"><label>Fill</label><input type="color" class="sw" id="fill" value="#fe4608"></div>
+    <div class="crow"><label>Outline</label><input type="color" class="sw" id="oline" value="#7177ff"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Effect</div>
+    <div class="seg" id="fxSeg"><button data-fx="outline" aria-pressed="true">Outline</button><button data-fx="ink">Ink</button><button data-fx="liquid">Liquid</button></div>
+    <div class="knob"><label>Speed <b id="spR">0.65</b></label><input id="sp" type="range" min="0" max="200" value="65"></div>
+    <div class="knob"><label>Intensity <b id="inR">0.9</b></label><input id="in" type="range" min="0" max="200" value="90"></div>
+    <div class="knob"><label>Ink spread <b id="isR">4</b></label><input id="is" type="range" min="0" max="30" value="4"></div>
+    <div class="knob"><label>Outline width <b id="owR">10</b></label><input id="ow" type="range" min="1" max="40" value="10"></div>
+    <div class="knob"><label>Outline warp <b id="odR">100</b></label><input id="od" type="range" min="0" max="200" value="100"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Sub-type</div>
+    <input type="text" id="top" value="No One Asked">
+    <div class="knob"><label>Top size <b id="tsR">20</b></label><input id="ts" type="range" min="8" max="60" value="20"></div>
+    <input type="text" id="bot" value="We Made It Anyway">
+    <div class="knob"><label>Bottom size <b id="bsR">20</b></label><input id="bs" type="range" min="8" max="60" value="20"></div>
+    <div class="knob"><label>Distance <b id="dsR">100</b></label><input id="ds" type="range" min="0" max="300" value="100"></div>
+    <div class="crow"><label>Colour</label><input type="color" class="sw" id="sc" value="#ffffff"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Ground</div>
+    <div class="seg" id="bgSeg"><button data-bg="solid" aria-pressed="true">Solid</button><button data-bg="gradient">Gradient</button></div>
+    <div class="crow"><label>Colour</label><input type="color" class="sw" id="bg1" value="#460d03"></div>
+    <div class="crow" id="bg2row" style="display:none"><label>Colour 2</label><input type="color" class="sw" id="bg2" value="#12305f"></div>
+    <div class="tog"><span>Paper texture</span><button class="btn" id="tex" aria-pressed="true">On</button></div>
+    <div class="knob"><label>Texture <b id="txR">29</b></label><input id="tx" type="range" min="0" max="100" value="29"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Animate</div>
+    <div class="grid2"><button class="btn primary" id="play" aria-pressed="true">Pause</button><button class="btn" id="reseed">Re-roll</button></div>
+  </div>
+
+  <div class="group out">
+    <div class="group__t">Output</div>
+    <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
+  </div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'Overset', desc:'A word, set in living type',
+  about:'Parametric type: a headline set huge, then animated as a wavering Outline, a bleeding Ink, or a flowing Liquid, over a solid or gradient ground with a paper-texture overlay and top/bottom sub-lines. A rebuild of Brik’s Parametric Type on the OP/AL shell.',
+  version:'v1' });</script>
+<script>
+(()=>{
+  const $=id=>document.getElementById(id);
+  const art=$('art'), ctx=art.getContext('2d');
+  const tc=document.createElement('canvas'), tg=tc.getContext('2d');       // text layer
+  let tex=null;                                                            // paper texture
+  const P={ text:'Why do we continue creating when no one asked us to', font:'system-ui', fs:200, ls:-8, lh:0.53, align:'center',
+    fill:'#fe4608', oline:'#7177ff', fx:'outline', speed:0.65, inten:0.9, spread:4, ow:10, warp:100,
+    top:'No One Asked', ts:20, bot:'We Made It Anyway', bs:20, dist:100, sc:'#ffffff',
+    bg:'solid', bg1:'#460d03', bg2:'#12305f', tex:true, texAmt:0.29, playing:true, size:'1080/1080', seed:3 };
+  let W=1080,H=1080;
+
+  function noise(x){ const s=Math.sin(x*12.9898)*43758.5453; return s-Math.floor(s); }
+  function makeTexture(){ const c=document.createElement('canvas'); c.width=c.height=512; const g=c.getContext('2d');
+    const id=g.createImageData(512,512), d=id.data;
+    for(let i=0;i<d.length;i+=4){ const v=200+Math.floor(Math.random()*55); d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; }
+    g.putImageData(id,0,0); tex=c; }
+
+  function layoutText(){
+    tc.width=W; tc.height=H; tg.clearRect(0,0,W,H);
+    const lines=P.text.toUpperCase().split('\n').flatMap(l=>wrap(l));
+    const lh=P.fs*P.lh, total=lines.length*lh, y0=H/2-total/2+lh/2;
+    tg.textBaseline='middle'; tg.font=`bold ${P.fs}px ${P.font}`;
+    tg.textAlign=P.align==='center'?'center':(P.align==='left'?'left':'right');
+    const ax = P.align==='center'?W/2:(P.align==='left'?W*0.08:W*0.92);
+    lines.forEach((ln,i)=>{ const y=y0+i*lh; drawSpacedLine(ln, ax, y); });
+  }
+  function wrap(line){ // wrap by width at current font
+    tg.font=`bold ${P.fs}px ${P.font}`; const words=line.split(' '); const out=[]; let cur='';
+    const maxW=W*0.86;
+    for(const w of words){ const t=cur?cur+' '+w:w; if(measure(t)>maxW && cur){ out.push(cur); cur=w; } else cur=t; }
+    if(cur) out.push(cur); return out.length?out:[''];
+  }
+  function measure(s){ let w=0; for(const ch of s) w+=tg.measureText(ch).width+P.ls; return w-P.ls; }
+  function drawSpacedLine(s, ax, y){
+    const w=measure(s); let x = P.align==='center'? ax-w/2 : (P.align==='right'? ax-w : ax);
+    tg.textAlign='left';
+    for(const ch of s){
+      if(P.fx==='outline'){ tg.lineWidth=P.ow; tg.strokeStyle=P.oline; tg.lineJoin='round'; tg.strokeText(ch,x,y); }
+      else { tg.fillStyle=P.fill; tg.fillText(ch,x,y); }
+      x+=tg.measureText(ch).width+P.ls;
+    }
+  }
+
+  function drawBg(){
+    if(P.bg==='gradient'){ const g=ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,P.bg1); g.addColorStop(1,P.bg2); ctx.fillStyle=g; }
+    else ctx.fillStyle=P.bg1;
+    ctx.fillRect(0,0,W,H);
+  }
+  function drawTexture(){ if(!P.tex||!tex) return; ctx.save(); ctx.globalAlpha=P.texAmt; ctx.globalCompositeOperation='overlay';
+    for(let y=0;y<H;y+=512)for(let x=0;x<W;x+=512) ctx.drawImage(tex,x,y); ctx.restore(); }
+
+  function composite(t){
+    const amp=P.inten*40, spd=P.speed*2.2, warp=P.warp/100;
+    if(P.fx==='liquid'){
+      const strip=6;
+      for(let y=0;y<H;y+=strip){ const dx=Math.sin(y*0.012 + t*spd)*amp*warp + (noise(y*0.1+t*spd)-0.5)*amp*0.6*warp;
+        const dy=Math.cos(y*0.02 + t*spd*0.8)*amp*0.3*warp;
+        ctx.drawImage(tc, 0,y, W,strip, dx, y+dy, W, strip); }
+    } else if(P.fx==='ink'){
+      ctx.drawImage(tc,0,0);
+      const n=Math.max(0,Math.round(P.spread));
+      ctx.save(); ctx.globalAlpha=0.5;
+      for(let k=0;k<n;k++){ const a=k/Math.max(1,n)*6.283+t*spd; const rr=(1+k*0.9);
+        ctx.drawImage(tc, Math.cos(a)*rr, Math.sin(a)*rr); }
+      ctx.restore();
+    } else { // outline — wavy
+      const strip=5;
+      for(let y=0;y<H;y+=strip){ const dx=Math.sin(y*0.02 + t*spd)*amp*0.5*warp; ctx.drawImage(tc,0,y,W,strip,dx,y,W,strip); }
+    }
+  }
+
+  function drawSub(){
+    ctx.fillStyle=P.sc; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font=`600 ${P.ts}px ${P.font}`; ctx.fillText(P.top.toUpperCase(), W/2, H/2-P.dist- (P.fs*0.5));
+    ctx.font=`600 ${P.bs}px ${P.font}`; ctx.fillText(P.bot.toUpperCase(), W/2, H/2+P.dist+ (P.fs*0.5));
+  }
+
+  function draw(t){
+    drawBg();
+    layoutText();
+    composite(t);
+    drawSub();
+    drawTexture();
+  }
+
+  function fit(){ const [a,b]=P.size.split('/').map(Number); const ar=a/b, long=1200;
+    if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
+    art.width=W; art.height=H; const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H);
+    art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px'; if(!P.playing) draw(0); }
+
+  let raf=0,t0=0;
+  function loop(){ raf=requestAnimationFrame(loop); draw((performance.now()-t0)/1000); }
+  function setPlay(on){ P.playing=on; $('play').textContent=on?'Pause':'Play'; $('play').setAttribute('aria-pressed',on); if(on){ t0=performance.now(); loop(); } else { cancelAnimationFrame(raf); draw(0); } }
+
+  const upd=()=>{ if(!P.playing) draw(0); };
+  function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; upd(); }); }
+  bind('fs','fsR',v=>P.fs=v); bind('ls','lsR',v=>P.ls=v); bind('lh','lhR',v=>P.lh=v/100,v=>(v/100).toFixed(2));
+  bind('sp','spR',v=>P.speed=v/100,v=>(v/100).toFixed(2)); bind('in','inR',v=>P.inten=v/100,v=>(v/100).toFixed(2));
+  bind('is','isR',v=>P.spread=v); bind('ow','owR',v=>P.ow=v); bind('od','odR',v=>P.warp=v);
+  bind('ts','tsR',v=>P.ts=v); bind('bs','bsR',v=>P.bs=v); bind('ds','dsR',v=>P.dist=v); bind('tx','txR',v=>P.texAmt=v/100,v=>v);
+  $('text').addEventListener('input',e=>{P.text=e.target.value;upd();});
+  $('font').addEventListener('change',e=>{P.font=e.target.value;upd();});
+  $('top').addEventListener('input',e=>{P.top=e.target.value;upd();}); $('bot').addEventListener('input',e=>{P.bot=e.target.value;upd();});
+  $('fill').addEventListener('input',e=>{P.fill=e.target.value;upd();}); $('oline').addEventListener('input',e=>{P.oline=e.target.value;upd();});
+  $('sc').addEventListener('input',e=>{P.sc=e.target.value;upd();}); $('bg1').addEventListener('input',e=>{P.bg1=e.target.value;upd();}); $('bg2').addEventListener('input',e=>{P.bg2=e.target.value;upd();});
+  document.querySelectorAll('#alSeg button').forEach(b=>b.addEventListener('click',()=>{ P.align=b.dataset.al; document.querySelectorAll('#alSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b)); upd(); }));
+  document.querySelectorAll('#fxSeg button').forEach(b=>b.addEventListener('click',()=>{ P.fx=b.dataset.fx; document.querySelectorAll('#fxSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b)); upd(); }));
+  document.querySelectorAll('#bgSeg button').forEach(b=>b.addEventListener('click',()=>{ P.bg=b.dataset.bg; document.querySelectorAll('#bgSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b)); $('bg2row').style.display=P.bg==='gradient'?'flex':'none'; upd(); }));
+  $('tex').addEventListener('click',e=>{ P.tex=!P.tex; e.target.textContent=P.tex?'On':'Off'; e.target.setAttribute('aria-pressed',P.tex); upd(); });
+  $('aspect').addEventListener('change',e=>{P.size=e.target.value;fit();});
+  $('play').addEventListener('click',()=>setPlay(!P.playing));
+  $('reseed').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*9999); upd(); });
+
+  $('saveBtn').addEventListener('click',()=>{ const a=document.createElement('a'); a.download='overset.png'; a.href=art.toDataURL('image/png'); a.click(); });
+  let rec=null,rt=0,tk=0;
+  $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;} if(!P.playing) setPlay(true);
+    const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+    rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime}:undefined); const ch=[];
+    rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+    rec.onstop=()=>{ clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
+      const bl=new Blob(ch,{type:ch[0]?.type||'video/webm'}); const a=document.createElement('a'); a.download='overset.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); rec=null; };
+    rec.start(); rt=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
+    tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
+
+  addEventListener('resize',fit);
+  makeTexture(); fit(); setPlay(true);
+})();
+</script>
+</body>
+</html>
