@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Facet — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --rail:300px; --top:82px; }
+  @media (max-width:560px){ :root{ --top:74px; } }
+  *{ box-sizing:border-box; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #gl{ max-width:100%; max-height:100%; }
+  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); font-size:13px; padding:7px 13px; pointer-events:none; z-index:7; white-space:nowrap; }
+  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; } #sizeDock select{ padding:7px 10px; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; } #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); } #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  .group{ display:flex; flex-direction:column; gap:9px; } .knob{ display:flex; flex-direction:column; gap:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; } .filebtn{ display:block; text-align:center; } select.full{ width:100%; }
+  .tog{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+</style>
+<link rel="stylesheet" href="/lab/shared/tool.css" />
+</head>
+<body class="dark">
+
+<div id="wrap"><canvas id="gl"></canvas></div>
+<div id="hint">A picture, seen through a grid of glass</div>
+<div id="recDot"><i></i><b>0:00</b></div>
+<div id="sizeDock"><select id="aspect" title="Canvas size">
+  <option value="source" selected>Source · original</option>
+  <option value="1080/1350">Portrait · 4:5</option>
+  <option value="1080/1920">Story · 9:16</option>
+  <option value="1080/1080">Square · 1:1</option>
+  <option value="1920/1080">Landscape · 16:9</option>
+</select></div>
+
+<div id="dock">
+  <div class="group">
+    <div class="group__t">Source</div>
+    <p class="rowhint" style="margin:0;font-size:12px;color:var(--mute)">Drop an image or video, or load one. Nothing leaves this page.</p>
+    <div class="grid2"><button class="btn filebtn" id="loadBtn">Add media</button><button class="btn" id="sampleBtn">Sample</button></div>
+    <input type="file" id="file" accept="image/*,video/*" hidden>
+  </div>
+  <div class="group">
+    <div class="group__t">Grid</div>
+    <div class="knob"><label>Columns <b id="cxR">16</b></label><input id="cx" type="range" min="1" max="48" value="16"></div>
+    <div class="knob"><label>Rows <b id="cyR">9</b></label><input id="cy" type="range" min="1" max="48" value="9"></div>
+  </div>
+  <div class="group">
+    <div class="group__t">Lens</div>
+    <select class="full" id="shape"><option value="0" selected>Prismatic</option><option value="1">Round</option><option value="2">Bevel</option></select>
+    <div class="knob"><label>Refraction <b id="rfR">0.02</b></label><input id="rf" type="range" min="0" max="120" value="20"></div>
+    <div class="knob"><label>Zoom <b id="zmR">0.10</b></label><input id="zm" type="range" min="0" max="80" value="10"></div>
+    <div class="knob"><label>Aberration <b id="abR">0.00</b></label><input id="ab" type="range" min="0" max="60" value="0"></div>
+    <div class="knob"><label>Edge softness <b id="egR">0.11</b></label><input id="eg" type="range" min="0" max="50" value="11"></div>
+  </div>
+  <div class="group">
+    <div class="group__t">Animate</div>
+    <div class="tog"><span>Pulse</span><button class="btn" id="pulse" aria-pressed="false">Off</button></div>
+    <div class="knob"><label>Pulse speed <b id="psR">0.10</b></label><input id="ps" type="range" min="0" max="100" value="10"></div>
+  </div>
+  <div class="group out">
+    <div class="group__t">Output</div>
+    <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
+  </div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'Facet', desc:'A picture, seen through a grid of glass',
+  about:'An image or video seen through a grid of glass lenses — each cell refracts, magnifies and splits the light beneath it (prismatic, round or bevel), with chromatic aberration, soft edges and an optional pulse. A rebuild of Brik’s Refract Me – Video Lens on the OP/AL shell.',
+  version:'v1' });</script>
+<script>
+(()=>{
+  const $=id=>document.getElementById(id);
+  const cv=$('gl'); const gl=cv.getContext('webgl2',{preserveDrawingBuffer:true, premultipliedAlpha:false});
+  const P={ cols:16, rows:9, shape:0, refr:0.02, zoom:0.10, aber:0.0, edge:0.11, pulse:false, pspeed:0.10, size:'source' };
+  let W=1080,H=1080, srcAR=1, video=null;
+
+  const vs=`#version 300 es
+  in vec2 p; out vec2 vUv; void main(){ vUv=vec2(p.x*0.5+0.5, 0.5-p.y*0.5); gl_Position=vec4(p,0.,1.); }`;
+  const fs=`#version 300 es
+  precision highp float; uniform sampler2D tex; uniform vec2 grid; uniform float uRefr,uZoom,uAber,uEdge,uTime,uPulse; uniform int uShape;
+  in vec2 vUv; out vec4 o;
+  void main(){
+    vec2 uv=vUv;
+    vec2 cell=floor(uv*grid);
+    vec2 local=fract(uv*grid);
+    vec2 d=local-0.5; float dist=length(d);
+    float pl = 1.0 + uPulse*0.7*sin(uTime + dot(cell,vec2(1.3,2.1)));
+    // magnify toward cell centre
+    vec2 zl = 0.5 + d*(1.0-uZoom);
+    // refraction offset by lens shape
+    float k;
+    if(uShape==1) k = dist*dist;              // round: barrel
+    else if(uShape==2) k = smoothstep(0.15,0.5,dist); // bevel: flat then sharp edge
+    else k = pow(dist,1.4);                    // prismatic
+    vec2 dir = normalize(d+1e-5);
+    vec2 refr = dir * uRefr * pl * k * 6.0;
+    vec2 sl = clamp(zl+refr, 0.0, 1.0);
+    vec2 suv = (cell+sl)/grid;
+    vec2 ca = dir*uAber;
+    float r=texture(tex,suv+ca).r, g=texture(tex,suv).g, b=texture(tex,suv-ca).b;
+    vec3 col=vec3(r,g,b);
+    // soft edge blend to straight
+    float e=smoothstep(0.5, 0.5-max(0.001,uEdge), dist);
+    col=mix(texture(tex,uv).rgb, col, e);
+    // faint facet seam
+    float seam=smoothstep(0.0,0.03,min(local.x,min(local.y,min(1.0-local.x,1.0-local.y))));
+    col*= (0.9+0.1*seam);
+    o=vec4(col,1.0);
+  }`;
+  function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(o)); return o; }
+  const prog=gl.createProgram(); gl.attachShader(prog,sh(gl.VERTEX_SHADER,vs)); gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(prog); gl.useProgram(prog);
+  const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  const U=n=>gl.getUniformLocation(prog,n);
+  const tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+
+  function setTexFromEl(el){ gl.bindTexture(gl.TEXTURE_2D,tex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+    try{ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,el); }catch(e){} }
+  function loadImage(im){ srcAR=im.width/im.height; video=null; setTexFromEl(im); fit(); }
+  function loadVideo(v){ video=v; srcAR=(v.videoWidth||16)/(v.videoHeight||9); fit(); }
+  function sample(){ const c=document.createElement('canvas'); c.width=1200; c.height=1200; const g=c.getContext('2d');
+    const gr=g.createLinearGradient(0,0,1200,1200); gr.addColorStop(0,'#123a8f'); gr.addColorStop(.4,'#c74d3a'); gr.addColorStop(.7,'#e8b23a'); gr.addColorStop(1,'#0f5138'); g.fillStyle=gr; g.fillRect(0,0,1200,1200);
+    for(const a of [[400,480,340,'#f2e6c8'],[820,900,380,'#1b2b4d'],[680,380,190,'#e0483c'],[320,980,240,'#2f8f6a'],[980,300,180,'#ffd23f']]){ const rg=g.createRadialGradient(a[0],a[1],0,a[0],a[1],a[2]); rg.addColorStop(0,a[3]); rg.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=rg; g.beginPath(); g.arc(a[0],a[1],a[2],0,7); g.fill(); }
+    const im=new Image(); im.onload=()=>loadImage(im); im.src=c.toDataURL(); }
+
+  function fit(){ let ar = (P.size==='source') ? srcAR : (()=>{ const [a,b]=P.size.split('/').map(Number); return a/b; })();
+    const long=1200; if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
+    cv.width=W; cv.height=H; gl.viewport(0,0,W,H);
+    const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H); cv.style.width=(W*sc)+'px'; cv.style.height=(H*sc)+'px'; }
+
+  let t0=performance.now();
+  function frame(){ requestAnimationFrame(frame);
+    if(video && video.readyState>=2) setTexFromEl(video);
+    gl.useProgram(prog);
+    gl.uniform2f(U('grid'),P.cols,P.rows); gl.uniform1f(U('uRefr'),P.refr); gl.uniform1f(U('uZoom'),P.zoom);
+    gl.uniform1f(U('uAber'),P.aber); gl.uniform1f(U('uEdge'),P.edge); gl.uniform1i(U('uShape'),P.shape);
+    gl.uniform1f(U('uPulse'),P.pulse?1.0:0.0); gl.uniform1f(U('uTime'),(performance.now()-t0)/1000*P.pspeed*10);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+
+  function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; }); }
+  bind('cx','cxR',v=>P.cols=v); bind('cy','cyR',v=>P.rows=v);
+  bind('rf','rfR',v=>P.refr=v/1000,v=>(v/1000).toFixed(2)); bind('zm','zmR',v=>P.zoom=v/100,v=>(v/100).toFixed(2));
+  bind('ab','abR',v=>P.aber=v/2000,v=>(v/2000).toFixed(3)); bind('eg','egR',v=>P.edge=v/100,v=>(v/100).toFixed(2));
+  bind('ps','psR',v=>P.pspeed=v/100,v=>(v/100).toFixed(2));
+  $('shape').addEventListener('change',e=>P.shape=+e.target.value);
+  $('pulse').addEventListener('click',e=>{ P.pulse=!P.pulse; e.target.textContent=P.pulse?'On':'Off'; e.target.setAttribute('aria-pressed',P.pulse); });
+  $('aspect').addEventListener('change',e=>{P.size=e.target.value;fit();});
+  $('loadBtn').addEventListener('click',()=>$('file').click());
+  $('sampleBtn').addEventListener('click',sample);
+  $('file').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const url=URL.createObjectURL(f);
+    if(f.type.startsWith('video')){ const v=document.createElement('video'); v.src=url; v.loop=true; v.muted=true; v.playsInline=true; v.play(); v.onloadeddata=()=>loadVideo(v); }
+    else { const im=new Image(); im.onload=()=>loadImage(im); im.src=url; } });
+  ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'&&e.dataTransfer.files[0]){ $('file').files=e.dataTransfer.files; $('file').dispatchEvent(new Event('change')); } }));
+
+  $('saveBtn').addEventListener('click',()=>{ const a=document.createElement('a'); a.download='facet.png'; a.href=cv.toDataURL('image/png'); a.click(); });
+  let rec=null,rt=0,tk=0;
+  $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
+    const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+    rec=new MediaRecorder(cv.captureStream(30), mime?{mimeType:mime}:undefined); const ch=[];
+    rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+    rec.onstop=()=>{ clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
+      const bl=new Blob(ch,{type:ch[0]?.type||'video/webm'}); const a=document.createElement('a'); a.download='facet.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); rec=null; };
+    rec.start(); rt=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
+    tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
+
+  addEventListener('resize',fit);
+  sample(); frame();
+})();
+</script>
+</body>
+</html>
