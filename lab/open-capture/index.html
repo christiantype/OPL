@@ -21,7 +21,11 @@
     #rec-all:hover { background: var(--opal-accent-soft); border-color: var(--opal-accent-soft); }
     #rec-all:disabled { opacity: .35; cursor: default; }
     .grid { display: flex; gap: 20px; flex-wrap: wrap; }
-    .panel { display: flex; flex-direction: column; gap: 8px; }
+    .panel {
+      display: flex; flex-direction: column; gap: 8px;
+      background: #fff; border: 1px solid rgba(0,0,0,.16);
+      box-shadow: 0 10px 30px -16px rgba(0,0,0,.22); padding: 14px;
+    }
     .panel-label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--opal-mid); }
     /* Canvas renders at 1080×1920 internally, displays at 270×480 via CSS */
     .panel canvas { display: block; width: 270px; height: 480px; background: #fff; border: 1px solid var(--opal-line); box-shadow: 0 12px 40px -18px rgba(0,0,0,.18); }
@@ -54,6 +58,8 @@
   <button id="rec-all">Record All 4 Clips</button>
   <div class="grid" id="grid"></div>
 </div>
+
+<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button></div></div>
 
   <script>
   (function () {
@@ -158,8 +164,12 @@
       });
     }
 
-    document.getElementById('rec-all').addEventListener('click', async function () {
-      this.disabled = true;
+    var recAllBtn = document.getElementById('rec-all');
+    var recOutBtn = document.getElementById('recBtn');
+
+    async function recordAll() {
+      if (recAllBtn) recAllBtn.disabled = true;
+      if (recOutBtn) recOutBtn.disabled = true;
       for (var i = 0; i < SESSIONS.length; i++) {
         document.getElementById('status').textContent =
           'Recording ' + (i + 1) + ' / 4 — ' + SESSIONS[i].label + '…';
@@ -167,8 +177,12 @@
         await new Promise(function (r) { setTimeout(r, 800); });
       }
       document.getElementById('status').textContent = 'All 4 clips downloaded.';
-      this.disabled = false;
-    });
+      if (recAllBtn) recAllBtn.disabled = false;
+      if (recOutBtn) recOutBtn.disabled = false;
+    }
+
+    if (recAllBtn) recAllBtn.addEventListener('click', recordAll);
+    if (recOutBtn) recOutBtn.addEventListener('click', recordAll);
 
     // ── Animations ─────────────────────────────────────────────────────────
     // All dot/line sizes multiplied by 2 to match original retina rendering.
