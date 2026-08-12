@@ -80,8 +80,9 @@
   const vs=`#version 300 es
   in vec2 p; out vec2 vUv; void main(){ vUv=vec2(p.x*0.5+0.5, 0.5-p.y*0.5); gl_Position=vec4(p,0.,1.); }`;
   const fs=`#version 300 es
-  precision highp float; uniform sampler2D tex; uniform vec2 grid; uniform float uRefr,uZoom,uAber,uEdge,uTime,uPulse; uniform int uShape;
+  precision highp float; uniform sampler2D tex; uniform vec2 grid; uniform float uRefr,uZoom,uAber,uEdge,uTime,uPulse; uniform int uShape; uniform vec2 uCover;
   in vec2 vUv; out vec4 o;
+  vec2 cover(vec2 p){ return (p-0.5)*uCover+0.5; }   // preserve media aspect (centre-crop), never stretch
   void main(){
     vec2 uv=vUv;
     vec2 cell=floor(uv*grid);
@@ -100,11 +101,11 @@
     vec2 sl = clamp(zl+refr, 0.0, 1.0);
     vec2 suv = (cell+sl)/grid;
     vec2 ca = dir*uAber;
-    float r=texture(tex,suv+ca).r, g=texture(tex,suv).g, b=texture(tex,suv-ca).b;
+    float r=texture(tex,cover(suv+ca)).r, g=texture(tex,cover(suv)).g, b=texture(tex,cover(suv-ca)).b;
     vec3 col=vec3(r,g,b);
     // soft edge blend to straight — also dissolves any cell seam, so the grid is never drawn
     float e=smoothstep(0.5, 0.5-max(0.001,uEdge), dist);
-    col=mix(texture(tex,uv).rgb, col, e);
+    col=mix(texture(tex,cover(uv)).rgb, col, e);
     o=vec4(col,1.0);
   }`;
   function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(o)); return o; }
@@ -139,6 +140,7 @@
     gl.uniform2f(U('grid'),P.cols,P.rows); gl.uniform1f(U('uRefr'),P.refr); gl.uniform1f(U('uZoom'),P.zoom);
     gl.uniform1f(U('uAber'),P.aber); gl.uniform1f(U('uEdge'),P.edge); gl.uniform1i(U('uShape'),P.shape);
     gl.uniform1f(U('uPulse'),P.pulse?1.0:0.0); gl.uniform1f(U('uTime'),(performance.now()-t0)/1000*P.pspeed*10);
+    { let cx=1,cy=1; const cAR=W/H; if(srcAR>cAR) cx=cAR/srcAR; else cy=srcAR/cAR; gl.uniform2f(U('uCover'),cx,cy); }
     gl.drawArrays(gl.TRIANGLES,0,3);
   }
 
