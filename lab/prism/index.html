@@ -72,6 +72,8 @@
 (()=>{
   const $=id=>document.getElementById(id);
   const art=$('art'), ctx=art.getContext('2d');
+  // one offscreen layer per ink — dots are drawn opaque, then the three layers are multiplied once (fast)
+  const layers=[0,1,2].map(()=>{ const c=document.createElement('canvas'); return {c, g:c.getContext('2d')}; });
   const P={ dot:'round', screen:10, angle:15, contrast:1.0, gain:1.0, i1:'#00a8ff', i2:'#ff007f', i3:'#ffd700', paper:'#f4f0e6', size:'1080/1350' };
   let src=null, W=1080, H=1350;
   const hex=h=>{ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h); return m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[0,0,0]; };
@@ -83,31 +85,35 @@
   // channel amount 0..1: chan 0=cyan(1-R) 1=magenta(1-G) 2=yellow(1-B)
   function chan(x,y,k){ const p=samp(x,y); let v=1-p[k]/255; v=(v-0.5)*P.contrast+0.5; v=Math.max(0,Math.min(1,v))*P.gain; return Math.max(0,Math.min(1,v)); }
 
-  function screen(inkHex, k, angDeg){
-    const [ir,ig,ib]=hex(inkHex); ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.fillStyle=`rgb(${ir},${ig},${ib})`;
+  // draw one ink's halftone as opaque dots onto its own white layer (no per-dot blending)
+  function screen(g, inkHex, k, angDeg){
+    g.globalCompositeOperation='source-over'; g.fillStyle='#fff'; g.fillRect(0,0,W,H);
+    const [ir,ig,ib]=hex(inkHex); g.fillStyle=`rgb(${ir},${ig},${ib})`;
     const a=angDeg*Math.PI/180, cs=Math.cos(a), sn=Math.sin(a), s=P.screen;
     const N=Math.ceil(Math.hypot(W,H)/s)+2;
     for(let j=-N;j<=N;j++)for(let i=-N;i<=N;i++){
       const rx=i*s, ry=j*s; const x=rx*cs-ry*sn+W/2, y=rx*sn+ry*cs+H/2;
       if(x<-s||x>W+s||y<-s||y>H+s) continue;
       const v=chan(x,y,k); const rad=(s*0.60)*Math.sqrt(v); if(rad<0.3) continue;
-      if(P.dot==='square'){ const d=rad*1.6; ctx.fillRect(x-d/2,y-d/2,d,d); }
-      else { ctx.beginPath(); ctx.arc(x,y,rad,0,6.2832); ctx.fill(); }
+      if(P.dot==='square'){ const d=rad*1.6; g.fillRect(x-d/2,y-d/2,d,d); }
+      else { g.beginPath(); g.arc(x,y,rad,0,6.2832); g.fill(); }
     }
-    ctx.restore();
   }
   function draw(){
-    if(!src){ ctx.fillStyle='#8a8a90'; ctx.font='13px system-ui'; ctx.textAlign='center'; ctx.fillText('Loading…',W/2,H/2); return; }
-    const [pr,pg,pb]=hex(P.paper); ctx.fillStyle=`rgb(${pr},${pg},${pb})`; ctx.fillRect(0,0,W,H);
-    screen(P.i3,2,P.angle*0);        // yellow at 0°
-    screen(P.i1,0,P.angle);          // cyan
-    screen(P.i2,1,P.angle*5);        // magenta at 5x angle (75° when angle=15)
+    if(!src){ ctx.fillStyle='#8a8a90'; ctx.font='13px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Loading…',W/2,H/2); return; }
+    screen(layers[0].g, P.i3, 2, 0);           // yellow at 0°
+    screen(layers[1].g, P.i1, 0, P.angle);     // cyan
+    screen(layers[2].g, P.i2, 1, P.angle*5);   // magenta at 5x angle (75° when angle=15)
+    const [pr,pg,pb]=hex(P.paper); ctx.globalCompositeOperation='source-over'; ctx.fillStyle=`rgb(${pr},${pg},${pb})`; ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='multiply'; for(const L of layers) ctx.drawImage(L.c,0,0);
+    ctx.globalCompositeOperation='source-over';
   }
 
   // Canvas size follows ONLY the selected aspect — an added photo never reshapes it.
   function fit(){ const[a,b]=P.size.split('/').map(Number); const ar=a/b;
     const long=1400; if(ar>=1){W=long;H=Math.round(long/ar);}else{H=long;W=Math.round(long*ar);}
-    art.width=W; art.height=H; const dr=$('dimReadout'); if(dr) dr.textContent=`${a} × ${b}`;
+    art.width=W; art.height=H; for(const L of layers){ L.c.width=W; L.c.height=H; }
+    const dr=$('dimReadout'); if(dr) dr.textContent=`${a} × ${b}`;
     const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W,box.height/H); art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px'; draw(); }
   function loadImage(im){ const c=document.createElement('canvas'); c.width=im.width; c.height=im.height; const cc=c.getContext('2d',{willReadFrequently:true}); cc.drawImage(im,0,0); src={data:cc.getImageData(0,0,im.width,im.height).data,w:im.width,h:im.height}; fit(); }
   function loadURL(u){ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>loadImage(im); im.src=u; }
