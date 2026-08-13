@@ -236,13 +236,19 @@ const Opal = (() => {
 
   // --- size island: show a W × H readout on every tool (consistent with the rebuilt tools) ---
   function wireSizeReadout(){
-    const dock=document.getElementById('sizeDock'), sel=document.getElementById('aspect');
+    const dock=document.getElementById('sizeDock');
+    const sel=dock && (dock.querySelector('#aspect') || dock.querySelector('select'));  // id varies (aspect / stAspect / …)
     if(!dock || !sel || dock.dataset.sizeR) return;
     dock.dataset.sizeR='1';
     let r=document.getElementById('dimReadout');
     if(!r){ r=document.createElement('span'); r.id='dimReadout'; dock.insertBefore(r, dock.firstChild); }
-    const upd=()=>{ const m=(sel.value||'').split(/[x/]/).map(Number);
-      r.textContent = (m.length===2 && m[0] && m[1]) ? `${m[0]} × ${m[1]}` : ''; };
+    const upd=()=>{
+      const p=(sel.value||'').split(/[x/:]/).map(Number).filter(n=>n>0);
+      if(p.length!==2){ r.textContent=''; return; }
+      let [w,h]=p;
+      if(w<=64 && h<=64){ const f=1080/Math.min(w,h); w=Math.round(w*f); h=Math.round(h*f); } // ratio -> standard px
+      r.textContent = `${w} × ${h}`;
+    };
     sel.addEventListener('change', upd); upd();
   }
 
