@@ -50,7 +50,7 @@ const Opal = (() => {
           ${name ? `<span class="opal-subhead__name">${name}</span>` : ''}
           ${desc ? `<span class="opal-subhead__desc">${desc}</span>` : ''}
         </div>
-        ${version ? `<span class="opal-subhead__ver">${version}</span>` : ''}
+        ${version ? `<span class="opal-subhead__ver">${String(version).toUpperCase()}</span>` : ''}
       `;
     }
     // Info tooltip beside the tool name — hover to show, click to pin.
@@ -249,6 +249,14 @@ const Opal = (() => {
   function enhance(){
     try{
       document.querySelectorAll('.seg').forEach(segToSelect);
+      // also collapse any >3-button single-select row that a tool didn't tag .seg (e.g. .row groups).
+      // Guard on DIRECT children so we never fold a whole island: only a leaf row of buttons qualifies.
+      document.querySelectorAll('#dock div').forEach(el=>{
+        if(el.dataset.segchecked) return;
+        const b=[...el.children].filter(c=>c.tagName==='BUTTON');
+        const textOnly = b.length>0 && b.every(x=>(x.textContent||'').trim().length>0 && !x.querySelector('svg,img'));
+        if(b.length>3 && textOnly && b.filter(x=>x.getAttribute('aria-pressed')==='true').length===1) segToSelect(el);
+      });
       document.querySelectorAll('#dock > .group:not(.out)').forEach(makeAccordion);
       wireRecTimer();
       wireSizeReadout();
