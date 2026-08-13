@@ -72,11 +72,11 @@
     <div class="group__t">Screen</div>
     <select class="full" id="mode">
       <option value="cycle" selected>Random cycle</option>
+      <option value="clean">Clean</option>
       <option value="halftone">Halftone</option>
-      <option value="checker">Checkerboard</option>
       <option value="dither">Dither</option>
-      <option value="pixel">Pixel</option>
-      <option value="photo">Photo</option>
+      <option value="pixelate">Pixelate</option>
+      <option value="ascii">ASCII</option>
     </select>
     <div class="knob"><label>Fine <b id="mnR">6</b></label><input id="mn" type="range" min="2" max="30" value="6"></div>
     <div class="knob"><label>Coarse <b id="mxR">34</b></label><input id="mx" type="range" min="8" max="90" value="34"></div>
@@ -121,7 +121,7 @@
 
 <script src="/lab/shared/opal.js"></script>
 <script>Opal.mountTopbar({ name:'Offset', desc:'A photo, run through a grid of print screens',
-  about:'An image diced into a grid, each cell reprinted as a different screen — halftone dots, ordered dither, pixel blocks or straight photo — the dot scale drifting radially from centre to edge, in a two-ink duotone on paper. Random-cycle animates the screens. A rebuild of Brik’s Experimental Print on the OP/AL shell.',
+  about:'An image diced into a grid, each cell reprinted as a different screen — clean photo, halftone dots, ordered dither, pixel blocks, checkerboard or ASCII — the scale drifting radially from centre to edge, in a two-ink duotone or full colour. Random cycle keeps most cells clean and corrupts a scattered few. A rebuild of Brik’s Experimental Print on the OP/AL shell.',
   version:'v1' });</script>
 <script>
 (()=>{
@@ -163,7 +163,7 @@
     if(P.mode!=='cycle') return P.mode;
     const k=rnd(c*31.7+r*57.3+phase*1.13);
     if(k < P.bias) return 'base';
-    const corr=['pixel','checker','halftone','dither'];
+    const corr=['pixelate','checker','halftone','dither','ascii'];
     const j=rnd(c*13.1+r*29.7+phase*2.7+9.3);
     return corr[Math.min(corr.length-1,(j*corr.length)|0)];
   }
@@ -191,10 +191,17 @@
       else s=Math.max(3,cellScale(c,r));                                 // corrupted -> coarse
       ctx.save(); ctx.beginPath(); ctx.rect(x0,y0,w,h); ctx.clip();
       const CLR=P.color;
-      if(eff==='photo'){
+      if(eff==='photo'||eff==='clean'){
         for(let y=y0;y<y0+h;y+=2)for(let x=x0;x<x0+w;x+=2){ ctx.fillStyle=CLR?rgbStr(rgbAt(x,y)):mix(lum(x,y)); ctx.fillRect(x,y,2,2); }
-      } else if(eff==='pixel'){
+      } else if(eff==='pixel'||eff==='pixelate'){
         for(let y=y0;y<y0+h;y+=s)for(let x=x0;x<x0+w;x+=s){ ctx.fillStyle=CLR?rgbStr(avgRGB(x,y,s,s)):mix(avgLum(x,y,s,s)); ctx.fillRect(x,y,Math.ceil(s),Math.ceil(s)); }
+      } else if(eff==='ascii'){
+        const CH=' .:-=+*#%@';                         // sparse -> dense; bright source packs a denser glyph
+        const step=Math.max(6,s|0);
+        ctx.textAlign='left'; ctx.textBaseline='top'; ctx.font=`bold ${Math.round(step*1.15)}px ui-monospace, "SF Mono", Menlo, monospace`;
+        for(let y=y0;y<y0+h;y+=step)for(let x=x0;x<x0+w;x+=step){ const L=avgLum(x,y,step,step);
+          const g=CH[Math.max(0,Math.min(CH.length-1, Math.round(L*(CH.length-1))))];
+          if(g===' ') continue; ctx.fillStyle=CLR?rgbStr(avgRGB(x,y,step,step)):INK; ctx.fillText(g,x,y); }
       } else if(eff==='dither'){
         const step=Math.max(1,(s/3)|0);
         for(let y=y0;y<y0+h;y+=step)for(let x=x0;x<x0+w;x+=step){ const L=avgLum(x,y,step,step);
