@@ -249,6 +249,12 @@ const Opal = (() => {
       if(w<=64 && h<=64){ const f=1080/Math.min(w,h); w=Math.round(w*f); h=Math.round(h*f); } // ratio -> standard px
       r.textContent = `${w} × ${h}`;
     };
+    // Default every tool to a 1:1 (square) canvas.
+    if(!sel.dataset.sqDefault){ sel.dataset.sqDefault='1';
+      const sq=[...sel.options].find(o=>{ const p=(o.value||'').split(/[x/:]/).map(Number).filter(n=>n>0); return p.length===2 && p[0]===p[1]; })
+             || [...sel.options].find(o=>/(^|\W)1\s*[:x/]\s*1(\W|$)|square/i.test((o.textContent||'')+' '+(o.value||'')));
+      if(sq && sel.value!==sq.value){ sel.value=sq.value; sel.dispatchEvent(new Event('change',{bubbles:true})); }
+    }
     sel.addEventListener('change', upd); upd();
   }
 
