@@ -30,7 +30,7 @@
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
   body.fs .rail, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
-  body.fs #stagewrap{ top:0; left:0; }
+  body.fs #stagewrap{ top:0 !important; left:0 !important; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
   body.fs.hint #exitFs{ opacity:1; }
@@ -193,10 +193,10 @@
   #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none;
     font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); }
   body.fs #hint{ display:none; }
-  #stagewrap{ top:0 !important; }
-  /* Topbar left to tool.css (light shell). Canvas runs full-bleed behind the opaque
-     white bar; the rail tucks under it via padding-top. */
-  .rail{ top:0 !important; padding-top:calc(var(--top) + 8px); }
+  /* Canvas and rail both start below the header; canvas sits right of the rail so the
+     artboard centres in the visible field (not behind the rail), same as every tool. */
+  #stagewrap{ top:var(--top) !important; left:var(--rail) !important; }
+  .rail{ top:var(--top) !important; }
   .rowhint{ opacity:.72; }
   #countdown{ position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
     pointer-events:none; font:800 clamp(90px,22vw,220px)/1 ui-sans-serif,Helvetica,Arial,sans-serif;
