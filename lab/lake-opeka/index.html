@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>OP/AL — Lake Opeka</title>
 <script src="/lab/shared/gate.js"></script>
+<link rel="stylesheet" href="/lab/shared/tokens.css">
 <style>
   /* ── Brand font ─────────────────────────────────────────────── */
   @font-face {
@@ -27,27 +28,16 @@
     /* Light chrome — matches sibling Tools (ZLMC, More-Than-Design, etc.).
        Canvas itself can be set black/white/transparent via the bg
        picker; the rails + topbar are always light. */
-    --bg:           #ffffff;
-    --panel:       #f4f4f4;
-    --hairline:    #e2e2e2;
-    --text:        #111111;
-    --text-mid:    #4d4d54;   /* darkened for contrast */
-    --text-dim:    #7c7c84;   /* darkened for contrast */
-    --accent:      #111111;   /* black accent (was OP/AL amber) */
-    --on-accent:   #ffffff;   /* text/marks that sit on the accent */
     --cobalt:      #1c39bb;
     --pink:        #ff94c9;
     --pad:         18px;
-    --sans:        'Sidepiece-HoneyPie', 'Untitled Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    --display:     'Sidepiece-HoneyPie', sans-serif;
-    --mono:        'JetBrains Mono', 'Courier New', monospace;
   }
 
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
-    background: var(--bg); color: var(--text);
-    font-family: var(--sans); font-size: 13px; line-height: 1.5;
+    background: var(--paper); color: var(--ink);
+    font-family: var(--font); font-size: 13px; line-height: 1.5;
     -webkit-font-smoothing: antialiased; overflow: hidden;
   }
   button, input, select { font: inherit; color: inherit; }
@@ -66,12 +56,12 @@
     grid-column: 1 / -1;
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
     height: 44px; padding: 0 24px;
-    border-bottom: 1px solid var(--hairline); background: #ffffff;
+    border-bottom: 1px solid var(--line); background: #ffffff;
   }
   .lo-subhead .lo-id { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
-  .lo-subhead .lo-name { font-family: var(--display); font-size: 15px; letter-spacing: 0.01em; }
-  .lo-subhead .lo-desc { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); }
-  .lo-subhead .lo-ver { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+  .lo-subhead .lo-name { font-family: var(--font); font-size: 15px; letter-spacing: 0.01em; }
+  .lo-subhead .lo-desc { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mute); }
+  .lo-subhead .lo-ver { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); }
 
   /* ── Top bar — matches the OPL chrome used across all Tools.
         White surface, ZLMC wordmark on the left + product label,
@@ -89,7 +79,7 @@
   .opl-brand svg { display: block; height: 26px; width: auto; }
   .opl-product {
     color: #8a8a8a;
-    font-family: var(--sans);
+    font-family: var(--font);
     font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
   }
   .opl-right { display: flex; align-items: center; gap: 18px; color: #1a1a1a; }
@@ -108,7 +98,7 @@
   #btn-how {
     background: transparent; border: 1px solid #ececec;
     color: #1a1a1a; height: 26px; padding: 0 12px;
-    cursor: pointer; font-family: var(--sans);
+    cursor: pointer; font-family: var(--font);
     font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
     transition: border-color 0.15s ease, color 0.15s ease;
   }
@@ -121,33 +111,33 @@
   }
   #btn-record.is-recording, #btn-magic.is-recording { background: #e0202a; color: #fff; border-color: #e0202a; }
   #btn-record.is-recording .rec-dot, #btn-magic.is-recording .rec-dot { background: #fff; animation: rec-blink 1s steps(2,start) infinite; }
-  #btn-record.is-counting, #btn-magic.is-counting { background: var(--text); color: #fff; border-color: var(--text); }
+  #btn-record.is-counting, #btn-magic.is-counting { background: var(--ink); color: #fff; border-color: var(--ink); }
   #btn-record.is-counting .rec-dot, #btn-magic.is-counting .rec-dot { background: #fff; }
   /* Magic button + settings gear */
   #btn-magic { gap: 4px; }
   #btn-magic-cfg { padding: 9px 10px; }
-  #btn-magic-cfg.is-open { border-color: var(--text); color: var(--text); }
+  #btn-magic-cfg.is-open { border-color: var(--ink); color: var(--ink); }
   /* Clip-settings popover (floats above the stage bar) */
   .magic-pop {
     position: absolute; left: 18px; bottom: 62px; z-index: 40;
     width: 210px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
     background: rgba(255,255,255,0.94); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    border: 1px solid var(--hairline); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
+    border: 1px solid var(--line); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
   }
   .magic-pop[hidden] { display: none; }
   .magic-pop__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .magic-pop__row > span { font-size: 11px; letter-spacing: .04em; color: var(--text-mid); text-transform: uppercase; }
+  .magic-pop__row > span { font-size: 11px; letter-spacing: .04em; color: var(--mute); text-transform: uppercase; }
   .magic-pop select { width: 118px; padding: 6px 24px 6px 8px; }
-  .magic-num { display: inline-flex; align-items: center; gap: 1px; width: 118px; background: var(--panel); border: 1px solid var(--hairline); border-radius: 0; padding: 0 8px; box-sizing: border-box; }
-  .magic-num input { width: 100%; border: none; background: transparent; color: var(--text); font-family: var(--mono); font-size: 12px; text-align: right; padding: 7px 0; -moz-appearance: textfield; }
+  .magic-num { display: inline-flex; align-items: center; gap: 1px; width: 118px; background: var(--cell); border: 1px solid var(--line); border-radius: 0; padding: 0 8px; box-sizing: border-box; }
+  .magic-num input { width: 100%; border: none; background: transparent; color: var(--ink); font-family: var(--mono); font-size: 12px; text-align: right; padding: 7px 0; -moz-appearance: textfield; }
   .magic-num input:focus { outline: none; }
   .magic-num input::-webkit-outer-spin-button, .magic-num input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .magic-num i { font-style: normal; font-size: 11px; color: var(--text-dim); }
+  .magic-num i { font-style: normal; font-size: 11px; color: var(--mute); }
   /* Pre-roll countdown — big number centered on the canvas (not recorded). */
   .rec-countdown {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     z-index: 70; pointer-events: none;
-    font-family: var(--display); font-size: 180px; line-height: 1;
+    font-family: var(--font); font-size: 180px; line-height: 1;
     color: #fff; text-shadow: 0 6px 40px rgba(0,0,0,0.55);
   }
   .rec-countdown[hidden] { display: none; }
@@ -176,22 +166,22 @@
     position: absolute;
     top: 6vh; right: 6vw; bottom: 6vh;
     width: min(680px, 88vw);
-    background: var(--bg); border: 1px solid var(--hairline);
+    background: var(--paper); border: 1px solid var(--line);
     display: flex; flex-direction: column;
     box-shadow: -30px 30px 100px rgba(0,0,0,0.5);
   }
   .help__head {
     display: flex; align-items: center; justify-content: space-between;
     padding: 18px 22px;
-    border-bottom: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--line);
   }
   .help__head h2 {
-    margin: 0; font-family: var(--display); font-weight: 400;
-    font-size: 22px; color: var(--text); letter-spacing: -0.01em;
+    margin: 0; font-family: var(--font); font-weight: 400;
+    font-size: 22px; color: var(--ink); letter-spacing: -0.01em;
   }
   #help-close, #how-close {
-    background: transparent; border: 1px solid var(--hairline);
-    color: var(--text); width: 32px; height: 32px;
+    background: transparent; border: 1px solid var(--line);
+    color: var(--ink); width: 32px; height: 32px;
     font-size: 20px; cursor: pointer;
   }
   #help-close:hover, #how-close:hover { border-color: var(--pink); color: var(--pink); }
@@ -200,32 +190,32 @@
   /* Inline code + the data-flow strip in the deep dive. */
   .help__body code {
     font-family: var(--mono); font-size: 11.5px;
-    background: #f2f2f0; color: var(--text);
+    background: #f2f2f0; color: var(--ink);
     padding: 1px 5px; border-radius: 3px;
-    border: 1px solid var(--hairline);
+    border: 1px solid var(--line);
   }
   .how__flow {
     display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px;
-    font-size: 12px; color: var(--text-mid);
-    background: var(--panel); border: 1px solid var(--hairline);
+    font-size: 12px; color: var(--mute);
+    background: var(--cell); border: 1px solid var(--line);
     padding: 12px 14px; border-radius: 4px; margin: 4px 0 12px !important;
   }
   .how__flow span {
-    background: var(--bg); border: 1px solid var(--hairline);
-    padding: 5px 9px; border-radius: 3px; color: var(--text);
+    background: var(--paper); border: 1px solid var(--line);
+    padding: 5px 9px; border-radius: 3px; color: var(--ink);
   }
   .help__body {
     padding: 22px;
     overflow-y: auto;
-    line-height: 1.65; font-size: 13px; color: var(--text-mid);
+    line-height: 1.65; font-size: 13px; color: var(--mute);
   }
   .help__lede {
-    color: var(--text); font-size: 14px;
+    color: var(--ink); font-size: 14px;
     padding-bottom: 18px; margin-bottom: 18px;
-    border-bottom: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--line);
   }
   .help__body h3 {
-    font-family: var(--sans); font-weight: 500;
+    font-family: var(--font); font-weight: 500;
     font-size: 10px; letter-spacing: 0.20em; text-transform: uppercase;
     color: var(--accent);
     margin: 24px 0 10px; padding-top: 4px;
@@ -239,8 +229,8 @@
   .help__body li::before {
     content: '/'; position: absolute; left: 0; color: var(--accent); font-family: var(--mono); font-weight: 500;
   }
-  .help__body strong { color: var(--text); font-weight: 500; }
-  .help__body em { color: var(--text); font-style: italic; }
+  .help__body strong { color: var(--ink); font-weight: 500; }
+  .help__body em { color: var(--ink); font-style: italic; }
 
   /* ── Left rail: images ──────────────────────────────────────── */
   /* Floating image island (left) over the full-bleed canvas */
@@ -248,17 +238,17 @@
     position: absolute; top: 116px; left: 16px; width: 236px; z-index: 6;
     max-height: calc(100vh - 192px); overflow-y: auto; padding: 16px;
     background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    border: 1px solid var(--hairline); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
+    border: 1px solid var(--line); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
   }
   .images__label {
     font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--text-mid); margin-bottom: 12px;
+    color: var(--mute); margin-bottom: 12px;
     display: flex; align-items: center; justify-content: space-between;
   }
   .images__count { color: var(--accent); font-weight: 500; }
   .images__clear {
     background: transparent; border: none;
-    color: var(--text-dim);
+    color: var(--mute);
     font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
     cursor: pointer; padding: 2px 0;
     transition: color 0.15s ease;
@@ -267,20 +257,20 @@
   .images__clear:disabled { opacity: 0.3; cursor: default; }
   .images__actions {
     margin-top: 16px; padding-top: 14px;
-    border-top: 1px solid var(--hairline);
+    border-top: 1px solid var(--line);
     display: flex; flex-direction: column; gap: 8px;
   }
   .images__actions .ctrl-btn { margin-top: 0; }
   .images__actions .ctrl-btn:disabled {
     opacity: 0.35; cursor: default;
-    border-color: var(--hairline); color: var(--text-dim);
+    border-color: var(--line); color: var(--mute);
   }
   .drop {
     display: block;
-    border: 1px dashed var(--hairline);
+    border: 1px dashed var(--line);
     padding: 24px 14px;
     text-align: center;
-    color: var(--text-mid);
+    color: var(--mute);
     font-size: 12px; line-height: 1.5;
     cursor: pointer;
     transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
@@ -290,14 +280,14 @@
   .drop:hover {
     border-color: var(--accent);
     background: rgba(0, 0, 0, 0.04);
-    color: var(--text);
+    color: var(--ink);
   }
   /* Whole window highlights when image files are being dragged from
      the OS — no flicker, no tiny target. */
   body.is-dragover .drop {
     border-color: var(--accent);
     background: rgba(0, 0, 0, 0.06);
-    color: var(--text);
+    color: var(--ink);
   }
   body.is-dragover::after {
     content: 'Drop to add';
@@ -305,8 +295,8 @@
     display: flex; align-items: center; justify-content: center;
     background: rgba(0, 0, 0, 0.08);
     border: 4px solid var(--accent);
-    color: var(--text);
-    font-family: var(--display);
+    color: var(--ink);
+    font-family: var(--font);
     font-size: clamp(48px, 6vw, 88px);
     letter-spacing: -0.02em;
     z-index: 9999;
@@ -316,14 +306,14 @@
   .drop__hint {
     display: block; margin-top: 6px;
     font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
-    color: var(--text-dim);
+    color: var(--mute);
   }
   .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .thumb {
     position: relative;
     aspect-ratio: 1 / 1;
-    background: var(--panel);
-    border: 1px solid var(--hairline);
+    background: var(--cell);
+    border: 1px solid var(--line);
     cursor: pointer;
     overflow: hidden;
   }
@@ -331,7 +321,7 @@
   .thumb__off::after {
     content: ''; position: absolute; inset: 0;
     background: rgba(255, 255, 255, 0.72);
-    border: 1px dashed var(--text-dim);
+    border: 1px dashed var(--mute);
   }
   /* Num + close overlay sit on top of photos which can be any color —
      keep them white-on-translucent-black so they always read. */
@@ -377,20 +367,20 @@
     top: 50%;
     left: calc(268px + (100% - 268px - 332px) / 2);
     transform: translate(-50%, -50%);
-    color: var(--text-dim);
+    color: var(--mute);
     text-align: center;
     font-size: 13px; letter-spacing: 0.02em;
     pointer-events: none;
   }
-  .empty strong { color: var(--text); font-weight: 500; display: block; margin-bottom: 6px; }
+  .empty strong { color: var(--ink); font-weight: 500; display: block; margin-bottom: 6px; }
   .stage-actions {
     position: absolute; bottom: 18px; left: 18px;
     display: flex; gap: 8px;
   }
   .stage-actions button {
-    background: var(--panel); border: 1px solid var(--hairline);
-    color: var(--text); padding: 9px 14px; border-radius: 0;
-    font-family: var(--sans); font-size: 12px;
+    background: var(--cell); border: 1px solid var(--line);
+    color: var(--ink); padding: 9px 14px; border-radius: 0;
+    font-family: var(--font); font-size: 12px;
     letter-spacing: 0.14em; text-transform: uppercase;
     cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
@@ -400,7 +390,7 @@
   .stage-info {
     position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
     font-family: var(--mono); font-size: 10px;
-    color: var(--text-dim); letter-spacing: 0.06em;
+    color: var(--mute); letter-spacing: 0.06em;
   }
 
   /* Canvas-size chip — top-right, reshapes the live canvas */
@@ -408,7 +398,7 @@
     position: absolute; top: 116px; right: 16px; z-index: 7;
     display: flex; gap: 6px; padding: 8px;
     background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    border: 1px solid var(--hairline); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
+    border: 1px solid var(--line); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
   }
   .canvas-size select { width: 138px; padding: 7px 24px 7px 9px; }
 
@@ -418,29 +408,29 @@
     position: absolute; top: 168px; right: 16px; width: 300px; z-index: 6;
     max-height: calc(100vh - 244px); overflow-y: auto; padding: 16px;
     background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    border: 1px solid var(--hairline); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
+    border: 1px solid var(--line); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
   }
   .ctrl-group {
     margin-bottom: 22px;
     padding-bottom: 22px;
-    border-bottom: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--line);
   }
   .ctrl-group:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
   .ctrl-label {
     font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--text-mid); margin-bottom: 14px;
+    color: var(--mute); margin-bottom: 14px;
   }
   .row {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 12px;
   }
   .row:last-child { margin-bottom: 0; }
-  .row__label { font-size: 12px; color: var(--text); }
+  .row__label { font-size: 12px; color: var(--ink); }
   /* Per-slider info icon + its hover/tap tooltip. */
   .info {
     display: inline-flex; align-items: center; justify-content: center;
     width: 13px; height: 13px; margin-left: 6px; border-radius: 50%;
-    border: 1px solid var(--text-dim); color: var(--text-dim);
+    border: 1px solid var(--mute); color: var(--mute);
     font-family: var(--mono); font-size: 9px; font-style: normal; line-height: 1;
     cursor: help; vertical-align: middle; user-select: none; flex: none;
     transition: border-color 0.12s ease, color 0.12s ease;
@@ -448,8 +438,8 @@
   .info:hover { border-color: var(--accent); color: var(--accent); }
   .tip-pop {
     position: fixed; z-index: 1200; max-width: 248px;
-    background: var(--text); color: #fff;
-    font-family: var(--sans); font-size: 12px; line-height: 1.45;
+    background: var(--ink); color: #fff;
+    font-family: var(--font); font-size: 12px; line-height: 1.45;
     padding: 8px 11px; border-radius: 5px;
     box-shadow: 0 8px 30px rgba(0,0,0,0.35); pointer-events: none;
   }
@@ -458,7 +448,7 @@
   input.row__val {
     -webkit-appearance: none; appearance: none;
     background: transparent; border: none;
-    color: var(--text);
+    color: var(--ink);
     font-family: var(--mono); font-size: 12px; font-weight: 600;
     text-align: right; padding: 2px 4px;
     width: 72px; cursor: text;
@@ -466,19 +456,19 @@
     outline: 1px solid transparent; outline-offset: -1px;
     border-radius: 2px;
   }
-  input.row__val:hover { background: rgba(0, 0, 0, 0.05); outline-color: var(--hairline); }
+  input.row__val:hover { background: rgba(0, 0, 0, 0.05); outline-color: var(--line); }
   input.row__val:focus { background: rgba(0, 0, 0, 0.08); outline-color: var(--accent); }
 
   /* Lake Opeka glyph presets — multi-select gallery */
   .glyph-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
   .glyph-preset {
-    aspect-ratio: 1; background: #f2f2f0; border: 1px solid var(--hairline);
+    aspect-ratio: 1; background: #f2f2f0; border: 1px solid var(--line);
     border-radius: 4px; cursor: pointer; padding: 7px; position: relative;
     display: flex; align-items: center; justify-content: center;
     transition: border-color 0.12s ease, box-shadow 0.12s ease;
   }
   .glyph-preset img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
-  .glyph-preset:hover { border-color: var(--text-dim); }
+  .glyph-preset:hover { border-color: var(--mute); }
   .glyph-preset.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   .glyph-preset.is-active::after {
     content: ''; position: absolute; top: 3px; right: 3px;
@@ -500,29 +490,29 @@
   .sessions__scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.45); }
   .sessions__panel {
     position: relative; width: min(420px, 92vw); max-height: 80vh; overflow: hidden;
-    background: var(--bg, #fff); color: var(--text); border: 1px solid var(--hairline);
+    background: var(--bg, #fff); color: var(--ink); border: 1px solid var(--line);
     border-radius: 0; box-shadow: 0 30px 80px -20px rgba(0,0,0,0.5);
     display: flex; flex-direction: column;
   }
-  .sessions__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid var(--hairline); }
+  .sessions__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
   .sessions__title { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
-  .sessions__x { font-size: 20px; color: var(--text-mid); cursor: pointer; background: none; border: none; line-height: 1; }
+  .sessions__x { font-size: 20px; color: var(--mute); cursor: pointer; background: none; border: none; line-height: 1; }
   .sessions__save { display: flex; gap: 8px; padding: 14px 18px 6px; }
   .sessions__save input {
-    flex: 1; padding: 9px 11px; background: var(--panel); color: var(--text);
-    border: 1px solid var(--hairline); border-radius: 4px; font-family: var(--sans); font-size: 13px;
+    flex: 1; padding: 9px 11px; background: var(--cell); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 4px; font-family: var(--font); font-size: 13px;
   }
   .sessions__save input:focus { outline: none; border-color: var(--accent); }
   .sessions__save button { padding: 9px 16px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 4px; font-weight: 600; font-size: 12px; cursor: pointer; }
-  .sessions__hint { padding: 8px 18px 12px; font-size: 12px; line-height: 1.5; color: var(--text-dim); }
+  .sessions__hint { padding: 8px 18px 12px; font-size: 12px; line-height: 1.5; color: var(--mute); }
   .sessions__list { list-style: none; margin: 0; padding: 0 8px 10px; overflow-y: auto; }
-  .sessions__item { display: flex; align-items: center; gap: 8px; padding: 10px 10px; border-top: 1px solid var(--hairline); }
+  .sessions__item { display: flex; align-items: center; gap: 8px; padding: 10px 10px; border-top: 1px solid var(--line); }
   .sessions__item-name { flex: 1; font-size: 13px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sessions__item-name small { color: var(--text-dim); font-size: 10px; margin-left: 8px; }
-  .sessions__item button { font-size: 12px; padding: 6px 10px; border: 1px solid var(--hairline); background: var(--panel); color: var(--text); border-radius: 4px; cursor: pointer; }
+  .sessions__item-name small { color: var(--mute); font-size: 10px; margin-left: 8px; }
+  .sessions__item button { font-size: 12px; padding: 6px 10px; border: 1px solid var(--line); background: var(--cell); color: var(--ink); border-radius: 4px; cursor: pointer; }
   .sessions__item button:hover { border-color: var(--accent); }
   .sessions__item .sessions__del:hover { border-color: #e03; color: #e03; }
-  .sessions__empty { padding: 14px 12px; font-size: 12px; color: var(--text-dim); text-align: center; }
+  .sessions__empty { padding: 14px 12px; font-size: 12px; color: var(--mute); text-align: center; }
 
   /* Pill sliders: light-gray rounded track + tall rounded white handle */
   input[type=range] {
@@ -547,35 +537,35 @@
   /* Unified dropdown — custom chevron, no native arrow (shared with Flux) */
   select {
     width: 100%; padding: 8px 28px 8px 11px;
-    background-color: var(--panel); color: var(--text);
-    border: 1px solid var(--hairline); border-radius: 0;
+    background-color: var(--cell); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 0;
     -webkit-appearance: none; appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c7c84' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 11px center;
-    font-family: var(--sans); font-size: 12px;
+    font-family: var(--font); font-size: 12px;
     margin-bottom: 10px; cursor: pointer;
   }
-  select:hover { border-color: var(--text-dim); }
+  select:hover { border-color: var(--mute); }
   /* Unified segmented control — rounded, uppercase (shared language with Flux .chip) */
   .seg {
     display: grid; grid-template-columns: 1fr 1fr 1fr;
     gap: 4px; margin-bottom: 4px;
   }
   .seg button {
-    background: var(--panel); border: 1px solid var(--hairline); border-radius: 0;
-    color: var(--text-mid); padding: 8px 5px;
+    background: var(--cell); border: 1px solid var(--line); border-radius: 0;
+    color: var(--mute); padding: 8px 5px;
     font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
     cursor: pointer; transition: all 0.15s ease;
   }
   .seg button.is-active {
     background: var(--accent); color: var(--on-accent); border-color: var(--accent);
   }
-  .seg button:hover:not(.is-active) { color: var(--text); border-color: var(--text-dim); }
+  .seg button:hover:not(.is-active) { color: var(--ink); border-color: var(--mute); }
 
   .ctrl-btn {
     width: 100%; padding: 9px 10px;
-    background: var(--panel); border: 1px solid var(--hairline);
-    color: var(--text); font-size: 12px;
+    background: var(--cell); border: 1px solid var(--line);
+    color: var(--ink); font-size: 12px;
     letter-spacing: 0.14em; text-transform: uppercase;
     cursor: pointer; margin-top: 8px;
     transition: border-color 0.15s ease, color 0.15s ease;
@@ -589,13 +579,13 @@
     display: grid;
     grid-template-columns: 32px 1fr;
     gap: 10px; padding: 10px 0;
-    border-top: 1px solid var(--hairline);
+    border-top: 1px solid var(--line);
     align-items: start;
   }
   .scatter-item:first-child { border-top: none; padding-top: 0; }
   .scatter-item__thumb {
     width: 32px; height: 32px;
-    background: var(--panel); overflow: hidden;
+    background: var(--cell); overflow: hidden;
     position: relative;
   }
   .scatter-item__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -610,7 +600,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 4px;
     font-size: 10px;
-    color: var(--text-mid);
+    color: var(--mute);
   }
   .scatter-item__fields label {
     display: flex; align-items: center; gap: 4px;
@@ -618,8 +608,8 @@
   }
   .scatter-item__fields input[type=number] {
     width: 100%; padding: 3px 5px;
-    background: var(--panel); border: 1px solid var(--hairline);
-    color: var(--text); font-family: var(--mono); font-size: 10px;
+    background: var(--cell); border: 1px solid var(--line);
+    color: var(--ink); font-family: var(--mono); font-size: 10px;
   }
   .scatter-item__fields input[type=number]:focus { outline: none; border-color: var(--accent); }
 
@@ -646,8 +636,8 @@
   }
 
   /* mobile panel toggles (hidden on desktop) */
-  .m-toggle { display: none; font-family: var(--sans); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
-    background: rgba(255,255,255,.92); border: 1px solid var(--hairline); border-radius: 0; padding: 9px 13px; color: var(--text);
+  .m-toggle { display: none; font-family: var(--font); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 0; padding: 9px 13px; color: var(--ink);
     cursor: pointer; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 6px 20px -10px rgba(0,0,0,.3); }
 
   /* ── Mobile: the Sources + Controls islands become slide-up bottom sheets ── */
@@ -747,7 +737,7 @@
           <li><strong>Type a number</strong> in any value field next to a slider; Enter or Tab to commit.</li>
           <li><strong>R</strong> starts / stops recording the canvas; <strong>⌘Z / ⌘⇧Z</strong> undo / redo.</li>
         </ul>
-        <p style="margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline)">Curious how it actually works? Hit <strong>How it works</strong> (top-right) for a deep dive into the code and the algorithm behind every mode.</p>
+        <p style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">Curious how it actually works? Hit <strong>How it works</strong> (top-right) for a deep dive into the code and the algorithm behind every mode.</p>
       </div>
     </div>
   </div>
@@ -925,7 +915,7 @@
     <!-- EFFECT LAYER (whole-canvas overlay, samples colors from the
          currently-rendered base composition) -->
     <div class="ctrl-group">
-      <div class="ctrl-label">Effect layer <span style="color:var(--text-dim);letter-spacing:0;text-transform:none;font-weight:400">· samples colors below</span></div>
+      <div class="ctrl-label">Effect layer <span style="color:var(--mute);letter-spacing:0;text-transform:none;font-weight:400">· samples colors below</span></div>
       <label class="row toggle" style="margin-bottom:12px">
         <span class="row__label">Enable</span>
         <input type="checkbox" id="r-layerOn">
@@ -945,17 +935,17 @@
         <div class="row"><span class="row__label">Opacity</span><input class="row__val" id="v-layOpacity" type="text" value="1.00"></div>
         <input type="range" id="r-layOpacity" min="0" max="1" step="0.01" value="1">
 
-        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--hairline)">
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line)">
           <div class="ctrl-label" style="margin-bottom:10px">Where</div>
-          <div style="font-size:10px;color:var(--text-dim);letter-spacing:0.06em;margin-bottom:12px;line-height:1.5">
-            <strong style="color:var(--text-mid)">No points</strong> → effect covers whole canvas.<br>
-            <strong style="color:var(--text-mid)">Click canvas</strong> → drop a point. Effect confines to those circles with falloff.
+          <div style="font-size:10px;color:var(--mute);letter-spacing:0.06em;margin-bottom:12px;line-height:1.5">
+            <strong style="color:var(--mute)">No points</strong> → effect covers whole canvas.<br>
+            <strong style="color:var(--mute)">Click canvas</strong> → drop a point. Effect confines to those circles with falloff.
           </div>
           <div class="row"><span class="row__label">Brush radius</span><input class="row__val" id="v-layRadius" type="text" value="280"></div>
           <input type="range" id="r-layRadius" min="40" max="800" step="5" value="280">
           <div class="row"><span class="row__label">Falloff</span><input class="row__val" id="v-layFalloff" type="text" value="0.55"></div>
           <input type="range" id="r-layFalloff" min="0" max="1" step="0.01" value="0.55">
-          <div id="layer-points" style="font-family:var(--mono);font-size:10px;color:var(--text-mid);max-height:120px;overflow-y:auto;margin-top:10px"></div>
+          <div id="layer-points" style="font-family:var(--mono);font-size:10px;color:var(--mute);max-height:120px;overflow-y:auto;margin-top:10px"></div>
           <button class="ctrl-btn" id="btn-layerClear" style="margin-top:6px">Clear points</button>
         </div>
       </div>
@@ -974,7 +964,7 @@
           <button data-s="/">/</button>
           <button data-s="@">@</button>
         </div>
-        <input type="text" id="r-winChar" value="&amp;" maxlength="3" style="width:100%;padding:8px 10px;background:var(--panel);color:var(--text);border:1px solid var(--hairline);font-family:var(--sans);font-size:16px;text-align:center;margin-bottom:10px" placeholder="or type any char">
+        <input type="text" id="r-winChar" value="&amp;" maxlength="3" style="width:100%;padding:8px 10px;background:var(--cell);color:var(--ink);border:1px solid var(--line);font-family:var(--font);font-size:16px;text-align:center;margin-bottom:10px" placeholder="or type any char">
         <div class="row"><span class="row__label">Typeface</span></div>
         <select id="r-winFont">
           <option value="sans" selected>System Sans</option>
@@ -1055,7 +1045,7 @@
           <div class="row"><span class="row__label">Bead size</span><input class="row__val" id="v-cBeadSize" type="text" value="0.08"></div>
           <input type="range" id="r-cBeadSize" min="0.02" max="0.30" step="0.01" value="0.08">
 
-          <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Shape</div>
+          <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Shape</div>
           <div class="seg" id="seg-cBeadShape" style="grid-template-columns:repeat(5,1fr)">
             <button data-bs="circle" class="is-active">●</button>
             <button data-bs="square">■</button>
@@ -1125,13 +1115,13 @@
         <div class="row"><span class="row__label">Opacity ramp</span><input class="row__val" id="v-nOpac" type="text" value="0.00"></div>
         <input type="range" id="r-nOpac" min="-1" max="1" step="0.01" value="0">
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Direction</div>
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Direction</div>
         <div class="seg" id="seg-nDir" style="grid-template-columns:repeat(2,1fr)">
           <button data-nd="in" class="is-active">Inward</button>
           <button data-nd="out">Outward</button>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Container shape</div>
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Container shape</div>
         <div class="seg" id="seg-nShape" style="grid-template-columns:repeat(2,1fr);margin-bottom:10px">
           <button data-ns="rect" class="is-active">Rect</button>
           <button data-ns="glyph">Glyph</button>
@@ -1143,14 +1133,14 @@
           </label>
           <button class="ctrl-btn" id="btn-nGlyphClear" style="width:auto;padding:9px 12px;margin:0" title="Remove uploaded glyph">Clear</button>
         </div>
-        <div id="nest-glyph-preview" style="display:none;align-items:center;gap:10px;padding:8px;background:var(--panel);border:1px solid var(--hairline);margin-bottom:14px">
+        <div id="nest-glyph-preview" style="display:none;align-items:center;gap:10px;padding:8px;background:var(--cell);border:1px solid var(--line);margin-bottom:14px">
           <img id="nest-glyph-preview-img" style="width:36px;height:36px;object-fit:contain;background:repeating-conic-gradient(#e0e0e0 0% 25%,#f5f5f5 25% 50%) 50% / 12px 12px">
-          <span id="nest-glyph-preview-name" style="font-size:12px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
+          <span id="nest-glyph-preview-name" style="font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:6px 0 7px">Lake Opeka glyphs</div>
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:6px 0 7px">Lake Opeka glyphs</div>
         <div id="nest-glyph-presets" class="glyph-presets"></div>
-        <p style="font-size:10px;color:var(--text-dim);line-height:1.4;margin:0 0 10px">Pick one or more — frames cycle through your selection.</p>
+        <p style="font-size:10px;color:var(--mute);line-height:1.4;margin:0 0 10px">Pick one or more — frames cycle through your selection.</p>
 
         <label class="row toggle" style="margin-top:14px">
           <span class="row__label">Outline frames</span>
@@ -1168,7 +1158,7 @@
       <div class="ctrl-group">
         <div class="ctrl-label">Glyph</div>
         <div class="row"><span class="row__label">Character</span></div>
-        <input type="text" id="r-glyphChar" value="✕" maxlength="3" style="width:100%;padding:8px 10px;background:var(--panel);color:var(--text);border:1px solid var(--hairline);font-family:var(--sans);font-size:16px;text-align:center;margin-bottom:10px">
+        <input type="text" id="r-glyphChar" value="✕" maxlength="3" style="width:100%;padding:8px 10px;background:var(--cell);color:var(--ink);border:1px solid var(--line);font-family:var(--font);font-size:16px;text-align:center;margin-bottom:10px">
         <div class="row"><span class="row__label">Typeface</span></div>
         <select id="r-glyphFont" style="margin-bottom:10px">
           <option value="sans">System Sans</option>
@@ -1184,7 +1174,7 @@
           <button data-g="◢">◢</button>
           <button data-g="●">●</button>
         </div>
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Custom (SVG / PNG)</div>
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Custom (SVG / PNG)</div>
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px">
           <label class="ctrl-btn" id="r-glyphCustomBtn" style="flex:1;margin:0;text-align:center">
             Upload glyph
@@ -1192,17 +1182,17 @@
           </label>
           <button class="ctrl-btn" id="btn-glyphClear" style="width:auto;padding:9px 12px;margin:0" title="Use the typed character / preset instead of an uploaded glyph">Clear</button>
         </div>
-        <div id="glyph-preview" style="display:none;align-items:center;gap:10px;padding:8px;background:var(--panel);border:1px solid var(--hairline);margin-bottom:14px">
+        <div id="glyph-preview" style="display:none;align-items:center;gap:10px;padding:8px;background:var(--cell);border:1px solid var(--line);margin-bottom:14px">
           <img id="glyph-preview-img" style="width:36px;height:36px;object-fit:contain;background:repeating-conic-gradient(#e0e0e0 0% 25%,#f5f5f5 25% 50%) 50% / 12px 12px">
-          <span id="glyph-preview-name" style="font-size:12px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
+          <span id="glyph-preview-name" style="font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:16px 0 7px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:16px 0 7px;display:flex;justify-content:space-between;align-items:center">
           <span>Lake Opeka glyphs</span>
           <span><button id="btn-glyphPresetsAll" class="glyph-presets__act" type="button">All</button><button id="btn-glyphPresetsNone" class="glyph-presets__act" type="button" style="margin-left:10px">None</button></span>
         </div>
         <div id="glyph-presets" class="glyph-presets"></div>
-        <p id="glyph-presets-hint" style="font-size:10px;color:var(--text-dim);line-height:1.4;margin:0 0 14px">Pick one, several, or all — the grid mixes the selected glyphs.</p>
+        <p id="glyph-presets-hint" style="font-size:10px;color:var(--mute);line-height:1.4;margin:0 0 14px">Pick one, several, or all — the grid mixes the selected glyphs.</p>
 
         <div class="row"><span class="row__label">Resolution</span><input class="row__val" id="v-gRes" type="text" value="4"></div>
         <input type="range" id="r-gRes" min="1" max="8" step="1" value="4">
@@ -1239,7 +1229,7 @@
         <label class="row toggle"><span class="row__label">Show trails</span>
           <input type="checkbox" id="r-showLines" checked></label>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Connect</div>
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Connect</div>
         <div class="seg" id="seg-lineMode" style="grid-template-columns:repeat(3,1fr);row-gap:4px;margin-bottom:4px">
           <button data-lm="chain">Chain</button>
           <button data-lm="nearest">Near 2</button>
@@ -1248,13 +1238,13 @@
           <button data-lm="all">All</button>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Anchor</div>
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Anchor</div>
         <div class="seg" id="seg-anchorMode" style="grid-template-columns:1fr 1fr;margin-bottom:4px">
           <button data-am="center">Square center</button>
           <button data-am="subject" class="is-active">Subject</button>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Style</div>
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Style</div>
         <div class="seg" id="seg-lineStyle" style="grid-template-columns:repeat(2,1fr);row-gap:4px;margin-bottom:4px">
           <button data-ls="straight">Straight</button>
           <button data-ls="curved" class="is-active">Curved</button>
@@ -1269,12 +1259,12 @@
         <div class="row"><span class="row__label">Line opacity</span><input class="row__val" id="v-lineA" type="text" value="0.75"></div>
         <input type="range" id="r-lineA" min="0" max="1" step="0.01" value="0.75">
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px">Color</div>
+        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Color</div>
         <div class="seg" id="seg-lineColorMode" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
           <button data-cm="solid">Solid</button>
           <button data-cm="gradient" class="is-active">Subject gradient</button>
         </div>
-        <input type="color" id="r-lineC" value="#1a1a1a" style="width:100%;height:28px;border:1px solid var(--hairline);background:var(--panel);cursor:pointer;border-radius:8px;padding:1px">
+        <input type="color" id="r-lineC" value="#1a1a1a" style="width:100%;height:28px;border:1px solid var(--line);background:var(--cell);cursor:pointer;border-radius:8px;padding:1px">
       </div>
 
       <div class="ctrl-group">
@@ -1410,8 +1400,8 @@
         <button data-bg="transparent">None</button>
       </div>
       <div class="bg-custom" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:10px">
-        <label class="row__label" style="font-size:12px;color:var(--text-mid);letter-spacing:0.10em;text-transform:uppercase">Custom color</label>
-        <input type="color" id="r-bgColor" value="#0d0d10" style="width:60px;height:28px;background:var(--panel);border:1px solid var(--hairline);cursor:pointer;padding:1px;border-radius:8px">
+        <label class="row__label" style="font-size:12px;color:var(--mute);letter-spacing:0.10em;text-transform:uppercase">Custom color</label>
+        <input type="color" id="r-bgColor" value="#0d0d10" style="width:60px;height:28px;background:var(--cell);border:1px solid var(--line);cursor:pointer;padding:1px;border-radius:8px">
       </div>
     </div>
 
@@ -2690,13 +2680,13 @@ function renderLayerPoints() {
   const wrap = $('layer-points');
   if (!wrap) return;
   if (!state.layer.points.length) {
-    wrap.innerHTML = '<div style="color:var(--text-dim);font-style:italic">Whole-canvas mode (no points).</div>';
+    wrap.innerHTML = '<div style="color:var(--mute);font-style:italic">Whole-canvas mode (no points).</div>';
     return;
   }
   wrap.innerHTML = state.layer.points.map((p, i) =>
-    `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-top:1px solid var(--hairline)">`
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-top:1px solid var(--line)">`
     + `<span>#${String(i+1).padStart(2,'0')} · ${Math.round(p.x)}, ${Math.round(p.y)}</span>`
-    + `<button data-pi="${i}" class="layer-pt-x" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-family:var(--mono);font-size:12px;padding:2px 4px">×</button>`
+    + `<button data-pi="${i}" class="layer-pt-x" style="background:transparent;border:none;color:var(--mute);cursor:pointer;font-family:var(--mono);font-size:12px;padding:2px 4px">×</button>`
     + `</div>`).join('');
   wrap.querySelectorAll('.layer-pt-x').forEach(b => {
     b.addEventListener('click', () => {
