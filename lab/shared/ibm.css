@@ -16,6 +16,24 @@
 /* type + tokens: the single shared source of truth (same file tool.css imports) */
 @import url('/lab/shared/tokens.css');
 
+/* ---- shared shell chrome for bespoke tools that use mountTopbar ---- */
+/* content clears the standard topbar (82) + sub-header (38) */
+:root{ --top:120px; }
+@media (max-width:560px){ :root{ --top:112px; } }
+/* the sub-header band below the topbar — identical to the shelled tools */
+.opal-subhead{ position:fixed; top:82px; left:0; right:0; z-index:9; height:38px; box-sizing:border-box;
+  display:flex; align-items:center; gap:12px; padding:0 160px;
+  background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.opal-subhead__id{ display:flex; align-items:center; gap:11px; min-width:0; }
+.opal-subhead__name{ font-size:13px; font-weight:600; color:var(--ink); white-space:nowrap; }
+.opal-subhead__desc{ font-size:12px; color:var(--mute); text-transform:none; letter-spacing:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.opal-subhead__ver{ margin-left:auto; font-size:11px; color:var(--mute); }
+@media (max-width:900px){ .opal-subhead{ padding:0 64px; } }
+@media (max-width:560px){ .opal-subhead{ padding:0 20px; top:74px; } }
+/* no uppercase in the rail chrome */
+#rail *, .rail *, #dock *{ text-transform:none !important; }
+
 /* Plex on the interface — set on <html> so it cascades, without repainting bodies.
    A tool that pins its own font on a wrapper still wins there; this catches the rest. */
 html{ font-family:var(--font); accent-color:var(--accent); }
