@@ -29,7 +29,27 @@ const Opal = (() => {
         .opal-about{ position:fixed; z-index:60; max-width:328px; padding:12px 14px; border-radius:10px;
           font-size:12px; line-height:1.55; letter-spacing:.01em; background:rgba(18,20,26,.97); color:#eef0f4;
           border:1px solid rgba(255,255,255,.14); box-shadow:0 14px 44px -14px rgba(0,0,0,.65);
-          -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }`;
+          -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+        /* Sessions — saved states, top-right of every tool */
+        .opal-sessions-btn{ display:inline-flex; align-items:center; gap:7px; padding:7px 13px; cursor:pointer;
+          background:var(--paper,#fff); border:1px solid var(--line,rgba(0,0,0,.16)); border-radius:var(--r-control,8px);
+          color:var(--ink,#161616); font:inherit; font-size:12.5px; }
+        .opal-sessions-btn:hover{ border-color:rgba(0,0,0,.42); }
+        .opal-sessions-btn svg{ flex:none; }
+        .opal-sessions-pop{ position:fixed; z-index:70; width:300px; max-width:calc(100vw - 24px);
+          background:var(--island,#fff); border:1px solid var(--line,rgba(0,0,0,.16)); border-radius:var(--r-island,12px);
+          box-shadow:var(--shadow-float,0 8px 24px rgba(0,0,0,.16)); padding:14px; }
+        .oss__save{ display:flex; gap:8px; margin-bottom:10px; }
+        .oss__save input{ flex:1; min-width:0; padding:7px 9px; border:1px solid var(--line); border-radius:var(--r-input,6px); font:inherit; font-size:13px; background:#fff; color:var(--ink); }
+        .oss__savebtn{ flex:none; padding:7px 12px; background:var(--accent,#0f62fe); color:#fff; border:1px solid var(--accent,#0f62fe); border-radius:var(--r-control,8px); cursor:pointer; font:inherit; font-size:12px; }
+        .oss__list{ list-style:none; margin:0; padding:0; max-height:260px; overflow-y:auto; }
+        .oss__list li{ display:flex; align-items:center; gap:4px; }
+        .oss__empty{ color:var(--mute,#525252); font-size:12px; padding:6px 2px; }
+        .oss__load{ flex:1; min-width:0; text-align:left; padding:8px 9px; background:none; border:none; border-radius:var(--r-input,6px); color:var(--ink); font:inherit; font-size:13px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .oss__load:hover{ background:rgba(0,0,0,.05); }
+        .oss__del{ flex:none; width:26px; height:26px; background:none; border:none; color:var(--mute); cursor:pointer; border-radius:var(--r-input,6px); font-size:16px; line-height:1; }
+        .oss__del:hover{ color:var(--rec,#da1e28); }
+        .oss__hint{ margin:9px 2px 0; font-size:11px; color:var(--mute); }`;
       document.head.appendChild(st);
     }
     const WORDMARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="154.5 212.9 1274.6 186.2" fill="currentColor" style="display:block;height:33px;width:auto;"><path d="M1356.2,353.2h72.1v-13h-59.1v-100.6h-13v113.5ZM1077.3,313.7l13.5-61.1h10.6l13.3,61.1h-37.5ZM1055.3,353.2h13.3l5.8-26.5h43.3l5.8,26.5h13.3l-25.2-113.5h-30.6l-25.6,113.5ZM723.6,398.3h37.2l111.9-184.5h-37.2l-111.9,184.5ZM478.1,296.2v-43.6h28.1c5.9,0,8.3.9,13,4.7,5.2,4.3,5.9,6.1,5.9,10.6v13c0,4.5-.7,6.3-5.9,10.6-4.7,3.8-7,4.7-13,4.7h-28.1ZM465.1,353.2h13v-44h28.1c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-14.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-41.1v113.5ZM199.1,340.2h-11.9c-5.9,0-8.3-.9-13-4.7-5.2-4.3-5.9-6.1-5.9-10.6v-57c0-4.5.7-6.3,5.9-10.6,4.7-3.8,7-4.7,13-4.7h11.9c5.9,0,8.5.9,13.2,4.7,5,4.1,5.8,6.1,5.8,10.6v57c0,4.5-.7,6.5-5.8,10.6-4.7,3.8-7.2,4.7-13.2,4.7M187.2,353.2h11.9c9.4,0,14.2-2,22.5-9,8.3-7,9.4-10.3,9.4-18.6v-58.4c0-8.3-1.1-11.5-9.4-18.6-8.3-7-13.2-9-22.5-9h-11.9c-9.4,0-14.2,2-22.5,9-8.3,7-9.4,10.3-9.4,18.6v58.4c0,8.3,1.1,11.5,9.4,18.6,8.3,7,13.2,9,22.5,9"/></svg>`;
@@ -39,6 +59,7 @@ const Opal = (() => {
     bar.innerHTML = `
       <a href="/lab/" class="opal-brand" aria-label="Tools home" style="color:inherit;text-decoration:none;">${WORDMARK}</a>
     `;
+    mountSessions(bar);   // "Sessions" — saved states, top-right of every tool
 
     // Sub-header band BELOW the topbar: tool name · description · info · version — same on every tool.
     let sub = null;
@@ -154,6 +175,58 @@ const Opal = (() => {
     t.dataset.acc='1';
     t.addEventListener('click', ()=>g.classList.toggle('collapsed'));
   }
+  // --- Sessions: save/restore the tool's control state, per tool, top-right ---
+  function mountSessions(bar){
+    const KEY = 'opal-sessions:' + location.pathname;
+    const read = () => { try{ return JSON.parse(localStorage.getItem(KEY) || '[]'); }catch(e){ return []; } };
+    const write = a => { try{ localStorage.setItem(KEY, JSON.stringify(a)); }catch(e){} };
+    function capture(){
+      const s = {};
+      document.querySelectorAll('input, select, textarea').forEach(el => {
+        const k = el.id || el.name; if(!k || el.type === 'file') return;
+        s[k] = (el.type === 'checkbox' || el.type === 'radio') ? { c: el.checked } : { v: el.value };
+      });
+      return s;
+    }
+    function restore(s){
+      Object.keys(s || {}).forEach(k => {
+        let el = document.getElementById(k); if(!el){ try{ el = document.querySelector('[name="'+k+'"]'); }catch(e){} }
+        if(!el) return; const d = s[k];
+        if('c' in d) el.checked = d.c; else el.value = d.v;
+        el.dispatchEvent(new Event('input', { bubbles:true }));
+        el.dispatchEvent(new Event('change', { bubbles:true }));
+      });
+    }
+    const btn = document.createElement('button');
+    btn.className = 'opal-sessions-btn'; btn.type = 'button'; btn.setAttribute('aria-expanded','false');
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16"/></svg> Sessions';
+    bar.appendChild(btn);
+    const pop = document.createElement('div'); pop.className = 'opal-sessions-pop'; pop.hidden = true;
+    pop.innerHTML = '<div class="oss__save"><input type="text" placeholder="Name this session…" maxlength="48"><button type="button" class="oss__savebtn">Save</button></div><ul class="oss__list"></ul><p class="oss__hint">Saved in this browser, for this tool.</p>';
+    document.body.appendChild(pop);
+    const listEl = pop.querySelector('.oss__list'), nameEl = pop.querySelector('input'), saveBtn = pop.querySelector('.oss__savebtn');
+    function renderList(){
+      const items = read(); listEl.innerHTML = '';
+      if(!items.length){ listEl.innerHTML = '<li class="oss__empty">No saved sessions yet.</li>'; return; }
+      items.forEach((it, i) => {
+        const li = document.createElement('li');
+        const load = document.createElement('button'); load.className = 'oss__load'; load.type = 'button'; load.textContent = it.name;
+        load.addEventListener('click', () => { restore(it.state); });
+        const del = document.createElement('button'); del.className = 'oss__del'; del.type = 'button'; del.setAttribute('aria-label','Delete'); del.textContent = '×';
+        del.addEventListener('click', () => { const a = read(); a.splice(i,1); write(a); renderList(); });
+        li.appendChild(load); li.appendChild(del); listEl.appendChild(li);
+      });
+    }
+    function place(){ const r = btn.getBoundingClientRect(); pop.style.right = Math.max(12, window.innerWidth - r.right) + 'px'; pop.style.left = 'auto'; pop.style.top = (r.bottom + 8) + 'px'; }
+    function open(){ place(); renderList(); pop.hidden = false; btn.setAttribute('aria-expanded','true'); }
+    function close(){ pop.hidden = true; btn.setAttribute('aria-expanded','false'); }
+    btn.addEventListener('click', e => { e.stopPropagation(); pop.hidden ? open() : close(); });
+    saveBtn.addEventListener('click', () => { const nm = (nameEl.value||'').trim() || ('Session ' + (read().length + 1)); const a = read(); a.unshift({ name:nm, state:capture() }); write(a); nameEl.value=''; renderList(); });
+    nameEl.addEventListener('keydown', e => { if(e.key==='Enter') saveBtn.click(); });
+    document.addEventListener('click', e => { if(!pop.hidden && !pop.contains(e.target) && !btn.contains(e.target)) close(); });
+    window.addEventListener('keydown', e => { if(e.key==='Escape') close(); });
+  }
+
   // --- recording timer: mirror the #recDot elapsed time onto the Record button ---
   function wireRecTimer(){
     const dot = document.getElementById('recDot'), btn = document.getElementById('recBtn');
