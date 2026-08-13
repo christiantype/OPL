@@ -50,9 +50,9 @@
   <div class="group">
     <div class="group__t">Lens</div>
     <select class="full" id="shape"><option value="0" selected>Prismatic</option><option value="1">Round</option><option value="2">Bevel</option></select>
-    <div class="knob"><label>Refraction <b id="rfR">0.02</b></label><input id="rf" type="range" min="0" max="120" value="20"></div>
+    <div class="knob"><label>Refraction <b id="rfR">0.12</b></label><input id="rf" type="range" min="0" max="600" value="120"></div>
     <div class="knob"><label>Zoom <b id="zmR">0.10</b></label><input id="zm" type="range" min="0" max="80" value="10"></div>
-    <div class="knob"><label>Aberration <b id="abR">0.000</b></label><input id="ab" type="range" min="0" max="60" value="0"></div>
+    <div class="knob"><label>Aberration <b id="abR">0.005</b></label><input id="ab" type="range" min="0" max="60" value="10"></div>
     <div class="knob"><label>Edge softness <b id="egR">0.11</b></label><input id="eg" type="range" min="0" max="50" value="11"></div>
   </div>
   <div class="group">
@@ -74,7 +74,7 @@
 (()=>{
   const $=id=>document.getElementById(id);
   const cv=$('gl'); const gl=cv.getContext('webgl2',{preserveDrawingBuffer:true, premultipliedAlpha:false});
-  const P={ cols:16, rows:9, shape:0, refr:0.02, zoom:0.10, aber:0.000, edge:0.11, pulse:false, pspeed:0.10, size:'1920/1080' };
+  const P={ cols:16, rows:9, shape:0, refr:0.12, zoom:0.10, aber:0.005, edge:0.11, pulse:false, pspeed:0.10, size:'1920/1080' };
   let W=1920,H=1080, srcAR=1, video=null;
 
   const vs=`#version 300 es
@@ -84,29 +84,35 @@
   in vec2 vUv; out vec4 o;
   vec2 cover(vec2 p){ return (p-0.5)*uCover+0.5; }   // preserve media aspect (centre-crop), never stretch
   void main(){
-    vec2 uv=vUv;
-    vec2 cell=floor(uv*grid);
-    vec2 local=fract(uv*grid);
-    vec2 d=local-0.5; float dist=length(d);
-    float pl = 1.0 + uPulse*0.7*sin(uTime + dot(cell,vec2(1.3,2.1)));
-    // magnify toward cell centre
-    vec2 zl = 0.5 + d*(1.0-uZoom);
-    // refraction offset by lens shape
-    float k;
-    if(uShape==1) k = dist*dist;              // round: barrel
-    else if(uShape==2) k = smoothstep(0.15,0.5,dist); // bevel: flat then sharp edge
-    else k = pow(dist,1.4);                    // prismatic
+    vec2 gp=vUv*grid;
+    vec2 cell=floor(gp);
+    vec2 d=fract(gp)-0.5;                         // -0.5..0.5 within the cell
+    float dist=clamp(length(d)*1.414,0.0,1.0);    // 0 centre -> ~1 at the corner
+    float pl = 1.0 + uPulse*0.6*sin(uTime + dot(cell,vec2(1.3,2.1)));
+    // lens bevel profile — how hard the glass bends light here (rises toward the rim)
+    float prof;
+    if(uShape==1) prof = dist*dist;                        // round / barrel
+    else if(uShape==2) prof = smoothstep(0.25,0.92,dist);  // bevel: flat centre, steep rim
+    else prof = pow(dist,1.6);                             // prismatic
     vec2 dir = normalize(d+1e-5);
-    vec2 refr = dir * uRefr * pl * k * 6.0;
-    vec2 sl = clamp(zl+refr, 0.0, 1.0);
+    // magnify toward the centre, then refract outward along the bevel
+    vec2 base = 0.5 + d*(1.0-uZoom);
+    vec2 sl = clamp(base + dir*uRefr*prof*pl*4.0, 0.002, 0.998);
     vec2 suv = (cell+sl)/grid;
-    vec2 ca = dir*uAber;
-    float r=texture(tex,cover(suv+ca)).r, g=texture(tex,cover(suv)).g, b=texture(tex,cover(suv-ca)).b;
-    vec3 col=vec3(r,g,b);
-    // soft edge blend to straight — also dissolves any cell seam, so the grid is never drawn
-    float e=smoothstep(0.5, 0.5-max(0.001,uEdge), dist);
-    col=mix(texture(tex,cover(uv)).rgb, col, e);
-    o=vec4(col,1.0);
+    // chromatic aberration — split the channels, strongest at the rim
+    vec2 ca = dir*uAber*(0.35+prof);
+    vec3 col;
+    col.r = texture(tex, cover(clamp(suv+ca,0.0,1.0))).r;
+    col.g = texture(tex, cover(suv)).g;
+    col.b = texture(tex, cover(clamp(suv-ca,0.0,1.0))).b;
+    // glass bevel shading — a sheen on the light-facing rim, shadow opposite (fakes 3D glass;
+    // this is what makes each cell read as a glass block, without ever drawing a seam line)
+    vec2 L = normalize(vec2(-0.55,0.83));
+    float ld = dot(dir,L);
+    float rim = smoothstep(0.30 + uEdge*0.6, 0.99, dist);
+    col += rim*0.22*ld;                       // rim light / shade
+    col += rim*0.16*pow(max(ld,0.0),4.0);     // sharp specular streak
+    o=vec4(clamp(col,0.0,1.0),1.0);
   }`;
   function sh(t,s){ const o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(o)); return o; }
   const prog=gl.createProgram(); gl.attachShader(prog,sh(gl.VERTEX_SHADER,vs)); gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(prog); gl.useProgram(prog);
