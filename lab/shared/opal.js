@@ -234,11 +234,24 @@ const Opal = (() => {
     });
   }
 
+  // --- size island: show a W × H readout on every tool (consistent with the rebuilt tools) ---
+  function wireSizeReadout(){
+    const dock=document.getElementById('sizeDock'), sel=document.getElementById('aspect');
+    if(!dock || !sel || dock.dataset.sizeR) return;
+    dock.dataset.sizeR='1';
+    let r=document.getElementById('dimReadout');
+    if(!r){ r=document.createElement('span'); r.id='dimReadout'; dock.insertBefore(r, dock.firstChild); }
+    const upd=()=>{ const m=(sel.value||'').split(/[x/]/).map(Number);
+      r.textContent = (m.length===2 && m[0] && m[1]) ? `${m[0]} × ${m[1]}` : ''; };
+    sel.addEventListener('change', upd); upd();
+  }
+
   function enhance(){
     try{
       document.querySelectorAll('.seg').forEach(segToSelect);
       document.querySelectorAll('#dock > .group:not(.out)').forEach(makeAccordion);
       wireRecTimer();
+      wireSizeReadout();
     }catch(e){}
   }
   let _q=false;
