@@ -320,7 +320,7 @@ const Opal = (() => {
     const asp=document.getElementById('aspect'); if(asp) asp.addEventListener('change', ()=>setTimeout(setDefault, 60));
     const doExport = ()=>{
       const v = fmt.value;
-      if(v==='svg'){ try{ const blob=new Blob([opts.svg()],{type:'image/svg+xml'}); const a=document.createElement('a'); a.download=basename+'.svg'; a.href=URL.createObjectURL(blob); a.click(); }catch(e){ console.warn(e); } return; }
+      if(v==='svg'){ try{ const blob=new Blob([opts.svg(+scale.value)],{type:'image/svg+xml'}); const a=document.createElement('a'); a.download=basename+'.svg'; a.href=URL.createObjectURL(blob); a.click(); }catch(e){ console.warn(e); } return; }
       // opts.render(px) lets shader/vector tools re-render at the true target long-edge (crisp print),
       // instead of upscaling the on-screen bitmap. Falls back to a smooth bicubic upscale.
       let c;

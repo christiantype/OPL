@@ -220,15 +220,8 @@
     </div>
   </div>
 
-  <!-- export options -->
-  <div class="group">
-    <div class="group__t">Export options</div>
-    <p class="rowhint">SVG for Dots and Lines (real vector), PNG for anything.</p>
-    <div class="knob" data-tip="Pixels across the long edge of the PNG. The figure beside it is the print size at 300 DPI."><label>Pixels <b id="resR">4096</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></label><input id="res" type="range" min="1024" max="10240" step="256" value="4096" /></div>
-    <button class="btn full" id="svgBtn" data-tip="Saves the halftone as an SVG — real dots or lines, sharp at any size. Dots and Lines only.">SVG</button>
-  </div>
+  <!-- output — every export setting (format · pixels · print size · DPI) lives here -->
 
-  <!-- output -->
   <div class="group out" data-export-custom>
     <div class="group__t">Output</div>
     <div class="grid2">
@@ -512,18 +505,19 @@
   // ---------- exports ----------
   const dl=(blob,name)=>{ const u=URL.createObjectURL(blob), a=document.createElement('a'); a.href=u; a.download=name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); };
-  function exportDims(){ const [aw,ah]=desiredAspect(), long=Math.max(aw,ah), s=state.res/long;
+  // dims for a chosen long-edge (px), honouring the selected aspect
+  function dimsFor(px){ const [aw,ah]=desiredAspect(), long=Math.max(aw,ah), s=px/long;
     return [Math.round(aw*s), Math.round(ah*s)]; }
-  function exportPNG(){ const [w,h]=exportDims(); setStatus(`rendering ${w}×${h}…`);
-    setTimeout(()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h;
-      renderAt(c.getContext('2d'),w,h);
-      c.toBlob(b=>{ if(!b){ setStatus('too large — try fewer Pixels'); setTimeout(()=>setStatus(''),3000); return; }
-        dl(b,`halftone-${state.kind}-${w}x${h}-${Date.now()}.png`); setStatus(`saved ${w}×${h}`); setTimeout(()=>setStatus(''),2000); },'image/png'); },30); }
   // render at an arbitrary export size (cell scales with size so the screen frequency holds)
   function renderAt(g,w,h){ const savedDPR=DPR; DPR=w/((cv.width/DPR)||w); render(g,w,h); DPR=savedDPR; }
-  function exportSVG(){ if(state.kind==='duotone'||state.kind==='dither'){ setStatus(state.kind+' is pixels — use PNG'); setTimeout(()=>setStatus(''),3000); return; }
-    const [w,h]=exportDims(); dl(new Blob([buildSVG(w,h)],{type:'image/svg+xml'}), `halftone-${state.kind}-${Date.now()}.svg`);
-    setStatus('saved SVG'); setTimeout(()=>setStatus(''),1800); }
+  // Output-panel hooks — a crisp raster re-render, and real-vector SVG for Dots/Lines
+  // (Duotone/Dither are pixel treatments, so their SVG wraps the high-res raster).
+  function renderExport(px){ const [w,h]=dimsFor(px); const c=document.createElement('canvas'); c.width=w; c.height=h;
+    renderAt(c.getContext('2d'),w,h); return c; }
+  function svgExport(px){ const [w,h]=dimsFor(px||4096);
+    if(state.kind==='duotone'||state.kind==='dither'){ const c=renderExport(px||4096); const data=c.toDataURL('image/png');
+      return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><image width="${w}" height="${h}" xlink:href="${data}"/></svg>`; }
+    return buildSVG(w,h); }
 
   // ---------- record (video) — capture the canvas to MP4 (H.264), WebM fallback ----------
   let rec=null, recChunks=[], recRAF=0, recStart=0, recTimer=0;
@@ -567,20 +561,18 @@
   function wire(){
     bindSeg('kindSeg','kind','k', syncKindCtls); bindSeg('fitSeg','fit','t'); bindSeg('invSeg','invert','i');
     bindSeg('assignSeg','assign','a');
-    $('aspect').addEventListener('change',e=>{ state.size=e.target.value; syncRes(); syncHint(); resize(); });
+    $('aspect').addEventListener('change',e=>{ state.size=e.target.value; syncHint(); resize(); });
     $('markAdd').addEventListener('click',()=>$('markInp').click());
     $('markClear').addEventListener('click',clearMarks);
     $('markInp').addEventListener('change',e=>{ [...e.target.files].forEach(addMark); e.target.value=''; });
     $('markList').addEventListener('input',e=>{ const t=e.target.closest('.mk-col'); if(!t) return; const m=MARKS[+t.dataset.i]; if(m){ m.colour=t.value; m._ink=null; markDirty(); } });
     $('markList').addEventListener('click',e=>{ const b=e.target.closest('.mk-rm'); if(!b) return; MARKS.splice(+b.dataset.i,1); renderMarks(); markDirty(); });
     ['cell','ang','ctr','bri'].forEach(id=>bind(id,id));
-    bind('res','res',v=>{ $('resR').textContent=v; syncRes(); });
     $('dark').addEventListener('input',e=>{ state.dark=e.target.value; markDirty(); });
     $('light').addEventListener('input',e=>{ state.light=e.target.value; markDirty(); });
     $('loadBtn').addEventListener('click',()=>$('fileInp').click());
     $('sampleBtn').addEventListener('click',useSample);
     $('fileInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadFile(f); });
-    $('saveBtn').addEventListener('click',exportPNG); $('svgBtn').addEventListener('click',exportSVG);
     $('recBtn').addEventListener('click',toggleRecord);
     // drag & drop a photo
     ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>{ e.preventDefault(); }));
@@ -590,8 +582,7 @@
       else if(pic) loadFile(pic); });
   }
   function syncKindCtls(){ const r=$('markRow'); if(r) r.style.display = state.kind==='dots' ? '' : 'none'; }
-  function syncRes(){ const [ew,eh]=exportDims(); const el=$('resIn'); if(el) el.textContent=`${(ew/300).toFixed(1)}×${(eh/300).toFixed(1)}in @300`; }
-  function syncHint(){ const [ew,eh]=exportDims(); const vec=(state.kind==='dots'||state.kind==='lines');
+  function syncHint(){ const [ew,eh]=dimsFor(4096); const vec=(state.kind==='dots'||state.kind==='lines');
     $('hint').textContent=`halftone · ${state.kind} · png ${ew}×${eh}`+(vec?' · svg vector':''); }
 
   // ---------- knobs / folds / tooltips ----------
@@ -608,10 +599,13 @@
   function frame(){ if(dirty){ render(ctx,cv.width,cv.height); dirty=false; } requestAnimationFrame(frame); }
 
   wire(); resize(); document.body.classList.add('dark','nofile');
-  syncHint(); syncRes(); syncKindCtls(); renderMarks(); buildPresets();
+  syncHint(); syncKindCtls(); renderMarks(); buildPresets();
   state.ready=true; if(!img) useSample(); { const veil=$('veil'); if(veil) veil.remove(); } resize();
   requestAnimationFrame(frame);
-  window.halftone={ state, render, buildSVG, exportDims, get hasImg(){return !!img;}, useSample };
+  // Output island: one consistent export panel (format · pixels · print size · DPI · quality),
+  // with a crisp re-render and real-vector SVG for Dots/Lines.
+  Opal.mountOutput(cv, 'halftone', { render: renderExport, svg: svgExport });
+  window.halftone={ state, render, buildSVG, dimsFor, get hasImg(){return !!img;}, useSample };
 })();
 </script>
 </body>
