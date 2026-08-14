@@ -271,7 +271,9 @@ const Opal = (() => {
     const x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
     x.drawImage(src,0,0,c.width,c.height); return c;
   }
-  function saveDialog(canvas, basename){
+  // opts.svg (optional): a function returning an SVG string — enables an "SVG · vector" format.
+  function saveDialog(canvas, basename, opts){
+    opts = opts || {};
     basename = basename || 'export';
     if(document.getElementById('opal-save')) return;
     const wrap=document.createElement('div'); wrap.id='opal-save';
@@ -279,8 +281,8 @@ const Opal = (() => {
       <div class="opal-save__panel" role="dialog" aria-label="Save">
         <div class="opal-save__t">Save image</div>
         <label class="opal-save__row"><span>Format</span>
-          <select id="osv-fmt"><option value="png">PNG · lossless</option><option value="jpg">JPG · photo</option><option value="pdf">PDF · print</option></select></label>
-        <label class="opal-save__row"><span>Resolution</span>
+          <select id="osv-fmt"><option value="png">PNG · lossless</option><option value="jpg">JPG · photo</option><option value="pdf">PDF · print</option>${opts.svg?'<option value="svg">SVG · vector</option>':''}</select></label>
+        <label class="opal-save__row" id="osv-srow"><span>Resolution</span>
           <select id="osv-scale"><option value="1">1× · ${canvas.width}×${canvas.height}</option><option value="2">2× · ${canvas.width*2}×${canvas.height*2}</option><option value="3">3× · ${canvas.width*3}×${canvas.height*3}</option></select></label>
         <label class="opal-save__row" id="osv-qrow" hidden><span>Quality</span><input id="osv-q" type="range" min="60" max="100" value="92"><b id="osv-qv">92</b></label>
         <label class="opal-save__row" id="osv-drow" hidden><span>DPI</span><select id="osv-dpi"><option>150</option><option selected>300</option><option>600</option></select></label>
@@ -288,14 +290,19 @@ const Opal = (() => {
       </div>`;
     document.body.appendChild(wrap);
     const $=id=>wrap.querySelector(id);
-    const fmt=$('#osv-fmt'), qrow=$('#osv-qrow'), drow=$('#osv-drow'), q=$('#osv-q'), qv=$('#osv-qv');
-    const syncFmt=()=>{ qrow.hidden = !(fmt.value==='jpg'); drow.hidden = !(fmt.value==='pdf'); };
+    const fmt=$('#osv-fmt'), srow=$('#osv-srow'), qrow=$('#osv-qrow'), drow=$('#osv-drow'), q=$('#osv-q'), qv=$('#osv-qv');
+    const syncFmt=()=>{ const v=fmt.value; qrow.hidden=v!=='jpg'; drow.hidden=v!=='pdf'; srow.hidden=v==='svg'; };
     fmt.addEventListener('change', syncFmt); syncFmt();
     q.addEventListener('input', ()=>qv.textContent=q.value);
     const close=()=>wrap.remove();
     $('#osv-x').addEventListener('click', close);
     wrap.addEventListener('click', e=>{ if(e.target===wrap) close(); });
     $('#osv-go').addEventListener('click', ()=>{
+      if(fmt.value==='svg'){
+        try{ const blob=new Blob([opts.svg()], {type:'image/svg+xml'});
+          const a=document.createElement('a'); a.download=`${basename}.svg`; a.href=URL.createObjectURL(blob); a.click(); }catch(e){ console.warn(e); }
+        close(); return;
+      }
       const mult=+$('#osv-scale').value, c=scaledCanvas(canvas, mult);
       const dl=(href, ext)=>{ const a=document.createElement('a'); a.download=`${basename}@${c.width}x${c.height}.${ext}`; a.href=href; a.click(); };
       if(fmt.value==='png'){ dl(c.toDataURL('image/png'),'png'); }

@@ -132,7 +132,26 @@
   $('file').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadURL(URL.createObjectURL(f)); });
   ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'&&e.dataTransfer.files[0]) loadURL(URL.createObjectURL(e.dataTransfer.files[0])); }));
 
-  $('saveBtn').addEventListener('click',()=>Opal.saveDialog(art,'prism'));
+  // Vector export — every ink is a grid of halftone dots (circles/squares), so it's true SVG.
+  function prismSvg(){
+    let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+    svg+=`<rect width="${W}" height="${H}" fill="${P.paper}"/>`;
+    const specs=[[P.i3,2,0],[P.i1,0,P.angle],[P.i2,1,P.angle*5]];
+    for(const [ink,k,ang] of specs){
+      let g=`<g fill="${ink}" style="mix-blend-mode:multiply">`;
+      const a=ang*Math.PI/180, cs=Math.cos(a), sn=Math.sin(a), s=P.screen, N=Math.ceil(Math.hypot(W,H)/s)+2;
+      for(let j=-N;j<=N;j++)for(let i=-N;i<=N;i++){
+        const rx=i*s, ry=j*s, x=rx*cs-ry*sn+W/2, y=rx*sn+ry*cs+H/2;
+        if(x<-s||x>W+s||y<-s||y>H+s) continue;
+        const v=chan(x,y,k), rad=(s*0.60)*Math.sqrt(v); if(rad<0.3) continue;
+        if(P.dot==='square'){ const d=rad*1.6; g+=`<rect x="${(x-d/2).toFixed(1)}" y="${(y-d/2).toFixed(1)}" width="${d.toFixed(1)}" height="${d.toFixed(1)}"/>`; }
+        else g+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}"/>`;
+      }
+      svg+=g+`</g>`;
+    }
+    return svg+`</svg>`;
+  }
+  $('saveBtn').addEventListener('click',()=>Opal.saveDialog(art,'prism',{svg:prismSvg}));
   let rec=null,rt=0,tk=0;
   $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
     const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';

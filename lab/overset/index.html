@@ -224,7 +224,25 @@ us to</textarea>
   $('play').addEventListener('click',()=>setPlay(!P.playing));
   $('reseed').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*9999); upd(); });
 
-  $('saveBtn').addEventListener('click',()=>Opal.saveDialog(art,'overset'));
+  // Vector export — the headline is real type, so export it as clean SVG <text> (static, no warp).
+  function oversetSvg(){
+    const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    const fam=P.font==='system-ui'?'sans-serif':P.font.replace(/"/g,'');
+    let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+    if(P.bg==='gradient') svg+=`<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${P.bg1}"/><stop offset="1" stop-color="${P.bg2}"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#g)"/>`;
+    else svg+=`<rect width="${W}" height="${H}" fill="${P.bg1}"/>`;
+    const lines=P.text.toUpperCase().split('\n').flatMap(l=>wrap(l));
+    const lh=P.fs*P.lh, total=lines.length*lh, y0=H/2-total/2+lh/2;
+    const anchor=P.align==='center'?'middle':(P.align==='left'?'start':'end');
+    const ax=P.align==='center'?W/2:(P.align==='left'?W*0.08:W*0.92);
+    const paint=P.fx==='outline'?`fill="none" stroke="${P.oline}" stroke-width="${P.ow}" stroke-linejoin="round"`:`fill="${P.fill}"`;
+    lines.forEach((ln,i)=>{ const y=y0+i*lh;
+      svg+=`<text x="${ax.toFixed(1)}" y="${y.toFixed(1)}" font-family="${fam}" font-weight="bold" font-size="${P.fs}" letter-spacing="${P.ls}" text-anchor="${anchor}" dominant-baseline="middle" ${paint}>${esc(ln)}</text>`; });
+    if(P.top) svg+=`<text x="${W/2}" y="${(H/2-P.dist-P.fs*0.5).toFixed(1)}" font-family="${fam}" font-weight="600" font-size="${P.ts}" text-anchor="middle" dominant-baseline="middle" fill="${P.sc}">${esc(P.top.toUpperCase())}</text>`;
+    if(P.bot) svg+=`<text x="${W/2}" y="${(H/2+P.dist+P.fs*0.5).toFixed(1)}" font-family="${fam}" font-weight="600" font-size="${P.bs}" text-anchor="middle" dominant-baseline="middle" fill="${P.sc}">${esc(P.bot.toUpperCase())}</text>`;
+    return svg+`</svg>`;
+  }
+  $('saveBtn').addEventListener('click',()=>Opal.saveDialog(art,'overset',{svg:oversetSvg}));
   let rec=null,rt=0,tk=0;
   $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;} if(!P.playing) setPlay(true);
     const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
