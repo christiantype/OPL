@@ -471,8 +471,9 @@
     const [dr,dg,db]=hexRGB(state.dark), [lr,lg,lb]=hexRGB(state.light);
     const ink = state.invert? `rgb(${lr},${lg},${lb})` : `rgb(${dr},${dg},${db})`;
     const paper = state.invert? `rgb(${dr},${dg},${db})` : `rgb(${lr},${lg},${lb})`;
-    const cpx=Math.max(2, state.cell* (W/ (cv.width||W)) *DPR); // roughly match preview scale in export space
-    const cell=Math.max(2, Math.round(W/220)); // stable svg cell relative to width
+    // match the on-screen dot frequency exactly: scale the preview cell into export space
+    // (same math the PNG path uses), so the SVG reads identically to the canvas.
+    const cell=Math.max(2, state.cell*(W/(cv.width||W))*DPR);
     const {L,cols,rows}=lumGrid(W,H,cell);
     const stepX=W/cols, stepY=H/rows, dark=v=>1-v;
     let body='';
