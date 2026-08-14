@@ -54,6 +54,7 @@ const Opal = (() => {
         .opal-export{ display:flex; flex-direction:column; gap:10px; margin:2px 0 12px; }
         .opal-export select.opal-ex-fmt{ width:100%; }
         .opal-export .opal-ex-row{ display:flex; flex-direction:column; gap:3px; }
+        .opal-export .opal-ex-row[hidden]{ display:none !important; }
         .opal-export .opal-ex-row > label{ display:flex; justify-content:space-between; align-items:baseline; font-size:12px; color:var(--mute); }
         .opal-export .opal-ex-row > label b{ color:var(--ink); font-variant-numeric:tabular-nums; }
         .opal-export .opal-ex-phys{ font-family:var(--mono); font-size:10.5px; color:var(--mute); }
@@ -280,6 +281,55 @@ const Opal = (() => {
     const x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
     x.drawImage(src,0,0,c.width,c.height); return c;
   }
+  // Persistent export panel — the Output island always shows every export setting (format · pixels ·
+  // physical size · DPI · quality). opts.svg (optional) adds an SVG · vector format.
+  function mountOutput(canvas, basename, opts){
+    opts = opts || {}; basename = basename || 'export';
+    const out = document.getElementById('output') || document.querySelector('.group.out, #dock .out');
+    if(!out || out.dataset.exp) return; out.dataset.exp = '1';
+    const saveBtn = document.getElementById('saveBtn');
+    const box = document.createElement('div'); box.className = 'opal-export';
+    box.innerHTML = `
+      <select class="opal-ex-fmt"><option value="png">PNG · lossless</option><option value="jpg">JPG · photo</option><option value="pdf">PDF · print</option>${opts.svg?'<option value="svg">SVG · vector</option>':''}</select>
+      <div class="opal-ex-row row-px"><label>Pixels <b class="opal-ex-pxv"></b></label><input class="opal-ex-scale" type="range" min="512" max="8192" step="64"><div class="opal-ex-phys"></div></div>
+      <div class="opal-ex-row row-q" hidden><label>Quality <b class="opal-ex-qv">92</b></label><input class="opal-ex-q" type="range" min="60" max="100" value="92"></div>
+      <div class="opal-ex-row row-dpi"><label>DPI</label><select class="opal-ex-dpi"><option>150</option><option selected>300</option><option>600</option></select></div>`;
+    const btnRow = out.querySelector('.grid2') || (saveBtn && saveBtn.parentElement);
+    out.insertBefore(box, btnRow || null);
+    const $=s=>box.querySelector(s);
+    const fmt=$('.opal-ex-fmt'), scale=$('.opal-ex-scale'), pxv=$('.opal-ex-pxv'), phys=$('.opal-ex-phys'),
+          qr=$('.opal-ex-q'), qv=$('.opal-ex-qv'), dpi=$('.opal-ex-dpi');
+    const longEdge=()=>Math.max(canvas.width, canvas.height);
+    scale.max = '8192'; scale.value = '2048';
+    function sync(){
+      const v = fmt.value;
+      box.querySelector('.row-px').hidden = v==='svg';
+      box.querySelector('.row-q').hidden  = v!=='jpg';
+      box.querySelector('.row-dpi').hidden = v==='svg';
+      const px=+scale.value, ar=(canvas.width/canvas.height)||1;
+      const w = ar>=1 ? px : Math.round(px*ar), h = ar>=1 ? Math.round(px/ar) : px;
+      pxv.textContent = px;
+      const d=+dpi.value; phys.textContent = `${(w/d).toFixed(1)}×${(h/d).toFixed(1)}in @${d}`;
+    }
+    // default Pixels to the canvas's native long edge, once the tool has actually sized it (some size async)
+    function setDefault(){ if(scale.dataset.touched) return; const le=longEdge(); if(le>320){ scale.max=String(Math.max(8192, le*3)); scale.value=String(le); } sync(); }
+    fmt.addEventListener('change', sync); dpi.addEventListener('change', sync);
+    scale.addEventListener('input', ()=>{ scale.dataset.touched='1'; sync(); });
+    qr.addEventListener('input', ()=>{ qv.textContent = qr.value; });
+    setDefault(); requestAnimationFrame(setDefault); setTimeout(setDefault, 450);
+    const asp=document.getElementById('aspect'); if(asp) asp.addEventListener('change', ()=>setTimeout(setDefault, 60));
+    if(saveBtn) saveBtn.addEventListener('click', ()=>{
+      const v = fmt.value;
+      if(v==='svg'){ try{ const blob=new Blob([opts.svg()],{type:'image/svg+xml'}); const a=document.createElement('a'); a.download=basename+'.svg'; a.href=URL.createObjectURL(blob); a.click(); }catch(e){ console.warn(e); } return; }
+      const c = scaledCanvas(canvas, (+scale.value)/longEdge());
+      const dl=(href,ext)=>{ const a=document.createElement('a'); a.download=`${basename}@${c.width}x${c.height}.${ext}`; a.href=href; a.click(); };
+      if(v==='png') dl(c.toDataURL('image/png'),'png');
+      else if(v==='jpg') dl(c.toDataURL('image/jpeg',(+qr.value)/100),'jpg');
+      else { const d=+dpi.value, blob=buildPDF(dataURLBytes(c.toDataURL('image/jpeg',.95)), c.width, c.height, d);
+        const a=document.createElement('a'); a.download=basename+'.pdf'; a.href=URL.createObjectURL(blob); a.click(); }
+    });
+  }
+
   // opts.svg (optional): a function returning an SVG string — enables an "SVG · vector" format.
   function saveDialog(canvas, basename, opts){
     opts = opts || {};
@@ -370,5 +420,5 @@ const Opal = (() => {
   window.addEventListener('load', enhanceSoon);
   try{ new MutationObserver(enhanceSoon).observe(document.documentElement,{childList:true,subtree:true}); }catch(e){}
 
-  return { mountTopbar, fitCover, wrapText, attachDrag, downloadCanvas, saveDialog, LOGO_PATH, enhance };
+  return { mountTopbar, fitCover, wrapText, attachDrag, downloadCanvas, saveDialog, mountOutput, LOGO_PATH, enhance };
 })();

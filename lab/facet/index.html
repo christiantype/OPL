@@ -165,7 +165,7 @@
     else { const im=new Image(); im.onload=()=>loadImage(im); im.src=url; } });
   ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'&&e.dataTransfer.files[0]){ $('file').files=e.dataTransfer.files; $('file').dispatchEvent(new Event('change')); } }));
 
-  $('saveBtn').addEventListener('click',()=>Opal.saveDialog(cv,'facet'));
+  Opal.mountOutput(cv,'facet');
   let rec=null,rt=0,tk=0;
   $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
     const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
