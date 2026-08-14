@@ -321,7 +321,11 @@ const Opal = (() => {
     const doExport = ()=>{
       const v = fmt.value;
       if(v==='svg'){ try{ const blob=new Blob([opts.svg()],{type:'image/svg+xml'}); const a=document.createElement('a'); a.download=basename+'.svg'; a.href=URL.createObjectURL(blob); a.click(); }catch(e){ console.warn(e); } return; }
-      const c = scaledCanvas(canvas, (+scale.value)/longEdge());
+      // opts.render(px) lets shader/vector tools re-render at the true target long-edge (crisp print),
+      // instead of upscaling the on-screen bitmap. Falls back to a smooth bicubic upscale.
+      let c;
+      if(typeof opts.render==='function'){ try{ c = opts.render(+scale.value) || scaledCanvas(canvas,(+scale.value)/longEdge()); }catch(e){ console.warn(e); c=scaledCanvas(canvas,(+scale.value)/longEdge()); } }
+      else c = scaledCanvas(canvas, (+scale.value)/longEdge());
       const dl=(href,ext)=>{ const a=document.createElement('a'); a.download=`${basename}@${c.width}x${c.height}.${ext}`; a.href=href; a.click(); };
       if(v==='png') dl(c.toDataURL('image/png'),'png');
       else if(v==='jpg') dl(c.toDataURL('image/jpeg',(+qr.value)/100),'jpg');

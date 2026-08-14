@@ -54,6 +54,7 @@
     <div class="knob"><label>Zoom <b id="zmR">0.10</b></label><input id="zm" type="range" min="0" max="80" value="10"></div>
     <div class="knob"><label>Aberration <b id="abR">0.005</b></label><input id="ab" type="range" min="0" max="60" value="10"></div>
     <div class="knob"><label>Edge softness <b id="egR">0.11</b></label><input id="eg" type="range" min="0" max="50" value="11"></div>
+    <div class="tog"><span>Shadow</span><button class="btn" id="shade" aria-pressed="true">On</button></div>
   </div>
   <div class="group">
     <div class="group__t">Animate</div>
@@ -74,13 +75,13 @@
 (()=>{
   const $=id=>document.getElementById(id);
   const cv=$('gl'); const gl=cv.getContext('webgl2',{preserveDrawingBuffer:true, premultipliedAlpha:false});
-  const P={ cols:16, rows:9, shape:0, refr:0.12, zoom:0.10, aber:0.005, edge:0.11, pulse:false, pspeed:0.10, size:'1920/1080' };
+  const P={ cols:16, rows:9, shape:0, refr:0.12, zoom:0.10, aber:0.005, edge:0.11, pulse:false, pspeed:0.10, shade:true, size:'1920/1080' };
   let W=1920,H=1080, srcAR=1, video=null;
 
   const vs=`#version 300 es
   in vec2 p; out vec2 vUv; void main(){ vUv=vec2(p.x*0.5+0.5, 0.5-p.y*0.5); gl_Position=vec4(p,0.,1.); }`;
   const fs=`#version 300 es
-  precision highp float; uniform sampler2D tex; uniform vec2 grid; uniform float uRefr,uZoom,uAber,uEdge,uTime,uPulse; uniform int uShape; uniform vec2 uCover;
+  precision highp float; uniform sampler2D tex; uniform vec2 grid; uniform float uRefr,uZoom,uAber,uEdge,uTime,uPulse,uShade; uniform int uShape; uniform vec2 uCover;
   in vec2 vUv; out vec4 o;
   vec2 cover(vec2 p){ return (p-0.5)*uCover+0.5; }   // preserve media aspect (centre-crop), never stretch
   void main(){
@@ -110,7 +111,8 @@
     vec2 L = normalize(vec2(-0.55,0.83));
     float ld = dot(dir,L);
     float rim = smoothstep(0.30 + uEdge*0.6, 0.99, dist);
-    col += rim*0.22*ld;                       // rim light / shade
+    col += rim*0.22*max(ld,0.0);              // rim highlight (light-facing) — always
+    col += uShade*rim*0.22*min(ld,0.0);       // rim shadow (opposite) — the drop-shadow, toggleable
     col += rim*0.16*pow(max(ld,0.0),4.0);     // sharp specular streak
     o=vec4(clamp(col,0.0,1.0),1.0);
   }`;
@@ -145,7 +147,7 @@
     gl.useProgram(prog);
     gl.uniform2f(U('grid'),P.cols,P.rows); gl.uniform1f(U('uRefr'),P.refr); gl.uniform1f(U('uZoom'),P.zoom);
     gl.uniform1f(U('uAber'),P.aber); gl.uniform1f(U('uEdge'),P.edge); gl.uniform1i(U('uShape'),P.shape);
-    gl.uniform1f(U('uPulse'),P.pulse?1.0:0.0); gl.uniform1f(U('uTime'),(performance.now()-t0)/1000*P.pspeed*10);
+    gl.uniform1f(U('uPulse'),P.pulse?1.0:0.0); gl.uniform1f(U('uShade'),P.shade?1.0:0.0); gl.uniform1f(U('uTime'),(performance.now()-t0)/1000*P.pspeed*10);
     { let cx=1,cy=1; const cAR=W/H; if(srcAR>cAR) cx=cAR/srcAR; else cy=srcAR/cAR; gl.uniform2f(U('uCover'),cx,cy); }
     gl.drawArrays(gl.TRIANGLES,0,3);
   }
@@ -157,6 +159,7 @@
   bind('ps','psR',v=>P.pspeed=v/100,v=>(v/100).toFixed(2));
   $('shape').addEventListener('change',e=>P.shape=+e.target.value);
   $('pulse').addEventListener('click',e=>{ P.pulse=!P.pulse; e.target.textContent=P.pulse?'On':'Off'; e.target.setAttribute('aria-pressed',P.pulse); });
+  $('shade').addEventListener('click',e=>{ P.shade=!P.shade; e.target.textContent=P.shade?'On':'Off'; e.target.setAttribute('aria-pressed',P.shade); });
   $('aspect').addEventListener('change',e=>{P.size=e.target.value;fit();});
   $('loadBtn').addEventListener('click',()=>$('file').click());
   $('sampleBtn').addEventListener('click',sample);
@@ -165,7 +168,22 @@
     else { const im=new Image(); im.onload=()=>loadImage(im); im.src=url; } });
   ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'&&e.dataTransfer.files[0]){ $('file').files=e.dataTransfer.files; $('file').dispatchEvent(new Event('change')); } }));
 
-  Opal.mountOutput(cv,'facet');
+  // True print-res export: re-render the shader at the requested long-edge, then restore screen size.
+  function renderAt(px){
+    const ar=W/H, ow=cv.width, oh=cv.height;
+    const w = ar>=1 ? px : Math.round(px*ar), h = ar>=1 ? Math.round(px/ar) : px;
+    cv.width=w; cv.height=h; gl.viewport(0,0,w,h);
+    gl.useProgram(prog);
+    gl.uniform2f(U('grid'),P.cols,P.rows); gl.uniform1f(U('uRefr'),P.refr); gl.uniform1f(U('uZoom'),P.zoom);
+    gl.uniform1f(U('uAber'),P.aber); gl.uniform1f(U('uEdge'),P.edge); gl.uniform1i(U('uShape'),P.shape);
+    gl.uniform1f(U('uPulse'),P.pulse?1.0:0.0); gl.uniform1f(U('uShade'),P.shade?1.0:0.0); gl.uniform1f(U('uTime'),(performance.now()-t0)/1000*P.pspeed*10);
+    { let cx=1,cy=1; const cAR=w/h; if(srcAR>cAR) cx=cAR/srcAR; else cy=srcAR/cAR; gl.uniform2f(U('uCover'),cx,cy); }
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(cv,0,0);
+    cv.width=ow; cv.height=oh; gl.viewport(0,0,ow,oh);   // restore, next frame() repaints the screen
+    return c;
+  }
+  Opal.mountOutput(cv,'facet',{render:renderAt});
   let rec=null,rt=0,tk=0;
   $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
     const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
