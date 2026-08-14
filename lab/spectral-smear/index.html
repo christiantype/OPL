@@ -169,14 +169,8 @@
     <div class="knob" data-tip="Fine grain over the frame, so it feels shot."><label>Grain <b id="grainR">15</b></label><input id="grain" type="range" min="0" max="100" value="15" /></div>
   </div>
 
-  <!-- export size -->
-  <div class="group">
-    <div class="group__t">Export size</div>
-    <div class="knob" data-tip="Pixels across the long edge of the PNG. The line beneath is the print size at 300 DPI."><label>Pixels <b id="resR">3200</b> <b id="resIn" style="font-weight:400;opacity:.55;text-transform:none;letter-spacing:0"></b></label><input id="res" type="range" min="1024" max="8192" step="256" value="3200" /></div>
-  </div>
-
-  <!-- output -->
-  <div class="group out">
+  <!-- output — every export setting (format · pixels · print size · DPI) lives here -->
+  <div class="group out" data-export-custom>
     <div class="group__t">Output</div>
     <div class="grid2">
       <button class="btn" id="recBtn" aria-pressed="false" data-tip="Record the drifting flow field to a video file.">Record</button>
@@ -267,6 +261,20 @@
   const dl=(blob,name)=>{ const u=URL.createObjectURL(blob),a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); };
   function exportDims(){ const cw=cv.width||1, ch=cv.height||1, long=Math.max(cw,ch), s=state.res/long, maxS=gl.getParameter(gl.MAX_TEXTURE_SIZE);
     let w=Math.round(cw*s), h=Math.round(ch*s); const k=Math.min(1,maxS/Math.max(w,h)); return [Math.max(2,Math.floor(w*k)),Math.max(2,Math.floor(h*k))]; }
+  // Output-panel hook — render the shader to an FBO at the chosen long-edge (true print res)
+  function renderExport(px){ if(!prog) return null;
+    const cw=cv.width||1, ch=cv.height||1, long=Math.max(cw,ch), maxS=gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    let w=Math.round(cw*px/long), h=Math.round(ch*px/long); const k=Math.min(1,maxS/Math.max(w,h));
+    w=Math.max(2,Math.floor(w*k)); h=Math.max(2,Math.floor(h*k));
+    const rt=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,rt);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    const fb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,rt,0);
+    draw(w,h,clock); const px2=new Uint8Array(w*h*4); gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px2);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.deleteFramebuffer(fb); gl.deleteTexture(rt);
+    const c=document.createElement('canvas'); c.width=w; c.height=h; const cx=c.getContext('2d'), out=cx.createImageData(w,h);
+    for(let y=0;y<h;y++) out.data.set(px2.subarray((h-1-y)*w*4,(h-y)*w*4), y*w*4); cx.putImageData(out,0,0);
+    return c; }
   function exportPNG(){ if(!prog) return; const [w,h]=exportDims(); setStatus(`rendering ${w}×${h}…`);
     setTimeout(()=>{ const rt=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,rt);
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
@@ -308,7 +316,6 @@
   const bind=(id)=>{ const e=$(id); e.addEventListener('input',ev=>{ params[id]=+ev.target.value; const r=$(id+'R'); if(r)r.textContent=ev.target.value; }); };
   function wire(){
     ['smear','samples','fscale','fspeed','contrast','satfloor','grain'].forEach(bind);
-    $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('loadBtn').addEventListener('click',()=>$('fileInp').click());
     $('sampleBtn').addEventListener('click',()=>loadTexture('./source.jpg',false,'sample'));
     $('fileInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadFile(f); e.target.value=''; });
@@ -352,6 +359,9 @@
   { const veil=$('veil'); if(veil) veil.remove(); } fit(); loadTexture('./source.jpg');
   setTimeout(()=>{ const h=$('hint'); if(h) h.style.opacity=0; }, 4200);
   requestAnimationFrame(frame);
+  // Output island: one consistent export panel (format · pixels · print size · DPI · quality),
+  // with a true-resolution FBO re-render of the shader.
+  Opal.mountOutput(cv, 'spectral-smear', { render: renderExport });
   window.spectral={ state, params, exportDims, get ready(){return !!prog;} };
 })();
 </script>
