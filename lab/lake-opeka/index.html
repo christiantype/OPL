@@ -882,15 +882,14 @@
 
   <!-- Canvas size — top-right; reshapes the live canvas (Magic/Record inherit it) -->
   <div class="canvas-size" id="canvas-size">
-    <select id="cv-ratio" title="Canvas ratio">
-      <option value="1:1">Square 1:1</option>
-      <option value="5:4">5:4</option>
-      <option value="4:3">4:3</option>
-      <option value="3:2">3:2</option>
-      <option value="16:9">16:9</option>
+    <select id="cv-ratio" title="Canvas size">
+      <option value="1:1">Square · 1:1</option>
+      <option value="4:5">Portrait · 4:5</option>
+      <option value="9:16">Story · 9:16</option>
+      <option value="16:9">Landscape · 16:9</option>
     </select>
-    <select id="cv-orient" title="Orientation">
-      <option value="landscape">Landscape</option>
+    <select id="cv-orient" title="Orientation" hidden>
+      <option value="landscape" selected>Landscape</option>
       <option value="portrait">Portrait</option>
     </select>
   </div>
@@ -5341,9 +5340,10 @@ $('btn-add-collection')?.addEventListener('click', loadCollection);
   function build(){
     if(document.getElementById('dock')) return;
     var dock=document.createElement('div'); dock.id='dock';
-    var images=document.querySelector('.images'), controls=document.querySelector('.controls');
+    var images=document.querySelector('.images'), controls=document.querySelector('.controls'), sa=document.querySelector('.stage-actions');
     if(images) dock.appendChild(images);
     if(controls) dock.appendChild(controls);
+    if(sa) dock.appendChild(sa);   // Magic · Re-roll · Export SVG live in the rail, not over the artwork
     document.body.appendChild(dock);
     var cs=document.getElementById('canvas-size'); if(cs) cs.id='sizeDock';  // adopt the shared size-island hooks
   }
@@ -5393,6 +5393,15 @@ $('btn-add-collection')?.addEventListener('click', loadCollection);
   /* remaining stage actions (Magic · Re-roll · Export SVG) sit top-left of the canvas, clear of the size island */
   .stage-actions{ top:16px !important; bottom:auto !important; left:calc(var(--rail) + 24px) !important; }
   .stage-info{ left:auto !important; right:24px !important; transform:none !important; }
+  /* single size dropdown — orientation is encoded in the ratio, like every other tool */
+  #cv-orient{ display:none !important; }
+  /* relocated actions (Magic · Re-roll · Export SVG) as a rail island */
+  #dock .stage-actions{ position:static !important; inset:auto !important; display:flex; flex-wrap:wrap; gap:8px;
+    background:var(--island); border:1px solid var(--line); border-radius:var(--r-island); box-shadow:var(--shadow); padding:16px; margin:0; }
+  #dock .stage-actions button{ background:var(--cell); border:1px solid var(--line) !important; color:var(--ink);
+    border-radius:var(--r-control); padding:8px 10px; font:inherit; font-size:12px; cursor:pointer; letter-spacing:0; }
+  #dock .stage-actions button:hover{ border-color:rgba(0,0,0,.42) !important; }
+  #dock .stage-actions .btn-primary, #dock .stage-actions #btn-magic{ background:var(--accent); border-color:var(--accent) !important; color:var(--on-accent); }
   /* no uppercase anywhere in the chrome */
   .ctrl-label, .images__label, .stage-actions button, #sizeDock, #sizeDock *, .row__label, .opal-subhead__desc{ text-transform:none !important; letter-spacing:0 !important; }
 </style>
