@@ -318,7 +318,7 @@ const Opal = (() => {
     qr.addEventListener('input', ()=>{ qv.textContent = qr.value; });
     setDefault(); requestAnimationFrame(setDefault); setTimeout(setDefault, 450);
     const asp=document.getElementById('aspect'); if(asp) asp.addEventListener('change', ()=>setTimeout(setDefault, 60));
-    if(saveBtn) saveBtn.addEventListener('click', ()=>{
+    const doExport = ()=>{
       const v = fmt.value;
       if(v==='svg'){ try{ const blob=new Blob([opts.svg()],{type:'image/svg+xml'}); const a=document.createElement('a'); a.download=basename+'.svg'; a.href=URL.createObjectURL(blob); a.click(); }catch(e){ console.warn(e); } return; }
       const c = scaledCanvas(canvas, (+scale.value)/longEdge());
@@ -327,7 +327,21 @@ const Opal = (() => {
       else if(v==='jpg') dl(c.toDataURL('image/jpeg',(+qr.value)/100),'jpg');
       else { const d=+dpi.value, blob=buildPDF(dataURLBytes(c.toDataURL('image/jpeg',.95)), c.width, c.height, d);
         const a=document.createElement('a'); a.download=basename+'.pdf'; a.href=URL.createObjectURL(blob); a.click(); }
-    });
+    };
+    // replace the tool's own Save handler with the export panel's (clone strips existing listeners)
+    if(saveBtn){ const clone=saveBtn.cloneNode(true); saveBtn.parentNode.replaceChild(clone, saveBtn); clone.addEventListener('click', doExport); }
+  }
+
+  // Fleet-wide: give every standard tool the export panel (high-quality / DPI). Tools with a bespoke
+  // export (SVG, re-render) opt out with data-export-custom on their Output island.
+  function autoMountOutput(){
+    const out = document.getElementById('output') || document.querySelector('.group.out');
+    if(!out || out.dataset.exp || out.hasAttribute('data-export-custom') || document.querySelector('[data-export-custom]')) return;
+    if(!document.getElementById('saveBtn')) return;
+    const canvas = document.querySelector('#art,#gl,#stage,#view,#canvas');
+    if(!canvas || canvas.tagName!=='CANVAS') return;
+    const name = (location.pathname.replace(/\/index\.html$/,'').split('/').filter(Boolean).pop()) || 'export';
+    mountOutput(canvas, name);
   }
 
   // opts.svg (optional): a function returning an SVG string — enables an "SVG · vector" format.
@@ -411,6 +425,7 @@ const Opal = (() => {
       document.querySelectorAll('#dock > .group:not(.out)').forEach(makeAccordion);
       wireRecTimer();
       wireSizeReadout();
+      autoMountOutput();
     }catch(e){}
   }
   let _q=false;
