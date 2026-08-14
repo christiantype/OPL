@@ -223,13 +223,6 @@
     <div class="knob"><label>Subject <b id="photoName">none</b></label></div>
   </div>
 
-  <div class="group">
-    <div class="group__t">Export options</div>
-    <p class="ghelp">Aspect is set by the size dock, top-right. SVG stays sharp at any scale; PNG bakes it to pixels.</p>
-    <div class="knob" data-tip="Pixels across the long edge of the exported PNG. The line beside shows the print size at 300 DPI. For anything bigger than this, use SVG on the Waves mode — it prints sharp at any size."><label>Pixels <span class="kv"><b id="resR">6144</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></span></label><input id="res" type="range" min="1024" max="16384" step="512" value="6144" /></div>
-    <button class="btn full" id="svgBtn" data-tip="Saves the Waves field as an SVG &#8212; real lines, sharp at any size, editable in Illustrator. Only Waves exports this way.">SVG</button>
-  </div>
-
   <div class="group out" data-export-custom>
     <div class="group__t">Output</div>
     <div class="grid2">
@@ -781,39 +774,18 @@
   // Browsers cap canvas size — too big and toBlob quietly returns nothing. Keep each side and
   // the total area under safe limits; if the requested size is over, scale it down to fit.
   const MAX_SIDE=16384, MAX_AREA=100e6;
-  function exportDims(){
-    const [aw,ah]=sizeWH(); const long=Math.max(aw,ah);
-    let w=Math.round(aw*state.res/long), h=Math.round(ah*state.res/long);
+  // dims for a chosen long-edge (px), honouring the selected aspect and browser size caps
+  function dimsFor(px){ const [aw,ah]=sizeWH(); const long=Math.max(aw,ah);
+    let w=Math.round(aw*px/long), h=Math.round(ah*px/long);
     let k=Math.min(1, MAX_SIDE/Math.max(w,h), Math.sqrt(MAX_AREA/(w*h)));
-    return [Math.max(1,Math.round(w*k)), Math.max(1,Math.round(h*k)), k<0.999];
-  }
-  function exportPNG(){
-    const [w,h,clamped]=exportDims();
-    setStatus(`rendering ${w}\u00d7${h}\u2026`+(clamped?' (capped to browser limit)':''));
-    setTimeout(()=>{
-      try{
-        const c=document.createElement('canvas'); c.width=w; c.height=h;
-        renderTo(c.getContext('2d'), w, h, animT, true);
-        c.toBlob(b=>{
-          if(!b){ setStatus('that size was too large — try a smaller Pixels, or SVG'); setTimeout(()=>setStatus(''),4000); return; }
-          dl(b,`static-${state.mode}-${w}x${h}-${Date.now()}.png`);
-          const mb=(b.size/1048576).toFixed(1);
-          setStatus(`saved ${w}\u00d7${h} \u00b7 ${mb}MB`); setTimeout(()=>setStatus(''),2600);
-        },'image/png');
-      }catch(e){ setStatus('that size was too large — try a smaller Pixels, or SVG'); setTimeout(()=>setStatus(''),4000); }
-    },30);
-  }
-  function exportSVG(){
-    if(state.mode!=='waves'){ setStatus('SVG is only for Waves — Snow and Bars save as PNG');
-      setTimeout(()=>setStatus(''),3200); return; }
-    const [aw,ah]=sizeWH();
-    const svg=buildSVG(aw,ah);
-    dl(new Blob([svg],{type:'image/svg+xml'}), `static-waves-${Date.now()}.svg`);
-    const kb=Math.round(svg.length/1024);
-    setStatus(photo&&state.photoMix>0 ? `saved SVG · ${kb}KB · lines only, use PNG for the photo`
-                                      : `saved SVG · ${kb}KB`);
-    setTimeout(()=>setStatus(''), photo&&state.photoMix>0?3200:2200);
-  }
+    return [Math.max(1,Math.round(w*k)), Math.max(1,Math.round(h*k))]; }
+  // Output-panel hooks — a crisp raster re-render, and real-vector SVG for Waves
+  // (Snow/Bars are pixel treatments, so their SVG wraps the high-res raster).
+  function renderExport(px){ const [w,h]=dimsFor(px); const c=document.createElement('canvas'); c.width=w; c.height=h;
+    renderTo(c.getContext('2d'), w, h, animT, true); return c; }
+  function svgExport(px){ if(state.mode==='waves'){ const [aw,ah]=sizeWH(); return buildSVG(aw,ah); }
+    const c=renderExport(px||6144), data=c.toDataURL('image/png'), [w,h]=dimsFor(px||6144);
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><image width="${w}" height="${h}" xlink:href="${data}"/></svg>`; }
 
   // ---------- record (video) — capture the live canvas to MP4 (H.264), WebM fallback ----------
   let rec=null, recChunks=[], recRAF=0, recStart=0, recTimer=0;
@@ -861,9 +833,6 @@
     ['dens','amp','freq','warp','flow','wt','glitch','chroma','ctr','coarse','photoMix'].forEach(id=>bind(id,id));
     bind('angle','angle',v=>{ $('angleR').textContent=v+'\u00b0'; });
     bind('grain','grain',v=>{ $('grainR').textContent = +v>0 ? v : 'off'; });
-    bind('res','res',v=>{ $('resR').textContent=v; syncRes(); });
-    $('svgBtn').addEventListener('click',exportSVG);
-    $('saveBtn').addEventListener('click',exportPNG);
     $('recBtn').addEventListener('click',toggleRecord);
     $('photoBtn').addEventListener('click',()=>$('photoInp').click());
     $('photoClear').addEventListener('click',clearPhoto);
@@ -893,17 +862,11 @@
     const on=new Set(ACTIVE[state.mode]||[]);
     ['dens','amp','freq','warp','flow','wt','angle'].forEach(id=>{ const g=$(id).closest('.knob'); if(g) g.style.opacity=on.has(id)?'':'0.4'; });
     const cg=$('coarse').closest('.knob'); if(cg) cg.style.opacity = state.mode==='waves' ? '0.4' : '';
-    $('svgBtn').disabled = state.mode!=='waves';
     syncHint();
   }
-  function syncRes(){
-    const [ew,eh]=exportDims();
-    const inch=v=>(v/300);   // 300 DPI print
-    const el=$('resIn'); if(el) el.textContent = `${inch(ew).toFixed(1)}×${inch(eh).toFixed(1)}in @300`;
-  }
   function syncHint(){
-    const [aw,ah,clamped]=exportDims();
-    $('hint').textContent = `${state.mode} · png ${aw}×${ah}` + (clamped?' (capped)':'')
+    const [aw,ah]=dimsFor(6144);
+    $('hint').textContent = `${state.mode} · png ${aw}×${ah}`
       + ` · ${(aw/300).toFixed(1)}×${(ah/300).toFixed(1)}in@300` + (state.mode==='waves'?' · svg vector ∞':'');
   }
   function setTheme(t){ THEME=t; document.body.classList.toggle('dark',t==='dark');
@@ -916,7 +879,7 @@
     else if(!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
     requestAnimationFrame(resize); }
   // Size dock — reshapes the working canvas AND the export frame to the chosen aspect.
-  function setSize(v){ state.size=v; if(wordText) setWord(wordText); resize(); syncHint(); syncRes(); markDirty(); }
+  function setSize(v){ state.size=v; if(wordText) setWord(wordText); resize(); syncHint(); markDirty(); }
 
   // ---------- knobs (shared with the other tools) ----------
   const knobs=[];
@@ -978,12 +941,15 @@
   }
 
   wire(); resize(); setTheme(THEME);
-  syncModeCtls(); syncHint(); syncPhoto(); syncRes();
+  syncModeCtls(); syncHint(); syncPhoto();
   const veil=$('veil');
   { state.ready=true; const _v=document.getElementById('veil'); if(_v) _v.remove(); resize(); }
   requestAnimationFrame(frame);
+  // Output island: one consistent export panel (format · pixels · print size · DPI · quality),
+  // crisp re-render + real-vector SVG for Waves.
+  Opal.mountOutput(cv, 'static', { render: renderExport, svg: svgExport });
 
-  window.staticgen={ state, buildWaves, buildSVG, renderTo, exportDims, setTheme,
+  window.staticgen={ state, buildWaves, buildSVG, renderTo, dimsFor, setTheme,
     get animT(){return animT;} };
 })();
 </script>

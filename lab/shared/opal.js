@@ -294,7 +294,10 @@ const Opal = (() => {
       <div class="opal-ex-row row-px"><label>Pixels <b class="opal-ex-pxv"></b></label><input class="opal-ex-scale" type="range" min="512" max="8192" step="64"><div class="opal-ex-phys"></div></div>
       <div class="opal-ex-row row-q" hidden><label>Quality <b class="opal-ex-qv">92</b></label><input class="opal-ex-q" type="range" min="60" max="100" value="92"></div>
       <div class="opal-ex-row row-dpi"><label>DPI</label><select class="opal-ex-dpi"><option>150</option><option selected>300</option><option>600</option></select></div>`;
-    const btnRow = out.querySelector('.grid2') || (saveBtn && saveBtn.parentElement);
+    // insert the panel above the Record/Save row — walk up to whichever node is a DIRECT child
+    // of the output island (the button row can be nested a few levels deep in bespoke tools)
+    let btnRow = out.querySelector('.grid2') || (saveBtn && saveBtn.parentElement);
+    while(btnRow && btnRow.parentNode !== out) btnRow = btnRow.parentNode;
     out.insertBefore(box, btnRow || null);
     const $=s=>box.querySelector(s);
     const fmt=$('.opal-ex-fmt'), scale=$('.opal-ex-scale'), pxv=$('.opal-ex-pxv'), phys=$('.opal-ex-phys'),

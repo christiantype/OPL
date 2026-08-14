@@ -380,19 +380,6 @@
     <div class="grp" data-tip="Overall sound level — ambience and music, live and in the recording."><label>Volume <b id="volR">85</b></label><input id="vol" type="range" min="0" max="100" value="85" /></div>
   </div>
 
-  <div class="row">
-    <button type="button" class="rowhead" aria-expanded="true">Export options</button>
-    <p class="rowhint">The shape and resolution of the exported file.</p>
-    <div class="grp" data-tip="The shape of the exported file."><label>Size</label>
-      <div class="seg" id="sizeSeg">
-        <button data-z="1080x1350" aria-pressed="true">4:5</button>
-        <button data-z="1080x1080" aria-pressed="false">1:1</button>
-        <button data-z="1080x1920" aria-pressed="false">9:16</button>
-        <button data-z="1920x1080" aria-pressed="false">16:9</button>
-      </div>
-    </div>
-    <div class="grp" data-tip="Pixels across the long edge of the PNG. The line beneath is the print size at 300 DPI."><label>Pixels <b id="resR">3200</b> <b id="resIn" style="font-weight:400;opacity:.55"></b></label><input id="res" type="range" min="1024" max="8192" step="256" value="3200" /></div>
-  </div>
 
   <div class="row out">
     <button type="button" class="rowhead" aria-expanded="true">Output</button>
@@ -822,7 +809,7 @@
     if(s.meta!=null) clickSeg('#metaSeg [data-x="'+(+s.meta?1:0)+'"]');
     if(s.cycle!=null) clickSeg('#cycleSeg [data-x="'+(+s.cycle?1:0)+'"]');
     if(s.auto!=null) clickSeg('#autoSeg [data-x="'+(+s.auto?1:0)+'"]');
-    if(s.size) clickSeg('#sizeSeg [data-z="'+s.size+'"]');
+    if(s.size){ state.size=s.size; const a=$('aspect'); if(a) a.value=s.size; syncHint(); markDirty(); }
     if(s.res!=null) setControl('res',s.res);                                   // after size so it isn't reclamped
     if(s.textOn!=null) clickSeg('#textOnSeg [data-x="'+(+s.textOn?1:0)+'"]');
     if(s.bandOn!=null) clickSeg('#bandOnSeg [data-x="'+(+s.bandOn?1:0)+'"]');
@@ -893,6 +880,10 @@
   // ---- exports ----
   const dl=(blob,name)=>{ const u=URL.createObjectURL(blob),a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1500); };
   function exportDims(){ const long=Math.max(CW(),CH()), s=state.res/long; return [Math.round(CW()*s),Math.round(CH()*s)]; }
+  // Output-panel hook — crisp raster re-render at the chosen long-edge (honours the aspect)
+  function dimsFor(px){ const long=Math.max(CW(),CH()), s=px/long; return [Math.round(CW()*s),Math.round(CH()*s)]; }
+  function renderExport(px){ const [w,h]=dimsFor(px); const c=document.createElement('canvas'); c.width=w; c.height=h;
+    renderComp(c.getContext('2d'),w,h,clock); return c; }
   function exportPNG(){ if(!imgs.length){ setStatus('add an image first'); setTimeout(()=>setStatus(''),1600); return; }
     const [w,h]=exportDims(); setStatus(`rendering ${w}×${h}…`);
     setTimeout(()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; renderComp(c.getContext('2d'),w,h,clock);
@@ -985,7 +976,8 @@
     state[key]=b.dataset[dk]; document.querySelectorAll(`#${id} button`).forEach(x=>x.setAttribute('aria-pressed',String(x===b))); bandsKey=''; if(after)after(); markDirty(); })); }
   const bind=(id,key,fn)=>{ const e=$(id); e.addEventListener('input',ev=>{ state[key]=+ev.target.value; const r=$(id+'R'); if(r)r.textContent=ev.target.value; bandsKey=''; if(fn)fn(); markDirty(); }); };
   function wire(){
-    bindSeg('axisSeg','axis','a'); bindSeg('metaSeg','meta','x'); bindSeg('sizeSeg','size','z',()=>{ syncRes(); syncHint(); });
+    bindSeg('axisSeg','axis','a'); bindSeg('metaSeg','meta','x');
+    $('aspect').addEventListener('change',e=>{ state.size=e.target.value; syncHint(); markDirty(); });
     bindSeg('cycleSeg','cycle','x',updateCycleGate); updateCycleGate();
     bindSeg('ambSeg','ambience','m',()=>Ambient.set(state.ambience));
     bindSeg('autoSeg','auto','x',updateAutoGate); updateAutoGate();
@@ -1016,7 +1008,6 @@
     $('sessIn').addEventListener('click',()=>$('sessFile').click());
     $('sessFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importSession(f); e.target.value=''; });
     refreshPresetOptions('');
-    $('res').addEventListener('input',e=>{ state.res=+e.target.value; $('resR').textContent=e.target.value; syncRes(); });
     $('bg').addEventListener('input',e=>{ state.bg=e.target.value; markDirty(); });
     $('addBtn').addEventListener('click',()=>$('fileInp').click());
     $('clearBtn').addEventListener('click',()=>{ imgs.length=0; bandsKey=''; renderThumbs(); markDirty(); });
@@ -1076,18 +1067,11 @@
   $('dock').classList.add('open'); document.body.classList.add('panels');   // rail is always open now (toggle removed)
   resize();
   /* sliders render natively as flat shell sliders — knob-wrapping disabled for Lab consistency (makeKnob/paintKnob kept but unused) */
-  syncRes(); syncHint();
+  syncHint();
   requestAnimationFrame(tick);
+  // Output island: consistent export panel (format · pixels · print size · DPI · quality) with a crisp re-render
+  Opal.mountOutput(cv, 'image-train', { render: renderExport });
   window.imgtrain={ state, imgs, render:renderComp, exportDims, addImageFile:addImage, get bands(){return bands;} };
-})();
-</script>
-<script>
-/* Top-right size dock → drives the existing #sizeSeg segmented control (kept in sync both ways). */
-(function(){ var sd=document.getElementById('aspect'); if(!sd) return;
-  sd.addEventListener('change', function(){ var b=document.querySelector('#sizeSeg [data-z="'+sd.value+'"]'); if(b) b.click(); });
-  var reflect=function(){ var cur=document.querySelector('#sizeSeg [data-z][aria-pressed="true"]'); if(cur) sd.value=cur.getAttribute('data-z'); };
-  window.addEventListener('load', reflect); reflect();
-  var seg=document.getElementById('sizeSeg'); if(seg) seg.addEventListener('click', function(){ setTimeout(reflect,0); });
 })();
 </script>
 </body>
