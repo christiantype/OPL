@@ -356,7 +356,8 @@
     constructor(ti,maxspeed,maxforce){ this.ti=ti; this.loc={x:0,y:0}; this.vel={x:0,y:0}; this.acc={x:0,y:0};
       this.maxspeed=maxspeed; this.maxforce=maxforce; this.target={x:0,y:0}; this.pv=0; }
     steer(){ let dx=this.target.x-this.loc.x, dy=this.target.y-this.loc.y; const f=Math.hypot(dx,dy);
-      if(f>0){ dx/=f; dy/=f; const m=f<100?this.maxspeed*(f/100):this.maxspeed; dx*=m; dy*=m;
+      const near=100*_flockSc;
+      if(f>0){ dx/=f; dy/=f; const m=f<near?this.maxspeed*(f/near):this.maxspeed; dx*=m; dy*=m;
         let sx=dx-this.vel.x, sy=dy-this.vel.y; const sm=Math.hypot(sx,sy); if(sm>this.maxforce){ sx=sx/sm*this.maxforce; sy=sy/sm*this.maxforce; }
         this.acc.x+=sx; this.acc.y+=sy; } }
     update(){ this.steer(); this.vel.x+=this.acc.x; this.vel.y+=this.acc.y;
@@ -364,16 +365,20 @@
       this.loc.x+=this.vel.x; this.loc.y+=this.vel.y; this.acc.x=0; this.acc.y=0; this.pv=vm; }
   }
   let flockState=null;
+  // scale-invariance: the sim is tuned at a 1400px long edge; every length constant scales by
+  // _flockSc so a re-render at export resolution reproduces the SAME pattern, only sharper.
+  let _flockSc=1;
   function flockInit(){
     const RIB=P.fl_rib;
+    _flockSc=Math.max(W,H)/1400;
     const groups=[]; // per letter: { pts:[outline points], picas:[[per ribbon]] }
     for(const L of LET.letters){
       const pts=L.flat.length>40 ? resample(closeFlat(L), Math.max(RIB*14, 220)) : L.flat.slice();
       const picas=[];
       for(let j=0;j<pts.length;j++){
-        const maxspeed=0.6 + (j%RIB)/RIB * (P.fl_sp);        // ribbons at different speeds
-        const maxforce=(1.05 - P.fl_fc) * (0.5 + (j%10)/20); // "Slack" loosens steering → wilder overshoot
-        const pk=new Pica(j, Math.max(0.6,maxspeed), Math.max(0.04,maxforce));
+        const maxspeed=(0.6 + (j%RIB)/RIB * (P.fl_sp)) * _flockSc;        // ribbons at different speeds
+        const maxforce=(1.05 - P.fl_fc) * (0.5 + (j%10)/20) * _flockSc;   // "Slack" loosens steering → wilder overshoot
+        const pk=new Pica(j, Math.max(0.6*_flockSc,maxspeed), Math.max(0.04*_flockSc,maxforce));
         pk.loc={ x:pts[j%pts.length].x, y:pts[j%pts.length].y };
         picas.push(pk);
       }
@@ -387,7 +392,8 @@
   function flockStep(){
     if(!flockState) return;
     const adv=P.fl_ad;
-    const TW=P.fl_tw*1.8;                 // turbulence strength
+    const TW=P.fl_tw*1.8*_flockSc;         // turbulence strength (scales with canvas)
+    const kf=0.008/_flockSc;               // spatial frequency (wavelength scales with canvas)
     const t=flockState.frame*0.02;
     for(const grp of flockState.groups){
       const n=grp.pts.length;
@@ -395,7 +401,7 @@
         pk.ti=(pk.ti+adv)%n; if(pk.ti<0) pk.ti+=n;
         pk.target=grp.pts[pk.ti];
         if(TW>0){                          // curl-noise wind pushes the ribbons off their path
-          const a=(Math.sin(pk.loc.x*0.008 + t) + Math.cos(pk.loc.y*0.008 - t*1.3)) * 3.14159;
+          const a=(Math.sin(pk.loc.x*kf + t) + Math.cos(pk.loc.y*kf - t*1.3)) * 3.14159;
           pk.acc.x += Math.cos(a)*TW; pk.acc.y += Math.sin(a)*TW;
         }
         pk.update();
@@ -405,7 +411,7 @@
   }
   function flockDrawFrame(){
     const RIB=flockState.RIB;
-    ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=1;
+    ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=Math.max(1,_flockSc);
     for(const grp of flockState.groups){
       // split into RIB ribbons (every RIB-th pica)
       for(let r=0;r<RIB;r++){
@@ -418,7 +424,7 @@
           const t=Math.abs(ang)/(Math.PI/2);
           const c=mix(t);
           const spd=chain[j-1].pv;
-          const op=(0.04 + Math.min(1,spd/18)*0.10) * (P.fl_op/0.55);
+          const op=(0.04 + Math.min(1,spd/(18*_flockSc))*0.10) * (P.fl_op/0.55);
           ctx.strokeStyle=rgba(c, Math.min(0.6,op));
           ctx.beginPath();
           ctx.moveTo(chain[j-3].loc.x,chain[j-3].loc.y);
