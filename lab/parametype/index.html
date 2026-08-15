@@ -137,6 +137,31 @@
     <div class="tog"><span>Graph paper</span><input type="checkbox" id="gridOn"></div>
   </div>
 
+  <div class="group">
+    <div class="group__t">Halftone layer</div>
+    <p class="modehint" style="margin:0">A dot screen (à la OPEN LAB) over your letterforms — the dots take the composition’s colour and grow with its density.</p>
+    <div class="tog"><span>Halftone</span><input type="checkbox" id="htOn"></div>
+    <select class="full" id="htMode">
+      <option value="over" selected>Over the forms</option>
+      <option value="only">Screen only (replace)</option>
+    </select>
+    <select class="full" id="htShape">
+      <option value="dot" selected>Round dot</option>
+      <option value="square">Square</option>
+      <option value="diamond">Diamond</option>
+      <option value="line">Line</option>
+    </select>
+    <div class="knob"><label>Cell <b id="htCellR">40</b></label><input id="htCell" type="range" min="4" max="100" value="40"></div>
+    <div class="knob"><label>Angle <b id="htAngleR">50</b></label><input id="htAngle" type="range" min="0" max="100" value="50"></div>
+    <div class="knob"><label>Contrast <b id="htContrastR">55</b></label><input id="htContrast" type="range" min="0" max="100" value="55"></div>
+    <div class="knob"><label>Size jitter <b id="htJitterR">0</b></label><input id="htJitter" type="range" min="0" max="100" value="0"></div>
+    <select class="full" id="htColMode">
+      <option value="ink" selected>Dots take the ink colour</option>
+      <option value="fixed">Fixed dot colour</option>
+    </select>
+    <div class="crow"><label>Dot colour</label><input type="color" class="sw" id="htCol" value="#111111"></div>
+  </div>
+
   <div class="group out" id="output" data-export-custom>
     <div class="group__t">Output</div>
     <div class="grid2">
@@ -168,7 +193,8 @@
     co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
     st_ly:20, st_gn:14000, st_sp:18, st_bl:4,
     we_ln:200, we_sp:1.0, we_ghost:true,
-    cA:'#c3203b', cB:'#2f7fa8', bg:'#ffffff', fill:false, grid:false, seed:1 };
+    cA:'#c3203b', cB:'#2f7fa8', bg:'#ffffff', fill:false, grid:false, seed:1,
+    ht:false, htMode:'over', htShape:'dot', htCell:40, htAngle:50, htContrast:55, htJitter:0, htColMode:'ink', htCol:'#111111' };
 
   // deterministic RNG (mulberry32) — chords/scribble seed from P.seed so the on-screen
   // tangle and the exported file are IDENTICAL. Redraw re-seeds for a fresh generation.
@@ -609,6 +635,49 @@
   //  RENDER
   // ======================================================================
   let raf=0, animating=false;
+  // ---- HALFTONE LAYER (OPEN LAB in spirit) — screens the composition into a dot grid ----
+  // Samples the drawn canvas on a rotated grid; each cell becomes a dot sized by how much
+  // ink covers it, coloured by the ink beneath (or a fixed colour). Deterministic (P.seed).
+  function halftoneDots(data){
+    const dots=[]; const scl=Math.max(1, Math.max(W,H)/1400);
+    const cell=(5 + P.htCell/100*72)*scl;
+    const ang=P.htAngle/100*(Math.PI/2) - Math.PI/4;          // −45°…+45°
+    const ca=Math.cos(ang), sa=Math.sin(ang), cx=W/2, cy=H/2;
+    const bg=hex(P.bg), contrast=0.35 + P.htContrast/100*2.4, jit=P.htJitter/100;
+    const rng=rngFrom((P.seed||1)*2718281 >>> 0);
+    const diag=Math.hypot(W,H);
+    for(let gv=-diag; gv<=diag; gv+=cell){
+      for(let gu=-diag; gu<=diag; gu+=cell){
+        const x=cx+gu*ca-gv*sa, y=cy+gu*sa+gv*ca;
+        if(x<0||y<0||x>=W||y>=H) continue;
+        const i=((y|0)*W+(x|0))*4, pr=data[i], pg=data[i+1], pb=data[i+2];
+        const dr=pr-bg[0], dg=pg-bg[1], db=pb-bg[2];
+        let cov=Math.min(1, Math.sqrt(dr*dr+dg*dg+db*db)/441.67*contrast);
+        if(cov<0.03) continue;
+        let r=cell*0.58*Math.sqrt(cov);
+        if(jit) r*=1-jit*0.75*rng();
+        if(r<0.35) continue;
+        dots.push({ x, y, r, rot:ang, col: P.htColMode==='ink' ? [pr,pg,pb] : hex(P.htCol) });
+      }
+    }
+    return dots;
+  }
+  function drawHalftone(g, dots){
+    for(const d of dots){ g.fillStyle=rgba(d.col,1);
+      if(P.htShape==='dot'){ g.beginPath(); g.arc(d.x,d.y,d.r,0,7); g.fill(); }
+      else { g.save(); g.translate(d.x,d.y); g.rotate(d.rot + (P.htShape==='diamond'?Math.PI/4:0));
+        if(P.htShape==='line') g.fillRect(-d.r,-d.r*0.3,2*d.r,d.r*0.6);
+        else g.fillRect(-d.r,-d.r,2*d.r,2*d.r);
+        g.restore(); } }
+  }
+  function applyHalftone(){                      // post-process the current canvas
+    if(!P.ht) return;
+    const data=ctx.getImageData(0,0,W,H).data;
+    const dots=halftoneDots(data);
+    if(P.htMode==='only'){ ctx.fillStyle=P.bg; ctx.fillRect(0,0,W,H); if(P.grid||P.fill) paintBackground(); }
+    drawHalftone(ctx, dots);
+  }
+
   function renderStatic(){
     buildGeometry(); if(!LET) return;
     paintBackground();
@@ -624,6 +693,7 @@
       const total=P.fl_it;
       for(let f=0;f<total;f++){ flockStep(); flockDrawFrame(); }
     }
+    applyHalftone();
   }
 
   function animLoop(){
@@ -689,6 +759,10 @@
   // ======================================================================
   function svgExport(px){
     buildGeometry();
+    if(P.ht){ // halftone is raster-sourced — embed a hi-res raster re-render
+      const hi=(typeof px==='number' && px>W) ? renderAt(px) : art;
+      return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><image href="${hi.toDataURL('image/png')}" x="0" y="0" width="${W}" height="${H}"/></svg>`;
+    }
     const parts=[`<?xml version="1.0" encoding="UTF-8"?>`,
       `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
       `<rect width="${W}" height="${H}" fill="${P.bg}"/>`];
@@ -738,7 +812,7 @@
   //  Flock / Stipple return null so the Output panel falls back to a hi-res raster PDF.
   // ======================================================================
   function vectorPDF(px){
-    if(P.mode==='flock' || P.mode==='stipple') return null;   // dense accumulation → hi-res raster
+    if(P.mode==='flock' || P.mode==='stipple' || P.ht) return null;   // dense accumulation / halftone → hi-res raster
     buildGeometry(); if(!LET || !LET.letters.length) return null;
     const ar=W/H, TW=Math.round(ar>=1?px:px*ar), TH=Math.round(ar>=1?px/ar:px), sc=TW/W;
     const body=[]; const gmap=new Map(), glist=[];
@@ -872,6 +946,15 @@
   $('cBg').addEventListener('input',e=>{ P.bg=e.target.value; redraw(); });
   $('fillOn').addEventListener('change',e=>{ P.fill=e.target.checked; redraw(); });
   $('gridOn').addEventListener('change',e=>{ P.grid=e.target.checked; redraw(); });
+  $('htOn').addEventListener('change',e=>{ P.ht=e.target.checked; redraw(); });
+  $('htMode').addEventListener('change',e=>{ P.htMode=e.target.value; redraw(); });
+  $('htShape').addEventListener('change',e=>{ P.htShape=e.target.value; redraw(); });
+  bind('htCell','htCellR',v=>P.htCell=v);
+  bind('htAngle','htAngleR',v=>P.htAngle=v);
+  bind('htContrast','htContrastR',v=>P.htContrast=v);
+  bind('htJitter','htJitterR',v=>P.htJitter=v);
+  $('htColMode').addEventListener('change',e=>{ P.htColMode=e.target.value; redraw(); });
+  $('htCol').addEventListener('input',e=>{ P.htCol=e.target.value; redraw(); });
 
   $('aspect').addEventListener('change',e=>{ P.size=e.target.value; fit(); });
   $('regen').addEventListener('click',()=>{ P.seed=(P.seed*1103515245+12345)&0x7fffffff;   // fresh generation
