@@ -439,6 +439,12 @@ const CONTROLS={
     ['wall','glass wall',0,100,1,55],
     ['glassDisp','dispersion',0,40,0.5,9],
     ['sheen','sheen / highlights',0,100,1,50],
+    ['shReflect','reflection',0,160,1,90],
+    ['shRefract','refraction',0,100,1,42],
+    ['shDisp','chromatic split',0,60,1,16],
+    ['shBevel','bevel edge',0,100,1,50],
+    ['shFacet','facet tilt',0,100,1,52],
+    ['shStyle','reflection style',0,3,1,0],
   ],
   warp:[
     ['flow','flow field',0,220,1,0],
@@ -740,7 +746,8 @@ function render(){
   if(style==='dendrite'){drawDendrite(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='blueprint'){drawBlueprint(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='ferro'){drawFerro(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
-  if(style==='shatter'){drawShatter(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='shatter'){drawShatter(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · glass shards · ${W}×${H}<span class="ok"> · WebGL glass · PNG/video</span>`;return;}
   if(style==='wood'){drawWood(glyphs,C,W,H,fill,bgc);rasterMode=true;
     $('#status').innerHTML=`${glyphs.length} glyphs · woodgrain · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
   if(style==='marble'){drawMarble(glyphs,C,W,H,fill,bgc);rasterMode=true;
@@ -1706,37 +1713,134 @@ function drawWood(glyphs,C,W,H,fill,bg){
   ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);ctx.drawImage(o,0,0,W,H);
   if(S.grain)addGrain(W,H,S.grain);
 }
-/* ---- shatter: the word fractured into shards, each thrown off the centre ---- */
-function drawShatter(glyphs,C,W,H,fill,bg,svg){
+/* ---- shatter: the word as real GLASS SHARDS, refracted + reflected on the GPU ----
+   Each Delaunay cell over the word becomes a faceted pane of glass: it refracts the
+   word behind it (with a chromatic split at the tilt), reflects a controllable studio /
+   sky / neon / mono environment weighted by Fresnel, and carries a lit bevelled edge.
+   Controls: reflection (env strength), refraction, chromatic split, bevel, facet tilt,
+   reflection style, plus shard count (cell), blast (dispersion) and spin (drift). */
+const SHARD_VS=`#version 300 es
+in vec2 a_pos; in vec3 a_bary; in vec2 a_norm; in float a_rand;
+out vec3 v_bary; out vec2 v_norm; out float v_rand;
+void main(){ v_bary=a_bary; v_norm=a_norm; v_rand=a_rand;
+  gl_Position=vec4(a_pos,0.0,1.0); }`;
+const SHARD_FS=`#version 300 es
+precision highp float;
+in vec3 v_bary; in vec2 v_norm; in float v_rand;
+out vec4 outColor;
+uniform sampler2D u_word; uniform vec2 u_res;
+uniform float u_refl,u_refract,u_disp,u_bevel,u_facet,u_style;
+uniform vec3 u_tint;
+vec3 envCol(vec3 R,float style){
+  float y=R.y*0.5+0.5;
+  vec3 studio=mix(vec3(0.05,0.06,0.08),vec3(0.92,0.94,0.98),smoothstep(0.15,0.98,y));
+  float bar=smoothstep(0.06,0.0,abs(fract(R.x*2.0+0.5)-0.5)-0.05);
+  studio+=bar*0.7*smoothstep(0.35,1.0,y);
+  vec3 sky=mix(vec3(0.95,0.6,0.38),mix(vec3(0.45,0.68,0.98),vec3(0.04,0.09,0.32),smoothstep(0.5,1.0,y)),smoothstep(0.0,0.55,y));
+  vec3 neon=vec3(0.02,0.02,0.05);
+  neon+=vec3(0.95,0.12,0.55)*smoothstep(0.82,1.0,sin(R.x*6.2)*0.5+0.5);
+  neon+=vec3(0.1,0.85,0.95)*smoothstep(0.82,1.0,sin(R.y*7.3+2.0)*0.5+0.5);
+  vec3 mono=vec3(smoothstep(0.05,1.0,y));
+  vec3 c=studio;
+  c=mix(c,sky ,clamp(style,0.0,1.0));
+  c=mix(c,neon,clamp(style-1.0,0.0,1.0));
+  c=mix(c,mono,clamp(style-2.0,0.0,1.0));
+  return c;
+}
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_res; uv.y=1.0-uv.y;             // word texture is top-down
+  float edge=min(min(v_bary.x,v_bary.y),v_bary.z);          // 0 at a shard edge → 0.333 centre
+  vec3 N=normalize(vec3(v_norm*(0.15+u_facet*1.15),1.0));    // faceted pane normal
+  vec3 V=vec3(0.0,0.0,1.0);
+  float ndv=clamp(dot(N,V),0.0,1.0);
+  float F=mix(0.05,1.0,pow(1.0-ndv,3.0));
+  vec2 ro=N.xy*u_refract*0.10;                              // refraction shove
+  vec2 ds=N.xy*u_disp*0.012;                                // chromatic split
+  vec3 refr=vec3(texture(u_word,uv+ro+ds).r,
+                 texture(u_word,uv+ro   ).g,
+                 texture(u_word,uv+ro-ds).b);
+  refr*=u_tint*1.15;
+  vec3 R=reflect(-V,N);
+  vec3 env=envCol(R,u_style);
+  float refl=clamp(F*u_refl + 0.14*u_refl, 0.0, 1.0);       // small base so the style reads across every pane
+  vec3 col=mix(refr,env,refl);
+  float bw=0.006+u_bevel*0.07;                              // bevel width
+  float rim=smoothstep(bw,0.0,edge);
+  col+=rim*mix(env,vec3(1.0),0.55)*(0.35+u_refl*0.5);        // lit bevel
+  col*=1.0-smoothstep(0.0035,0.0,edge)*0.35;                 // thin dark seam
+  outColor=vec4(col,1.0);
+}`;
+function drawShatter(glyphs,C,W,H,fill,bg){
   const m=buildField(glyphs,C,W,H,Math.min(480,W),0);
   let x0=W,y0=H,x1=0,y1=0;
   for(const gl of glyphs){const T=makeT(gl,C);for(const p of sampleGlyph(gl,T)){
     if(p[0]<x0)x0=p[0];if(p[1]<y0)y0=p[1];if(p[0]>x1)x1=p[0];if(p[1]>y1)y1=p[1];}}
-  if(x1<=x0)return;
-  const n=Math.max(8,Math.round(S.cellSize*1.4)),P=[];
+  if(x1<=x0){ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);return;}
+  const n=Math.max(10,Math.round(4200/Math.max(10,S.cellSize))),P=[];  // bigger cell → fewer, chunkier shards
   for(let i=0;i<n;i++)P.push([lerp(x0-20,x1+20,grand(i,1.9)),lerp(y0-20,y1+20,grand(i,7.3))]);
   const cx=(x0+x1)/2, cy=(y0+y1)/2, blast=S.pSpread*0.55, spin=S.fieldDrift*0.004;
+  const diag=Math.max(1,Math.hypot(x1-x0,y1-y0));
   const tris=delaunay(P);
-  ctx.lineJoin='round';
+  // the "content behind the glass": the word, drawn once into a texture
+  const wc=document.createElement('canvas'); wc.width=W; wc.height=H;
+  const wx=wc.getContext('2d'); wx.fillStyle=bg; wx.fillRect(0,0,W,H); wx.fillStyle=fill;
+  for(const gl of glyphs){const T=makeT(gl,C); wx.fill(new Path2D(buildD(gl,T,0)));}
+  // build the shard triangle mesh (thrown off centre, with a per-shard facet normal)
+  const V=[];
   tris.forEach((t,i)=>{
     const a=P[t[0]],b=P[t[1]],c=P[t[2]];
     const mx=(a[0]+b[0]+c[0])/3,my=(a[1]+b[1]+c[1])/3;
     if(maskAt(m,mx,my)<60)return;
     const dx=mx-cx,dy=my-cy,d=Math.hypot(dx,dy)||1;
-    const push=blast*(0.25+grand(i,3.1))*(0.4+d/Math.max(1,Math.hypot(x1-x0,y1-y0)));
+    const push=blast*(0.25+grand(i,3.1))*(0.4+d/diag);
     const ox=dx/d*push, oy=dy/d*push;
     const rot=(grand(i,8.8)*2-1)*spin*push;
     const cr=Math.cos(rot),sr=Math.sin(rot);
-    const put=p=>{const px2=p[0]-mx,py2=p[1]-my;
-      return [mx+px2*cr-py2*sr+ox, my+px2*sr+py2*cr+oy];};
+    const put=p=>{const px=p[0]-mx,py=p[1]-my; return [mx+px*cr-py*sr+ox, my+px*sr+py*cr+oy];};
     const A=put(a),Bp=put(b),Cp=put(c);
-    const sh=0.55+0.45*grand(i,4.6);
-    const col=`rgb(${Math.round(hexRGB(fill)[0]*sh)},${Math.round(hexRGB(fill)[1]*sh)},${Math.round(hexRGB(fill)[2]*sh)})`;
-    ctx.fillStyle=col;ctx.strokeStyle=bg;ctx.lineWidth=Math.max(0.4,S.strokeW*0.5);
-    ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(Bp[0],Bp[1]);ctx.lineTo(Cp[0],Cp[1]);ctx.closePath();
-    ctx.fill();if(S.strokeW>0.3)ctx.stroke();
-    if(svg.length<SVGMAX)svg.push(`<polygon points="${A[0].toFixed(1)},${A[1].toFixed(1)} ${Bp[0].toFixed(1)},${Bp[1].toFixed(1)} ${Cp[0].toFixed(1)},${Cp[1].toFixed(1)}" fill="${col}" stroke="${bg}" stroke-width="${Math.max(0.4,S.strokeW*0.5).toFixed(2)}"/>`);
+    const ang=grand(i,4.6)*TAU, mag=0.35+grand(i,5.2)*0.9;   // facet tilt direction
+    const nx=Math.cos(ang)*mag, ny=Math.sin(ang)*mag;
+    const clip=p=>[ p[0]/W*2-1, -(p[1]/H*2-1) ];
+    const cA=clip(A),cB=clip(Bp),cC=clip(Cp);
+    V.push(cA[0],cA[1], 1,0,0, nx,ny, grand(i,2.2));
+    V.push(cB[0],cB[1], 0,1,0, nx,ny, grand(i,2.2));
+    V.push(cC[0],cC[1], 0,0,1, nx,ny, grand(i,2.2));
   });
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  if(!V.length){ return; }
+  const gl=glCtx(W,H);
+  if(!gl){ // 2D fallback — flat faceted panes tinted by the word behind
+    ctx.imageSmoothingEnabled=true; ctx.drawImage(wc,0,0); return; }
+  const prog=glProgram(gl,'shards',SHARD_VS,SHARD_FS);
+  gl.viewport(0,0,W,H); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.disable(gl.BLEND);
+  gl.useProgram(prog);
+  const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(V),gl.STATIC_DRAW);
+  const F32=4, stride=8*F32;
+  const set=(name,size,off)=>{const l=gl.getAttribLocation(prog,name); gl.enableVertexAttribArray(l);
+    gl.vertexAttribPointer(l,size,gl.FLOAT,false,stride,off*F32);};
+  set('a_pos',2,0); set('a_bary',3,2); set('a_norm',2,5); set('a_rand',1,7);
+  const tex=gl.createTexture(); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,wc);
+  const rgb=hexRGB(fill);
+  gl.uniform1i(gl.getUniformLocation(prog,'u_word'),0);
+  gl.uniform2f(gl.getUniformLocation(prog,'u_res'),W,H);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_refl'),S.shReflect/100);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_refract'),S.shRefract/100);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_disp'),S.shDisp/100);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_bevel'),S.shBevel/100);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_facet'),S.shFacet/100);
+  gl.uniform1f(gl.getUniformLocation(prog,'u_style'),S.shStyle);
+  gl.uniform3f(gl.getUniformLocation(prog,'u_tint'),rgb[0]/255,rgb[1]/255,rgb[2]/255);
+  gl.drawArrays(gl.TRIANGLES,0,V.length/8);
+  gl.deleteBuffer(buf); gl.deleteTexture(tex);
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  ctx.drawImage(_glc,0,0);
 }
 /* ---- blueprint: the word as a drafting sheet — outline, ticks, dimension rules ---- */
 function drawBlueprint(glyphs,C,W,H,fill,svg){
@@ -2352,7 +2456,7 @@ const ENGINE_DEFAULTS={
   dendrite:{pDensity:64,ringCount:7,linkDist:34,strokeW:1.6,fieldDrift:75,fillColor:INK,bgColor:PAPER},
   blueprint:{cellSize:46,strokeW:1.5,dotSize:11,pDensity:52,ringGap:12,fillColor:INK,bgColor:PAPER},
   ferro:{cellSize:52,strokeW:4.5,bloom:16,fillColor:INK,bgColor:PAPER},
-  shatter:{cellSize:96,pSpread:24,fieldDrift:38,strokeW:1.2,fillColor:INK,bgColor:PAPER},
+  shatter:{cellSize:96,pSpread:20,fieldDrift:30,shReflect:90,shRefract:42,shDisp:16,shBevel:50,shFacet:52,shStyle:0,fillColor:'#cfe6ef',bgColor:'#0b0e14'},
   wood:{ringCount:16,fieldDrift:58,gain:1.4,grain:10,fillColor:INK,bgColor:PAPER},
   stitch:{ringCount:2,cellSize:66,strokeW:5.2,fieldDrift:30,bloom:7,fillColor:INK,bgColor:PAPER},
   marble:{fieldDrift:105,gain:2.7,bloom:8,chromatic:14,grain:10,fillColor:INK,bgColor:PAPER},
@@ -2544,7 +2648,7 @@ const ENGINE_CTRLS={solid:[],dimensional:[],
   dendrite:['pDensity','ringCount','linkDist','strokeW','fieldDrift'],
   blueprint:['cellSize','strokeW','dotSize','pDensity','ringGap'],
   ferro:['cellSize','strokeW','bloom'],
-  shatter:['cellSize','pSpread','fieldDrift','strokeW'],
+  shatter:['cellSize','pSpread','fieldDrift','shReflect','shRefract','shDisp','shBevel','shFacet','shStyle'],
   wood:['ringCount','fieldDrift','gain','grain'],
   marble:['fieldDrift','gain','bloom','chromatic','grain'],
   relief:['bloom','gain','ringCount','grain'],
@@ -2588,7 +2692,7 @@ const ENGINE_NOTE={solid:'Solid — no engine parameters. Shape it with Warp & M
   dendrite:'Branching growth seeded on the letterform; branches die when they wander off the ink, so the colony grows into the word. Ring count = branch depth, link = segment length. Vector SVG.',
   blueprint:'The word as a drafting sheet — graph paper, precise outlines, anchor crosses and dimension rules. Cell = grid, ring gap = dimension offset. Vector SVG.',
   ferro:'Ferrofluid — spikes standing off the contour along the field normal, over a solid core. Cell = spike spacing and length. Vector SVG.',
-  shatter:'The word fractured into shards, each thrown and spun off the centre. Cell = shard count, dispersion = blast, drift = spin. Vector SVG.',
+  shatter:'The word as real glass shards, refracted and reflected on the GPU. Each fractured pane refracts the word behind it with a chromatic split, reflects a studio / sky / neon / mono environment weighted by Fresnel, and carries a lit bevelled edge. Reflection = env strength, refraction = the shove behind the glass, facet tilt = how steeply the panes catch the light, reflection style = the environment. Cell = shard count, dispersion = blast, drift = spin. WebGL · PNG/video.',
   wood:'Annual rings warped around a pith and cut to the letterform. Ring count = grain density, drift = warp, intensity = late-wood sharpness.',
   stitch:'The word embroidered — running stitches along nested contours, each with a knot and a thread sheen. Ring count = stitch rows, cell = stitch length, drift = hand wobble. Vector SVG.',
   marble:'Ink suspended in water. The letterform is dragged through a twice-warped noise field; drift = swirl, intensity = ink contrast, chromatic = vein colour.',
