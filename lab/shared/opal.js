@@ -461,9 +461,7 @@ const Opal = (() => {
     CANON_SIZES.forEach(c => { const o=document.createElement('option');
       o.value = fmt==='px' ? c.px : fmt==='colon' ? `${c.w}:${c.h}` : `${c.w}/${c.h}`;
       o.textContent = c.l; sel.appendChild(o); });
-    let best=0, bd=Infinity;
-    CANON_SIZES.forEach((c,i)=>{ const d=Math.abs(c.w/c.h - curRatio); if(d<bd){ bd=d; best=i; } });
-    sel.selectedIndex = best; sel.dispatchEvent(new Event('change',{bubbles:true}));
+    sel.selectedIndex = 0; sel.dispatchEvent(new Event('change',{bubbles:true}));   // default every tool to 1:1 (Square)
   }
   function wireSizeReadout(){
     const dock=document.getElementById('sizeDock');

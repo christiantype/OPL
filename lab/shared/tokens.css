@@ -20,15 +20,15 @@
   /* type */
   --font:'IBM Plex Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* ink + greys — neutral, all clear WCAG AA on the white shell */
-  --ink:#161616;                 /* text, slider thumbs */
-  --dim:#525252; --mute:#525252; /* muted labels / captions */
-  --line:rgba(0,0,0,.16);        /* borders + dividers */
-  --hair:rgba(0,0,0,.18);        /* panel edges */
-  --track:rgba(0,0,0,.28);       /* slider tracks */
-  --paper:#ffffff;               /* the one surface — white. grey is ONLY for rules + borders */
-  --cell:#ffffff;                /* button / input ground — white, defined by its border */
-  --mat:var(--paper);            /* canvas mat behind the artboard */
+  /* ink + greys — tuned for the soft neumorphic ground (dark-grey text, not pure black) */
+  --ink:#33383f;                 /* text, slider thumbs */
+  --dim:#6b7280; --mute:#6b7280; /* muted labels / captions */
+  --line:rgba(60,70,90,.06);     /* borders are nearly gone — shadow defines edges */
+  --hair:rgba(60,70,90,.07);     /* panel edges */
+  --track:rgba(120,120,128,.20); /* slider tracks (inset) */
+  --paper:#f4f4f6;               /* the one surface — near-white; page + cards share it */
+  --cell:#f4f4f6;                /* button / input ground — same as the surface, shaped by shadow */
+  --mat:#cbced4;                 /* canvas mat behind the artboard — darker, so the artwork pops */
   --rail-bg:var(--paper);        /* the left rail */
   --island:var(--paper);         /* a control card · also the artboard */
   --rec:#da1e28;                 /* record indicator (Carbon red-60, AA) */
@@ -37,8 +37,82 @@
   --accent-hover:#0353e9;        /* Blue 70 */
   --accent-active:#002d9c;       /* Blue 80 */
   --on-accent:#ffffff;
-  /* radii */
-  --r-island:12px; --r-control:8px; --r-input:6px; --r-seg:8px;
-  --shadow:0 1px 2px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.07);        /* islands */
-  --shadow-float:0 2px 6px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.12); /* floating panels */
+  /* radii — rounder for the soft look */
+  --r-island:18px; --r-control:12px; --r-input:10px; --r-seg:12px;
+  /* NEUMORPHISM — dual light/dark shadows: raised (islands/buttons) + inset (inputs/pressed) */
+  --nm-lo:rgba(255,255,255,.9);   /* the light (top-left) */
+  --nm-hi:rgba(188,190,196,.6);   /* the dark (bottom-right) — NEUTRAL grey, no blue */
+  --shadow:-4px -4px 9px var(--nm-lo), 5px 5px 12px var(--nm-hi);              /* raised islands */
+  --shadow-float:-6px -6px 14px var(--nm-lo), 8px 8px 20px var(--nm-hi);       /* floating panels */
+  --shadow-inset:inset 2px 2px 5px var(--nm-hi), inset -2px -2px 5px var(--nm-lo); /* inputs */
+  --shadow-sm:-3px -3px 6px var(--nm-lo), 3px 3px 6px var(--nm-hi);            /* raised buttons */
+  --shadow-pressed:inset 3px 3px 7px var(--nm-hi), inset -3px -3px 7px var(--nm-lo); /* button turned ON */
 }
+/* dark-surfaced tools get a dark-neumorphic light/shadow pair (subtle white top-left, black bottom-right) */
+body.dark{ --nm-lo:rgba(255,255,255,.045); --nm-hi:rgba(0,0,0,.55); }
+
+/* ============================================================================
+   NEUMORPHISM — the component layer. Reaches every tool (tool.css & ibm.css both
+   @import this). Raised buttons, inset fields, soft pill toggles, groove sliders.
+   ========================================================================== */
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export,.opal-save__panel) button:not(.rowhead):not(.opal-info):not(.tw),
+.opal-sessions-btn, .filebtn, .chip, .seg button, .railact button, .btn{
+  background:var(--cell) !important; border:none !important; box-shadow:var(--shadow-sm) !important;
+  border-radius:var(--r-control) !important; color:var(--ink) !important; transition:box-shadow .12s ease, color .12s ease; }
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) button:not(.rowhead):hover, .opal-sessions-btn:hover, .btn:hover, .seg button:hover{
+  box-shadow:-4px -4px 8px var(--nm-lo), 4px 4px 9px var(--nm-hi) !important; }
+/* pressed / selected → pushed IN (deep inset) + accent ink */
+:where(#dock,#rail,#panel,#output,#sizeDock) button[aria-pressed="true"], .seg button[aria-pressed="true"],
+.btn[aria-pressed="true"], .btn.primary, .chip.active, .railact button.primary, .railact button.on{
+  box-shadow:var(--shadow-pressed) !important; color:var(--accent) !important; background:var(--cell) !important; }
+:where(#dock,#rail,#panel,#output,#sizeDock) button:active, .btn:active, .seg button:active, .railact button:active{
+  box-shadow:var(--shadow-pressed) !important; }
+.seg{ border:none !important; background:transparent !important; box-shadow:none !important; gap:10px !important; display:flex !important; flex-wrap:wrap !important; }
+.seg button{ flex:0 1 auto; min-width:0; }
+/* fields — inset. background-COLOR only, so the tool's chevron survives; add our own chevron + padding */
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) select, #sizeDock select, .opal-export select{
+  background-color:var(--cell) !important; border:none !important; box-shadow:var(--shadow-inset) !important;
+  border-radius:var(--r-input) !important; color:var(--ink) !important;
+  -webkit-appearance:none !important; appearance:none !important;
+  padding:10px 34px 10px 14px !important; line-height:1.2 !important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%236b7280' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") !important;
+  background-repeat:no-repeat !important; background-position:right 13px center !important; }
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) input[type=text],
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) input[type=number],
+:where(#dock,#rail,#panel) textarea{
+  background:var(--cell) !important; border:none !important; box-shadow:var(--shadow-inset) !important;
+  border-radius:var(--r-input) !important; color:var(--ink) !important; padding:10px 12px !important; }
+/* sliders — inset groove + raised ACCENT dial */
+:where(#dock,#rail,#panel,#output) input[type=range]{ height:22px !important; background:transparent !important; }
+:where(#dock,#rail,#panel,#output) input[type=range]::-webkit-slider-runnable-track{
+  height:8px !important; border-radius:8px !important; background:var(--cell) !important; box-shadow:var(--shadow-inset) !important; }
+:where(#dock,#rail,#panel,#output) input[type=range]::-moz-range-track{
+  height:8px !important; border-radius:8px !important; background:var(--cell) !important; box-shadow:var(--shadow-inset) !important; }
+:where(#dock,#rail,#panel,#output) input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none !important; appearance:none !important; width:18px !important; height:18px !important; margin-top:-5px !important;
+  border-radius:50% !important; background:var(--accent) !important; border:2px solid var(--cell) !important; box-shadow:var(--shadow-sm) !important; cursor:pointer; }
+:where(#dock,#rail,#panel,#output) input[type=range]::-moz-range-thumb{
+  width:18px !important; height:18px !important; border-radius:50% !important; background:var(--accent) !important; border:2px solid var(--cell) !important; box-shadow:var(--shadow-sm) !important; }
+/* breathing room so the soft shadows never collide or clip into each other */
+:where(#dock,#rail,#panel) .btn, :where(#dock,#rail,#panel) select, :where(#dock,#rail,#panel) input[type=range],
+:where(#dock,#rail,#panel) input[type=text], :where(#dock,#rail,#panel) input[type=number], :where(#dock,#rail,#panel) .filebtn,
+:where(#dock,#rail,#panel) input[type=color]{ margin-top:5px !important; margin-bottom:5px !important; }
+#dock > .group, #dock > .row, #rail.rail-l .row, #panel .grp, #panel .eng-params{ padding:18px !important; margin-bottom:18px !important; }
+/* .ctrl-btn keeps a defined grey edge (per request) */
+.ctrl-btn{ border:1px solid #919191 !important; box-shadow:var(--shadow-sm) !important; }
+/* controllers that float over the artwork (size dock + Output) — NO drop shadow; a hairline instead */
+#sizeDock, #output, .group.out, #dock > .group.out, #dock > .row.out{
+  box-shadow:none !important; border:1px solid rgba(120,124,134,.26) !important; }
+/* every slider reads the same accent dial — native range thumbs AND custom SVG knobs */
+.knob .k-vl, .knob .k-pt{ stroke:var(--accent) !important; }
+/* checkboxes → soft pill switches */
+:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]{
+  -webkit-appearance:none !important; appearance:none !important; width:42px !important; height:24px !important; flex:none;
+  border-radius:999px !important; background:var(--cell) !important; box-shadow:var(--shadow-inset) !important; position:relative; cursor:pointer;
+  transition:background .15s ease; margin:0; }
+:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]::after{
+  content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%;
+  background:var(--cell); box-shadow:var(--shadow-sm); transition:left .16s ease, background .16s ease; }
+:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]:checked::after{ left:21px; background:var(--accent); }
+/* islands lose their hairline border (shadow defines the edge) */
+#dock > .group, #dock > .row, #rail.rail-l .row, #output, .group.out, #sizeDock, #panel .grp, #panel .eng-params, .opal-sessions-pop{ border:none !important; }
