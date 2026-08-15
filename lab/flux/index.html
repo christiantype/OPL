@@ -220,6 +220,10 @@
     <div class="oc-lbl">Engine</div>
     <select id="renderStyle" title="render engine">
       <option value="solid">Solid</option>
+      <option value="fire">Fire · burning letters</option>
+      <option value="hair">Hair · real strands</option>
+      <option value="ridge">Ridge lines · displaced relief</option>
+      <option value="extrude">Extruded relief · 3-D blocks</option>
       <option value="heatmap">Thermal field (organism)</option>
       <option value="particles">Particle dispersion</option>
       <option value="halftone">Halftone dot-matrix</option>
@@ -721,6 +725,15 @@ function render(){
     $('#status').innerHTML=`${glyphs.length} glyphs · relief · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
   if(style==='wireframe'){drawWireframe(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
 
+  if(style==='fire'){drawStrands(glyphs,C,W,H,fill,bgc,'fire');rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · fire · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='hair'){drawStrands(glyphs,C,W,H,fill,bgc,'hair');rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · hair · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='ridge'){drawRidge(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · ridge · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+  if(style==='extrude'){drawExtrude(glyphs,C,W,H,fill,bgc);rasterMode=true;
+    $('#status').innerHTML=`${glyphs.length} glyphs · extruded · ${W}×${H}<span class="ok"> · PNG/video</span>`;return;}
+
   for(const gl of glyphs){
     const T=makeT(gl,C);
     if(style==='particles'){drawParticles(gl,T,fill,svg,acc);continue;}
@@ -1061,6 +1074,144 @@ function drawAscii(glyphs,C,W,H,fill,svg){
     ctx.fillStyle=hexA(fill,al);ctx.fillText(ch,x,y);
     if(svg.length<SVGMAX)svg.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="monospace" font-size="${s}" fill="${fill}" fill-opacity="${al.toFixed(2)}" text-anchor="middle" dominant-baseline="middle">${xmlEsc(ch)}</text>`);}
 }
+
+/* ============ Fire & Hair — fine filaments grown off the letterforms ============
+   Both seed many strands across the glyph coverage and grow them a few steps along a
+   direction field. FIRE shoots them upward/outward on a heat ramp with additive glow and
+   embers; HAIR combs them along a flow field in natural tones with a sheen. Raster (PNG/video). */
+function _fst(pts){ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();}
+function _fstTail(pts,fromF){const i0=Math.max(1,Math.floor(pts.length*fromF));ctx.beginPath();ctx.moveTo(pts[i0-1][0],pts[i0-1][1]);for(let i=i0;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();}
+function _normal(m,x,y,d){const gx=maskAt(m,x+d,y)-maskAt(m,x-d,y),gy=maskAt(m,x,y+d)-maskAt(m,x,y-d);const gm=Math.hypot(gx,gy)||1e-6;return [-gx/gm,-gy/gm,gm];}
+function drawStrands(glyphs,C,W,H,fill,bg,mode){
+  const fire=mode==='fire';
+  ctx.fillStyle = fire ? '#050302' : (bg||'#0e0906');
+  ctx.fillRect(0,0,W,H);
+  const m=buildField(glyphs,C,W,H,Math.min(520,W),Math.max(1.2,W/420));
+  const d=Math.max(2,W/320), paths=glyphs.map(gl=>new Path2D(buildD(gl,makeT(gl,C),0)));
+  // molten / rooted base so the letter reads under the strands
+  if(fire){
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    ctx.filter=`blur(${Math.max(2,W/90)}px)`;ctx.globalAlpha=0.55;ctx.fillStyle='rgb(120,26,0)';for(const p of paths)ctx.fill(p);
+    ctx.filter=`blur(${Math.max(1,W/380)}px)`;ctx.globalAlpha=0.95;ctx.fillStyle='rgb(255,150,30)';for(const p of paths)ctx.fill(p);
+    ctx.filter='none';ctx.restore();
+  } else {
+    ctx.save();ctx.fillStyle='rgb(38,25,15)';for(const p of paths)ctx.fill(p);ctx.restore();
+  }
+  ctx.save();
+  if(fire) ctx.globalCompositeOperation='lighter';
+  ctx.lineCap='round';ctx.lineJoin='round';
+  const dens=(S.pDensity!=null?S.pDensity:64)/100;
+  const across=(hiRes?600:300)*(0.55+0.75*dens);         // sample count is canvas-relative → fast preview, crisp export
+  const gstep=Math.max(2.4, W/across);
+  const spread=(S.pSpread!=null?S.pSpread:52)/100;
+  const maxLen= fire ? lerp(W*0.02,W*0.12,spread) : lerp(W*0.03,W*0.17,spread);
+  const drift=(S.fieldDrift!=null?S.fieldDrift:34)/140;
+  const t=phase*(fire?2.4:0.5);
+  const combA=-0.5+drift*1.1;                         // hair comb angle (from straight-down)
+  const baseW= fire ? Math.max(0.6,gstep*0.34) : Math.max(0.5,(S.strokeW||1.2)*0.6);
+  // Accumulate strands into a few colour-bucketed paths, then stroke each bucket ONCE —
+  // a handful of stroke() calls instead of one per strand (fast even at print resolution).
+  const NB=7, core=Array.from({length:NB},()=>new Path2D());
+  const glow=fire?new Path2D():null, sheen=fire?null:new Path2D();
+  const addP=(pth,pts)=>{pth.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)pth.lineTo(pts[i][0],pts[i][1]);};
+  const addTail=(pth,pts,f)=>{const i0=Math.max(1,(pts.length*f)|0);pth.moveTo(pts[i0-1][0],pts[i0-1][1]);for(let i=i0;i<pts.length;i++)pth.lineTo(pts[i][0],pts[i][1]);};
+  for(let y=0;y<H;y+=gstep)for(let x=0;x<W;x+=gstep){
+    const jx=x+(grand(x*3.1+y,1)*2-1)*gstep*0.5, jy=y+(grand(x+y*2.7,2)*2-1)*gstep*0.5;
+    const cov=maskAt(m,jx,jy)/255; if(cov<0.14) continue;
+    const [nx,ny,gm]=_normal(m,jx,jy,d), edge=gm>16;
+    const lenBase= fire ? maxLen*(edge?1:0.42) : maxLen*(0.55+0.6*cov);
+    const len=lenBase*(0.5+grand(jx*1.7+jy,7))*(fire?(0.6+0.6*vnoise(jx*0.02,jy*0.02,t)):(0.7+0.4*grand(jx+jy,9)));
+    let dx,dy;
+    if(fire){ dx=edge?nx:0; dy=(edge?ny:0)-1.15; }
+    else { dx=Math.sin(combA)+nx*0.4; dy=Math.cos(combA)+ny*0.4; }
+    let dl=Math.hypot(dx,dy)||1; dx/=dl; dy/=dl;
+    const steps=fire?5:6; let px=jx,py=jy; const pts=[[px,py]];
+    for(let s=1;s<=steps;s++){
+      const wob=(vnoise(px*0.02+(fire?0:11),py*0.02,t)*2-1)*(fire?0.5:0.3);
+      const ca=Math.cos(wob),sa=Math.sin(wob),rx=dx*ca-dy*sa,ry=dx*sa+dy*ca; dx=rx;dy=ry;
+      if(!fire) dy+=0.06;                              // gravity for hair
+      const dl2=Math.hypot(dx,dy)||1; dx/=dl2;dy/=dl2;
+      px+=dx*len/steps; py+=dy*len/steps; pts.push([px,py]);
+    }
+    if(fire){
+      const hot=clamp(0.55+0.34*vnoise(jx*0.05,jy*0.05,t)+(edge?0.08:-0.05),0,1);
+      addP(glow,pts); addP(core[Math.min(NB-1,(hot*NB)|0)],pts);
+    } else {
+      const v=grand(jx*2.3+jy*1.1,5), shade=clamp(0.5+0.55*v,0,1), hl=grand(jx+jy*3.3,8)>0.83;
+      addP(core[Math.min(NB-1,(shade*NB)|0)],pts);
+      if(hl) addTail(sheen,pts,0.35);
+    }
+  }
+  if(fire){
+    ctx.strokeStyle='rgb(180,60,6)'; ctx.globalAlpha=0.16; ctx.lineWidth=baseW*3.4; ctx.stroke(glow);
+    for(let bi=0;bi<NB;bi++){ ctx.strokeStyle=heat((bi+0.7)/NB); ctx.globalAlpha=0.62; ctx.lineWidth=baseW; ctx.stroke(core[bi]); }
+  } else {
+    for(let bi=0;bi<NB;bi++){ const sh=(bi+0.5)/NB; ctx.strokeStyle=`rgb(${94*sh|0},${60*sh|0},${34*sh|0})`; ctx.globalAlpha=0.95; ctx.lineWidth=baseW; ctx.stroke(core[bi]); }
+    ctx.strokeStyle='rgb(220,182,120)'; ctx.globalAlpha=0.9; ctx.lineWidth=baseW*0.7; ctx.stroke(sheen);
+  }
+  ctx.restore();
+  if(fire){                                            // rising embers
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    const nE=Math.round(90*dens);
+    for(let i=0;i<nE;i++){
+      const sx=grand(i*1.3,11)*W, sy0=grand(i*2.7,12)*H;
+      if(maskAt(m,sx,sy0)/255<0.1 && grand(i,13)>0.35) continue;
+      const rise=((phase*0.25+grand(i,15))%1), ey=sy0-rise*H*0.22;
+      const r=Math.max(0.8,W/900*(0.5+grand(i,16)*2));
+      ctx.fillStyle=heat(0.72+0.28*grand(i,17)); ctx.globalAlpha=0.5*(1-rise)*grand(i,18);
+      ctx.beginPath();ctx.arc(sx,ey,r,0,TAU);ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* Ridge lines — horizontal scan-lines displaced upward by the letterform height, each band
+   shaded crest→dark and drawn front-over-back so it reads as stacked 3-D relief. Raster. */
+function drawRidge(glyphs,C,W,H,fill,bg){
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  const m=buildField(glyphs,C,W,H,Math.min(600,W),Math.max(1.4,W/300));
+  const rows=Math.max(8,Math.round(S.ringCount||40)), step=H/rows;
+  const amp=step*lerp(1.2,5.5,clamp((S.gain-0.4)/2.6,0,1)), bandH=step*2.3, dx=Math.max(1.3,W/(hiRes?900:460));
+  let cr=hexRGB(fill&&fill.charAt(0)==='#'?fill:'#ffffff');
+  if(0.3*cr[0]+0.59*cr[1]+0.11*cr[2]<70) cr=[240,240,240];
+  const crest=`rgb(${cr[0]},${cr[1]},${cr[2]})`, mid=`rgb(${cr[0]*0.5|0},${cr[1]*0.5|0},${cr[2]*0.5|0})`;
+  const lw=Math.max(1,step*0.05);
+  for(let r=-1;r<=rows+1;r++){
+    const baseY=r*step;
+    ctx.beginPath();ctx.moveTo(0,baseY-maskAt(m,0,baseY)/255*amp);
+    for(let x=0;x<=W;x+=dx) ctx.lineTo(x, baseY-maskAt(m,x,baseY)/255*amp);
+    ctx.lineTo(W,H+bandH);ctx.lineTo(0,H+bandH);ctx.closePath();
+    const g=ctx.createLinearGradient(0,baseY-amp,0,baseY-amp+bandH);
+    g.addColorStop(0,crest);g.addColorStop(0.3,mid);g.addColorStop(1,'#000');
+    ctx.fillStyle=g;ctx.fill();
+    ctx.beginPath();ctx.moveTo(0,baseY-maskAt(m,0,baseY)/255*amp);
+    for(let x=0;x<=W;x+=dx) ctx.lineTo(x, baseY-maskAt(m,x,baseY)/255*amp);
+    ctx.strokeStyle=crest;ctx.lineWidth=lw;ctx.globalAlpha=0.9;ctx.stroke();ctx.globalAlpha=1;
+  }
+}
+
+/* Extruded relief — the word pushed into diagonal 3-D blocks: dark sides receding, a bright
+   red top face with a diagonal sheen. Raster (PNG/video). */
+function drawExtrude(glyphs,C,W,H,fill,bg){
+  ctx.fillStyle='#140404';ctx.fillRect(0,0,W,H);
+  const paths=glyphs.map(gl=>new Path2D(buildD(gl,makeT(gl,C),0)));
+  const depth=Math.round(lerp(14,64,clamp((S.gain-0.4)/2.6,0,1))), off=lerp(1.6,5,clamp((S.cellSize-10)/140,0,1));
+  const dirx=0.72,diry=-0.7;
+  for(let i=depth;i>=1;i--){
+    const f=i/depth, b=0.2+0.5*(1-f);
+    ctx.save();ctx.translate(dirx*off*i,diry*off*i);
+    ctx.fillStyle=`rgb(${Math.round(150*b)},${Math.round(26*b)},${Math.round(16*b)})`;
+    for(const p of paths)ctx.fill(p);
+    ctx.restore();
+  }
+  ctx.fillStyle='rgb(214,54,30)';for(const p of paths)ctx.fill(p);
+  ctx.save();const cp=new Path2D();for(const p of paths)cp.addPath(p);ctx.clip(cp);
+  const g=ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,'rgba(255,180,120,0)');g.addColorStop(0.5,'rgba(255,150,90,0.4)');g.addColorStop(1,'rgba(255,120,60,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.restore();
+}
+
 function _chaikin(pl,it){let p=pl,cl=pl.closed;for(let k=0;k<it;k++){const n=p.length,o=[];
   if(cl){for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}}
   else{o.push(p[0]);for(let i=0;i<n-1;i++){const a=p[i],b=p[i+1];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}o.push(p[n-1]);}
@@ -2067,6 +2218,10 @@ function setControl(k,v){S[k]=v;const c=$('#c-'+k);
 const INK='#ffffff',PAPER='#000000';
 const ENGINE_DEFAULTS={
   solid:{fillColor:INK,bgColor:PAPER},
+  fire:{pDensity:66,pSpread:52,fieldDrift:40,bloom:30,grain:16,fillColor:'#ff7a1a',bgColor:'#050302'},
+  hair:{pDensity:74,pSpread:58,strokeW:1.2,fieldDrift:30,fillColor:'#5a3a20',bgColor:'#0e0906'},
+  ridge:{ringCount:44,gain:2.4,strokeW:1.4,fillColor:'#ffffff',bgColor:'#000000'},
+  extrude:{gain:1.9,cellSize:70,fillColor:'#d63a1e',bgColor:'#140404'},
   heatmap:{bloom:20,gain:1.15,breath:0.5,fieldDrift:18,grain:14,heatShift:0,pDensity:66,pSpread:38,fillColor:INK,bgColor:PAPER,heatPalette:'turbo'},
   chromatic:{chromatic:16,bgColor:PAPER,fillColor:INK},
   particles:{pDensity:72,pSpread:70,fillColor:INK,bgColor:PAPER,accentColor:'#ff5ad0',accent2:'#5ecbff'},
@@ -2249,6 +2404,10 @@ function updateChips(){
 }
 /* contextual engine settings — only show sliders the active engine uses */
 const ENGINE_CTRLS={solid:[],dimensional:[],
+  fire:['pDensity','pSpread','fieldDrift','bloom','grain'],
+  hair:['pDensity','pSpread','strokeW','fieldDrift'],
+  ridge:['ringCount','gain','strokeW'],
+  extrude:['gain','cellSize'],
   heatmap:['bloom','gain','breath','fieldDrift','grain','heatShift','pDensity','pSpread'],
   chromatic:['chromatic'],particles:['pDensity','pSpread'],halftone:['dotSize'],
   outline:['ringCount','ringGap'],network:['pDensity','pSpread','linkDist','strokeW'],
@@ -2276,6 +2435,10 @@ const ENGINE_CTRLS={solid:[],dimensional:[],
   wireframe:['ringCount','linkDist','strokeW','pDensity']};
 const RENDER_IDS=CONTROLS.render.map(c=>c[0]);
 const ENGINE_NOTE={solid:'Solid — no engine parameters. Shape it with Warp & Motion.',
+  fire:'The letters catch fire — fine flames lick off the outline on a heat ramp with additive glow and rising embers. Density = flame count, spread = flame length, drift = turbulence.',
+  hair:'The word grown out of real hair — thousands of fine strands combed along a flow field, natural tones with a blonde sheen. Density = fullness, spread = length, drift = the comb direction.',
+  ridge:'Horizontal scan-lines displaced upward by the letterform, shaded into stacked 3-D relief bands. Ring count = line count, intensity = displacement height.',
+  extrude:'The word pushed into diagonal 3-D blocks — dark receding sides and a bright red top face. Intensity = extrusion depth, cell = block offset.',
   dimensional:'Dimensional — full glass-3D studio. All its controls live in the panel that opens on the right.',
   chromatic:'RGB channels split & sliced into bands — a digital signal glitch. Best on dark backgrounds.',
   
