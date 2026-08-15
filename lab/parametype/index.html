@@ -71,9 +71,11 @@
     <!-- FLOCK -->
     <div class="mp" id="mp-flock">
       <div class="knob"><label>Ribbons <b id="fl_ribR">20</b></label><input id="fl_rib" type="range" min="6" max="40" value="20"></div>
-      <div class="knob"><label>Flow <b id="fl_itR">300</b></label><input id="fl_it" type="range" min="40" max="700" value="300"></div>
-      <div class="knob"><label>Chase <b id="fl_spR">2.0</b></label><input id="fl_sp" type="range" min="5" max="60" value="20"></div>
-      <div class="knob"><label>Wander <b id="fl_adR">2</b></label><input id="fl_ad" type="range" min="1" max="9" value="2"></div>
+      <div class="knob"><label>Flow <b id="fl_itR">340</b></label><input id="fl_it" type="range" min="40" max="900" value="340"></div>
+      <div class="knob"><label>Chase <b id="fl_spR">4.5</b></label><input id="fl_sp" type="range" min="5" max="140" value="45"></div>
+      <div class="knob"><label>Wild <b id="fl_twR">0.35</b></label><input id="fl_tw" type="range" min="0" max="100" value="35"></div>
+      <div class="knob"><label>Wander <b id="fl_adR">3</b></label><input id="fl_ad" type="range" min="1" max="24" value="3"></div>
+      <div class="knob"><label>Slack <b id="fl_fcR">0.45</b></label><input id="fl_fc" type="range" min="6" max="100" value="45"></div>
       <div class="knob"><label>Ink weight <b id="fl_opR">0.55</b></label><input id="fl_op" type="range" min="6" max="100" value="55"></div>
     </div>
 
@@ -149,10 +151,11 @@
 <script>
 (()=>{
   const $=id=>document.getElementById(id);
-  const art=$('art'), ctx=art.getContext('2d',{ willReadFrequently:true });
+  const art=$('art');
+  let ctx=art.getContext('2d',{ willReadFrequently:true });   // swappable, so print export can re-render into an offscreen ctx
   let W=1080, H=1080, DPR=1;
   const P={ size:'1080/1080', word:'a', fsz:0.72, mode:'flock',
-    fl_rib:20, fl_it:300, fl_sp:2.0, fl_ad:2, fl_op:0.55,
+    fl_rib:20, fl_it:340, fl_sp:4.5, fl_tw:0.35, fl_ad:3, fl_fc:0.45, fl_op:0.55,
     ch_pt:300, ch_ds:140, ch_dn:0.85, ch_op:0.4,
     sc_pt:300, sc_pa:26, sc_sp:6, sc_dots:true,
     co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
@@ -358,9 +361,9 @@
       const pts=L.flat.length>40 ? resample(closeFlat(L), Math.max(RIB*14, 220)) : L.flat.slice();
       const picas=[];
       for(let j=0;j<pts.length;j++){
-        const maxspeed=0.5 + (j%RIB)/RIB * (P.fl_sp);        // ribbons at different speeds
-        const maxforce=0.5 + (j%10)/20;
-        const pk=new Pica(j, Math.max(0.6,maxspeed), maxforce);
+        const maxspeed=0.6 + (j%RIB)/RIB * (P.fl_sp);        // ribbons at different speeds
+        const maxforce=(1.05 - P.fl_fc) * (0.5 + (j%10)/20); // "Slack" loosens steering → wilder overshoot
+        const pk=new Pica(j, Math.max(0.6,maxspeed), Math.max(0.04,maxforce));
         pk.loc={ x:pts[j%pts.length].x, y:pts[j%pts.length].y };
         picas.push(pk);
       }
@@ -374,11 +377,17 @@
   function flockStep(){
     if(!flockState) return;
     const adv=P.fl_ad;
+    const TW=P.fl_tw*1.8;                 // turbulence strength
+    const t=flockState.frame*0.02;
     for(const grp of flockState.groups){
       const n=grp.pts.length;
       for(const pk of grp.picas){
         pk.ti=(pk.ti+adv)%n; if(pk.ti<0) pk.ti+=n;
         pk.target=grp.pts[pk.ti];
+        if(TW>0){                          // curl-noise wind pushes the ribbons off their path
+          const a=(Math.sin(pk.loc.x*0.008 + t) + Math.cos(pk.loc.y*0.008 - t*1.3)) * 3.14159;
+          pk.acc.x += Math.cos(a)*TW; pk.acc.y += Math.sin(a)*TW;
+        }
         pk.update();
       }
     }
@@ -597,9 +606,28 @@
   }
 
   // ======================================================================
+  //  HIGH-RES PRINT RE-RENDER — redraws the whole composition at the target
+  //  long-edge into an offscreen canvas (crisp for poster print, not upscaled).
+  // ======================================================================
+  function renderAt(px){
+    const ar = W/H;
+    const tW = ar>=1 ? Math.round(px) : Math.round(px*ar);
+    const tH = ar>=1 ? Math.round(px/ar) : Math.round(px);
+    const off=document.createElement('canvas'); off.width=tW; off.height=tH;
+    const octx=off.getContext('2d',{ willReadFrequently:true });
+    // swap the module drawing state to the offscreen target, render, then restore
+    const sCtx=ctx, sW=W, sH=H, sKEY=GEO_KEY, sLET=LET, sFlock=flockState, sAnim=animating;
+    ctx=octx; W=tW; H=tH; GEO_KEY=''; LET=null; animating=false;
+    try{ renderStatic(); }
+    catch(e){ console.warn('print render failed', e); }
+    finally{ ctx=sCtx; W=sW; H=sH; GEO_KEY=sKEY; LET=sLET; flockState=sFlock; animating=sAnim; }
+    return off;
+  }
+
+  // ======================================================================
   //  SVG EXPORT (vector methods)
   // ======================================================================
-  function svgExport(){
+  function svgExport(px){
     buildGeometry();
     const parts=[`<?xml version="1.0" encoding="UTF-8"?>`,
       `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
@@ -637,8 +665,9 @@
           for(let s=0;s<=P.sc_sp;s++){ const p=pts[(start+s)%pts.length]; const x=p.x+(Math.random()*2-1)*jit, y=p.y+(Math.random()*2-1)*jit; d+=(s===0?'M':'L')+x.toFixed(1)+' '+y.toFixed(1); }
           parts.push(`<path d="${d}" fill="none" stroke="${c}" stroke-opacity="0.26" stroke-width="0.8"/>`); }
         if(P.sc_dots) for(const p of pts) parts.push(`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="1.5" fill="${P.cB}"/>`); }
-    } else { // flock or stipple: fall back to embedding the current raster
-      parts.push(`<image href="${art.toDataURL('image/png')}" x="0" y="0" width="${W}" height="${H}"/>`);
+    } else { // flock or stipple: not truly vector — embed a HIGH-RES raster re-render
+      const hi = (typeof px==='number' && px>W) ? renderAt(px) : art;
+      parts.push(`<image href="${hi.toDataURL('image/png')}" x="0" y="0" width="${W}" height="${H}"/>`);
     }
     parts.push('</svg>');
     return parts.join('\n');
@@ -663,7 +692,9 @@
   bind('fl_rib','fl_ribR',v=>P.fl_rib=v);
   bind('fl_it','fl_itR',v=>P.fl_it=v);
   bind('fl_sp','fl_spR',v=>P.fl_sp=v/10,v=>(v/10).toFixed(1));
+  bind('fl_tw','fl_twR',v=>P.fl_tw=v/100,v=>(v/100).toFixed(2));
   bind('fl_ad','fl_adR',v=>P.fl_ad=v);
+  bind('fl_fc','fl_fcR',v=>P.fl_fc=v/100,v=>(v/100).toFixed(2));
   bind('fl_op','fl_opR',v=>P.fl_op=v/100,v=>(v/100).toFixed(2));
   // chords
   bind('ch_pt','ch_ptR',v=>P.ch_pt=v);
@@ -703,7 +734,7 @@
   $('play').addEventListener('click',()=> animating?stopAnim():startAnim());
 
   // ---- Output: SVG-aware export + record ----
-  Opal.mountOutput(art,'parametype',{ svg:()=>svgExport() });
+  Opal.mountOutput(art,'parametype',{ svg:(px)=>svgExport(px), render:px=>renderAt(px) });
   let rec=null,rt=0,tk=0;
   $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
     if(!animating) startAnim();
