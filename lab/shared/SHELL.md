@@ -1,103 +1,95 @@
 # OP/AL Lab — Shell Standard
 
-Every tool in `/lab/` must wear the **same shell**: one white, high-contrast, accessible chrome so the whole Lab reads as a single product. This file is the source of truth. When a tool looks different, it's wrong — bring it here.
+Every tool in `/lab/` wears the **same shell** so the whole Lab reads as one product. This file is the source of truth. When a tool looks different, it's wrong — bring it here.
 
-The reference implementation is **[attractor/index.html](/lab/attractor/index.html)**. Its `<style>` block is the structural template; copy it. The shared **[shared/tool.css](/lab/shared/tool.css)** is loaded LAST in every tool and is the **complete component layer** — it paints the light theme *and* owns the geometry of every control (buttons, sliders, group headings, colour rows, swatches, toggles). A tool supplies its canvas + layout; it should not need to restyle a control.
+**One stylesheet.** Every tool loads **[shared/OPALAB.css](/lab/shared/OPALAB.css)** — the single shared layer that carries the tokens, the neumorphic component library, and the geometry of every control (buttons, sliders, group headings, colour rows, swatches, toggles, size dock, Output island). A tool supplies its canvas + layout; it should not restyle a control. (The older `shared/opal.css` still loads first as the topbar/chrome base that `opal.js`'s generated markup depends on — see §2. The retired `tool.css` / `ibm.css` / `tokens.css` no longer exist.)
 
-The living spec is **[lab-design-system/](/lab/lab-design-system/)** (LAB Design System, OP-LAB-028) — it renders every token, element and pattern live through this same `tool.css`, with the standing audit. When in doubt, open it.
+A clean `#dock` reference implementation is **[offset/index.html](/lab/offset/index.html)** — copy its `<style>` block as the structural template. The living, rendered spec is **[lab-design-system/](/lab/lab-design-system/)** — it draws every token, element and pattern live through OPALAB.css. When in doubt, open it.
 
-**Skin — in the vein of IBM (Carbon).** The shell is typeset in **IBM Plex Sans** (interface) + **IBM Plex Mono** (labels, readouts, code), self-hosted at `/shared/fonts/ibm-plex-*.woff2`. **Corners are square** — every radius token is `0`. A single interactive accent, **IBM Blue `#0f62fe`**, carries primary buttons, the selected/pressed state, and the 2px focus ring; greys are neutral (no blue tint); spacing is an 8/16/24 grid; tooltips are solid dark. Only the round slider thumb and record dot are curved.
+**Skin — soft neumorphism.** One near-white surface (`--paper #f4f4f6`); islands and buttons are **borderless**, lifted by a dual light/dark shadow, with **rounded** corners (`--r-island 18px`, `--r-control 12px`). Type is **IBM Plex Sans** (interface) + **IBM Plex Mono** (readouts), self-hosted at `/shared/fonts/ibm-plex-*.woff2`. A single interactive accent, **IBM Blue `#0f62fe`**, carries the selected/pressed state, the slider dial and the focus ring; greys are neutral. Buttons sit **raised** and press **IN** (inset shadow + accent ink) when on; sliders are an **inset groove with a raised accent dial**; checkboxes render as **pill switches**; fields are **inset**. The canvas mat (`--mat #cbced4`) is darker than the surface so the artwork pops.
 
 ---
 
 ## 1. Non-negotiables
 
-- **Light shell.** White/near-white ground, dark controls, dark `currentColor` wordmark. No dark mode.
-- **`tool.css` is the last stylesheet** in `<head>` — after the tool's own `<style>`. It overrides the (formerly dark) chrome and gives every tool identical tokens, buttons, sliders, docks, tooltips.
-- **The canvas is the tool's own** artwork — the shell doesn't touch what's *drawn*. But the **artboard frame is standard**: the canvas (`#art`/`#gl`) is a **white** board (default) with a **thin `--line` border** and **NEVER a drop shadow**, sitting on a **light-grey mat** (`#wrap` background). A tool may paint its own ground inside `render()` (cream, dark paper, etc.); the CSS default stays white.
-- **No floating control islands over the canvas, and no bottom button bars over the artwork.** All controls live in the left `#dock` rail. The only things allowed over/around the canvas are the centered `#hint` pill, the top-right `#sizeDock`, and the `#recDot` — nothing else should overlap the artboard.
-- **Accessibility (WCAG AA).** Body/label text ≥ 4.5:1 on the shell; UI outlines (step cells, toggles, dividers) must be visibly filled/bordered, not hairlines. Muted grey is `#585860` (~6:1), never lighter for text.
-- **No small body fonts** (never `0.8em`/`0.875em`; omit `font-size` or use the token sizes below). Code/mono may be 12px.
+- **One near-white surface.** `--paper` ground, soft-shadow islands, dark-grey `--ink` text, dark `currentColor` wordmark.
+- **`OPALAB.css` is the last stylesheet** in `<head>` — after the tool's own `<style>` — so it wins. It gives every tool identical tokens, buttons, sliders, docks, tooltips and the neumorphic surface.
+- **The canvas is the tool's own** artwork — the shell doesn't touch what's *drawn*. The **artboard frame is standard**: the canvas (`#art`/`#gl`/`#stage`/`#view`) is a **white** board with a **thin border** and **NEVER a drop shadow**, on the **grey mat** (`#wrap`/`#stagewrap`/`#canvasArea` background). A tool may paint its own ground inside `render()`.
+- **One left rail of controls; one bottom-right Output island; a top-left size dock; top-right Sessions.** Nothing else floats over the artwork except the `#recDot` timer.
+- **Accessibility (WCAG AA).** Body/label text ≥ 4.5:1; muted grey `--mute #6b7280`; focus shows a 2px blue ring.
+- **No small body fonts** (never `0.8em`/`0.875em`; omit `font-size` or use `1em`). Mono may be 12px.
 - **No zero-padded numbers** (`1, 2, 3` — never `01, 02`).
 - **Plain-language labels** that say what a control does (Width, Softness, Density…), never math/jargon.
 
 ---
 
-## 2. Structure (copy from Attractor)
+## 2. Structure
 
 ```
-<body class="dark">                     ← class name is legacy; tool.css theming keys off it. Keep it.
+<body class="dark">                     ← class name is legacy; kept for tools that key off it.
   <div id="wrap"><canvas id="art"></canvas></div>   ← canvas area, top:var(--top) left:var(--rail) right:0 bottom:0, flex-centered
-  <div id="hint">…</div>                ← optional caption pill, centered over the canvas
   <div id="recDot"><i></i><b>0:00</b></div>          ← rec indicator (tools that record)
-  <div id="sizeDock"><select id="aspect">…</select></div>   ← canvas-size selector, ALWAYS top-right
-  <div id="dock"> … control groups … </div>          ← the LEFT rail
+  <div id="sizeDock"><select id="aspect">…</select></div>   ← canvas-size selector, TOP-LEFT
+  <div id="dock"> … control groups … </div>          ← the LEFT rail  (#rail / #panel for bespoke tools)
+  <div class="group out" id="output"> … Record + Save … </div>   ← bottom-right OUTPUT island
   <script src="/lab/shared/opal.js"></script>
   <script>Opal.mountTopbar({ name, desc, about, version:'v1' });</script>
   <script> … tool … </script>
 </body>
 ```
 
-- `#dock` — the **left rail**, `width:var(--rail)` (300px), `top:var(--top)` (82px), `left:0`, scrolls. A distinct light-grey panel, set apart from the topbar.
-- `#wrap` — canvas area to the right of the rail.
-- `#sizeDock` — the aspect `<select>` pinned **top-right**, wired to reshape the working canvas. Standard options: `Portrait · 4:5 (1080/1350)`, `Story · 9:16 (1080/1920)`, `Square · 1:1`, `Landscape · 16:9 (1920/1080)`. Image tools may add a `Source · original`.
-- `<head>` order: `gate.js` → `opal.css` → tool `<style>` → **`tool.css` last**.
+- `<head>` order: `gate.js` → **`opal.css`** → tool `<style>` → **`OPALAB.css` last**.
+- `#dock` — the **left rail**, `width:var(--rail)` (≈300px), `top:var(--top)` (120px = 82 topbar + 38 sub-header), `left:0`, scrolls. Bespoke/full-bleed tools may use `#rail` or `#panel` instead — OPALAB styles all three the same.
+- `#sizeDock` — the aspect `<select id="aspect">` pinned **top-left** of the canvas (`top:calc(var(--top)+14px); left:calc(var(--rail)+16px)`). `opal.js` rebuilds its options to the **canonical presets** (Square 1:1 default · 4:5 · 2:3 · 9:16 · 16:9 · 3:2 · 1.91:1) and shows the `#dimReadout`. Fixed-format tools (the reels) show a static readout.
+- `opal.js` auto-wires the shell on load: segmented→select, accordions, the size dock, the Output island (collapse), and **Sessions** (top-right, cross-tool — a session saved in one tool opens and restores in another).
 
-### Layout tokens (in the tool's own `<style> :root`, copied from Attractor)
+### Layout tokens (in the tool's own `<style> :root`)
 ```
---rail:300px;  --top:82px;
+--rail:300px;  --top:120px;
 ```
-The tool defines these + its own art CSS. It should NOT hardcode dark colours — use the tokens below so `tool.css` can theme it.
 
 ---
 
-## 3. Theme tokens (owned by `tool.css` — do not redefine per tool)
+## 3. Theme tokens (owned by `OPALAB.css` — do not redefine per tool)
 
 | token | value | use |
 |---|---|---|
 | `--font` | `'IBM Plex Sans', system-ui…` | interface type |
-| `--mono` | `'IBM Plex Mono', ui-monospace…` | labels, readouts, code |
-| `--accent` | `#0f62fe` | primary, selected, focus (IBM Blue 60); `--accent-hover` `#0353e9`, `--accent-active` `#002d9c` |
-| `--ink` | `#161616` | primary text, slider thumbs (~16:1) |
-| `--dim` / `--mute` | `#525252` | muted labels / captions (~7:1 — AA) |
-| `--line` | `rgba(0,0,0,.16)` | borders, dividers |
-| `--hair` | `rgba(0,0,0,.18)` | panel edges |
-| `--track` | `rgba(0,0,0,.28)` | slider tracks |
-| `--paper` | `#f4f4f4` | body ground (Gray 10) |
-| `--cell` | `rgba(0,0,0,.05)` | button / input ground |
-| `--mat` / `--rail-bg` / `--island` | `#e0e0e0` / `#e8e8e8` / `#fff` | canvas mat / left rail / control card |
-| `--rec` | `#da1e28` | record indicator (Carbon Red 60) |
-| `--r-island` … `--r-seg` | `0` | all radii are zero — corners are square |
+| `--mono` | `'IBM Plex Mono', ui-monospace…` | readouts, code |
+| `--accent` | `#0f62fe` | selected, pressed, focus, slider dial (IBM Blue 60); `--accent-hover` `#0353e9` |
+| `--ink` | `#33383f` | primary text, thumbs |
+| `--dim` / `--mute` | `#6b7280` | muted labels / captions |
+| `--line` / `--hair` | `rgba(60,70,90,.06)` / `.07` | the near-invisible edges (shadow defines form) |
+| `--track` | `rgba(120,120,128,.20)` | slider grooves |
+| `--paper` / `--cell` / `--island` | `#f4f4f6` | the one surface — page, buttons, cards |
+| `--mat` | `#cbced4` | canvas mat behind the artboard (darker) |
+| `--rec` | `#da1e28` | record indicator |
+| `--r-island` / `--r-control` / `--r-input` | `18px` / `12px` / `10px` | rounded corners |
+| `--shadow` / `--shadow-float` | raised islands / floating panels | the dual light-dark lift |
+| `--shadow-inset` / `--shadow-sm` / `--shadow-pressed` | inset fields / raised buttons / pressed-on | neumorphic states |
 
-Chrome painted by `tool.css`: white topbar with a hairline under it; `#dock` = `#e8e8e8` grey panel; `#hint`/`#recDot`/`#sizeDock select` = light frosted with dark text; `.tip` = solid dark (Carbon); `#recDot` red = `#da1e28`.
+Neumorphism is keyed to the **surface**, not `body.dark`: most "dark" tools only darken the topbar and keep a light rail. A genuinely dark-rail tool (e.g. **fractal**) redefines `--nm-lo`/`--nm-hi` (the light/dark shadow pair) in its own scope, after OPALAB.
 
 ---
 
 ## 4. Control language (use these classes)
 
-- **Groups = islands.** `<div class="group">` with a `<div class="group__t">CAPTION</div>`. `tool.css` renders every group as a **square white island** — `border-radius:0`, `padding:16px`, a hairline border, no shadow — on the grey rail. Spacing is a **consistent 16px gap** between stacked islands (via `#dock { gap }`), the same inset for all (via `#dock` padding 16px). Put each logical section of controls in its own `.group`; do not add manual margins/dividers — the shell handles it uniformly.
-- **Sliders:** `<div class="knob"><label>Name <b id="xR">val</b></label><input type="range" …></div>` — flat 2px track, round `--ink` thumb (blue on focus), mono readout. Wire the `<b>` readout on `input`.
-- **Buttons:** `.btn` (quiet grey), `.btn.primary` / `[aria-pressed="true"]` / `.btn.on` (**IBM Blue `--accent` ground, white text** — this is the selected/primary state), `.grid2` for two-up, `.btn.full`. **All corners are square (0 radius)** on every `.btn` + `select` (enforced `!important`). Segmented buttons fill blue when active; square colour swatches (`.sw`) get a blue outline when selected. Focus shows a 2px blue ring.
-- **Selects:** `select.btn` (full width) or the styled `#sizeDock select`.
-- **Colour rows:** `.crow` — label left, `<input type="color">` swatch right.
-- **Toggles:** `.tog` — label left, small `.btn` right.
-- **Tooltips:** every control gets `data-tip="plain sentence"`. Include the `.tip` element + the tooltip IIFE from Attractor.
-- **Text fields:** `textarea`/`input[type=text]` inherit white ground + dark text from `tool.css`.
-
-Any tool with a **dark preview swatch** (e.g. white-on-dark shapes) keeps a dark chip *inside* the light shell — that's allowed; the surrounding chrome stays light.
+- **Groups = islands.** `<div class="group">` + `<div class="group__t">Caption</div>`. OPALAB renders each as a **borderless, rounded, soft-shadowed island** on the rail, with a consistent gap between them — don't add manual margins/dividers. `#dock` groups are collapsible accordions (click the caption).
+- **Sliders:** `<div class="knob"><label>Name <b id="xR">val</b></label><input type="range" …></div>` — inset groove + raised **accent dial**, mono readout. Wire the `<b>` on `input`.
+- **Buttons:** `.btn` (raised); selected/primary via `[aria-pressed="true"]` / `.primary` / `.on` press **IN** (inset shadow + accent ink). `.grid2` for two-up. `.seg` groups auto-collapse to a select above 3 options.
+- **Selects / fields:** inset, with the shared chevron; `#sizeDock select` is the canonical size chooser.
+- **Colour rows:** `.crow` — label left, `<input type="color" class="sw">` right.
+- **Toggles:** `<input type="checkbox">` renders as a **pill switch** (accent knob when on).
+- **Tooltips:** `.tip` (solid dark).
 
 ---
 
 ## 5. Output — Record + Export (IDENTICAL on every tool)
 
-Every tool carries **one OUTPUT panel**, pinned to the **bottom-right of the screen** — the exact same fixed spot on every tool (a compact 208×89 card, Record + Save, floating over the bottom-right corner). It holds ONLY the two universal actions; any tool-specific export config (SVG/PDF/Audio, pixel size, size segs) lives back in the rail.
-
-Two ways to mark it, both styled bottom-right (tool.css for shelled tools, ibm.css for the rest):
-- **Shelled tools:** the last `.group` in `#dock`, marked `class="group out"` (`tool.css` pins `#dock > .group.out` fixed bottom-right).
-- **Bespoke / ibm.css tools:** a body-level `<div id="output">` (ibm.css pins `#output` fixed bottom-right).
+Every tool carries **one Output island**, pinned to the **bottom-right of the screen**, **collapsed** until clicked. It holds the universal actions; any richer export config lives inside it via `Opal.mountOutput`.
 
 ```html
-<div id="output"><!-- or <div class="group out"> for #dock tools -->
+<div class="group out" id="output"><!-- bespoke tools: body-level <div id="output"> -->
   <div class="group__t">Output</div>
   <div class="grid2">
     <button class="btn" id="recBtn">Record</button>
@@ -106,23 +98,18 @@ Two ways to mark it, both styled bottom-right (tool.css for shelled tools, ibm.c
 </div>
 ```
 
-- **`#recBtn` — Record.** `canvas.captureStream(30)` → `MediaRecorder`, H.264 MP4 (`video/mp4;codecs=avc1…`) then WebM; audio tools add the WebAudio `MediaStreamDestination` track. Toggles to "Stop" (`aria-pressed`). **Same id, same label, same place, every tool.**
-- **`#saveBtn` — Save.** PNG via `toDataURL`. Tools that also export vector may add a secondary `#svgBtn` in the same island, but PNG is the constant.
-- **`#recDot`** — the recording timer, pinned over the canvas top-left: `position:fixed; top:calc(var(--top)+14px); left:calc(var(--rail)+24px)`. Same on every tool (no top-right variants).
-
-**Uniform-shell rollout (2026-08, complete).** All 27 tools now share the shell — a floating-island rail (left, or left+right for lake-opeka/ships), white artboard on grey mat, top-right size dock, and the **identical bottom-right OUTPUT panel** (Record + Save). Tiers: the 17 `#dock` tools + the 4 flat-rail twins (ash/kirlian/letter-strings/scanner, rails now cards) + lake-opeka/ships/flux (Record/Export moved out of their bespoke bottom clusters) + the reels (open-reel/open-slots) + Projection (bottom console reworked into a left island rail). Record was ADDED to the still-image tools that lacked it. **One intentional exception:** `open-capture` is a 4-clip batch-recorder gallery, not a single-canvas instrument — it wears the IBM look but keeps its gallery layout.
-- **`#sizeDock`** — aspect `<select id="aspect">`, pinned top-right (`top:calc(var(--top)+12px); right:20px`). Same id, same offset, every tool.
-- Hide any on-canvas edit UI (handles, guides) during record + save. Records render to a fixed 1920-long-edge buffer.
-- **No over-canvas icon clusters** (`#bar` theme/pause/fullscreen). Theme/fullscreen, if a tool needs them, live as buttons in a rail island. The only things over the canvas are `#hint`, `#recDot`, `#sizeDock`.
+- **`Opal.mountOutput(canvas, name, opts)`** turns the island into the persistent export panel — format (PNG · JPG · PDF · **SVG** when `opts.svg` is supplied), pixel size, DPI. `opts.render(px)` lets shader/vector tools **re-render at the true target long-edge** for crisp print instead of upscaling; `opts.pdf(px)` supplies a real **vector PDF** for line-art. Default the pixel size high for print.
+- **`#recBtn` — Record.** `canvas.captureStream(30)` → `MediaRecorder`, H.264 MP4 then WebM. Toggles to "Stop".
+- **`#saveBtn` — Save.** Wired by `mountOutput` to the export panel.
+- **`#recDot`** — the recording timer, pinned near the canvas top edge.
+- No over-canvas icon clusters; the only things over the canvas are `#recDot` and `#sizeDock`.
 
 ---
 
-## 6. Conformance status (2026-08 audit)
+## 6. Conformance (2026-08)
 
-All 17 interactive tools passed a full component audit: **Attractor** (ref), **Fence, Putty, Sequins, Static, Tape, Halftone, Spectral-Smear, Aura-Maxing, Garden-Variety, Windchime, Visual Poetry, OPEN LAB, Hand Shader, Angel, Image-Train, Second-Thought**. The audit promoted every control's geometry (headings, sliders, colour rows, swatches, toggles) into `tool.css` so it can't drift, unified button/select radius to 5px, relit tools that had leaked their old dark theme (notably Spectral-Smear, which was rendering fully dark), and raised sub-10px labels (Image-Train, Angel, Tape) to the 10px floor. Full findings + conformance table live in the **[LAB Design System](/lab/lab-design-system/)** tool.
+All ~25 tools share the shell — one left rail (`#dock`, or `#rail`/`#panel` for bespoke tools), the white artboard on the grey mat, the top-left size dock, top-right cross-tool Sessions, and the identical bottom-right Output island — on the single **OPALAB.css**, in soft neumorphism. Zero console errors across the fleet.
 
-- **Outside the full shell, but wearing the IBM look:** the bespoke / full-bleed / experiential tools link **[shared/ibm.css](/lab/shared/ibm.css)** LAST to adopt the family look — **IBM Plex, square corners, the blue accent, `accent-color`, and a white shared topbar**. `ibm.css` is the portable *look only* — type, tokens, square control corners, blue selected/focus, topbar — it doesn't restructure a tool's layout. The rail tools that had a light theme hiding under a default `body.dark` (**letter-strings, scanner, kirlian, ash** — same template as spectral-smear) were relit to **default LIGHT** so they read like the rest of the Lab; their theme toggle stays for anyone who wants dark. **lake-opeka, ships-in-the-night, flux, open-capture** are light rail tools on ibm.css. Only the genuinely full-bleed immersive canvases stay dark by design: **open-reel, open-slots** (portrait reels) and the **Projection** tool (meant for a dark projection space) — they have no rail chrome to relight.
+**Intentional exceptions** (different tool *categories*, not the parametric instruments): **fractal** is a fullscreen raymarched shader with no aspect model (Output island, no size dock); **open-capture** is a 4-clip batch-recorder gallery; **open-reel / open-slots** are immersive fixed-format 9:16 reels (a locked size readout, no rail).
 
-**Two stylesheets:** shelled tools link **`tool.css`** (the complete component layer); bespoke tools link **`ibm.css`** (the look only). Both share the same fonts, tokens and accent, so the whole Lab reads as one system.
-
-To bring a light-touch tool to full standard: rebuild its rail to the `#dock` + `.group`/`.knob` structure above, convert dials → sliders, keep the generative/render/record logic and every JS id, verify with a screenshot.
+To bring a light-touch tool to standard: rebuild its rail to the `#dock` + `.group`/`.knob` structure, load `OPALAB.css` last, keep the generative/render/record logic and every JS id, and verify with a screenshot.
