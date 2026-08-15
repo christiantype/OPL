@@ -1,0 +1,320 @@
+/* ============================================================================
+   OP/AL LAB — OPALAB.css   ·   the ONE shared stylesheet
+   ----------------------------------------------------------------------------
+   Every tool loads exactly this, LAST in <head> (after the tool's own <style>).
+   It is the single source of truth for type, colour, the neumorphic component
+   library, and the geometry of BOTH shells:
+     · the rail-and-artboard tools  — a #dock left rail
+     · the bespoke / full-bleed tools — a #rail or #panel left rail
+   A tool supplies its canvas + art. It should not restyle a button, slider,
+   island, heading, swatch, toggle or size dock — they all live here.
+
+   The look: soft neumorphism on a single near-white surface. IBM Plex for type,
+   one interactive accent (IBM Blue #0f62fe) for selected + focus. Raised islands
+   and buttons, inset fields, pill toggles, groove sliders with an accent dial.
+
+   Contents
+     0  Type faces + tokens
+     1  Neumorphism — the component library (buttons · fields · sliders · toggles)
+     2  Base + canvas / artboard mat
+     3  Topbar + sub-header
+     4  Left rail  (#dock)  ·  islands  ·  Output island
+     5  Group heading + labels + accordion
+     6  Sliders (base geometry)      9  Colour rows + swatches
+     7  Buttons + focus             10  Toggles · tips · size dock · Save dialog
+     8  Segmented · selects · fields 11  Bespoke shells (#rail · #panel · #output)
+   ========================================================================== */
+
+/* 0 — TYPE FACES + TOKENS =================================================== */
+/* self-hosted IBM Plex (latin) */
+@font-face{ font-family:'IBM Plex Sans'; font-weight:400; font-style:normal; font-display:swap;
+  src:url('/shared/fonts/ibm-plex-sans-400.woff2') format('woff2'); }
+@font-face{ font-family:'IBM Plex Sans'; font-weight:600; font-style:normal; font-display:swap;
+  src:url('/shared/fonts/ibm-plex-sans-600.woff2') format('woff2'); }
+@font-face{ font-family:'IBM Plex Mono'; font-weight:400; font-style:normal; font-display:swap;
+  src:url('/shared/fonts/ibm-plex-mono-400.woff2') format('woff2'); }
+@font-face{ font-family:'IBM Plex Mono'; font-weight:500; font-style:normal; font-display:swap;
+  src:url('/shared/fonts/ibm-plex-mono-500.woff2') format('woff2'); }
+
+:root{
+  /* type */
+  --font:'IBM Plex Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* ink + greys — tuned for the soft neumorphic ground (dark-grey text, not pure black) */
+  --ink:#33383f;                 /* text, slider thumbs */
+  --dim:#6b7280; --mute:#6b7280; /* muted labels / captions */
+  --line:rgba(60,70,90,.06);     /* borders are nearly gone — shadow defines edges */
+  --hair:rgba(60,70,90,.07);     /* panel edges */
+  --track:rgba(120,120,128,.20); /* slider tracks (inset) */
+  --paper:#f4f4f6;               /* the one surface — near-white; page + cards share it */
+  --cell:#f4f4f6;                /* button / input ground — same as the surface, shaped by shadow */
+  --mat:#cbced4;                 /* canvas mat behind the artboard — darker, so the artwork pops */
+  --rail-bg:var(--paper);        /* the left rail */
+  --island:var(--paper);         /* a control card · also the artboard */
+  --rec:#da1e28;                 /* record indicator (Carbon red-60, AA) */
+  /* the one interactive accent — IBM Blue */
+  --accent:#0f62fe;              /* Blue 60 — primary, selected, focus */
+  --accent-hover:#0353e9;        /* Blue 70 */
+  --accent-active:#002d9c;       /* Blue 80 */
+  --on-accent:#ffffff;
+  /* radii — rounder for the soft look */
+  --r-island:18px; --r-control:12px; --r-input:10px; --r-seg:12px;
+  /* NEUMORPHISM — dual light/dark shadows: raised (islands/buttons) + inset (inputs/pressed) */
+  --nm-lo:rgba(255,255,255,.9);   /* the light (top-left) */
+  --nm-hi:rgba(188,190,196,.6);   /* the dark (bottom-right) — NEUTRAL grey, no blue */
+  --shadow:-4px -4px 9px var(--nm-lo), 5px 5px 12px var(--nm-hi);              /* raised islands */
+  --shadow-float:-6px -6px 14px var(--nm-lo), 8px 8px 20px var(--nm-hi);       /* floating panels */
+  --shadow-inset:inset 2px 2px 5px var(--nm-hi), inset -2px -2px 5px var(--nm-lo); /* inputs */
+  --shadow-sm:-3px -3px 6px var(--nm-lo), 3px 3px 6px var(--nm-hi);            /* raised buttons */
+  --shadow-pressed:inset 3px 3px 7px var(--nm-hi), inset -3px -3px 7px var(--nm-lo); /* button turned ON */
+}
+/* Note: the neumorphic light/dark pair is keyed to the SURFACE, not body.dark — most
+   "dark" tools only darken the topbar and keep a light rail. Tools with a genuinely dark
+   rail (e.g. fractal) redefine --nm-lo/--nm-hi in their own scope, after this file. */
+
+/* 1 — NEUMORPHISM — the component library =================================== */
+/* raised buttons */
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export,.opal-save__panel) button:not(.rowhead):not(.opal-info):not(.tw),
+.opal-sessions-btn, .filebtn, .chip, .seg button, .railact button, .btn{
+  background:var(--cell) !important; border:none !important; box-shadow:var(--shadow-sm) !important;
+  border-radius:var(--r-control) !important; color:var(--ink) !important; transition:box-shadow .12s ease, color .12s ease; }
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) button:not(.rowhead):hover, .opal-sessions-btn:hover, .btn:hover, .seg button:hover{
+  box-shadow:-4px -4px 8px var(--nm-lo), 4px 4px 9px var(--nm-hi) !important; }
+/* pressed / selected → pushed IN (deep inset) + accent ink */
+:where(#dock,#rail,#panel,#output,#sizeDock) button[aria-pressed="true"], .seg button[aria-pressed="true"],
+.btn[aria-pressed="true"], .btn.primary, .chip.active, .railact button.primary, .railact button.on{
+  box-shadow:var(--shadow-pressed) !important; color:var(--accent) !important; background:var(--cell) !important; }
+:where(#dock,#rail,#panel,#output,#sizeDock) button:active, .btn:active, .seg button:active, .railact button:active{
+  box-shadow:var(--shadow-pressed) !important; }
+.seg{ border:none !important; background:transparent !important; box-shadow:none !important; gap:10px !important; display:flex !important; flex-wrap:wrap !important; }
+.seg button{ flex:0 1 auto; min-width:0; }
+/* fields — inset. background-COLOR only, so the tool's chevron survives; add our own chevron + padding */
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) select, #sizeDock select, .opal-export select{
+  background-color:var(--cell) !important; border:none !important; box-shadow:var(--shadow-inset) !important;
+  border-radius:var(--r-input) !important; color:var(--ink) !important;
+  -webkit-appearance:none !important; appearance:none !important;
+  padding:10px 34px 10px 14px !important; line-height:1.2 !important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%236b7280' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E") !important;
+  background-repeat:no-repeat !important; background-position:right 13px center !important; }
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) input[type=text],
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) input[type=number],
+:where(#dock,#rail,#panel) textarea{
+  background:var(--cell) !important; border:none !important; box-shadow:var(--shadow-inset) !important;
+  border-radius:var(--r-input) !important; color:var(--ink) !important; padding:10px 12px !important; }
+/* sliders — inset groove + raised ACCENT dial */
+:where(#dock,#rail,#panel,#output) input[type=range]{ height:22px !important; background:transparent !important; }
+:where(#dock,#rail,#panel,#output) input[type=range]::-webkit-slider-runnable-track{
+  height:8px !important; border-radius:8px !important; background:var(--cell) !important; box-shadow:var(--shadow-inset) !important; }
+:where(#dock,#rail,#panel,#output) input[type=range]::-moz-range-track{
+  height:8px !important; border-radius:8px !important; background:var(--cell) !important; box-shadow:var(--shadow-inset) !important; }
+:where(#dock,#rail,#panel,#output) input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none !important; appearance:none !important; width:18px !important; height:18px !important; margin-top:-5px !important;
+  border-radius:50% !important; background:var(--accent) !important; border:2px solid var(--cell) !important; box-shadow:var(--shadow-sm) !important; cursor:pointer; }
+:where(#dock,#rail,#panel,#output) input[type=range]::-moz-range-thumb{
+  width:18px !important; height:18px !important; border-radius:50% !important; background:var(--accent) !important; border:2px solid var(--cell) !important; box-shadow:var(--shadow-sm) !important; }
+/* breathing room so the soft shadows never collide or clip into each other */
+:where(#dock,#rail,#panel) .btn, :where(#dock,#rail,#panel) select, :where(#dock,#rail,#panel) input[type=range],
+:where(#dock,#rail,#panel) input[type=text], :where(#dock,#rail,#panel) input[type=number], :where(#dock,#rail,#panel) .filebtn,
+:where(#dock,#rail,#panel) input[type=color]{ margin-top:5px !important; margin-bottom:5px !important; }
+#dock > .group, #dock > .row, #rail.rail-l .row, #panel .grp, #panel .eng-params{ padding:18px !important; margin-bottom:18px !important; }
+/* .ctrl-btn keeps a defined grey edge (per request) */
+.ctrl-btn{ border:1px solid #919191 !important; box-shadow:var(--shadow-sm) !important; }
+/* controllers that float over the artwork (size dock + Output) — NO drop shadow; a hairline instead */
+#sizeDock, #output, .group.out, #dock > .group.out, #dock > .row.out{
+  box-shadow:none !important; border:1px solid rgba(120,124,134,.26) !important; }
+/* every slider reads the same accent dial — native range thumbs AND custom SVG knobs */
+.knob .k-vl, .knob .k-pt{ stroke:var(--accent) !important; }
+/* checkboxes → soft pill switches */
+:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]{
+  -webkit-appearance:none !important; appearance:none !important; width:42px !important; height:24px !important; flex:none;
+  border-radius:999px !important; background:var(--cell) !important; box-shadow:var(--shadow-inset) !important; position:relative; cursor:pointer;
+  transition:background .15s ease; margin:0; }
+:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]::after{
+  content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%;
+  background:var(--cell); box-shadow:var(--shadow-sm); transition:left .16s ease, background .16s ease; }
+:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]:checked::after{ left:21px; background:var(--accent); }
+/* islands lose their hairline border (shadow defines the edge) */
+#dock > .group, #dock > .row, #rail.rail-l .row, #output, .group.out, #sizeDock, #panel .grp, #panel .eng-params, .opal-sessions-pop{ border:none !important; }
+
+/* 2 — BASE + CANVAS / ARTBOARD MAT ========================================= */
+html, body{ background:var(--paper); color:var(--ink); font-family:var(--font); }
+html{ accent-color:var(--accent); }
+button, input, select, textarea, .btn{ font-family:inherit; }
+code, kbd, samp, pre, .mono, [data-mono]{ font-family:var(--mono); }
+
+/* the artboard: a WHITE board with a thin border on a grey mat, NEVER a drop
+   shadow. Fixed border colour so a tool's own tokens can't wash it out. */
+#wrap, #stagewrap, #canvasArea{ background:var(--mat); }
+#art, #gl, #stage, #view{ background:#fff; border:1px solid rgba(0,0,0,.2);
+  box-shadow:none !important; }
+#art:fullscreen, #gl:fullscreen, #stage:fullscreen, #view:fullscreen{ border:0; }
+
+/* 3 — TOPBAR + SUB-HEADER =================================================== */
+/* white bar with a hairline under it; wordmark is currentColor. Covered both with
+   and without the legacy body.dark hook so tools that don't carry the class still
+   get the shell topbar. */
+.opal-topbar, body.dark .opal-topbar{ background:var(--paper); border:none; color:var(--ink);
+  border-bottom:1px solid rgba(0,0,0,.10); }
+/* sub-header band BELOW the topbar — the tool's identity (name · desc · info · version) */
+.opal-subhead, body.dark .opal-subhead{ position:fixed; top:82px; left:0; right:0; z-index:9; height:38px; box-sizing:border-box;
+  display:flex; align-items:center; gap:12px; padding:0 160px;
+  background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.opal-subhead__id{ display:flex; align-items:center; gap:11px; min-width:0; }
+.opal-subhead__name, body.dark .opal-subhead__name{ color:var(--ink); font-size:13px; font-weight:600; white-space:nowrap; }
+.opal-subhead__desc, body.dark .opal-subhead__desc{ color:var(--mute); font-size:12px; text-transform:none;
+  letter-spacing:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.opal-subhead__ver, body.dark .opal-subhead__ver{ color:var(--mute); font-size:11px; margin-left:auto; }
+@media (max-width:900px){ .opal-subhead{ padding:0 64px; } }
+@media (max-width:560px){ .opal-subhead{ padding:0 20px; top:74px; } }
+/* every tool's content clears the topbar (82) + subhead (38) */
+:root{ --top:120px; }
+@media (max-width:560px){ :root{ --top:112px; } }
+
+/* 4 — LEFT RAIL (#dock) · ISLANDS · OUTPUT ================================= */
+/* a distinct grey panel, set apart from the white topbar + canvas · 16px grid */
+#dock{ background:var(--rail-bg); border-right:1px solid rgba(0,0,0,.14);
+  padding:16px !important; gap:16px !important; display:flex; flex-direction:column;
+  /* kill the legacy frosted-rail blur — the rail is opaque now, and the blur
+     created a containing block that trapped the fixed bottom-right OUTPUT panel */
+  -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
+
+/* the rail holds rounded cards that FLOAT — a subtle drop-shadow lifts them off
+   the single flat surface so they read as islands. */
+#dock > .group, #dock > .row{ background:var(--island);
+  border-radius:var(--r-island); padding:16px !important; box-shadow:var(--shadow); }
+#dock > .row{ border-bottom:0 !important; }
+/* the OUTPUT island (Record + Export) — pinned to the BOTTOM-RIGHT of the screen,
+   the exact same fixed spot on every tool. */
+#dock > .group.out, #dock > .row.out, #output.out{
+  position:fixed !important; right:20px; bottom:20px; left:auto; top:auto;
+  width:auto; min-width:208px; max-width:300px; margin:0 !important; z-index:20;
+  background:var(--island); border-radius:var(--r-island);
+  padding:14px !important; box-shadow:var(--shadow-float); }
+
+/* NO UPPERCASE anywhere in the chrome */
+#dock, #dock *, #rail, #rail *, #panel, #panel *, #output, #output *, #sizeDock, #sizeDock *,
+.opal-subhead, .opal-subhead *, #recDot, #recDot *{ text-transform:none !important; }
+
+/* 5 — GROUP HEADING + LABELS + ACCORDION =================================== */
+.group__t{ font-size:12px; letter-spacing:0; text-transform:none; color:var(--mute); font-weight:500; }
+.knob label, .warp label, h4{ font-size:11px; letter-spacing:0; text-transform:none; color:var(--mute); font-weight:400; }
+.knob b, .warp b{ color:var(--ink); font-weight:500; font-family:var(--mono);
+  font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+/* headings never uppercase / never bold */
+.group__t, .rowhead, .oc-lbl, .lo-subhead, .sec > h3, h3, h4{
+  text-transform:none !important; letter-spacing:0 !important; font-weight:500 !important; }
+.rowhead{ font-size:11px !important; }
+.knob label, .warp label, label, .grp > label, .sec label, .ctrl label{
+  text-transform:none !important; letter-spacing:0 !important; font-weight:400 !important; }
+.btn, button, .seg button, select{ text-transform:none !important; letter-spacing:0 !important; }
+
+/* collapsible islands (accordion) — click the heading to shrink; caret shows state */
+#dock > .group:not(.out) > .group__t{ cursor:pointer; user-select:none;
+  display:flex; align-items:center; justify-content:space-between; gap:8px; }
+#dock > .group:not(.out) > .group__t::after{ content:'▾'; font-size:9px; color:var(--mute);
+  transition:transform .15s ease; flex:none; }
+#dock > .group.collapsed > .group__t::after{ transform:rotate(-90deg); }
+#dock > .group.collapsed > *:not(.group__t){ display:none !important; }
+.seg-select{ width:100%; }
+
+/* 6 — SLIDERS (base geometry — the neumorphic layer above skins the track/thumb) */
+.knob{ display:flex; flex-direction:column; gap:2px; }
+.knob label{ display:flex; justify-content:space-between; }
+input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:20px;
+  background:transparent; cursor:pointer; }
+input[type=range]:focus-visible{ outline:none; }
+input[type=range]:focus-visible::-webkit-slider-thumb{ outline:none; }
+
+/* 7 — BUTTONS + FOCUS ====================================================== */
+.btn{ appearance:none; background:var(--cell); color:var(--ink);
+  font:inherit; font-family:var(--font); font-size:11px; letter-spacing:0; text-transform:none;
+  text-align:center; padding:8px 12px; border-radius:var(--r-control) !important; cursor:pointer;
+  white-space:nowrap; }
+.btn.on{ outline:none; }
+.chip{ font-size:11px; padding:7px 10px; }
+.sep{ background:var(--line); }
+/* over-canvas icon buttons (theme / pause / fullscreen / •••) */
+.icon{ border-radius:var(--r-control) !important; }
+.icon[aria-pressed="true"]{ color:var(--accent); }
+/* one focus ring, IBM Blue, for every interactive control */
+.btn:focus-visible, button:focus-visible, .seg button:focus-visible, select:focus-visible, textarea:focus-visible,
+input[type=text]:focus-visible, input[type=number]:focus-visible,
+input[type=color]:focus-visible, .sw:focus-visible, a:focus-visible{
+  outline:2px solid var(--accent); outline-offset:2px; }
+
+/* 8 — SEGMENTED · SELECTS · TEXT FIELDS ==================================== */
+.seg button{ font-family:var(--font); font-size:11px; letter-spacing:0; text-transform:none; color:var(--ink); }
+select{ background:var(--cell); color:var(--ink); font:inherit; font-family:var(--font); font-size:11px;
+  letter-spacing:0; text-transform:none; }
+textarea, input[type=text], input[type=number]{ color:var(--ink); font-family:var(--font); }
+
+/* 9 — COLOUR ROWS + SWATCHES =============================================== */
+.crow{ display:flex; align-items:center; justify-content:space-between; }
+.crow label{ font-size:12px; color:var(--ink); text-transform:none; letter-spacing:0; }
+input[type=color]{ width:44px; height:24px; border:1px solid var(--line);
+  border-radius:var(--r-input); background:none; padding:0; cursor:pointer; }
+input[type=color]::-webkit-color-swatch-wrapper{ padding:2px; }
+input[type=color]::-webkit-color-swatch{ border:none; border-radius:0; }
+input[type=color]::-moz-color-swatch{ border:none; border-radius:0; }
+.sw{ width:22px; height:22px; border-radius:var(--r-input); border:1px solid var(--line);
+  padding:0; cursor:pointer; }
+.sw[aria-pressed="true"], .sw.on{ outline:2px solid var(--accent); outline-offset:2px; }
+
+/* 10 — TOGGLES · TOOLTIPS · SIZE DOCK · SAVE DIALOG ======================= */
+.tog{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.tog > span, .tog > label{ font-size:12px; color:var(--ink); }
+.tip{ background:#161616; color:#fff; border-color:#161616; border-radius:var(--r-input); box-shadow:none; }
+#hint{ display:none !important; }
+
+/* Size control — a floating island at the TOP-LEFT of the canvas, clear of the artwork */
+#sizeDock{
+  position:fixed !important; bottom:auto !important; right:auto !important;
+  top:calc(var(--top, 120px) + 14px) !important; left:calc(var(--rail, 0px) + 16px) !important; transform:none !important;
+  display:flex !important; align-items:center; gap:10px; z-index:9 !important;
+  background:var(--island,#f4f4f4); border-radius:var(--r-island); padding:6px 9px 6px 13px;
+  box-shadow:var(--shadow-float);
+}
+#sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
+#sizeDock select{
+  appearance:none !important; -webkit-appearance:none !important;
+  background:#ffffff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='%23525252' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1l4 4 4-4'/></svg>") no-repeat right 9px center !important;
+  color:var(--ink) !important; border-radius:var(--r-control) !important;
+  padding:6px 28px 6px 11px !important; font:inherit !important; font-size:12px !important; cursor:pointer;
+}
+@media (max-width:560px){ #sizeDock{ left:50% !important; } }
+#recDot{ background:#ffffff; border-color:var(--line); color:var(--rec); border-radius:var(--r-control); }
+.btn.is-recording{ background:var(--rec) !important; border-color:var(--rec) !important; color:#fff !important;
+  font-variant-numeric:tabular-nums; }
+
+/* Save dialog */
+#opal-save{ position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center;
+  background:rgba(22,22,22,.32); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
+.opal-save__panel{ width:340px; max-width:calc(100vw - 32px); background:var(--island); border:1px solid var(--line);
+  border-radius:var(--r-island); box-shadow:var(--shadow-float); padding:18px; display:flex; flex-direction:column; gap:12px; }
+.opal-save__t{ font-size:14px; font-weight:600; color:var(--ink); }
+.opal-save__row{ display:flex; align-items:center; gap:10px; }
+.opal-save__row[hidden]{ display:none !important; }
+.opal-save__row > span{ flex:none; width:84px; font-size:12px; color:var(--mute); }
+.opal-save__row select, .opal-save__row input[type=range]{ flex:1; }
+.opal-save__row > b{ font-variant-numeric:tabular-nums; font-size:12px; color:var(--ink); width:28px; text-align:right; }
+.opal-save__foot{ display:flex; gap:8px; margin-top:4px; }
+.opal-save__foot .btn{ flex:1; }
+#recDot i{ background:var(--rec); }
+
+/* 11 — BESPOKE SHELLS (#rail · #panel · #output) ========================== */
+/* the flat rail twins (ash · scanner · letter-strings) rendered as floating islands,
+   to match the #dock tools' rail */
+#rail.rail-l{ background:var(--rail-bg); padding:16px 14px; }
+#rail.rail-l .row{ background:var(--island);
+  border-radius:var(--r-island) !important; margin:0 0 18px !important; padding:18px !important;
+  box-shadow:var(--shadow) !important; }
+#rail.rail-l .row:last-child{ margin-bottom:0 !important; }
+
+/* the standalone Output island (bespoke tools mount it at the body root, not inside #dock) —
+   same pinned bottom-right spot, same hairline-not-shadow treatment as the #dock tools */
+#output{ position:fixed; right:20px; bottom:20px; left:auto; top:auto; z-index:40;
+  background:var(--island); border-radius:var(--r-island); padding:14px; min-width:208px; }
+#output .group__t{ font-size:12px; color:var(--mute); text-transform:none; letter-spacing:0; font-weight:500; margin-bottom:8px; }
+#output .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+#output .grid2 .btn{ width:100%; }
+#output .btn[aria-pressed="true"], #output .btn.on, #output .btn.primary{ color:var(--accent); }
