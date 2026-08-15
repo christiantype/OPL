@@ -365,6 +365,10 @@ const Opal = (() => {
     const doExport = ()=>{
       const v = fmt.value;
       if(v==='svg'){ try{ const blob=new Blob([opts.svg(+scale.value)],{type:'image/svg+xml'}); const a=document.createElement('a'); a.download=basename+'.svg'; a.href=URL.createObjectURL(blob); a.click(); }catch(e){ console.warn(e); } return; }
+      // opts.pdf(px) → a real VECTOR PDF string/bytes (crisp line-art print, not a rasterised JPEG).
+      // Returns falsy to fall through to the raster PDF below (e.g. photographic engines).
+      if(v==='pdf' && typeof opts.pdf==='function'){ try{ const out=opts.pdf(+scale.value);
+        if(out){ const blob=new Blob([out],{type:'application/pdf'}); const a=document.createElement('a'); a.download=basename+'.pdf'; a.href=URL.createObjectURL(blob); a.click(); return; } }catch(e){ console.warn(e); } }
       // opts.render(px) lets shader/vector tools re-render at the true target long-edge (crisp print),
       // instead of upscaling the on-screen bitmap. Falls back to a smooth bicubic upscale.
       let c;

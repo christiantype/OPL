@@ -694,6 +694,94 @@
   }
 
   // ======================================================================
+  //  VECTOR PDF (the line methods) — real crisp paths for print, not a raster.
+  //  Flock / Stipple return null so the Output panel falls back to a hi-res raster PDF.
+  // ======================================================================
+  function vectorPDF(px){
+    if(P.mode==='flock' || P.mode==='stipple') return null;
+    buildGeometry(); if(!LET || !LET.letters.length) return null;
+    const ar=W/H, TW=Math.round(ar>=1?px:px*ar), TH=Math.round(ar>=1?px/ar:px), sc=TW/W;
+    const body=[]; const gmap=new Map(), glist=[];
+    const gs=(ca,bm)=>{ ca=Math.max(0,Math.min(1,ca)); const k=ca.toFixed(3)+'|'+bm; let n=gmap.get(k);
+      if(!n){ n='G'+glist.length; gmap.set(k,n); glist.push({n,ca,bm}); } return n; };
+    const RGB=c=>`${(c[0]/255).toFixed(3)} ${(c[1]/255).toFixed(3)} ${(c[2]/255).toFixed(3)}`;
+    let cGS=null,cCol=null,cW=null;
+    const M=(x,y)=>`${x.toFixed(2)} ${y.toFixed(2)} m`;
+    const L=(x,y)=>`${x.toFixed(2)} ${y.toFixed(2)} l`;
+    const Qc=(x0,y0,cx,cy,x1,y1)=>{ const c1x=x0+2/3*(cx-x0),c1y=y0+2/3*(cy-y0),c2x=x1+2/3*(cx-x1),c2y=y1+2/3*(cy-y1);
+      return `${c1x.toFixed(2)} ${c1y.toFixed(2)} ${c2x.toFixed(2)} ${c2y.toFixed(2)} ${x1.toFixed(2)} ${y1.toFixed(2)} c`; };
+    const strokePath=(d,c,op,w,bm)=>{ const g=gs(op,bm||'Normal');
+      if(g!==cGS){ body.push('/'+g+' gs'); cGS=g; }
+      const cc=RGB(c); if(cc!==cCol){ body.push(cc+' RG'); cCol=cc; }
+      if(w!==cW){ body.push(w+' w'); cW=w; }
+      body.push(d+' S'); };
+    const fillPath=(d,c,op)=>{ const g=gs(op,'Normal'); body.push('/'+g+' gs'); cGS=g;
+      body.push(RGB(c)+' rg'); cCol=null; body.push(d+' f*'); };
+    // circle as 4 cubic arcs (for the scribble nib dots)
+    const circle=(x,y,r,c)=>{ const k=0.5523*r; const g=gs(1,'Normal'); body.push('/'+g+' gs'); cGS=g;
+      body.push(RGB(c)+' rg'); cCol=null;
+      body.push(`${(x+r).toFixed(2)} ${y.toFixed(2)} m ${(x+r).toFixed(2)} ${(y+k).toFixed(2)} ${(x+k).toFixed(2)} ${(y+r).toFixed(2)} ${x.toFixed(2)} ${(y+r).toFixed(2)} c ${(x-k).toFixed(2)} ${(y+r).toFixed(2)} ${(x-r).toFixed(2)} ${(y+k).toFixed(2)} ${(x-r).toFixed(2)} ${y.toFixed(2)} c ${(x-r).toFixed(2)} ${(y-k).toFixed(2)} ${(x-k).toFixed(2)} ${(y-r).toFixed(2)} ${x.toFixed(2)} ${(y-r).toFixed(2)} c ${(x+k).toFixed(2)} ${(y-r).toFixed(2)} ${(x+r).toFixed(2)} ${(y-k).toFixed(2)} ${(x+r).toFixed(2)} ${y.toFixed(2)} c f`); };
+
+    if(P.fill){ for(const Lr of LET.letters){ let d=''; for(const cont of Lr.contours){ d+='M'+cont.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join('L')+'Z'; }
+      // build even-odd fill path in PDF ops
+      let pd=''; for(const cont of Lr.contours){ pd+=M(cont[0].x,cont[0].y)+' '; for(let i=1;i<cont.length;i++) pd+=L(cont[i].x,cont[i].y)+' '; pd+='h '; }
+      fillPath(pd, hex(P.cB), 0.30); } }
+
+    if(P.mode==='chords'){
+      const inkBoost=0.5+P.ch_ink*1.9, op=Math.min(0.92,P.ch_op*inkBoost), bm=P.ch_ink>0.01?'Multiply':'Normal';
+      for(const Lr of LET.letters){ const pts=resample(closeFlat(Lr),P.ch_pt); const maxD=P.ch_ds/300*Math.max(Lr.bbox.w,Lr.bbox.h); const tw=P.ch_tw;
+        for(let i=0;i<pts.length;i++)for(let j=i+2;j<pts.length;j++){ const a=pts[i],b=pts[j],d=Math.hypot(a.x-b.x,a.y-b.y);
+          if(d>maxD||d<2||Math.random()>P.ch_dn)continue; const mx=(a.x+b.x)/2,my=(a.y+b.y)/2; if(!pointInLetter(Lr,mx,my)||crossesOutline(Lr,a,b))continue;
+          const c=mix(1-d/maxD); let d2;
+          if(tw>0.01){ const nx=-(b.y-a.y)/d,ny=(b.x-a.x)/d,bow=(Math.random()*2-1)*tw*Math.min(d*0.75,maxD*0.5);
+            d2=M(a.x,a.y)+' '+Qc(a.x,a.y,mx+nx*bow,my+ny*bow,b.x,b.y); }
+          else d2=M(a.x,a.y)+' '+L(b.x,b.y);
+          strokePath(d2,c,op,0.7,bm); } }
+    } else if(P.mode==='weave'){
+      const N=P.we_ln, per=LET.letters.map(Lr=>resample(closeFlat(Lr),N)); const bb=LET.bbox, spread=P.we_sp*(H*0.18);
+      for(let i=0;i<N;i++){ const off=(-0.5+i/N)*spread; let d=M(-W*0.1, bb.y+bb.h/2+off);
+        for(let j=0;j<LET.letters.length;j++){ const p=per[j][i]; d+=' '+L(p.x,p.y); }
+        const ang=i/N*Math.PI, cx=bb.x+bb.w+W*0.02+Math.cos(ang)*W*0.03, cy=bb.y+bb.h/2+Math.sin(ang)*H*0.04;
+        d+=' '+L(cx,cy)+' '+L(W*1.1, bb.y+bb.h/2);
+        strokePath(d, mix(i/N), 0.5, 0.6, 'Normal'); }
+    } else if(P.mode==='contour'){
+      const off=document.createElement('canvas'); off.width=W; off.height=H; const oc=off.getContext('2d',{willReadFrequently:true});
+      oc.fillStyle='#fff'; oc.fillRect(0,0,W,H); oc.fillStyle='#000'; oc.filter=`blur(${P.co_bl}px)`;
+      for(const Lr of LET.letters){ oc.beginPath(); for(const cont of Lr.contours){ oc.moveTo(cont[0].x,cont[0].y); for(let i=1;i<cont.length;i++) oc.lineTo(cont[i].x,cont[i].y); oc.closePath(); } oc.fill('evenodd'); }
+      oc.filter='none'; const img=oc.getImageData(0,0,W,H).data;
+      const bri=(x,y)=>{ x=Math.max(0,Math.min(W-1,x|0)); y=Math.max(0,Math.min(H-1,y|0)); const i=(y*W+x)*4; return (img[i]*0.299+img[i+1]*0.587+img[i+2]*0.114); };
+      const Nl=P.co_ln, det=P.co_dt, push=P.co_pu*(H*0.5);
+      for(let i=1;i<Nl;i++){ const y=i/Nl*H; let d=M(0,y);
+        for(let j=0;j<=det;j++){ const x=j/det*W; let fy=y; const bb=bri(x,y); if(bb<250) fy=y-(255-bb)/255*push; d+=' '+L(x,fy); }
+        d+=' '+L(W,y); strokePath(d, mix(i/Nl), 0.95, 2, 'Normal'); }
+    } else if(P.mode==='scribble'){
+      for(let li=0;li<LET.letters.length;li++){ const Lr=LET.letters[li]; const pts=resample(closeFlat(Lr),P.sc_pt);
+        const jit=Math.max(2,Math.min(Lr.bbox.w,Lr.bbox.h)*0.014);
+        for(let n=0;n<P.sc_pa*pts.length/26;n++){ const start=(Math.random()*pts.length)|0; const c=mix(Math.random()*0.5); let d='';
+          for(let s=0;s<=P.sc_sp;s++){ const p=pts[(start+s)%pts.length]; const x=p.x+(Math.random()*2-1)*jit, y=p.y+(Math.random()*2-1)*jit; d+=(s===0?M(x,y):' '+L(x,y)); }
+          strokePath(d, c, 0.26, 0.8, 'Normal'); }
+        if(P.sc_dots){ const dc=hex(P.cB); for(const p of pts) circle(p.x,p.y,1.5,dc); } }
+    }
+
+    // assemble the PDF: flip+scale the page so we can emit canvas coords directly
+    const content = `${sc.toFixed(6)} 0 0 ${(-sc).toFixed(6)} 0 ${TH} cm\n1 1 1 rg 0 0 ${(W).toFixed(1)} ${(H).toFixed(1)} re f\n` + body.join('\n');
+    const objs=[];
+    objs.push('<</Type/Catalog/Pages 2 0 R>>');
+    objs.push('<</Type/Pages/Kids[3 0 R]/Count 1>>');
+    const gsRefs = glist.map((g,i)=>`/${g.n} ${5+i} 0 R`).join(' ');
+    objs.push(`<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${TW} ${TH}]/Contents 4 0 R/Resources<</ExtGState<<${gsRefs}>>>>>>`);
+    objs.push(`<</Length ${content.length}>>\nstream\n${content}\nendstream`);
+    glist.forEach(g=>objs.push(`<</Type/ExtGState/ca ${g.ca.toFixed(3)}/CA ${g.ca.toFixed(3)}/BM/${g.bm}>>`));
+    let pdf='%PDF-1.5\n'; const offs=[];
+    objs.forEach((o,i)=>{ offs.push(pdf.length); pdf+=`${i+1} 0 obj\n${o}\nendobj\n`; });
+    const xref=pdf.length;
+    pdf+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`;
+    offs.forEach(o=>{ pdf+=String(o).padStart(10,'0')+' 00000 n \n'; });
+    pdf+=`trailer\n<</Size ${objs.length+1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF`;
+    return pdf;
+  }
+
+  // ======================================================================
   //  UI WIRING
   // ======================================================================
   function showMode(){
@@ -756,7 +844,7 @@
   $('play').addEventListener('click',()=> animating?stopAnim():startAnim());
 
   // ---- Output: SVG-aware export + record ----
-  Opal.mountOutput(art,'parametype',{ svg:(px)=>svgExport(px), render:px=>renderAt(px) });
+  Opal.mountOutput(art,'parametype',{ svg:(px)=>svgExport(px), pdf:(px)=>vectorPDF(px), render:px=>renderAt(px) });
   let rec=null,rt=0,tk=0;
   $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
     if(!animating) startAnim();
