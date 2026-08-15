@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Parametype — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --rail:300px; --top:82px; }
+  @media (max-width:560px){ :root{ --top:74px; } }
+  *{ box-sizing:border-box; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center; padding:28px; }
+  #art{ max-width:100%; max-height:100%; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
+  #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .knob label{ display:flex; justify-content:space-between; }
+  .crow{ display:flex; align-items:center; justify-content:space-between; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  select.full{ width:100%; }
+  #wordIn{ width:100%; font-size:15px; letter-spacing:.02em; }
+  .modehint{ margin:0; font-size:12px; color:var(--mute); line-height:1.45; }
+  .tog{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .tog > span{ font-size:12px; color:var(--ink); }
+  .mp{ display:none; }
+  .mp.on{ display:flex; flex-direction:column; gap:9px; }
+</style>
+<link rel="stylesheet" href="/lab/shared/OPALAB.css" />
+</head>
+<body class="dark">
+
+<div id="wrap"><canvas id="art"></canvas></div>
+<div id="recDot"><i></i><b>0:00</b></div>
+<div id="sizeDock">
+  <span id="dimReadout">1080 × 1080</span>
+  <select id="aspect" title="Canvas size">
+    <option value="1080/1080" selected>Square · 1:1</option>
+    <option value="1080/1350">Portrait · 4:5</option>
+    <option value="1080/1920">Story · 9:16</option>
+  </select>
+</div>
+
+<div id="dock">
+  <div class="group">
+    <div class="group__t">Letterform</div>
+    <input class="opal-input" id="wordIn" type="text" value="a" maxlength="12" spellcheck="false" autocomplete="off">
+    <div class="knob"><label>Size <b id="fszR">0.72</b></label><input id="fsz" type="range" min="20" max="98" value="72"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Method</div>
+    <select class="full" id="mode">
+      <option value="flock" selected>Flock — steering ribbons</option>
+      <option value="chords">Chords — interior web</option>
+      <option value="scribble">Scribble — loose strokes</option>
+      <option value="contour">Contour — horizon lines</option>
+      <option value="stipple">Stipple — layered grain</option>
+      <option value="weave">Weave — threaded lines</option>
+    </select>
+    <p class="modehint" id="modehint">Outline points become agents that chase a target travelling around the letter — the lag draws it as flowing ribbons.</p>
+
+    <!-- FLOCK -->
+    <div class="mp" id="mp-flock">
+      <div class="knob"><label>Ribbons <b id="fl_ribR">20</b></label><input id="fl_rib" type="range" min="6" max="40" value="20"></div>
+      <div class="knob"><label>Flow <b id="fl_itR">300</b></label><input id="fl_it" type="range" min="40" max="700" value="300"></div>
+      <div class="knob"><label>Chase <b id="fl_spR">2.0</b></label><input id="fl_sp" type="range" min="5" max="60" value="20"></div>
+      <div class="knob"><label>Wander <b id="fl_adR">2</b></label><input id="fl_ad" type="range" min="1" max="9" value="2"></div>
+      <div class="knob"><label>Ink weight <b id="fl_opR">0.55</b></label><input id="fl_op" type="range" min="6" max="100" value="55"></div>
+    </div>
+
+    <!-- CHORDS -->
+    <div class="mp" id="mp-chords">
+      <div class="knob"><label>Points <b id="ch_ptR">300</b></label><input id="ch_pt" type="range" min="60" max="520" value="300"></div>
+      <div class="knob"><label>Reach <b id="ch_dsR">140</b></label><input id="ch_ds" type="range" min="30" max="300" value="140"></div>
+      <div class="knob"><label>Density <b id="ch_dnR">0.85</b></label><input id="ch_dn" type="range" min="6" max="100" value="85"></div>
+      <div class="knob"><label>Ink weight <b id="ch_opR">0.4</b></label><input id="ch_op" type="range" min="4" max="100" value="40"></div>
+    </div>
+
+    <!-- SCRIBBLE -->
+    <div class="mp" id="mp-scribble">
+      <div class="knob"><label>Points <b id="sc_ptR">300</b></label><input id="sc_pt" type="range" min="80" max="600" value="300"></div>
+      <div class="knob"><label>Passes <b id="sc_paR">26</b></label><input id="sc_pa" type="range" min="4" max="80" value="26"></div>
+      <div class="knob"><label>Span <b id="sc_spR">6</b></label><input id="sc_sp" type="range" min="3" max="16" value="6"></div>
+      <div class="tog"><span>Nib dots</span><input type="checkbox" id="sc_dots" checked></div>
+    </div>
+
+    <!-- CONTOUR -->
+    <div class="mp" id="mp-contour">
+      <div class="knob"><label>Lines <b id="co_lnR">170</b></label><input id="co_ln" type="range" min="40" max="360" value="170"></div>
+      <div class="knob"><label>Detail <b id="co_dtR">80</b></label><input id="co_dt" type="range" min="20" max="220" value="80"></div>
+      <div class="knob"><label>Lift <b id="co_puR">0.30</b></label><input id="co_pu" type="range" min="4" max="90" value="30"></div>
+      <div class="knob"><label>Blur <b id="co_blR">6</b></label><input id="co_bl" type="range" min="1" max="20" value="6"></div>
+    </div>
+
+    <!-- STIPPLE -->
+    <div class="mp" id="mp-stipple">
+      <div class="knob"><label>Layers <b id="st_lyR">20</b></label><input id="st_ly" type="range" min="4" max="34" value="20"></div>
+      <div class="knob"><label>Grain <b id="st_gnR">14000</b></label><input id="st_gn" type="range" min="2000" max="40000" step="500" value="14000"></div>
+      <div class="knob"><label>Spread <b id="st_spR">18</b></label><input id="st_sp" type="range" min="0" max="60" value="18"></div>
+      <div class="knob"><label>Blur <b id="st_blR">4</b></label><input id="st_bl" type="range" min="1" max="16" value="4"></div>
+    </div>
+
+    <!-- WEAVE -->
+    <div class="mp" id="mp-weave">
+      <div class="knob"><label>Threads <b id="we_lnR">200</b></label><input id="we_ln" type="range" min="40" max="420" value="200"></div>
+      <div class="knob"><label>Spread <b id="we_spR">1.0</b></label><input id="we_sp" type="range" min="10" max="260" value="100"></div>
+      <div class="tog"><span>Ghost letter</span><input type="checkbox" id="we_ghost" checked></div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Palette</div>
+    <div class="crow"><label>Ink A</label><input type="color" class="sw" id="cA" value="#111111"></div>
+    <div class="crow"><label>Ink B</label><input type="color" class="sw" id="cB" value="#d81f6a"></div>
+    <div class="tog"><span>Glow</span><input type="checkbox" id="glowOn" checked></div>
+    <div class="crow"><label>Glow hue</label><input type="color" class="sw" id="cG" value="#f2d200"></div>
+    <div class="knob"><label>Glow strength <b id="glR">0.5</b></label><input id="gl" type="range" min="0" max="100" value="50"></div>
+    <div class="tog"><span>Fill body</span><input type="checkbox" id="fillOn"></div>
+    <div class="tog"><span>Graph paper</span><input type="checkbox" id="gridOn"></div>
+  </div>
+
+  <div class="group out" id="output" data-export-custom>
+    <div class="group__t">Output</div>
+    <div class="grid2">
+      <button class="btn" id="regen">Redraw</button>
+      <button class="btn" id="play" aria-pressed="false">Animate</button>
+    </div>
+    <div class="grid2">
+      <button class="btn" id="recBtn">Record</button>
+      <button class="btn" id="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lab/parametype/opentype.min.js"></script>
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'Parametype', desc:'One letter, drawn six parametric ways',
+  about:'A recreation of Daniel Davis’ Parametric Typography (2013). A single letterform is reduced to its outline points, then redrawn by an algorithm: steering-agent ribbons that lag around the letter, interior chord-webs strung between the edges, loose curve scribbles, horizon lines pushed up by the letter’s shadow, layered grain, or threaded weaving lines. Soft colour glow and an accent fill sit behind. Every vector method exports to print-ready SVG. Original by danieldavis.com, rebuilt on the OP/AL shell in vanilla Canvas.',
+  version:'v1' });</script>
+<script>
+(()=>{
+  const $=id=>document.getElementById(id);
+  const art=$('art'), ctx=art.getContext('2d',{ willReadFrequently:true });
+  let W=1080, H=1080, DPR=1;
+  const P={ size:'1080/1080', word:'a', fsz:0.72, mode:'flock',
+    fl_rib:20, fl_it:300, fl_sp:2.0, fl_ad:2, fl_op:0.55,
+    ch_pt:300, ch_ds:140, ch_dn:0.85, ch_op:0.4,
+    sc_pt:300, sc_pa:26, sc_sp:6, sc_dots:true,
+    co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
+    st_ly:20, st_gn:14000, st_sp:18, st_bl:4,
+    we_ln:200, we_sp:1.0, we_ghost:true,
+    cA:'#111111', cB:'#d81f6a', glow:true, cG:'#f2d200', gl:0.5, fill:false, grid:false };
+
+  const HINTS={
+    flock:'Outline points become agents that chase a target travelling around the letter — the lag draws it as flowing ribbons.',
+    chords:'Every pair of edge points is joined by a line if it stays inside the letter — a taut interior web.',
+    scribble:'Short curved strokes hop between neighbouring edge points, sketching the letter loosely, with a nib dot on each point.',
+    contour:'Horizontal horizon lines run across the page and lift where the letter’s shadow falls beneath them.',
+    stipple:'Layers of grain settle onto the letter, denser and darker toward the final layer — an airbrushed shade.',
+    weave:'Threads pass through the same point on the outline, spreading from the left and drawing to a point at the right.'
+  };
+
+  // ---------- colour ----------
+  const hex=h=>{ const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h); return m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[0,0,0]; };
+  function mix(t){ const a=hex(P.cA), b=hex(P.cB); t=Math.max(0,Math.min(1,t));
+    return [Math.round(a[0]+(b[0]-a[0])*t), Math.round(a[1]+(b[1]-a[1])*t), Math.round(a[2]+(b[2]-a[2])*t)]; }
+  const rgba=(c,a)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+  // ---------- font + glyph geometry ----------
+  let FONT=null, fontReady=false;
+  // per render: letters = [{ contours:[[{x,y}...],...], bbox:{x,y,w,h} }], overall bbox
+  let LET=null, GEO_KEY='';
+
+  function flattenPath(cmds){
+    // returns array of contours; each contour = array of {x,y}
+    const contours=[]; let cur=null, px=0, py=0, sx=0, sy=0;
+    const steps=18;
+    const quad=(x0,y0,cx,cy,x1,y1)=>{ for(let i=1;i<=steps;i++){ const t=i/steps, mt=1-t;
+      cur.push({ x:mt*mt*x0+2*mt*t*cx+t*t*x1, y:mt*mt*y0+2*mt*t*cy+t*t*y1 }); } };
+    const cube=(x0,y0,c1x,c1y,c2x,c2y,x1,y1)=>{ for(let i=1;i<=steps;i++){ const t=i/steps, mt=1-t;
+      cur.push({ x:mt*mt*mt*x0+3*mt*mt*t*c1x+3*mt*t*t*c2x+t*t*t*x1,
+                 y:mt*mt*mt*y0+3*mt*mt*t*c1y+3*mt*t*t*c2y+t*t*t*y1 }); } };
+    for(const c of cmds){
+      if(c.type==='M'){ cur=[{x:c.x,y:c.y}]; contours.push(cur); px=sx=c.x; py=sy=c.y; }
+      else if(c.type==='L'){ cur.push({x:c.x,y:c.y}); px=c.x; py=c.y; }
+      else if(c.type==='Q'){ quad(px,py,c.x1,c.y1,c.x,c.y); px=c.x; py=c.y; }
+      else if(c.type==='C'){ cube(px,py,c.x1,c.y1,c.x2,c.y2,c.x,c.y); px=c.x; py=c.y; }
+      else if(c.type==='Z'){ if(cur && cur.length){ /* close */ } px=sx; py=sy; }
+    }
+    // drop degenerate contours + consecutive dupes
+    return contours.filter(c=>c.length>2).map(dedupe);
+  }
+  function dedupe(pts){ const o=[]; for(let i=0;i<pts.length;i++){ const p=pts[i], q=o[o.length-1];
+    if(!q || Math.hypot(p.x-q.x,p.y-q.y)>0.01) o.push(p); } return o; }
+
+  // resample a closed contour to n points spaced by equal arc length
+  function resample(pts, n){
+    const N=pts.length; const seg=[]; let total=0;
+    for(let i=0;i<N;i++){ const a=pts[i], b=pts[(i+1)%N]; const d=Math.hypot(b.x-a.x,b.y-a.y); seg.push(d); total+=d; }
+    if(total<=0) return pts.slice(0,n);
+    const out=[]; const step=total/n; let target=0, i=0, acc=0;
+    for(let k=0;k<n;k++){
+      while(acc+seg[i]<target && i<N-1){ acc+=seg[i]; i++; }
+      const a=pts[i], b=pts[(i+1)%N]; const f=seg[i]>0?(target-acc)/seg[i]:0;
+      out.push({ x:a.x+(b.x-a.x)*f, y:a.y+(b.y-a.y)*f });
+      target+=step;
+    }
+    return out;
+  }
+
+  // build the letter geometry for the current word, laid out & scaled to the canvas
+  function buildGeometry(){
+    if(!fontReady) return;
+    const key=P.word+'|'+P.fsz+'|'+W+'x'+H;
+    if(key===GEO_KEY && LET) return;
+    const word=(P.word||'a');
+    const single = word.trim().length<=1;
+    // measure at unit size then scale to fit
+    const em=1000;
+    const glyphs=FONT.stringToGlyphs(word);
+    // layout advance
+    let adv=0; const placed=[];
+    for(let i=0;i<glyphs.length;i++){ const g=glyphs[i];
+      placed.push({ g, x:adv }); adv += (g.advanceWidth||em*0.5); }
+    const scaleUnit=1; // path space
+    // path for whole word at fontSize em, origin baseline at 0
+    const letters=[];
+    let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+    for(const pl of placed){
+      const path=pl.g.getPath(pl.x, 0, em);
+      const contours=flattenPath(path.commands);
+      if(!contours.length) continue;
+      let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9;
+      for(const c of contours) for(const p of c){ if(p.x<bx0)bx0=p.x; if(p.y<by0)by0=p.y; if(p.x>bx1)bx1=p.x; if(p.y>by1)by1=p.y; }
+      letters.push({ contours, bbox:{x:bx0,y:by0,w:bx1-bx0,h:by1-by0} });
+      minX=Math.min(minX,bx0); minY=Math.min(minY,by0); maxX=Math.max(maxX,bx1); maxY=Math.max(maxY,by1);
+    }
+    if(!letters.length){ LET={letters:[], bbox:null}; GEO_KEY=key; return; }
+    const gw=maxX-minX, gh=maxY-minY;
+    const margin = single ? 0.86 : 0.9;
+    const s=Math.min((W*margin)/gw, (H*margin)/gh);
+    const ox=(W-gw*s)/2 - minX*s, oy=(H-gh*s)/2 - minY*s;
+    const tf=p=>({ x:p.x*s+ox, y:p.y*s+oy });
+    for(const L of letters){
+      L.contours=L.contours.map(c=>c.map(tf));
+      L.bbox={ x:L.bbox.x*s+ox, y:L.bbox.y*s+oy, w:L.bbox.w*s, h:L.bbox.h*s };
+      // flat outline (all contours concatenated) + point-in-shape structure
+      L.flat=[]; for(const c of L.contours) for(const p of c) L.flat.push(p);
+    }
+    LET={ letters, bbox:{ x:minX*s+ox, y:minY*s+oy, w:gw*s, h:gh*s } };
+    GEO_KEY=key;
+  }
+
+  // ---------- geometry helpers ----------
+  function segInt(p1,p2,p3,p4){
+    const bx=p2.x-p1.x, by=p2.y-p1.y, dx=p4.x-p3.x, dy=p4.y-p3.y;
+    const den=bx*dy-by*dx; if(den===0) return false;
+    const cx=p3.x-p1.x, cy=p3.y-p1.y;
+    const t=(cx*dy-cy*dx)/den; if(t<0||t>1) return false;
+    const u=(cx*by-cy*bx)/den; if(u<0||u>1) return false;
+    return true;
+  }
+  // point inside the letter (even-odd across every contour)
+  function pointInLetter(L, x, y){
+    let inside=false;
+    for(const c of L.contours){
+      for(let i=0,j=c.length-1;i<c.length;j=i++){
+        const a=c[i], b=c[j];
+        if(((a.y>y)!==(b.y>y)) && (x < (b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)) inside=!inside;
+      }
+    }
+    return inside;
+  }
+  // does the segment cross any contour edge of the letter?
+  function crossesOutline(L, p1, p2){
+    for(const c of L.contours){
+      for(let i=0;i<c.length;i++){
+        const a=c[i], b=c[(i+1)%c.length];
+        if(a===p1||a===p2||b===p1||b===p2) continue;
+        if(segInt(p1,p2,a,b)) return true;
+      }
+    }
+    return false;
+  }
+
+  // ---------- background: glow + grid ----------
+  function paintBackground(vec){
+    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+    if(P.grid){
+      ctx.save(); ctx.strokeStyle='rgba(60,70,90,.07)'; ctx.lineWidth=1;
+      const g=Math.max(24, Math.round(W/34));
+      ctx.beginPath();
+      for(let x=0;x<=W;x+=g){ ctx.moveTo(x+.5,0); ctx.lineTo(x+.5,H); }
+      for(let y=0;y<=H;y+=g){ ctx.moveTo(0,y+.5); ctx.lineTo(W,y+.5); }
+      ctx.stroke(); ctx.restore();
+    }
+    if(P.glow && P.gl>0 && LET && LET.bbox){
+      const g=hex(P.cG); const b=LET.bbox;
+      // a couple of soft radial pools keyed to the letter box, plus a warm centre
+      const pools=[
+        { x:b.x+b.w*0.22, y:b.y+b.h*0.30, r:b.w*0.52, a:0.55 },
+        { x:b.x+b.w*0.78, y:b.y+b.h*0.72, r:b.w*0.46, a:0.42 },
+        { x:b.x+b.w*0.5,  y:b.y+b.h*0.5,  r:b.w*0.66, a:0.22 },
+      ];
+      ctx.save(); ctx.globalCompositeOperation='multiply';
+      for(const pl of pools){
+        const rg=ctx.createRadialGradient(pl.x,pl.y,0,pl.x,pl.y,pl.r);
+        const a=pl.a*P.gl;
+        rg.addColorStop(0, rgba(g, a));
+        rg.addColorStop(1, rgba(g, 0));
+        ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(pl.x,pl.y,pl.r,0,7); ctx.fill();
+      }
+      ctx.restore();
+    }
+    if(P.fill && LET){
+      ctx.save();
+      const c=hex(P.cB);
+      ctx.fillStyle=rgba(c,0.30);
+      for(const L of LET.letters){
+        ctx.beginPath();
+        for(const cont of L.contours){ ctx.moveTo(cont[0].x,cont[0].y); for(let i=1;i<cont.length;i++) ctx.lineTo(cont[i].x,cont[i].y); ctx.closePath(); }
+        ctx.fill('evenodd');
+      }
+      ctx.restore();
+    }
+  }
+
+  // ======================================================================
+  //  METHODS
+  // ======================================================================
+
+  // ---- FLOCK (ch0): steering agents chase a target moving round the outline ----
+  class Pica{
+    constructor(ti,maxspeed,maxforce){ this.ti=ti; this.loc={x:0,y:0}; this.vel={x:0,y:0}; this.acc={x:0,y:0};
+      this.maxspeed=maxspeed; this.maxforce=maxforce; this.target={x:0,y:0}; this.pv=0; }
+    steer(){ let dx=this.target.x-this.loc.x, dy=this.target.y-this.loc.y; const f=Math.hypot(dx,dy);
+      if(f>0){ dx/=f; dy/=f; const m=f<100?this.maxspeed*(f/100):this.maxspeed; dx*=m; dy*=m;
+        let sx=dx-this.vel.x, sy=dy-this.vel.y; const sm=Math.hypot(sx,sy); if(sm>this.maxforce){ sx=sx/sm*this.maxforce; sy=sy/sm*this.maxforce; }
+        this.acc.x+=sx; this.acc.y+=sy; } }
+    update(){ this.steer(); this.vel.x+=this.acc.x; this.vel.y+=this.acc.y;
+      const vm=Math.hypot(this.vel.x,this.vel.y); if(vm>this.maxspeed){ this.vel.x=this.vel.x/vm*this.maxspeed; this.vel.y=this.vel.y/vm*this.maxspeed; }
+      this.loc.x+=this.vel.x; this.loc.y+=this.vel.y; this.acc.x=0; this.acc.y=0; this.pv=vm; }
+  }
+  let flockState=null;
+  function flockInit(){
+    const RIB=P.fl_rib;
+    const groups=[]; // per letter: { pts:[outline points], picas:[[per ribbon]] }
+    for(const L of LET.letters){
+      const pts=L.flat.length>40 ? resample(closeFlat(L), Math.max(RIB*14, 220)) : L.flat.slice();
+      const picas=[];
+      for(let j=0;j<pts.length;j++){
+        const maxspeed=0.5 + (j%RIB)/RIB * (P.fl_sp);        // ribbons at different speeds
+        const maxforce=0.5 + (j%10)/20;
+        const pk=new Pica(j, Math.max(0.6,maxspeed), maxforce);
+        pk.loc={ x:pts[j%pts.length].x, y:pts[j%pts.length].y };
+        picas.push(pk);
+      }
+      groups.push({ pts, picas });
+    }
+    flockState={ groups, frame:0, RIB };
+  }
+  function closeFlat(L){ // merge contours into one loop for a continuous target path
+    const all=[]; for(const c of L.contours){ for(const p of c) all.push(p); } return all;
+  }
+  function flockStep(){
+    if(!flockState) return;
+    const adv=P.fl_ad;
+    for(const grp of flockState.groups){
+      const n=grp.pts.length;
+      for(const pk of grp.picas){
+        pk.ti=(pk.ti+adv)%n; if(pk.ti<0) pk.ti+=n;
+        pk.target=grp.pts[pk.ti];
+        pk.update();
+      }
+    }
+    flockState.frame++;
+  }
+  function flockDrawFrame(){
+    const RIB=flockState.RIB;
+    ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=1;
+    for(const grp of flockState.groups){
+      // split into RIB ribbons (every RIB-th pica)
+      for(let r=0;r<RIB;r++){
+        const chain=[];
+        for(let j=r;j<grp.picas.length;j+=RIB) chain.push(grp.picas[j]);
+        if(chain.length<4) continue;
+        for(let j=3;j<chain.length;j++){
+          const a=chain[j-2].loc, b=chain[j-1].loc;
+          const ang=Math.atan((a.x-b.x)/((a.y-b.y)||1e-4));
+          const t=Math.abs(ang)/(Math.PI/2);
+          const c=mix(t);
+          const spd=chain[j-1].pv;
+          const op=(0.04 + Math.min(1,spd/18)*0.10) * (P.fl_op/0.55);
+          ctx.strokeStyle=rgba(c, Math.min(0.6,op));
+          ctx.beginPath();
+          ctx.moveTo(chain[j-3].loc.x,chain[j-3].loc.y);
+          ctx.bezierCurveTo(chain[j-2].loc.x,chain[j-2].loc.y, chain[j-1].loc.x,chain[j-1].loc.y, chain[j].loc.x,chain[j].loc.y);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // ---- CHORDS (ch2): interior lines between edge points ----
+  function drawChords(){
+    for(const L of LET.letters){
+      const pts=resample(closeFlat(L), P.ch_pt);
+      const maxD=P.ch_ds/300 * Math.max(L.bbox.w,L.bbox.h);
+      const keep=P.ch_dn;
+      ctx.lineWidth=0.7;
+      for(let i=0;i<pts.length;i++){
+        for(let j=i+2;j<pts.length;j++){
+          const a=pts[i], b=pts[j];
+          const d=Math.hypot(a.x-b.x,a.y-b.y);
+          if(d>maxD || d<2) continue;
+          if(Math.random()>keep) continue;
+          const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+          if(!pointInLetter(L, mx, my)) continue;
+          if(crossesOutline(L, a, b)) continue;
+          const c=mix(1 - d/maxD);
+          ctx.strokeStyle=rgba(c, P.ch_op);
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // ---- SCRIBBLE (ch8): loose jittered curve hops that build a sketched outline + dots ----
+  function drawScribble(){
+    for(let li=0;li<LET.letters.length;li++){
+      const L=LET.letters[li];
+      const pts=resample(closeFlat(L), P.sc_pt);
+      const jit=Math.max(2, Math.min(L.bbox.w,L.bbox.h)*0.014);
+      ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=0.8;
+      const passes=P.sc_pa*pts.length/26;
+      for(let n=0;n<passes;n++){
+        const start=(Math.random()*pts.length)|0;
+        const c=mix(Math.random()*0.5);
+        ctx.strokeStyle=rgba(c,0.26);
+        ctx.beginPath();
+        for(let s=0;s<=P.sc_sp;s++){
+          const p=pts[(start+s)%pts.length];
+          const x=p.x+(Math.random()*2-1)*jit, y=p.y+(Math.random()*2-1)*jit;
+          if(s===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+      }
+      if(P.sc_dots){
+        const d=hex(P.cB); ctx.fillStyle=rgba(d,0.85);
+        for(const p of pts){ ctx.beginPath(); ctx.arc(p.x,p.y,1.5,0,7); ctx.fill(); }
+      }
+    }
+  }
+
+  // ---- CONTOUR (ch1): horizon lines lifted by the letter's shadow ----
+  function drawContour(){
+    // render the letter black, blur, read brightness, then draw lifted lines
+    const off=document.createElement('canvas'); off.width=W; off.height=H;
+    const oc=off.getContext('2d',{willReadFrequently:true});
+    oc.fillStyle='#fff'; oc.fillRect(0,0,W,H);
+    oc.fillStyle='#000';
+    oc.filter=`blur(${P.co_bl}px)`;
+    for(const L of LET.letters){ oc.beginPath();
+      for(const cont of L.contours){ oc.moveTo(cont[0].x,cont[0].y); for(let i=1;i<cont.length;i++) oc.lineTo(cont[i].x,cont[i].y); oc.closePath(); }
+      oc.fill('evenodd'); }
+    oc.filter='none';
+    const img=oc.getImageData(0,0,W,H).data;
+    const bri=(x,y)=>{ x=Math.max(0,Math.min(W-1,x|0)); y=Math.max(0,Math.min(H-1,y|0)); const i=(y*W+x)*4; return (img[i]*0.299+img[i+1]*0.587+img[i+2]*0.114); };
+    const N=P.co_ln, det=P.co_dt, push=P.co_pu*(H*0.5);
+    ctx.lineWidth=2; ctx.lineJoin='round';
+    for(let i=1;i<N;i++){
+      const y=i/N*H; const c=mix(i/N); ctx.strokeStyle=rgba(c,0.95);
+      ctx.beginPath(); ctx.moveTo(0,y);
+      for(let j=0;j<=det;j++){ const x=j/det*W; let fy=y; const b=bri(x,y);
+        if(b<250) fy = y - (255-b)/255*push; ctx.lineTo(x,fy); }
+      ctx.lineTo(W,y); ctx.stroke();
+    }
+  }
+
+  // ---- STIPPLE (ch4): layered grain over the letter shadow ----
+  function drawStipple(){
+    const off=document.createElement('canvas'); off.width=W; off.height=H;
+    const oc=off.getContext('2d',{willReadFrequently:true});
+    oc.fillStyle='#fff'; oc.fillRect(0,0,W,H);
+    oc.fillStyle='#000'; oc.filter=`blur(${P.st_bl}px)`;
+    for(const L of LET.letters){ oc.beginPath();
+      for(const cont of L.contours){ oc.moveTo(cont[0].x,cont[0].y); for(let i=1;i<cont.length;i++) oc.lineTo(cont[i].x,cont[i].y); oc.closePath(); }
+      oc.fill('evenodd'); }
+    oc.filter='none';
+    const img=oc.getImageData(0,0,W,H).data;
+    const dark=(x,y)=>{ x=x|0; y=y|0; if(x<0||y<0||x>=W||y>=H) return 0; const i=(y*W+x)*4; return 255-(img[i]*0.299+img[i+1]*0.587+img[i+2]*0.114); };
+    const layers=P.st_ly, spread=P.st_sp;
+    for(let l=0;l<layers;l++){
+      const cnt = l===layers-1 ? P.st_gn*3 : P.st_gn;
+      const size=(layers-l)*0.5+1.4;
+      const jx=(Math.random()*2-1)*spread, jy=(Math.random()*2-1)*spread;
+      for(let i=0;i<cnt;i++){
+        const x=Math.random()*W, y=Math.random()*H;
+        const dv=dark(x,y)*l/layers;
+        if(dv>55){ const c=mix(l/layers + (Math.random()-0.5)*0.6);
+          ctx.fillStyle=rgba(c, Math.min(0.5,dv/255));
+          ctx.beginPath(); ctx.arc(x+jx,y+jy,size,0,7); ctx.fill(); }
+      }
+    }
+  }
+
+  // ---- WEAVE (ch9): threads through matching outline points ----
+  function drawWeave(){
+    const N=P.we_ln;
+    const letters=LET.letters;
+    // equal point count per letter, ordered
+    const per=letters.map(L=>resample(closeFlat(L), N));
+    if(P.we_ghost){ ctx.save(); const c=hex(P.cB); ctx.fillStyle=rgba(c,0.22);
+      for(const L of letters){ ctx.beginPath(); for(const cont of L.contours){ ctx.moveTo(cont[0].x,cont[0].y); for(let i=1;i<cont.length;i++) ctx.lineTo(cont[i].x,cont[i].y); ctx.closePath(); } ctx.fill('evenodd'); } ctx.restore(); }
+    const b=LET.bbox; const spread=P.we_sp*(H*0.18);
+    ctx.lineWidth=0.6; ctx.lineJoin='round';
+    for(let i=0;i<N;i++){
+      const off=(-0.5 + i/N)*spread;
+      const c=mix(i/N); ctx.strokeStyle=rgba(c,0.5);
+      ctx.beginPath();
+      ctx.moveTo(-W*0.1, b.y+b.h/2+off);
+      for(let j=0;j<letters.length;j++){ const p=per[j][i]; ctx.lineTo(p.x,p.y); }
+      // converge to a point on the right
+      const ang=i/N*Math.PI; const cx=b.x+b.w+W*0.02+Math.cos(ang)*W*0.03, cy=b.y+b.h/2+Math.sin(ang)*H*0.04;
+      ctx.lineTo(cx,cy); ctx.lineTo(W*1.1, b.y+b.h/2);
+      ctx.stroke();
+    }
+  }
+
+  // ======================================================================
+  //  RENDER
+  // ======================================================================
+  let raf=0, animating=false;
+  function renderStatic(){
+    buildGeometry(); if(!LET) return;
+    paintBackground();
+    ctx.globalCompositeOperation='source-over';
+    if(P.mode==='chords') drawChords();
+    else if(P.mode==='scribble') drawScribble();
+    else if(P.mode==='contour') drawContour();
+    else if(P.mode==='stipple') drawStipple();
+    else if(P.mode==='weave') drawWeave();
+    else if(P.mode==='flock'){
+      // static flock: run the whole simulation, accumulating faint frames
+      flockInit();
+      const total=P.fl_it;
+      for(let f=0;f<total;f++){ flockStep(); flockDrawFrame(); }
+    }
+  }
+
+  function animLoop(){
+    if(!animating) return;
+    raf=requestAnimationFrame(animLoop);
+    if(P.mode==='flock'){
+      // let the ribbons build progressively
+      for(let s=0;s<2;s++){ flockStep(); flockDrawFrame(); }
+      if(flockState.frame>P.fl_it*1.6){ // restart the build so it keeps breathing
+        buildGeometry(); paintBackground(); flockInit();
+      }
+    } else {
+      // other modes: re-roll their stochastic pattern each frame
+      renderStatic();
+    }
+  }
+  function startAnim(){
+    animating=true; $('play').textContent='Stop'; $('play').setAttribute('aria-pressed','true');
+    buildGeometry(); paintBackground();
+    if(P.mode==='flock') flockInit();
+    animLoop();
+  }
+  function stopAnim(){ animating=false; cancelAnimationFrame(raf); $('play').textContent='Animate'; $('play').setAttribute('aria-pressed','false'); }
+
+  function redraw(){ if(animating){ // reset the animation on a control change
+      buildGeometry(); paintBackground(); if(P.mode==='flock') flockInit(); }
+    else renderStatic(); }
+
+  // ======================================================================
+  //  SIZE / FIT
+  // ======================================================================
+  function fit(){
+    const [a,b]=P.size.split('/').map(Number); const ar=a/b;
+    const long=1400; if(ar>=1){ W=long; H=Math.round(long/ar); } else { H=long; W=Math.round(long*ar); }
+    art.width=W; art.height=H;
+    const dr=$('dimReadout'); if(dr) dr.textContent=`${a} × ${b}`;
+    const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H);
+    art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px';
+    GEO_KEY=''; redraw();
+  }
+
+  // ======================================================================
+  //  SVG EXPORT (vector methods)
+  // ======================================================================
+  function svgExport(){
+    buildGeometry();
+    const parts=[`<?xml version="1.0" encoding="UTF-8"?>`,
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
+      `<rect width="${W}" height="${H}" fill="#ffffff"/>`];
+    const line=(a,b,col,op,w)=>parts.push(`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${col}" stroke-opacity="${op.toFixed(3)}" stroke-width="${w}"/>`);
+    const col=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
+    if(P.fill && LET){ for(const L of LET.letters){ let d=''; for(const cont of L.contours){ d+='M'+cont.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join('L')+'Z'; } parts.push(`<path d="${d}" fill="${P.cB}" fill-opacity="0.3" fill-rule="evenodd"/>`); } }
+    if(P.mode==='chords'){
+      for(const L of LET.letters){ const pts=resample(closeFlat(L),P.ch_pt); const maxD=P.ch_ds/300*Math.max(L.bbox.w,L.bbox.h);
+        for(let i=0;i<pts.length;i++)for(let j=i+2;j<pts.length;j++){ const a=pts[i],b=pts[j],d=Math.hypot(a.x-b.x,a.y-b.y);
+          if(d>maxD||d<2||Math.random()>P.ch_dn) continue; const mx=(a.x+b.x)/2,my=(a.y+b.y)/2; if(!pointInLetter(L,mx,my)||crossesOutline(L,a,b)) continue;
+          line(a,b,col(mix(1-d/maxD)),P.ch_op,0.7); } }
+    } else if(P.mode==='weave'){
+      const N=P.we_ln, per=LET.letters.map(L=>resample(closeFlat(L),N)); const b=LET.bbox, spread=P.we_sp*(H*0.18);
+      for(let i=0;i<N;i++){ const off=(-0.5+i/N)*spread; let d=`M${(-W*0.1).toFixed(1)} ${(b.y+b.h/2+off).toFixed(1)}`;
+        for(let j=0;j<LET.letters.length;j++){ const p=per[j][i]; d+=`L${p.x.toFixed(1)} ${p.y.toFixed(1)}`; }
+        const ang=i/N*Math.PI, cx=b.x+b.w+W*0.02+Math.cos(ang)*W*0.03, cy=b.y+b.h/2+Math.sin(ang)*H*0.04;
+        d+=`L${cx.toFixed(1)} ${cy.toFixed(1)}L${(W*1.1).toFixed(1)} ${(b.y+b.h/2).toFixed(1)}`;
+        parts.push(`<path d="${d}" fill="none" stroke="${col(mix(i/N))}" stroke-opacity="0.5" stroke-width="0.6"/>`); }
+    } else if(P.mode==='contour'){
+      // rasterize brightness like the on-canvas version
+      const off=document.createElement('canvas'); off.width=W; off.height=H; const oc=off.getContext('2d',{willReadFrequently:true});
+      oc.fillStyle='#fff'; oc.fillRect(0,0,W,H); oc.fillStyle='#000'; oc.filter=`blur(${P.co_bl}px)`;
+      for(const L of LET.letters){ oc.beginPath(); for(const cont of L.contours){ oc.moveTo(cont[0].x,cont[0].y); for(let i=1;i<cont.length;i++) oc.lineTo(cont[i].x,cont[i].y); oc.closePath(); } oc.fill('evenodd'); }
+      oc.filter='none'; const img=oc.getImageData(0,0,W,H).data;
+      const bri=(x,y)=>{ x=Math.max(0,Math.min(W-1,x|0)); y=Math.max(0,Math.min(H-1,y|0)); const i=(y*W+x)*4; return (img[i]*0.299+img[i+1]*0.587+img[i+2]*0.114); };
+      const Nl=P.co_ln, det=P.co_dt, push=P.co_pu*(H*0.5);
+      for(let i=1;i<Nl;i++){ const y=i/Nl*H; let d=`M0 ${y.toFixed(1)}`;
+        for(let j=0;j<=det;j++){ const x=j/det*W; let fy=y; const bb=bri(x,y); if(bb<250) fy=y-(255-bb)/255*push; d+=`L${x.toFixed(1)} ${fy.toFixed(1)}`; }
+        d+=`L${W} ${y.toFixed(1)}`; parts.push(`<path d="${d}" fill="none" stroke="${col(mix(i/Nl))}" stroke-width="2"/>`); }
+    } else if(P.mode==='scribble'){
+      for(let li=0;li<LET.letters.length;li++){ const L=LET.letters[li]; const pts=resample(closeFlat(L),P.sc_pt);
+        const jit=Math.max(2,Math.min(L.bbox.w,L.bbox.h)*0.014);
+        for(let n=0;n<P.sc_pa*pts.length/26;n++){ const start=(Math.random()*pts.length)|0; const c=col(mix(Math.random()*0.5)); let d='';
+          for(let s=0;s<=P.sc_sp;s++){ const p=pts[(start+s)%pts.length]; const x=p.x+(Math.random()*2-1)*jit, y=p.y+(Math.random()*2-1)*jit; d+=(s===0?'M':'L')+x.toFixed(1)+' '+y.toFixed(1); }
+          parts.push(`<path d="${d}" fill="none" stroke="${c}" stroke-opacity="0.26" stroke-width="0.8"/>`); }
+        if(P.sc_dots) for(const p of pts) parts.push(`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="1.5" fill="${P.cB}"/>`); }
+    } else { // flock or stipple: fall back to embedding the current raster
+      parts.push(`<image href="${art.toDataURL('image/png')}" x="0" y="0" width="${W}" height="${H}"/>`);
+    }
+    parts.push('</svg>');
+    return parts.join('\n');
+  }
+
+  // ======================================================================
+  //  UI WIRING
+  // ======================================================================
+  function showMode(){
+    document.querySelectorAll('.mp').forEach(el=>el.classList.remove('on'));
+    const m=$('mp-'+P.mode); if(m) m.classList.add('on');
+    $('modehint').textContent=HINTS[P.mode]||'';
+  }
+  function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); if(!el) return;
+    el.addEventListener('input',()=>{ fn(el.type==='range'?parseFloat(el.value):el.value); if(o)o.textContent=fmt?fmt(el.value):el.value; redraw(); }); }
+
+  $('wordIn').addEventListener('input',e=>{ P.word=e.target.value||'a'; GEO_KEY=''; redraw(); });
+  bind('fsz','fszR',v=>P.fsz=v/100,v=>(v/100).toFixed(2));
+  $('mode').addEventListener('change',e=>{ P.mode=e.target.value; showMode(); if(animating){stopAnim();} renderStatic(); });
+
+  // flock
+  bind('fl_rib','fl_ribR',v=>P.fl_rib=v);
+  bind('fl_it','fl_itR',v=>P.fl_it=v);
+  bind('fl_sp','fl_spR',v=>P.fl_sp=v/10,v=>(v/10).toFixed(1));
+  bind('fl_ad','fl_adR',v=>P.fl_ad=v);
+  bind('fl_op','fl_opR',v=>P.fl_op=v/100,v=>(v/100).toFixed(2));
+  // chords
+  bind('ch_pt','ch_ptR',v=>P.ch_pt=v);
+  bind('ch_ds','ch_dsR',v=>P.ch_ds=v);
+  bind('ch_dn','ch_dnR',v=>P.ch_dn=v/100,v=>(v/100).toFixed(2));
+  bind('ch_op','ch_opR',v=>P.ch_op=v/100,v=>(v/100).toFixed(2));
+  // scribble
+  bind('sc_pt','sc_ptR',v=>P.sc_pt=v);
+  bind('sc_pa','sc_paR',v=>P.sc_pa=v);
+  bind('sc_sp','sc_spR',v=>P.sc_sp=v);
+  $('sc_dots').addEventListener('change',e=>{ P.sc_dots=e.target.checked; redraw(); });
+  // contour
+  bind('co_ln','co_lnR',v=>P.co_ln=v);
+  bind('co_dt','co_dtR',v=>P.co_dt=v);
+  bind('co_pu','co_puR',v=>P.co_pu=v/100,v=>(v/100).toFixed(2));
+  bind('co_bl','co_blR',v=>P.co_bl=v);
+  // stipple
+  bind('st_ly','st_lyR',v=>P.st_ly=v);
+  bind('st_gn','st_gnR',v=>P.st_gn=v);
+  bind('st_sp','st_spR',v=>P.st_sp=v);
+  bind('st_bl','st_blR',v=>P.st_bl=v);
+  // weave
+  bind('we_ln','we_lnR',v=>P.we_ln=v);
+  bind('we_sp','we_spR',v=>P.we_sp=v/100,v=>(v/100).toFixed(2));
+  $('we_ghost').addEventListener('change',e=>{ P.we_ghost=e.target.checked; redraw(); });
+  // palette
+  $('cA').addEventListener('input',e=>{ P.cA=e.target.value; redraw(); });
+  $('cB').addEventListener('input',e=>{ P.cB=e.target.value; redraw(); });
+  $('glowOn').addEventListener('change',e=>{ P.glow=e.target.checked; redraw(); });
+  $('cG').addEventListener('input',e=>{ P.cG=e.target.value; redraw(); });
+  bind('gl','glR',v=>P.gl=v/100,v=>(v/100).toFixed(2));
+  $('fillOn').addEventListener('change',e=>{ P.fill=e.target.checked; redraw(); });
+  $('gridOn').addEventListener('change',e=>{ P.grid=e.target.checked; redraw(); });
+
+  $('aspect').addEventListener('change',e=>{ P.size=e.target.value; fit(); });
+  $('regen').addEventListener('click',()=>{ if(animating){ buildGeometry(); paintBackground(); if(P.mode==='flock') flockInit(); } else renderStatic(); });
+  $('play').addEventListener('click',()=> animating?stopAnim():startAnim());
+
+  // ---- Output: SVG-aware export + record ----
+  Opal.mountOutput(art,'parametype',{ svg:()=>svgExport() });
+  let rec=null,rt=0,tk=0;
+  $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
+    if(!animating) startAnim();
+    const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+    rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime}:undefined); const chk=[];
+    rec.ondataavailable=e=>e.data.size&&chk.push(e.data);
+    rec.onstop=()=>{ clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
+      const bl=new Blob(chk,{type:chk[0]?.type||'video/webm'}); const a=document.createElement('a'); a.download='parametype.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); rec=null; };
+    rec.start(); rt=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
+    tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
+
+  addEventListener('resize',()=>{ const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H); art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px'; });
+
+  // ---- boot: load the font, then draw ----
+  showMode();
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#9a9aa2'; ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText('Loading font…',W/2,H/2);
+  opentype.load('/shared/fonts/chaparral-regular.ttf', (err,font)=>{
+    if(err || !font){ ctx.fillText('Font failed to load', W/2, H/2+22); console.warn(err); return; }
+    FONT=font; fontReady=true; fit();
+  });
+})();
+</script>
+</body>
+</html>
