@@ -73,24 +73,32 @@
    rail (e.g. fractal) redefine --nm-lo/--nm-hi in their own scope, after this file. */
 
 /* 1 — NEUMORPHISM — the component library =================================== */
-/* raised buttons — a soft convex gradient face lifted off the surface, that presses IN */
-:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export,.opal-save__panel) button:not(.rowhead):not(.opal-info):not(.tw),
+/* raised buttons — a soft convex gradient face lifted off the surface, that presses IN.
+   NB: kept low-specificity (no :not() chain) so :active / :hover / selected reliably win;
+   the special buttons (.rowhead / .opal-info / .tw) are reset separately below. */
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export,.opal-save__panel) button,
 .opal-sessions-btn, .filebtn, .chip, .seg button, .railact button, .btn{
   background:linear-gradient(145deg, #fafafb, #e9e9ee) !important; border:none !important;
   box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 1px rgba(60,70,90,.06) !important;
   border-radius:var(--r-control) !important; color:var(--ink) !important;
-  transition:box-shadow .18s ease, transform .1s ease, color .15s ease; will-change:box-shadow, transform; }
-:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) button:not(.rowhead):hover, .opal-sessions-btn:hover, .btn:hover, .seg button:hover{
+  transition:box-shadow .16s ease, transform .08s ease, background .16s ease, color .15s ease; will-change:box-shadow, transform; }
+:where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) button:hover, .opal-sessions-btn:hover, .btn:hover, .seg button:hover{
   box-shadow:-4px -4px 9px var(--nm-lo), 5px 5px 11px var(--nm-hi), inset 0 1px 0 rgba(255,255,255,.6) !important; }
-/* click — a tactile press IN + a hair of scale */
-:where(#dock,#rail,#panel,#output,#sizeDock) button:active, .btn:active, .seg button:active, .railact button:active{
-  background:linear-gradient(145deg, #e9e9ee, #f3f3f6) !important;
-  box-shadow:var(--shadow-pressed) !important; transform:scale(.972); }
-/* selected / on → held IN (deep inset) + accent ink */
+/* click — clearly recessed: dark inner shadow, darker face, dimmed ink, a firm scale in */
+:where(#dock,#rail,#panel,#output,#sizeDock) button:active, .btn:active, .seg button:active, .railact button:active, .chip:active, .filebtn:active, .opal-sessions-btn:active{
+  background:linear-gradient(145deg, #d7d7dd, #ececf0) !important;
+  box-shadow:inset 3px 3px 7px var(--nm-hi), inset -3px -3px 6px var(--nm-lo), inset 0 2px 5px rgba(20,24,34,.20) !important;
+  color:var(--mute) !important; transform:scale(.95); }
+/* selected / on → held IN + accent ink (distinct from the momentary :active press) */
 :where(#dock,#rail,#panel,#output,#sizeDock) button[aria-pressed="true"], .seg button[aria-pressed="true"],
 .btn[aria-pressed="true"], .btn.primary, .chip.active, .railact button.primary, .railact button.on{
-  background:linear-gradient(145deg, #e9e9ee, #f3f3f6) !important;
-  box-shadow:var(--shadow-pressed) !important; color:var(--accent) !important; }
+  background:linear-gradient(145deg, #e7e7ec, #f2f2f5) !important;
+  box-shadow:var(--shadow-pressed), inset 0 1px 3px rgba(20,24,34,.10) !important; color:var(--accent) !important; }
+/* the special buttons keep their own look (accordion headers, info glyph, tooltip word) */
+:where(#dock,#rail,#panel,#output,#sizeDock) button.rowhead,
+:where(#dock,#rail,#panel,#output,#sizeDock) button.opal-info,
+:where(#dock,#rail,#panel,#output,#sizeDock) button.tw, .rowhead, .opal-info, .tw{
+  background:none !important; box-shadow:none !important; transform:none !important; }
 .seg{ border:none !important; background:transparent !important; box-shadow:none !important; gap:10px !important; display:flex !important; flex-wrap:wrap !important; }
 .seg button{ flex:0 1 auto; min-width:0; }
 /* fields — inset. background-COLOR only, so the tool's chevron survives; add our own chevron + padding */
