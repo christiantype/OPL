@@ -4,7 +4,7 @@
 <script src="/lab/shared/gate.js"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>WINDCHIME — OP/AL</title>
+<title>KALEIDOSCOPE — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css" />
 <style>
   :root{ --ink:#f2f3f7; --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.14); --rail:300px; --top:120px; }
@@ -147,7 +147,7 @@
   </div>
 
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name:'Windchime', desc:'A kaleidoscope the wind plays',
+<script>Opal.mountTopbar({ name:'Kaleidoscope', desc:'A kaleidoscope the wind plays',
   about:"Add an image and it becomes a living kaleidoscope. The number of windchimes you hang is the number of mirrored slices — a few for a bold, simple form, many for an intricate mandala. Then the wind plays it: gusts sweep through and ring the chimes (tuned to the scale and material you choose), and every ring makes the kaleidoscope pulse, bloom and turn. Step sends a rhythm travelling around the ring; Zoom and Twist and Sway reshape the pattern; the pitch of each note tints the glow. Click the image to strike a chime by hand. Record the whole performance — sound and all. Runs entirely on your device; no image ever leaves the page.",
   version:'v1' });</script>
 
@@ -350,14 +350,14 @@
     rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:24000000, audioBitsPerSecond:192000}); chunks=[];
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop=()=>{ cancelAnimationFrame(recRAF); clearInterval(recTimer); $('recDot').classList.remove('on');
-      const blob=new Blob(chunks,{type:mime}); const a2=document.createElement('a'); a2.href=URL.createObjectURL(blob); a2.download='windchime.'+ext; a2.click();
+      const blob=new Blob(chunks,{type:mime}); const a2=document.createElement('a'); a2.href=URL.createObjectURL(blob); a2.download='kaleidoscope.'+ext; a2.click();
       $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false'); };
     rec.start();
     (function comp(){ drawFrame(); if(rec && rec.state==='recording') recRAF=requestAnimationFrame(comp); })();
     recStart=performance.now(); $('recDot').classList.add('on'); $('recDot').querySelector('b').textContent='0:00';
     recTimer=setInterval(()=>{ $('recDot').querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250);
     $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
-  $('saveBtn').addEventListener('click', ()=>{ const a2=document.createElement('a'); a2.download='windchime.png'; a2.href=cv.toDataURL('image/png'); a2.click(); });
+  $('saveBtn').addEventListener('click', ()=>{ const a2=document.createElement('a'); a2.download='kaleidoscope.png'; a2.href=cv.toDataURL('image/png'); a2.click(); });
 
   addEventListener('resize', ()=>{ fit(); });
   setTimeout(()=>{ $('hint').style.opacity=0; }, 6000);

@@ -68,7 +68,7 @@ A clean `#dock` reference implementation is **[offset/index.html](/lab/offset/in
 | `--shadow` / `--shadow-float` | raised islands / floating panels | the dual light-dark lift |
 | `--shadow-inset` / `--shadow-sm` / `--shadow-pressed` | inset fields / raised buttons / pressed-on | neumorphic states |
 
-Neumorphism is keyed to the **surface**, not `body.dark`: most "dark" tools only darken the topbar and keep a light rail. A genuinely dark-rail tool (e.g. **fractal**) redefines `--nm-lo`/`--nm-hi` (the light/dark shadow pair) in its own scope, after OPALAB.
+Neumorphism is keyed to the **surface**, not `body.dark`: most "dark" tools only darken the topbar and keep a light rail. A genuinely dark-rail tool redefines `--nm-lo`/`--nm-hi` (the light/dark shadow pair) in its own scope, after OPALAB.
 
 ---
 
@@ -110,6 +110,6 @@ Every tool carries **one Output island**, pinned to the **bottom-right of the sc
 
 All ~25 tools share the shell — one left rail (`#dock`, or `#rail`/`#panel` for bespoke tools), the white artboard on the grey mat, the top-left size dock, top-right cross-tool Sessions, and the identical bottom-right Output island — on the single **OPALAB.css**, in soft neumorphism. Zero console errors across the fleet.
 
-**Intentional exceptions** (different tool *categories*, not the parametric instruments): **fractal** is a fullscreen raymarched shader with no aspect model (Output island, no size dock); **open-capture** is a 4-clip batch-recorder gallery; **open-reel / open-slots** are immersive fixed-format 9:16 reels (a locked size readout, no rail).
+**Intentional exceptions** (different tool *categories*, not the parametric instruments): **open-capture** is a 4-clip batch-recorder gallery, and **open-reel** is an immersive fixed-format 9:16 reel (a locked size readout, no rail).
 
 To bring a light-touch tool to standard: rebuild its rail to the `#dock` + `.group`/`.knob` structure, load `OPALAB.css` last, keep the generative/render/record logic and every JS id, and verify with a screenshot.
