@@ -81,10 +81,11 @@
 
     <!-- CHORDS -->
     <div class="mp" id="mp-chords">
-      <div class="knob"><label>Points <b id="ch_ptR">300</b></label><input id="ch_pt" type="range" min="60" max="520" value="300"></div>
-      <div class="knob"><label>Reach <b id="ch_dsR">140</b></label><input id="ch_ds" type="range" min="30" max="300" value="140"></div>
-      <div class="knob"><label>Density <b id="ch_dnR">0.85</b></label><input id="ch_dn" type="range" min="6" max="100" value="85"></div>
-      <div class="knob"><label>Ink weight <b id="ch_opR">0.4</b></label><input id="ch_op" type="range" min="4" max="100" value="40"></div>
+      <div class="knob"><label>Points <b id="ch_ptR">320</b></label><input id="ch_pt" type="range" min="60" max="520" value="320"></div>
+      <div class="knob"><label>Reach <b id="ch_dsR">190</b></label><input id="ch_ds" type="range" min="30" max="300" value="190"></div>
+      <div class="knob"><label>Density <b id="ch_dnR">0.9</b></label><input id="ch_dn" type="range" min="6" max="100" value="90"></div>
+      <div class="knob"><label>Tangle <b id="ch_twR">0.4</b></label><input id="ch_tw" type="range" min="0" max="100" value="40"></div>
+      <div class="knob"><label>Ink weight <b id="ch_opR">0.32</b></label><input id="ch_op" type="range" min="4" max="100" value="32"></div>
     </div>
 
     <!-- SCRIBBLE -->
@@ -156,7 +157,7 @@
   let W=1080, H=1080, DPR=1;
   const P={ size:'1080/1080', word:'a', fsz:0.72, mode:'flock',
     fl_rib:20, fl_it:340, fl_sp:4.5, fl_tw:0.35, fl_ad:3, fl_fc:0.45, fl_op:0.55,
-    ch_pt:300, ch_ds:140, ch_dn:0.85, ch_op:0.4,
+    ch_pt:320, ch_ds:190, ch_dn:0.9, ch_tw:0.4, ch_op:0.32,
     sc_pt:300, sc_pa:26, sc_sp:6, sc_dots:true,
     co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
     st_ly:20, st_gn:14000, st_sp:18, st_bl:4,
@@ -420,13 +421,13 @@
     }
   }
 
-  // ---- CHORDS (ch2): interior lines between edge points ----
+  // ---- CHORDS (ch2): interior strings between edge points — bowed into a tangle ----
   function drawChords(){
     for(const L of LET.letters){
       const pts=resample(closeFlat(L), P.ch_pt);
       const maxD=P.ch_ds/300 * Math.max(L.bbox.w,L.bbox.h);
-      const keep=P.ch_dn;
-      ctx.lineWidth=0.7;
+      const keep=P.ch_dn, tw=P.ch_tw;
+      ctx.lineWidth=0.7; ctx.lineCap='round';
       for(let i=0;i<pts.length;i++){
         for(let j=i+2;j<pts.length;j++){
           const a=pts[i], b=pts[j];
@@ -438,7 +439,13 @@
           if(crossesOutline(L, a, b)) continue;
           const c=mix(1 - d/maxD);
           ctx.strokeStyle=rgba(c, P.ch_op);
-          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(a.x,a.y);
+          if(tw>0.01){                                 // bow the string off its chord for a wild tangle
+            const nx=-(b.y-a.y)/d, ny=(b.x-a.x)/d;
+            const bow=(Math.random()*2-1)*tw*Math.min(d*0.75, maxD*0.5);
+            ctx.quadraticCurveTo(mx+nx*bow, my+ny*bow, b.x, b.y);
+          } else ctx.lineTo(b.x,b.y);
+          ctx.stroke();
         }
       }
     }
@@ -637,10 +644,13 @@
     const col=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
     if(P.fill && LET){ for(const L of LET.letters){ let d=''; for(const cont of L.contours){ d+='M'+cont.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join('L')+'Z'; } parts.push(`<path d="${d}" fill="${P.cB}" fill-opacity="0.3" fill-rule="evenodd"/>`); } }
     if(P.mode==='chords'){
-      for(const L of LET.letters){ const pts=resample(closeFlat(L),P.ch_pt); const maxD=P.ch_ds/300*Math.max(L.bbox.w,L.bbox.h);
+      for(const L of LET.letters){ const pts=resample(closeFlat(L),P.ch_pt); const maxD=P.ch_ds/300*Math.max(L.bbox.w,L.bbox.h); const tw=P.ch_tw;
         for(let i=0;i<pts.length;i++)for(let j=i+2;j<pts.length;j++){ const a=pts[i],b=pts[j],d=Math.hypot(a.x-b.x,a.y-b.y);
           if(d>maxD||d<2||Math.random()>P.ch_dn) continue; const mx=(a.x+b.x)/2,my=(a.y+b.y)/2; if(!pointInLetter(L,mx,my)||crossesOutline(L,a,b)) continue;
-          line(a,b,col(mix(1-d/maxD)),P.ch_op,0.7); } }
+          const c=col(mix(1-d/maxD));
+          if(tw>0.01){ const nx=-(b.y-a.y)/d, ny=(b.x-a.x)/d, bow=(Math.random()*2-1)*tw*Math.min(d*0.75,maxD*0.5);
+            parts.push(`<path d="M${a.x.toFixed(1)} ${a.y.toFixed(1)}Q${(mx+nx*bow).toFixed(1)} ${(my+ny*bow).toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}" fill="none" stroke="${c}" stroke-opacity="${P.ch_op.toFixed(3)}" stroke-width="0.7"/>`); }
+          else line(a,b,c,P.ch_op,0.7); } }
     } else if(P.mode==='weave'){
       const N=P.we_ln, per=LET.letters.map(L=>resample(closeFlat(L),N)); const b=LET.bbox, spread=P.we_sp*(H*0.18);
       for(let i=0;i<N;i++){ const off=(-0.5+i/N)*spread; let d=`M${(-W*0.1).toFixed(1)} ${(b.y+b.h/2+off).toFixed(1)}`;
@@ -701,6 +711,7 @@
   bind('ch_pt','ch_ptR',v=>P.ch_pt=v);
   bind('ch_ds','ch_dsR',v=>P.ch_ds=v);
   bind('ch_dn','ch_dnR',v=>P.ch_dn=v/100,v=>(v/100).toFixed(2));
+  bind('ch_tw','ch_twR',v=>P.ch_tw=v/100,v=>(v/100).toFixed(2));
   bind('ch_op','ch_opR',v=>P.ch_op=v/100,v=>(v/100).toFixed(2));
   // scribble
   bind('sc_pt','sc_ptR',v=>P.sc_pt=v);
