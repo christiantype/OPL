@@ -492,30 +492,33 @@
   }
 
   // ---- SCRIBBLE (ch8): loose jittered curve hops that build a sketched outline + dots ----
-  function drawScribble(){
+  // Deterministic from P.seed (shared by the on-screen draw AND the SVG/PDF exporters) so the
+  // export is identical to the preview. Returns { strokes:[{pts,col}], dots:[{x,y}], dotR }.
+  function scribbleData(){
+    const rng=rngFrom((P.seed||1)*40503 >>> 0);
+    const strokes=[], dots=[];
     for(let li=0;li<LET.letters.length;li++){
       const L=LET.letters[li];
       const pts=resample(closeFlat(L), P.sc_pt);
       const jit=Math.max(2, Math.min(L.bbox.w,L.bbox.h)*0.014);
-      ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=0.8;
-      const passes=P.sc_pa*pts.length/26;
+      const passes=Math.round(P.sc_pa*pts.length/26);
       for(let n=0;n<passes;n++){
-        const start=(Math.random()*pts.length)|0;
-        const c=mix(Math.random()*0.5);
-        ctx.strokeStyle=rgba(c,0.26);
-        ctx.beginPath();
-        for(let s=0;s<=P.sc_sp;s++){
-          const p=pts[(start+s)%pts.length];
-          const x=p.x+(Math.random()*2-1)*jit, y=p.y+(Math.random()*2-1)*jit;
-          if(s===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-        }
-        ctx.stroke();
+        const start=(rng()*pts.length)|0, c=mix(rng()*0.5), sp=[];
+        for(let s=0;s<=P.sc_sp;s++){ const p=pts[(start+s)%pts.length];
+          sp.push({ x:p.x+(rng()*2-1)*jit, y:p.y+(rng()*2-1)*jit }); }
+        strokes.push({ pts:sp, col:c });
       }
-      if(P.sc_dots){
-        const d=hex(P.cB); ctx.fillStyle=rgba(d,0.85);
-        for(const p of pts){ ctx.beginPath(); ctx.arc(p.x,p.y,1.5,0,7); ctx.fill(); }
-      }
+      if(P.sc_dots) for(const p of pts) dots.push({x:p.x,y:p.y});
     }
+    return { strokes, dots, dotR:1.5*Math.max(1, Math.max(W,H)/1400) };
+  }
+  function drawScribble(){
+    const {strokes,dots,dotR}=scribbleData();
+    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=0.8;
+    for(const st of strokes){ ctx.strokeStyle=rgba(st.col,0.26); ctx.beginPath();
+      ctx.moveTo(st.pts[0].x,st.pts[0].y); for(let k=1;k<st.pts.length;k++) ctx.lineTo(st.pts[k].x,st.pts[k].y); ctx.stroke(); }
+    if(dots.length){ const d=hex(P.cB); ctx.fillStyle=rgba(d,0.85);
+      for(const p of dots){ ctx.beginPath(); ctx.arc(p.x,p.y,dotR,0,7); ctx.fill(); } }
   }
 
   // ---- CONTOUR (ch1): horizon lines lifted by the letter's shadow ----
@@ -708,12 +711,11 @@
         for(let j=0;j<=det;j++){ const x=j/det*W; let fy=y; const bb=bri(x,y); if(bb<250) fy=y-(255-bb)/255*push; d+=`L${x.toFixed(1)} ${fy.toFixed(1)}`; }
         d+=`L${W} ${y.toFixed(1)}`; parts.push(`<path d="${d}" fill="none" stroke="${col(mix(i/Nl))}" stroke-width="2"/>`); }
     } else if(P.mode==='scribble'){
-      for(let li=0;li<LET.letters.length;li++){ const L=LET.letters[li]; const pts=resample(closeFlat(L),P.sc_pt);
-        const jit=Math.max(2,Math.min(L.bbox.w,L.bbox.h)*0.014);
-        for(let n=0;n<P.sc_pa*pts.length/26;n++){ const start=(Math.random()*pts.length)|0; const c=col(mix(Math.random()*0.5)); let d='';
-          for(let s=0;s<=P.sc_sp;s++){ const p=pts[(start+s)%pts.length]; const x=p.x+(Math.random()*2-1)*jit, y=p.y+(Math.random()*2-1)*jit; d+=(s===0?'M':'L')+x.toFixed(1)+' '+y.toFixed(1); }
-          parts.push(`<path d="${d}" fill="none" stroke="${c}" stroke-opacity="0.26" stroke-width="0.8"/>`); }
-        if(P.sc_dots) for(const p of pts) parts.push(`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="1.5" fill="${P.cB}"/>`); }
+      const sd=scribbleData();
+      for(const st of sd.strokes){ let d='M'+st.pts[0].x.toFixed(1)+' '+st.pts[0].y.toFixed(1);
+        for(let k=1;k<st.pts.length;k++) d+='L'+st.pts[k].x.toFixed(1)+' '+st.pts[k].y.toFixed(1);
+        parts.push(`<path d="${d}" fill="none" stroke="${col(st.col)}" stroke-opacity="0.26" stroke-width="0.8"/>`); }
+      for(const p of sd.dots) parts.push(`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${sd.dotR.toFixed(2)}" fill="${P.cB}"/>`);
     } else { // flock / stipple: dense accumulation — embed a HIGH-RES raster (PNG, lossless)
       const hi = (typeof px==='number' && px>W) ? renderAt(px) : art;
       parts.push(`<image href="${hi.toDataURL('image/png')}" x="0" y="0" width="${W}" height="${H}"/>`);
@@ -779,12 +781,11 @@
         for(let j=0;j<=det;j++){ const x=j/det*W; let fy=y; const bb=bri(x,y); if(bb<250) fy=y-(255-bb)/255*push; d+=' '+L(x,fy); }
         d+=' '+L(W,y); strokePath(d, mix(i/Nl), 0.95, 2, 'Normal'); }
     } else if(P.mode==='scribble'){
-      for(let li=0;li<LET.letters.length;li++){ const Lr=LET.letters[li]; const pts=resample(closeFlat(Lr),P.sc_pt);
-        const jit=Math.max(2,Math.min(Lr.bbox.w,Lr.bbox.h)*0.014);
-        for(let n=0;n<P.sc_pa*pts.length/26;n++){ const start=(Math.random()*pts.length)|0; const c=mix(Math.random()*0.5); let d='';
-          for(let s=0;s<=P.sc_sp;s++){ const p=pts[(start+s)%pts.length]; const x=p.x+(Math.random()*2-1)*jit, y=p.y+(Math.random()*2-1)*jit; d+=(s===0?M(x,y):' '+L(x,y)); }
-          strokePath(d, c, 0.26, 0.8, 'Normal'); }
-        if(P.sc_dots){ const dc=hex(P.cB); for(const p of pts) circle(p.x,p.y,1.5,dc); } }
+      const sd=scribbleData();
+      for(const st of sd.strokes){ let d=M(st.pts[0].x,st.pts[0].y);
+        for(let k=1;k<st.pts.length;k++) d+=' '+L(st.pts[k].x,st.pts[k].y);
+        strokePath(d, st.col, 0.26, 0.8, 'Normal'); }
+      const dc=hex(P.cB); for(const p of sd.dots) circle(p.x,p.y,sd.dotR,dc);
     }
 
     // assemble the PDF: flip+scale the page so we can emit canvas coords directly
