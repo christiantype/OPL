@@ -53,6 +53,13 @@
   <div class="group">
     <div class="group__t">Letterform</div>
     <input class="opal-input" id="wordIn" type="text" value="a" maxlength="12" spellcheck="false" autocomplete="off">
+    <select class="full" id="fontSel" title="Typeface">
+      <option value="/shared/fonts/chaparral-regular.ttf" selected>Serif · Chaparral</option>
+      <option value="/shared/fonts/UniversNextPro-Medium.ttf">Sans · Univers</option>
+      <option value="/shared/fonts/zillaslab-regular.ttf">Slab · Zilla</option>
+      <option value="/shared/fonts/playfair-regular.ttf">Display · Playfair</option>
+      <option value="/shared/fonts/pirata-one.ttf">Blackletter · Pirata</option>
+    </select>
     <div class="knob"><label>Size <b id="fszR">0.72</b></label><input id="fsz" type="range" min="20" max="98" value="72"></div>
   </div>
 
@@ -858,14 +865,25 @@
 
   addEventListener('resize',()=>{ const box=$('wrap').getBoundingClientRect(); const sc=Math.min(box.width/W, box.height/H); art.style.width=(W*sc)+'px'; art.style.height=(H*sc)+'px'; });
 
-  // ---- boot: load the font, then draw ----
+  // ---- fonts: cached loader + typeface switcher ----
+  const fontCache={};
+  function loadFont(url){ return new Promise((res,rej)=>{
+    if(fontCache[url]) return res(fontCache[url]);
+    opentype.load(url,(err,font)=>{ if(err||!font) return rej(err||'no font'); fontCache[url]=font; res(font); }); }); }
+  let booted=false;
+  function useFont(url){
+    loadFont(url).then(font=>{ FONT=font; fontReady=true; GEO_KEY=''; if(!booted){ booted=true; fit(); } else redraw(); })
+      .catch(e=>{ console.warn('font load failed',url,e);
+        ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#c0392b'; ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText('That typeface failed to load',W/2,H/2); }); }
+  $('fontSel').addEventListener('change',e=>{ if(animating) stopAnim();
+    ctx.save(); ctx.globalAlpha=0.4; ctx.fillStyle='#9a9aa2'; ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText('Loading typeface…',W/2,H/2); ctx.restore();
+    useFont(e.target.value); });
+
+  // ---- boot: load the default face, then draw ----
   showMode();
   ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
   ctx.fillStyle='#9a9aa2'; ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText('Loading font…',W/2,H/2);
-  opentype.load('/shared/fonts/chaparral-regular.ttf', (err,font)=>{
-    if(err || !font){ ctx.fillText('Font failed to load', W/2, H/2+22); console.warn(err); return; }
-    FONT=font; fontReady=true; fit();
-  });
+  useFont($('fontSel').value);
 })();
 </script>
 </body>
