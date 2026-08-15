@@ -252,6 +252,10 @@
         <option value="hatch">Contour hatch (engraving)</option>
         <option value="crosshatch">Crosshatch · engraving</option>
         <option value="dendrite">Dendrite · branching growth</option>
+        <option value="stipple">Stipple · density dots</option>
+        <option value="circlepack">Circle pack</option>
+        <option value="inline">Inline · nested outlines</option>
+        <option value="spiral">Spiral · density coil</option>
       </optgroup>
       <option value="dimensional">Dimensional · glass 3D</option>
     </select>
@@ -712,6 +716,10 @@ function render(){
   if(style==='isoline'){drawIsoline(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='fieldfill'){drawFieldFill(glyphs,C,W,H,fill,bgc,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='ripple'){drawRipple(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='stipple'){drawStipple(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='circlepack'){drawCirclePack(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='inline'){drawInline(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
+  if(style==='spiral'){drawSpiral(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='truchet'){drawTruchet(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='hatch'){drawHatch(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
   if(style==='polygon'){drawPolygon(glyphs,C,W,H,fill,svg);finishSVG(svg,W,H,transparent,bgc,style,glyphs.length);return;}
@@ -2145,6 +2153,80 @@ function drawRipple(glyphs,C,W,H,fill,svg){
     if(svg.length<SVGMAX)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}"/>`);}
 }
 
+/* Stipple — the word rebuilt from dots whose size follows ink density. Vector circles. */
+function drawStipple(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),Math.max(2,S.bloom*0.3));
+  const gap=Math.max(4,S.dotSize), gscale=clamp((S.gain||1)*0.7,0.4,2.2);
+  ctx.fillStyle=fill;
+  for(let y=gap*0.5;y<H;y+=gap)for(let x=gap*0.5;x<W;x+=gap){
+    const jx=x+(grand(x*1.7+y,3)*2-1)*gap*0.5, jy=y+(grand(x+y*1.9,4)*2-1)*gap*0.5;
+    const cov=maskAt(m,jx,jy)/255; if(cov<0.16) continue;
+    const r=gap*0.5*gscale*(0.28+cov*0.85); if(r<0.4) continue;
+    ctx.beginPath();ctx.arc(jx,jy,r,0,TAU);ctx.fill();
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${jx.toFixed(1)}" cy="${jy.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}"/>`);
+  }
+}
+/* Circle pack — greedy circles grown to fill the letterforms without overlapping. Vector. */
+function drawCirclePack(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(480,W),1.5);
+  const maxR=Math.max(6,S.cellSize*0.5), minR=Math.max(1.6,maxR*0.06);
+  const tries=Math.round(lerp(1200,5200,(S.pDensity||60)/100)), sw=Math.max(0.6,S.strokeW);
+  const placed=[];
+  const inside=(x,y,r)=>{ if(maskAt(m,x,y)<150)return false;
+    for(let a=0;a<TAU;a+=TAU/10){ if(maskAt(m,x+Math.cos(a)*r,y+Math.sin(a)*r)<120)return false; } return true; };
+  ctx.strokeStyle=fill;ctx.lineWidth=sw;
+  for(let i=0;i<tries;i++){
+    const x=grand(i*1.3,7)*W, y=grand(i*2.1,8)*H;
+    if(maskAt(m,x,y)<150) continue;
+    let r=maxR;
+    for(const c of placed){ const dd=Math.hypot(x-c.x,y-c.y)-c.r; if(dd<r)r=dd; if(r<minR)break; }
+    if(r<minR) continue;
+    while(r>=minR && !inside(x,y,r)) r*=0.82;
+    if(r<minR) continue;
+    placed.push({x,y,r});
+    ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.stroke();
+    if(svg.length<SVGMAX)svg.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${fill}" stroke-width="${sw.toFixed(2)}"/>`);
+  }
+}
+/* Inline — nested inset outlines stepping inward from the letterform edge (blurred field,
+   marching squares at rising thresholds). The type-design "inline" ornament. Vector. */
+function drawInline(glyphs,C,W,H,fill,svg){
+  const sw=S.strokeW;
+  ctx.strokeStyle=fill;ctx.lineWidth=sw;ctx.lineJoin='round';ctx.lineCap='round';
+  // 1) sharp OUTER outline — the true glyph paths (keeps corners crisp)
+  for(const gl of glyphs){ const d=buildD(gl,makeT(gl,C),0); ctx.stroke(new Path2D(d));
+    if(svg.length<SVGMAX)svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-width="${sw}"/>`); }
+  // 2) nested INNER rings from a blurred field, thresholds stepping inward
+  const rings=Math.max(1,Math.round(S.ringCount)-1);
+  const spacing=Math.max(4,S.bloom*0.6), blurFull=Math.min(30,spacing*rings*0.6), fw=Math.min(520,W);
+  const m=buildField(glyphs,C,W,H,fw,Math.max(2,blurFull*(fw/W)));
+  const g=_msGrid((x,y)=>maskAt(m,x,y),W,H,_mstep(W));
+  for(let k=1;k<=rings;k++){
+    const lvl=132+(k/(rings+1))*120;     // 132 → ~252, always inside the letter
+    for(let pl of _msLevel(g,lvl)){ pl=_chaikin(pl,1);_strokePl(pl);
+      if(svg.length<SVGMAX)svg.push(`<path d="${_pd(pl)}" fill="none" stroke="${fill}" stroke-width="${sw}"/>`); }
+  }
+}
+/* Spiral — one Archimedean spiral from the centre, its line fattening where it crosses the
+   ink so the word emerges from the coil. Vector segments. */
+function drawSpiral(glyphs,C,W,H,fill,svg){
+  const m=buildField(glyphs,C,W,H,Math.min(460,W),Math.max(2,S.bloom*0.3));
+  const cx=W/2, cy=H/2, gap=Math.max(10,S.cellSize*0.5), a=gap/TAU;
+  const maxR=Math.hypot(W,H)*0.55, thetaMax=maxR/a, sw=Math.max(0.5,S.strokeW);
+  ctx.strokeStyle=fill;ctx.lineCap='round';
+  let px=cx,py=cy,first=true,count=0;
+  for(let th=0; th<thetaMax && count<16000; th+=clamp(6/(a*th+1),0.02,0.5)){
+    const r=a*th, x=cx+Math.cos(th)*r, y=cy+Math.sin(th)*r;
+    if(!first){
+      const cov=maskAt(m,(x+px)/2,(y+py)/2)/255, w=0.5+cov*sw*5;
+      ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(x,y);ctx.stroke();
+      if((cov>0.03||w>0.7) && svg.length<SVGMAX) svg.push(`<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${fill}" stroke-width="${w.toFixed(2)}" stroke-linecap="round"/>`);
+      count++;
+    }
+    px=x;py=y;first=false;
+  }
+}
+
 /* Vector · béziers — the editor view: outline + anchor points, control points
    and handle lines, exactly like a type-design tool. Real SVG. */
 function drawBeziers(gl,T,fill,svg){
@@ -2273,6 +2355,10 @@ const ENGINE_DEFAULTS={
   ripple:{ringGap:8,bloom:16,strokeW:1,fillColor:INK,bgColor:PAPER},
   truchet:{cellSize:40,strokeW:2,fillColor:INK,bgColor:PAPER},
   hatch:{dotSize:9,bloom:8,strokeW:1,fillColor:INK,bgColor:PAPER},
+  stipple:{dotSize:14,gain:1.2,bloom:6,fillColor:INK,bgColor:PAPER},
+  circlepack:{cellSize:70,pDensity:70,strokeW:1.2,fillColor:INK,bgColor:PAPER},
+  inline:{ringCount:5,bloom:16,strokeW:1.1,fillColor:INK,bgColor:PAPER},
+  spiral:{cellSize:34,strokeW:1.4,bloom:6,fillColor:INK,bgColor:PAPER},
 };
 function applyEngine(style){setControl('renderStyle',style);
   const dim=style==='dimensional';document.body.classList.toggle('dim-mode',dim);
@@ -2426,6 +2512,8 @@ const ENGINE_CTRLS={solid:[],dimensional:[],
   ascii:['dotSize'],
   beziers:['strokeW'],isoline:['ringCount','bloom','strokeW'],fieldfill:['ringCount','bloom','strokeW'],
   ripple:['ringGap','bloom','strokeW'],truchet:['cellSize','strokeW'],hatch:['dotSize','bloom','strokeW'],
+  stipple:['dotSize','gain','bloom'],circlepack:['cellSize','pDensity','strokeW'],
+  inline:['ringCount','bloom','strokeW'],spiral:['cellSize','strokeW','bloom'],
   stitch:['ringCount','cellSize','strokeW','fieldDrift','bloom'],
   crosshatch:['ringCount','dotSize','strokeW','gain','bloom','chromatic'],
   dendrite:['pDensity','ringCount','linkDist','strokeW','fieldDrift'],
@@ -2467,6 +2555,10 @@ const ENGINE_NOTE={solid:'Solid — no engine parameters. Shape it with Warp & M
   ripple:'Concentric interference fringes rippling out from the letterforms. Ring gap = fringe spacing. Vector SVG.',
   truchet:'The word rebuilt from woven Truchet quarter-arcs on a grid. Cell size sets the tile. Vector SVG.',
   hatch:'Contour-following hatch strokes; density follows ink — an engraving. Cell = spacing. Plotter-ready vector.',
+  stipple:'The word rebuilt from dots — each dot grows with the ink beneath it. Dot = spacing, intensity = dot scale. Clean vector circles.',
+  circlepack:'Greedy circles grown to fill the letterforms without overlapping. Cell = max size, density = how many attempts. Vector.',
+  inline:'Nested inset outlines stepping inward from the letter edge — the classic type-design inline ornament. Ring count = lines, glow = spacing. Vector.',
+  spiral:'One spiral coiled from the centre, its line fattening where it crosses the ink so the word rises out of the coil. Cell = coil spacing. Vector.',
   crosshatch:'Tonal engraving — each layer adds rules at a new angle and a higher ink threshold, so shadow accumulates passes. Ring count = layers, cell = rule spacing. Plotter-ready vector.',
   dendrite:'Branching growth seeded on the letterform; branches die when they wander off the ink, so the colony grows into the word. Ring count = branch depth, link = segment length. Vector SVG.',
   blueprint:'The word as a drafting sheet — graph paper, precise outlines, anchor crosses and dimension rules. Cell = grid, ring gap = dimension offset. Vector SVG.',
