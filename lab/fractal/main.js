@@ -237,8 +237,11 @@ function buildPanel(){
   const r3=duo(gR); slider(r3,'bloomThresh','Bloom thr',0,3,0.02,v=>(+v).toFixed(2)); slider(r3,'vignette','Vignette',0,1,0.01,v=>(+v).toFixed(2));
   seg(gR,'dither','Dither',[{t:'On',v:1},{t:'Off',v:0}]);
 
-  const gE=grp('Export','A still, or record the motion.');
-  const eb=el('div',null,''); eb.style.cssText='display:flex;gap:6px'; const bpng=el('button','btn','PNG · 3×'); bpng.style.flex='1'; bpng.onclick=savePNG; const brec=el('button','btn','Record'); brec.style.flex='1'; brec.id='recBtn'; brec.onclick=toggleRec; eb.appendChild(bpng); eb.appendChild(brec); gE.appendChild(eb);
+  // Output island — pinned bottom-right of the screen (shell standard), not inside the rail
+  const out=el('div','group out'); out.id='output'; out.setAttribute('data-export-custom','');
+  out.appendChild(el('div','group__t','Output'));
+  const eb=el('div',null,''); eb.style.cssText='display:flex;gap:6px'; const bpng=el('button','btn','PNG · 3×'); bpng.style.flex='1'; bpng.onclick=savePNG; const brec=el('button','btn','Record'); brec.style.flex='1'; brec.id='recBtn'; brec.onclick=toggleRec; eb.appendChild(bpng); eb.appendChild(brec); out.appendChild(eb);
+  document.body.appendChild(out);
 
   const gPr=grp('Presets','Copy the state as JSON, or paste one back in.');
   const ta=el('textarea'); ta.id='presetBox'; ta.placeholder='preset JSON'; ta.style.cssText='width:100%;height:56px;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid var(--hair);border-radius:6px;font:10px ui-monospace,monospace;margin-bottom:6px'; gPr.appendChild(ta);
