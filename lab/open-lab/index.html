@@ -135,6 +135,7 @@ SATURDAY</textarea>
       <div class="knob" data-tip="Tilts the whole dot screen — the classic print angle."><label>Angle <b id="angleR">50</b></label><input id="angle" type="range" min="0" max="100" value="50" /></div>
       <div class="knob" data-tip="How sharply the dots grow inside the letters — low is soft and grey, high is crisp and solid."><label>Contrast <b id="contrastR">55</b></label><input id="contrast" type="range" min="0" max="100" value="55" /></div>
       <div class="knob" data-tip="Randomly varies the size of each dot — from an even screen to a scattered, hand-set feel."><label>Size jitter <b id="jitterR">0</b></label><input id="jitter" type="range" min="0" max="100" value="0" /></div>
+      <div class="knob" data-tip="Randomly throws a share of the dots out of focus — a soft, hand-set blur mixed through the crisp ones."><label>Blur dots <b id="blurR">0</b></label><input id="blur" type="range" min="0" max="100" value="0" /></div>
     </div>
 
     <!-- shape -->
@@ -230,7 +231,7 @@ SATURDAY</textarea>
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2;
   let ASPECT=1920/1080, W=0,H=0,dpr=1;
-  const P={ cell:40, angle:50, contrast:55, jitter:0, wave:15 };
+  const P={ cell:40, angle:50, contrast:55, jitter:0, wave:15, blur:0 };
   let FONT='Sidepiece, Georgia, serif', DEF='#f4f4f8', PAPER='#0a0a10';
   let mixOn=false, spinOn=false, baseIdx=0, seed1=1.7, seed2=9.3;
   // colour modes
@@ -358,7 +359,12 @@ SATURDAY</textarea>
         if(waveA>0) r*=1+waveA*0.5*Math.sin(x*0.018 - t*2.2 + y*0.006);
         if(r<0.35) continue;
         const sh = mixOn ? SH[actArr[(hash(i,j,seed2)*actArr.length)|0]] : SH[baseIdx];
-        drawShape(sh, x, y, r, spinOn? t*0.4 : 0, colMode==='shape'? null : colourFor(x,y));
+        const col = colMode==='shape'? null : colourFor(x,y);
+        // randomly throw a share of the dots out of focus (seeded, so it holds while animating)
+        if(P.blur>0 && hash(i,j,seed1+seed2+7) < P.blur/100){
+          const amt = r*(0.35+hash(j,i,seed1)*0.7);   // varied softness per blurred dot
+          ctx.filter='blur('+amt.toFixed(2)+'px)'; drawShape(sh, x, y, r, spinOn? t*0.4 : 0, col); ctx.filter='none';
+        } else drawShape(sh, x, y, r, spinOn? t*0.4 : 0, col);
       }}
     }
     drawPhotos(false);                   // images in front of the type
@@ -439,7 +445,7 @@ SATURDAY</textarea>
   $('addTextBtn').addEventListener('click', ()=>{ const t=makeText('TEXT'); t.fcx=0.5; t.fcy=0.3+Math.random()*0.4; texts.push(t); selText=texts.length-1; selWhich='text'; selPhoto=-1; loadTextControls(); rebuildText(); $('hint').style.opacity=0; });
   $('rmTextBtn').addEventListener('click', ()=>{ if(texts.length>1 && selText>=0){ texts.splice(selText,1); selText=texts.length-1; selWhich='text'; loadTextControls(); rebuildText(); } });
   [['size'],['track'],['lead']].forEach(([k])=>{ const inp=$(k), out=$(k+'R'); inp.addEventListener('input', ()=>{ out.textContent=inp.value; const t=selT()||texts[0]; if(t){ t[k==='size'?'size':k]=+inp.value; rebuildText(); } }); });
-  [['cell'],['angle'],['contrast'],['jitter'],['wave']].forEach(([k])=>{ const inp=$(k), out=$(k+'R');
+  [['cell'],['angle'],['contrast'],['jitter'],['wave'],['blur']].forEach(([k])=>{ const inp=$(k), out=$(k+'R');
     inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=P[k]; }); });
   $('shapeCol').addEventListener('input', e=>{ const s=SH[baseIdx]; if(!s) return; s.colour=e.target.value; if(s.type==='img'&&s.img) s.cache=tintCache(s.img, s.colour); buildShapeButtons(); });
   $('mixBtn').addEventListener('click', ()=>{ mixOn=!mixOn; $('mixBtn').textContent=mixOn?'On':'Off'; $('mixBtn').setAttribute('aria-pressed',mixOn?'true':'false'); buildShapeButtons(); });
