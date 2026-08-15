@@ -227,7 +227,7 @@ SATURDAY</textarea>
 
 <script>
 (() => {
-  const cv=document.getElementById('art'); const ctx=cv.getContext('2d');
+  const cv=document.getElementById('art'); let ctx=cv.getContext('2d');
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2;
   let ASPECT=1920/1080, W=0,H=0,dpr=1;
@@ -338,14 +338,14 @@ SATURDAY</textarea>
   const hash=(i,j,s)=>{ const x=Math.sin(i*127.1+j*311.7+s*74.7)*43758.5453; return x-Math.floor(x); };
 
   // ---------- render ----------
-  let T=0, t0=performance.now();
+  let T=0, t0=performance.now(), RSCALE=1, exporting=false;
   function render(){
     ctx.save(); ctx.scale(dpr,dpr);
     ctx.fillStyle=PAPER; ctx.fillRect(0,0,W,H);
     drawPhotos(true);                    // images sent behind the type
     if(covArr){
       const E = perfOn()? effP() : P;
-      const cx=W/2, cy=H/2; const cell=6+(E.cell/100)*46;
+      const cx=W/2, cy=H/2; const cell=(6+(E.cell/100)*46)*RSCALE;   // RSCALE keeps dot density constant at export resolution
       const ang=((E.angle/100)*2-1)*Math.PI/4; const ca=Math.cos(ang), sa=Math.sin(ang);
       const N=Math.ceil(Math.hypot(W,H)/cell/2)+2; const gamma=0.4+(1-E.contrast/100)*1.7;
       const jit=E.jitter/100, waveA=E.wave/100, t=T;
@@ -391,7 +391,7 @@ SATURDAY</textarea>
       const R=photoRect(im); ctx.save(); if(im.mask.length>=3){ maskPath(im,R); ctx.clip(); } ctx.drawImage(im.img,R.x,R.y,R.w,R.h); ctx.restore(); } }
   function dashRect(R){ ctx.save(); ctx.lineWidth=1.5; ctx.strokeStyle='rgba(0,120,255,.9)'; ctx.setLineDash([6,4]); ctx.strokeRect(R.x,R.y,R.w,R.h); ctx.setLineDash([]);
     ctx.fillStyle='#fff'; ctx.fillRect(R.x+R.w-7,R.y+R.h-7,14,14); ctx.strokeRect(R.x+R.w-7,R.y+R.h-7,14,14); ctx.restore(); }
-  function drawPhotoUI(){ if(document.fullscreenElement||recActive) return;
+  function drawPhotoUI(){ if(document.fullscreenElement||recActive||exporting) return;
     if(selWhich==='text' && texts[selText]){ dashRect(textRect(texts[selText])); }
     else if(selWhich==='photo' && photos[selPhoto]){ const im=photos[selPhoto], R=photoRect(im); dashRect(R);
       if(im.mask.length){ ctx.save(); ctx.strokeStyle='#0090ff'; ctx.lineWidth=2; ctx.beginPath(); im.mask.forEach((p,k)=>{ const mx=R.x+p.u*R.w,my=R.y+p.v*R.h; k?ctx.lineTo(mx,my):ctx.moveTo(mx,my); }); if(photoTool!=='pen'||im.penDone) ctx.closePath(); ctx.stroke();
@@ -487,7 +487,21 @@ SATURDAY</textarea>
     recStart=performance.now(); $('recDot').classList.add('on'); $('recDot').querySelector('b').textContent='0:00';
     recTimer=setInterval(()=>{ $('recDot').querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250);
     $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
-  $('saveBtn').addEventListener('click', ()=>{ recActive=true; render(); const url=cv.toDataURL('image/png'); recActive=false; const a2=document.createElement('a'); a2.download='open-lab.png'; a2.href=url; a2.click(); });
+  // Re-render the EXACT composition (your real settings, no morph) at an arbitrary resolution,
+  // dots scaled so the density matches what's on screen — used by the shared Output panel.
+  function renderExport(px){
+    const long=Math.max(64, px|0);
+    const ew=ASPECT>=1?long:Math.round(long*ASPECT), eh=ASPECT>=1?Math.round(long/ASPECT):long;
+    const off=document.createElement('canvas'); off.width=ew; off.height=eh;
+    const sCtx=ctx,sW=W,sH=H,sDpr=dpr,sRS=RSCALE,sExp=exporting,dispH=H||eh;
+    ctx=off.getContext('2d'); W=ew; H=eh; dpr=1; RSCALE=eh/dispH; exporting=true;   // exporting≠recActive → no morph sweep
+    try{ render(); } finally { ctx=sCtx; W=sW; H=sH; dpr=sDpr; RSCALE=sRS; exporting=sExp; }
+    return off;
+  }
+  // Shared Output panel: PNG · JPG · PDF · pixel size · DPI (replaces the old single-PNG Save)
+  Opal.mountOutput(cv, 'open-lab', { render: renderExport });
+  (function(){ const s=document.querySelector('.opal-ex-scale'); if(!s) return;   // default to a large, projection-worthy size
+    const hi=Math.min(parseInt(s.max)||8192, 3000); s.value=String(hi); s.dataset.touched='1'; s.dispatchEvent(new Event('input',{bubbles:true})); })();
 
   addEventListener('resize', ()=>{ if(!document.fullscreenElement) fit(); });
   setTimeout(()=>{ $('hint').style.opacity=0; }, 5000);
