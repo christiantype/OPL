@@ -2225,7 +2225,8 @@ function drawSpiral(glyphs,C,W,H,fill,svg){
   const maxR=Math.hypot(W,H)*0.55, thetaMax=maxR/a, sw=Math.max(0.5,S.strokeW);
   ctx.strokeStyle=fill;ctx.lineCap='round';
   let px=cx,py=cy,first=true,count=0;
-  for(let th=0; th<thetaMax && count<16000; th+=clamp(6/(a*th+1),0.02,0.5)){
+  // step by arc-length, but cap the ANGLE per step (~TAU/40) so the inner coil stays round, not polygonal
+  for(let th=0; th<thetaMax && count<20000; th+=clamp(6/(a*th+1),0.02,0.157)){
     const r=a*th, x=cx+Math.cos(th)*r, y=cy+Math.sin(th)*r;
     if(!first){
       const cov=maskAt(m,(x+px)/2,(y+py)/2)/255, w=0.5+cov*sw*5;
