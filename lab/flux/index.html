@@ -22,10 +22,11 @@
   .opal-topbar{grid-row:1}
   .opal-subhead{grid-row:2}
 
-  /* Controls flyout — opens next to the left rail; one section open at a time. */
-  #panel{position:absolute;top:116px;left:72px;bottom:72px;width:320px;z-index:6;
-    background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
-    border:1px solid var(--line);border-radius:0;box-shadow:0 10px 30px -16px rgba(0,0,0,.22);
+  /* one left rail holding every control group as an island (no tabs, no icon rail) */
+  :root{ --top:120px; --rail:300px; }
+  @media (max-width:560px){ :root{ --top:112px; } }
+  #panel{position:fixed;top:var(--top);left:0;bottom:0;width:var(--rail);z-index:6;
+    background:var(--rail-bg);border-right:1px solid var(--line);
     display:flex;flex-direction:column;overflow:hidden}
   body.panel-closed #panel{display:none}
   /* Input section — its own light-gray zone with white controls */
@@ -61,7 +62,21 @@
     font-size:11px;letter-spacing:.08em;padding:9px 4px;cursor:pointer;text-transform:uppercase;margin-bottom:-1px;transition:color .15s ease,border-color .15s ease}
   #tabs button:hover:not(.active){color:var(--ink)}
   #tabs button.active{color:var(--ink);border-bottom-color:var(--ink)}
-  .pane{display:none}.pane.active{display:block}
+  .pane{display:block}   /* all groups stacked in the single rail */
+  body.dim-mode .pane:not([data-pane="engine"]){display:none}   /* Dimensional owns its own text UI */
+  /* transport actions, moved off the old timeline bar into the rail */
+  .railact{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .railact button{background:var(--cell);border:1px solid var(--line);color:var(--ink);padding:9px 10px;font-family:var(--font);
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:var(--r-control)}
+  .railact button:hover{border-color:var(--ink)}
+  .railact button.primary,.railact button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  /* size dock popover (custom px + print) */
+  #sizeDock #szMore{appearance:none;width:30px;height:30px;flex:none;border:1px solid var(--line);background:#fff;color:var(--ink);
+    border-radius:var(--r-control);cursor:pointer;font-size:14px;line-height:1;padding:0}
+  #sizeDock #szMore:hover{border-color:var(--ink)}
+  #szPop{position:absolute;bottom:calc(100% + 10px);right:0;width:250px;background:var(--island);border:1px solid var(--line);
+    border-radius:var(--r-island);box-shadow:var(--shadow-float);padding:14px;z-index:12}
+  #szPop[hidden]{display:none}
 
   /* parameter groups as individual islands (matches every other tool) — click the heading to fold */
   .grp{background:var(--island);border:1px solid var(--line);border-radius:var(--r-island);
@@ -126,9 +141,9 @@
 
   #stage{grid-row:3;position:relative;overflow:hidden;background:#f5f5f5}
   /* Canvas sits between the left icon rail, the right controls island and the bottom bar. */
-  #canvasArea{position:absolute;top:0;left:408px;right:16px;bottom:64px;
+  #canvasArea{position:absolute;top:0;left:calc(var(--rail) + 16px);right:16px;bottom:16px;
     display:flex;align-items:center;justify-content:center;padding:28px;transition:left .2s ease}
-  body.panel-closed #canvasArea{left:80px}
+  body.panel-closed #canvasArea{left:16px}
   /* Dimensional (glass 3D) engine — iframe fills the canvas area; 2D chrome hides */
   #dimFrame{position:absolute;inset:0;width:100%;height:100%;border:none;background:#fff;display:none}
   body.dim-mode #canvasWrap{display:none}
@@ -195,6 +210,7 @@
 <div id="panel">
   <div id="pScroll">
   <div class="pane active" data-pane="font">
+  <div class="grp"><h3>Text</h3><div class="gbody">
   <textarea id="text" spellcheck="false">FLUX</textarea>
   <div id="g-type" style="margin-top:12px"></div>
   <div class="oc-sec">
@@ -217,11 +233,12 @@
     </select>
     <label class="filebtn">Upload font<input id="fontFile" type="file" accept=".ttf,.otf" hidden></label>
   </div>
+  </div></div>
   </div>
 
   <div class="pane" data-pane="engine">
+  <div class="grp"><h3>Engine</h3><div class="gbody">
   <div class="oc-sec">
-    <div class="oc-lbl">Engine</div>
     <select id="renderStyle" title="render engine">
       <option value="solid">Solid</option>
       <option value="fire">Fire · burning letters</option>
@@ -260,6 +277,7 @@
       <option value="dimensional">Dimensional · glass 3D</option>
     </select>
   </div>
+  </div></div>
   <div class="eng-params">
     <div class="oc-lbl">Settings</div>
         <div id="g-render"></div>
@@ -314,9 +332,31 @@
     <div class="grp closed"><h3>3D — drag canvas to move <span class="tw">▾</span></h3><div class="gbody"><div id="g-three"></div></div></div>
   </div>
 
-  <div class="pane" data-pane="output">
-  <div class="grp"><h3>Canvas <span class="tw">▾</span></h3><div class="gbody">
-    <div class="oc-lbl">Preset</div>
+  <div class="pane" data-pane="transport">
+  <div class="grp"><h3>Transport</h3><div class="gbody">
+    <div class="railact">
+      <button id="playBtn">Animate</button>
+      <button id="randBtn">Randomize</button>
+      <button id="resetBtn">Reset</button>
+      <button id="audioBtn" title="Add a sound track to recordings — click to upload audio">♪ Sound</button>
+    </div>
+    <input id="audioFile" type="file" accept="audio/*" hidden>
+  </div></div>
+  </div>
+
+  </div><!--pScroll-->
+</div>
+
+<div id="stage">
+  <div id="canvasArea">
+    <div id="canvasWrap"><canvas id="view"></canvas></div>
+    <!-- Dimensional (glass 3D) engine — the migrated More-Than-Design app -->
+    <iframe id="dimFrame" title="Dimensional — glass 3D"></iframe>
+  </div>
+  <div id="status">loading…</div>
+  <!-- canvas-size dock — bottom-centre of the canvas, like every tool -->
+  <div id="sizeDock">
+    <span id="dimReadout"></span>
     <select id="format" title="canvas size">
       <optgroup label="Social / Digital">
         <option value="1080x1920">Instagram Story / Reel · 1080×1920</option>
@@ -338,48 +378,20 @@
       </optgroup>
       <option value="custom">Custom…</option>
     </select>
-    <div class="oc-lbl" style="margin-top:12px">Canvas · px</div>
-    <div class="two">
-      <input type="number" id="docW" value="2175" title="width px">
-      <input type="number" id="docH" value="2850" title="height px">
-    </div>
-    <div class="oc-lbl" style="margin-top:12px">Print · inches × dpi</div>
-    <div class="three">
-      <input type="number" id="printW" value="7.25" min="1" step="0.25" title="width in">
-      <input type="number" id="printH" value="9.5" min="1" step="0.25" title="height in">
-      <select id="printDpi" title="dpi"><option value="150">150</option><option value="300" selected>300</option><option value="600">600</option></select>
-    </div>
-    <button class="filebtn" id="applyPrint" style="margin-top:8px">Set print size</button>
-  </div></div>
-  </div>
-
-  </div><!--pScroll-->
-</div>
-
-<div id="stage">
-  <!-- Left icon rail — section switcher (Morflax-style) -->
-  <div id="railL">
-    <button data-tab="font" class="active" title="Font"><svg viewBox="0 0 24 24"><path d="M5 20l5-14 5 14M7.5 14h7"/></svg></button>
-    <button data-tab="engine" title="Engine"><svg viewBox="0 0 24 24"><path d="M12 3l1.7 6.3L20 11l-6.3 1.7L12 19l-1.7-6.3L4 11l6.3-1.7z"/></svg></button>
-    <button data-tab="shape" title="Shape"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="5"/><rect x="10.5" y="10.5" width="9" height="9" rx="1"/></svg></button>
-    <button data-tab="behavior" title="Behavior"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg></button>
-    <button data-tab="output" class="rail-bottom" title="Canvas"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h16M9 9v11"/></svg></button>
-  </div>
-  <div id="canvasArea">
-    <div id="canvasWrap"><canvas id="view"></canvas></div>
-    <!-- Dimensional (glass 3D) engine — the migrated More-Than-Design app -->
-    <iframe id="dimFrame" title="Dimensional — glass 3D"></iframe>
-  </div>
-  <div id="status">loading…</div>
-  <!-- Bottom timeline bar — export · play · transport -->
-  <div id="tbar">
-    <button id="playBtn">Animate</button>
-    <div style="flex:1"></div>
-    <div class="tbar-grp">
-      <button id="resetBtn">Reset</button>
-      <button id="randBtn">Randomize</button>
-      <button id="audioBtn" title="Add a sound track to recordings — click to upload audio">♪ Sound</button>
-      <input id="audioFile" type="file" accept="audio/*" hidden>
+    <button id="szMore" type="button" title="Custom size &amp; print" aria-label="Custom size and print">⋯</button>
+    <div id="szPop" hidden>
+      <div class="oc-lbl">Canvas · px</div>
+      <div class="two">
+        <input type="number" id="docW" value="2175" title="width px">
+        <input type="number" id="docH" value="2850" title="height px">
+      </div>
+      <div class="oc-lbl" style="margin-top:10px">Print · inches × dpi</div>
+      <div class="three">
+        <input type="number" id="printW" value="7.25" min="1" step="0.25" title="width in">
+        <input type="number" id="printH" value="9.5" min="1" step="0.25" title="height in">
+        <select id="printDpi" title="dpi"><option value="150">150</option><option value="300" selected>300</option><option value="600">600</option></select>
+      </div>
+      <button class="filebtn" id="applyPrint" style="margin-top:8px">Set print size</button>
     </div>
   </div>
 </div>
@@ -2376,10 +2388,7 @@ function applyEngine(style){setControl('renderStyle',style);
   if(dim){const f=$('#dimFrame');if(!f.getAttribute('src'))f.setAttribute('src','dimensional.html');
     // Dimensional is a full studio with its own text + typeface panels — collapse Flux's
     // left flyout so there aren't two competing editors. Only the Engine rail stays (to switch).
-    panelOpen=false; curTab='engine';
-    document.querySelectorAll('#railL button[data-tab]').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.dataset.pane==='engine'));
-    document.body.classList.add('panel-closed');
+    // rail stays (showing only the Engine group via body.dim-mode CSS) so you can switch back
   }
   const d=ENGINE_DEFAULTS[style]||{};
   for(const k in d)setControl(k,d[k]);updateEngineUI();if(!dim)render();}
@@ -2470,6 +2479,11 @@ function applyPrint(){const w=parseFloat($('#printW').value)||1,h=parseFloat($('
   $('#docW').value=Math.round(w*d);$('#docH').value=Math.round(h*d);$('#format').value='custom';render();updateChips();}
 $('#applyPrint').addEventListener('click',applyPrint);
 ['printW','printH','printDpi'].forEach(id=>$('#'+id).addEventListener('change',applyPrint));
+/* size-dock popover — custom px + print calculator */
+(function(){ const more=$('#szMore'), pop=$('#szPop'); if(!more||!pop) return;
+  more.addEventListener('click',e=>{ e.stopPropagation(); pop.hidden=!pop.hidden; });
+  document.addEventListener('click',e=>{ if(!pop.hidden && !pop.contains(e.target) && e.target!==more) pop.hidden=true; });
+})();
 ['fillColor','bgColor','fillOn','strokeOn','bgTransparent','accentColor','accent2','clipGlyph'].forEach(id=>$('#'+id).addEventListener('input',render));
 $('#heatPalette').addEventListener('input',()=>{updateEngineUI();render();});
 $('#mosaicChars').addEventListener('input',render);
