@@ -249,8 +249,9 @@
     }
     if(!letters.length){ LET={letters:[], bbox:null}; GEO_KEY=key; return; }
     const gw=maxX-minX, gh=maxY-minY;
-    const margin = single ? 0.86 : 0.9;
-    const s=Math.min((W*margin)/gw, (H*margin)/gh);
+    // Size control (P.fsz, ~0.2–0.98) sets what fraction of the canvas the letter fills
+    const fill = Math.max(0.1, P.fsz) * (single ? 1.0 : 1.02);
+    const s=Math.min((W*fill)/gw, (H*fill)/gh);
     const ox=(W-gw*s)/2 - minX*s, oy=(H-gh*s)/2 - minY*s;
     const tf=p=>({ x:p.x*s+ox, y:p.y*s+oy });
     for(const L of letters){
