@@ -1247,17 +1247,19 @@ function drawTopo(glyphs,C,W,H,fill,bg){
 }
 /* flow streamlines — lines combed through a flow field, densest over the word */
 function drawStreams(glyphs,C,W,H,fill,svg){
-  const m=buildField(glyphs,C,W,H,300,4),step=lerp(24,7,S.pDensity/100);
-  ctx.lineCap='round';
+  const m=buildField(glyphs,C,W,H,300,4),step=lerp(28,9,S.pDensity/100);
+  ctx.lineCap='round';ctx.lineJoin='round';
+  const seg=step*0.85;   // fewer, longer segments smoothed into a flowing curve
   for(let y=step*0.5;y<H;y+=step)for(let x=step*0.5;x<W;x+=step){
     const cov=maskAt(m,x,y)/255;
     if(cov<0.12)continue;                                    // only over the word -> legible
     let px=x+(grand(x,1.1)*2-1)*step*0.5,py=y+(grand(y,2.2)*2-1)*step*0.5;
     const pts=[[px,py]];
-    for(let s=0;s<6;s++){const a=vnoise(px*0.004,py*0.004,phase)*TAU*2;px+=Math.cos(a)*step*0.6;py+=Math.sin(a)*step*0.6;pts.push([px,py]);}
-    const alpha=(0.4+0.6*cov).toFixed(2);ctx.strokeStyle=hexA(fill,+alpha);ctx.lineWidth=S.strokeW;
-    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();
-    if(svg.length<7000)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-opacity="${alpha}"/>`);}
+    // gentler flow: lower-frequency field + a smaller angular range → rounded, coherent curves
+    for(let s=0;s<5;s++){const a=vnoise(px*0.0026,py*0.0026,phase)*TAU*1.25;px+=Math.cos(a)*seg;py+=Math.sin(a)*seg;pts.push([px,py]);}
+    const d=_smoothD(pts), alpha=(0.4+0.6*cov).toFixed(2);
+    ctx.strokeStyle=hexA(fill,+alpha);ctx.lineWidth=S.strokeW;ctx.stroke(new Path2D(d));
+    if(svg.length<7000)svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-opacity="${alpha}" stroke-linecap="round"/>`);}
 }
 function _msGrid(sample,W,H,step){
   const gx=Math.ceil(W/step)+1, gy=Math.ceil(H/step)+1, v=new Float32Array(gx*gy);
@@ -1300,6 +1302,12 @@ function _chaikin(pl,it){let p=pl,cl=pl.closed;for(let k=0;k<it;k++){const n=p.l
   else{o.push(p[0]);for(let i=0;i<n-1;i++){const a=p[i],b=p[i+1];o.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25]);o.push([a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);}o.push(p[n-1]);}
   o.closed=cl;p=o;}return p;}
 const _pd=pl=>{let d='M'+pl[0][0].toFixed(1)+' '+pl[0][1].toFixed(1);for(let i=1;i<pl.length;i++)d+='L'+pl[i][0].toFixed(1)+' '+pl[i][1].toFixed(1);if(pl.closed)d+='Z';return d;};
+// smooth open path — quadratic curves through segment midpoints, each vertex a control point (round, few points)
+const _smoothD=pts=>{ if(pts.length<3) return 'M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L');
+  let d='M'+pts[0][0].toFixed(1)+' '+pts[0][1].toFixed(1);
+  for(let i=1;i<pts.length-1;i++){ const mx=(pts[i][0]+pts[i+1][0])/2, my=(pts[i][1]+pts[i+1][1])/2;
+    d+=' Q'+pts[i][0].toFixed(1)+' '+pts[i][1].toFixed(1)+' '+mx.toFixed(1)+' '+my.toFixed(1); }
+  const n=pts.length-1; return d+' L'+pts[n][0].toFixed(1)+' '+pts[n][1].toFixed(1); };
 function _strokePl(pl){ctx.beginPath();ctx.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)ctx.lineTo(pl[i][0],pl[i][1]);if(pl.closed)ctx.closePath();ctx.stroke();}
 function _mstep(W){return Math.max(4,W/240);}
 
@@ -1376,17 +1384,19 @@ function drawIsoline(glyphs,C,W,H,fill,svg){
 }
 /* flow streamlines — lines combed through a flow field, densest over the word */
 function drawStreams(glyphs,C,W,H,fill,svg){
-  const m=buildField(glyphs,C,W,H,300,4),step=lerp(24,7,S.pDensity/100);
-  ctx.lineCap='round';
+  const m=buildField(glyphs,C,W,H,300,4),step=lerp(28,9,S.pDensity/100);
+  ctx.lineCap='round';ctx.lineJoin='round';
+  const seg=step*0.85;   // fewer, longer segments smoothed into a flowing curve
   for(let y=step*0.5;y<H;y+=step)for(let x=step*0.5;x<W;x+=step){
     const cov=maskAt(m,x,y)/255;
     if(cov<0.12)continue;                                    // only over the word -> legible
     let px=x+(grand(x,1.1)*2-1)*step*0.5,py=y+(grand(y,2.2)*2-1)*step*0.5;
     const pts=[[px,py]];
-    for(let s=0;s<6;s++){const a=vnoise(px*0.004,py*0.004,phase)*TAU*2;px+=Math.cos(a)*step*0.6;py+=Math.sin(a)*step*0.6;pts.push([px,py]);}
-    const alpha=(0.4+0.6*cov).toFixed(2);ctx.strokeStyle=hexA(fill,+alpha);ctx.lineWidth=S.strokeW;
-    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();
-    if(svg.length<7000)svg.push(`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-opacity="${alpha}"/>`);}
+    // gentler flow: lower-frequency field + a smaller angular range → rounded, coherent curves
+    for(let s=0;s<5;s++){const a=vnoise(px*0.0026,py*0.0026,phase)*TAU*1.25;px+=Math.cos(a)*seg;py+=Math.sin(a)*seg;pts.push([px,py]);}
+    const d=_smoothD(pts), alpha=(0.4+0.6*cov).toFixed(2);
+    ctx.strokeStyle=hexA(fill,+alpha);ctx.lineWidth=S.strokeW;ctx.stroke(new Path2D(d));
+    if(svg.length<7000)svg.push(`<path d="${d}" fill="none" stroke="${fill}" stroke-width="${S.strokeW}" stroke-opacity="${alpha}" stroke-linecap="round"/>`);}
 }
 /* topographic lines — contour rings rippling out from the letterforms */
 function drawTopo(glyphs,C,W,H,fill,bg){
