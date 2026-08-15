@@ -72,6 +72,7 @@
       <option value="contour">Contour — horizon lines</option>
       <option value="stipple">Stipple — layered grain</option>
       <option value="weave">Weave — threaded lines</option>
+      <option value="epicycles">Epicycles — Fourier trace</option>
     </select>
     <p class="modehint" id="modehint">Outline points become agents that chase a target travelling around the letter — the lag draws it as flowing ribbons.</p>
 
@@ -126,6 +127,17 @@
       <div class="knob"><label>Spread <b id="we_spR">1.0</b></label><input id="we_sp" type="range" min="10" max="260" value="100"></div>
       <div class="tog"><span>Ghost letter</span><input type="checkbox" id="we_ghost" checked></div>
     </div>
+
+    <!-- EPICYCLES -->
+    <div class="mp" id="mp-epicycles">
+      <div class="knob"><label>Points (terms) <b id="ep_ptR">60</b></label><input id="ep_pt" type="range" min="2" max="160" value="60"></div>
+      <div class="knob"><label>Draw <b id="ep_phR">1.00</b></label><input id="ep_ph" type="range" min="0" max="100" value="100"></div>
+      <div class="knob"><label>Speed <b id="ep_spR">1.0</b></label><input id="ep_sp" type="range" min="1" max="40" value="10"></div>
+      <div class="knob"><label>Point size <b id="ep_ptszR">1.0</b></label><input id="ep_ptsz" type="range" min="2" max="40" value="10"></div>
+      <div class="tog"><span>Show circles</span><input type="checkbox" id="ep_circles" checked></div>
+      <div class="tog"><span>Show arms</span><input type="checkbox" id="ep_arms" checked></div>
+      <div class="tog"><span>Glow</span><input type="checkbox" id="ep_glow" checked></div>
+    </div>
   </div>
 
   <div class="group">
@@ -177,8 +189,8 @@
 
 <script src="/lab/parametype/opentype.min.js"></script>
 <script src="/lab/shared/opal.js"></script>
-<script>Opal.mountTopbar({ name:'Parametype', desc:'One letter, drawn six parametric ways',
-  about:'A recreation of Daniel Davis’ Parametric Typography (2013). A single letterform is reduced to its outline points, then redrawn by an algorithm: steering-agent ribbons that lag around the letter, interior chord-webs strung between the edges, loose curve scribbles, horizon lines pushed up by the letter’s shadow, layered grain, or threaded weaving lines. Soft colour glow and an accent fill sit behind. Every vector method exports to print-ready SVG. Original by danieldavis.com, rebuilt on the OP/AL shell in vanilla Canvas.',
+<script>Opal.mountTopbar({ name:'Parametype', desc:'One letter, drawn many parametric ways',
+  about:'A recreation (and extension) of Daniel Davis’ Parametric Typography (2013). A single letterform is reduced to its outline points, then redrawn by an algorithm: steering-agent ribbons that lag around the letter, interior chord-webs strung between the edges, loose implied scribbles, horizon lines pushed up by the letter’s shadow, layered grain, threaded weaving lines, or a Fourier chain of rotating epicycles that retrace it. A halftone layer (OPEN LAB in spirit) can screen the whole composition into dots. Any typeface, any background, the red↔blue ink. Vector methods export to print-ready SVG + a true vector PDF. Original by danieldavis.com, rebuilt on the OP/AL shell in vanilla Canvas.',
   version:'v1' });</script>
 <script>
 (()=>{
@@ -193,6 +205,7 @@
     co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
     st_ly:20, st_gn:14000, st_sp:18, st_bl:4,
     we_ln:200, we_sp:1.0, we_ghost:true,
+    ep_pt:60, ep_ph:1.0, ep_sp:1.0, ep_ptsz:1.0, ep_circles:true, ep_arms:true, ep_glow:true,
     cA:'#c3203b', cB:'#2f7fa8', bg:'#ffffff', fill:false, grid:false, seed:1,
     ht:false, htMode:'over', htShape:'dot', htCell:40, htAngle:50, htContrast:55, htJitter:0, htColMode:'ink', htCol:'#111111' };
 
@@ -215,7 +228,8 @@
     scribble:'Loose, roughly implied strokes gesture around the letter — sketched, not traced — with a scatter of open nib dots along the edge.',
     contour:'Horizontal horizon lines run across the page and lift where the letter’s shadow falls beneath them.',
     stipple:'Layers of grain settle onto the letter, denser and darker toward the final layer — an airbrushed shade.',
-    weave:'Threads pass through the same point on the outline, spreading from the left and drawing to a point at the right.'
+    weave:'Threads pass through the same point on the outline, spreading from the left and drawing to a point at the right.',
+    epicycles:'The letter’s outline is decomposed into a Fourier series — a chain of rotating circles (epicycles) whose tip retraces it. Points = how many circles; more is a truer letter, fewer is an abstract loop.'
   };
 
   // ---------- colour ----------
@@ -635,6 +649,65 @@
   //  RENDER
   // ======================================================================
   let raf=0, animating=false;
+  // ---- EPICYCLES (Fourier trace) — the outline decomposed into rotating circles ----
+  // A DFT of the letter's main contour gives a chain of circles (epicycles); as time runs
+  // their tip retraces the letter. Bigger circles first; "Points" caps how many are used.
+  let epCache=null, epKey='';
+  const EP_PAL=['#c026d3','#14b8a6','#a3e635','#ef4444','#8b5cf6','#f59e0b'];
+  function epicycleData(){
+    if(epKey===GEO_KEY && epCache) return epCache;
+    const groups=[];
+    for(const L of LET.letters){
+      let best=L.contours[0]; for(const c of L.contours) if(c.length>best.length) best=c;   // main silhouette
+      const N=Math.min(384, Math.max(48, best.length));
+      const pts=resample(best, N);
+      const terms=[];
+      for(let k=0;k<N;k++){
+        let re=0, im=0;
+        for(let n=0;n<N;n++){ const a=-2*Math.PI*k*n/N, c=Math.cos(a), s=Math.sin(a);
+          re += pts[n].x*c - pts[n].y*s; im += pts[n].x*s + pts[n].y*c; }
+        re/=N; im/=N;
+        terms.push({ freq:(k<=N/2?k:k-N), amp:Math.hypot(re,im), phase:Math.atan2(im,re) });
+      }
+      terms.sort((a,b)=>b.amp-a.amp);
+      groups.push({ terms, N });
+    }
+    epCache={ groups }; epKey=GEO_KEY; return epCache;
+  }
+  function epTip(terms, t){ let x=0,y=0; for(const tm of terms){ const a=tm.freq*t+tm.phase; x+=tm.amp*Math.cos(a); y+=tm.amp*Math.sin(a); } return [x,y]; }
+  function drawEpicycles(phase){
+    const data=epicycleData(); const scl=Math.max(1,Math.max(W,H)/1400);
+    const M=Math.min(P.ep_pt|0, 220), frac=(phase==null?P.ep_ph:phase);
+    const glow=P.ep_glow, TAU=Math.PI*2;
+    for(const grp of data.groups){
+      const terms=grp.terms.slice(0, Math.max(2,M));
+      const steps=Math.max(240, grp.N*3), upto=Math.max(1, Math.floor(steps*frac));
+      // 1) the trace being drawn (ink A, glowing)
+      ctx.save(); ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=2.2*scl;
+      ctx.strokeStyle=rgba(hex(P.cA),0.92); if(glow){ ctx.shadowBlur=9*scl; ctx.shadowColor=rgba(hex(P.cA),0.55); }
+      ctx.beginPath();
+      for(let i=0;i<=upto;i++){ const [x,y]=epTip(terms, i/steps*TAU); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+      ctx.stroke(); ctx.restore();
+      // 2) the epicycle chain at the pen position — circles, arms, glowing joints
+      const tp=frac*TAU; let x=0,y=0;
+      ctx.save();
+      for(let j=0;j<terms.length;j++){
+        const tm=terms[j], px=x, py=y; const a=tm.freq*tp+tm.phase;
+        x+=tm.amp*Math.cos(a); y+=tm.amp*Math.sin(a);
+        const col=EP_PAL[j%EP_PAL.length];
+        if(P.ep_circles && tm.amp>1.2){ ctx.globalAlpha=0.30; ctx.strokeStyle=col; ctx.lineWidth=1*scl;
+          if(glow){ctx.shadowBlur=5*scl;ctx.shadowColor=col;} else ctx.shadowBlur=0;
+          ctx.beginPath(); ctx.arc(px,py,tm.amp,0,TAU); ctx.stroke(); }
+        if(P.ep_arms){ ctx.globalAlpha=0.55; ctx.strokeStyle=col; ctx.lineWidth=1.1*scl; ctx.shadowBlur=0;
+          ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.stroke(); }
+        ctx.globalAlpha=1; ctx.fillStyle=col; if(glow){ctx.shadowBlur=11*scl;ctx.shadowColor=col;}
+        const pr=Math.max(1.4*scl, P.ep_ptsz*scl*(0.35+Math.min(1,tm.amp/180)));
+        ctx.beginPath(); ctx.arc(x,y,pr,0,TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
   // ---- HALFTONE LAYER (OPEN LAB in spirit) — screens the composition into a dot grid ----
   // Samples the drawn canvas on a rotated grid; each cell becomes a dot sized by how much
   // ink covers it, coloured by the ink beneath (or a fixed colour). Deterministic (P.seed).
@@ -687,6 +760,7 @@
     else if(P.mode==='contour') drawContour();
     else if(P.mode==='stipple') drawStipple();
     else if(P.mode==='weave') drawWeave();
+    else if(P.mode==='epicycles') drawEpicycles();
     else if(P.mode==='flock'){
       // static flock: run the whole simulation, accumulating faint frames
       flockInit();
@@ -705,11 +779,16 @@
       if(flockState.frame>P.fl_it*1.6){ // restart the build so it keeps breathing
         buildGeometry(); paintBackground(); flockInit();
       }
+    } else if(P.mode==='epicycles'){
+      // the pen runs round the letter, drawing it, then loops
+      epAnimPh=(epAnimPh + 0.0016*P.ep_sp) % 1;
+      paintBackground(); drawEpicycles(epAnimPh); applyHalftone();
     } else {
       // other modes: re-roll their stochastic pattern each frame
       renderStatic();
     }
   }
+  let epAnimPh=0;
   function startAnim(){
     animating=true; $('play').textContent='Stop'; $('play').setAttribute('aria-pressed','true');
     buildGeometry(); paintBackground();
@@ -759,7 +838,7 @@
   // ======================================================================
   function svgExport(px){
     buildGeometry();
-    if(P.ht){ // halftone is raster-sourced — embed a hi-res raster re-render
+    if(P.ht || P.mode==='epicycles'){ // halftone / epicycle glow is raster-sourced — embed a hi-res raster
       const hi=(typeof px==='number' && px>W) ? renderAt(px) : art;
       return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><image href="${hi.toDataURL('image/png')}" x="0" y="0" width="${W}" height="${H}"/></svg>`;
     }
@@ -812,7 +891,7 @@
   //  Flock / Stipple return null so the Output panel falls back to a hi-res raster PDF.
   // ======================================================================
   function vectorPDF(px){
-    if(P.mode==='flock' || P.mode==='stipple' || P.ht) return null;   // dense accumulation / halftone → hi-res raster
+    if(P.mode==='flock' || P.mode==='stipple' || P.mode==='epicycles' || P.ht) return null;   // dense accumulation / halftone → hi-res raster
     buildGeometry(); if(!LET || !LET.letters.length) return null;
     const ar=W/H, TW=Math.round(ar>=1?px:px*ar), TH=Math.round(ar>=1?px/ar:px), sc=TW/W;
     const body=[]; const gmap=new Map(), glist=[];
@@ -940,6 +1019,14 @@
   bind('we_ln','we_lnR',v=>P.we_ln=v);
   bind('we_sp','we_spR',v=>P.we_sp=v/100,v=>(v/100).toFixed(2));
   $('we_ghost').addEventListener('change',e=>{ P.we_ghost=e.target.checked; redraw(); });
+  // epicycles
+  bind('ep_pt','ep_ptR',v=>P.ep_pt=v);
+  bind('ep_ph','ep_phR',v=>P.ep_ph=v/100,v=>(v/100).toFixed(2));
+  bind('ep_sp','ep_spR',v=>P.ep_sp=v/10,v=>(v/10).toFixed(1));
+  bind('ep_ptsz','ep_ptszR',v=>P.ep_ptsz=v/10,v=>(v/10).toFixed(1));
+  $('ep_circles').addEventListener('change',e=>{ P.ep_circles=e.target.checked; redraw(); });
+  $('ep_arms').addEventListener('change',e=>{ P.ep_arms=e.target.checked; redraw(); });
+  $('ep_glow').addEventListener('change',e=>{ P.ep_glow=e.target.checked; redraw(); });
   // palette
   $('cA').addEventListener('input',e=>{ P.cA=e.target.value; redraw(); });
   $('cB').addEventListener('input',e=>{ P.cB=e.target.value; redraw(); });
