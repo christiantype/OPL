@@ -62,8 +62,8 @@ const Opal = (() => {
         .opal-export .opal-ex-row.row-dpi select{ width:auto; }
         /* Output island: collapsed by default, click the heading to open */
         .oc-head{ cursor:pointer; user-select:none; display:flex !important; align-items:center; justify-content:space-between; gap:10px; margin:0 !important; }
-        .oc-head::after{ content:'▸'; font-size:10px; color:var(--mute,#888); transition:transform .15s ease; flex:none; }
-        #output:not(.oc-collapsed) .oc-head::after, .group.out:not(.oc-collapsed) .oc-head::after{ transform:rotate(90deg); }
+        .oc-head::after{ content:'▾'; font-size:9px; color:var(--mute,#888); transition:transform .15s ease; flex:none; }
+        #output.oc-collapsed .oc-head::after, .group.out.oc-collapsed .oc-head::after{ transform:rotate(-90deg); }
         #output.oc-collapsed > :not(.group__t), .group.out.oc-collapsed > :not(.group__t){ display:none !important; }`;
       document.head.appendChild(st);
     }
@@ -436,11 +436,41 @@ const Opal = (() => {
   }
 
   // --- size island: show a W × H readout on every tool (consistent with the rebuilt tools) ---
+  // ONE canonical set of canvas presets, shared by every tool's size dock.
+  const CANON_SIZES = [
+    { l:'Square · 1:1',      w:1,   h:1,   px:'1080x1080' },
+    { l:'Portrait · 4:5',    w:4,   h:5,   px:'1080x1350' },
+    { l:'Portrait · 2:3',    w:2,   h:3,   px:'1080x1620' },
+    { l:'Story · 9:16',      w:9,   h:16,  px:'1080x1920' },
+    { l:'Landscape · 16:9',  w:16,  h:9,   px:'1920x1080' },
+    { l:'Landscape · 3:2',   w:3,   h:2,   px:'1620x1080' },
+    { l:'Wide · 1.91:1',     w:191, h:100, px:'1200x628'  },
+  ];
+  // Rebuild a tool's size <select> to the canonical presets, matching whatever value
+  // format the tool already parses (pixels "WxH", ratio "W/H", or ratio "W:H"), and
+  // pre-select the option closest to the tool's original default ratio.
+  function applyCanonSizes(sel){
+    if(sel.dataset.canon) return;
+    const first = (sel.options[0] && sel.options[0].value) || '';
+    if(!/^\d+\s*[x/:]\s*\d+$/i.test(first)) return;   // not a size select we understand — leave it
+    sel.dataset.canon = '1'; sel.dataset.sqDefault = '1';   // also suppress the 1:1 override below
+    const fmt = /^\d+x\d+$/i.test(first) ? 'px' : /^\d+:\d+$/.test(first) ? 'colon' : 'slash';
+    const cd = (sel.value || first).split(/[x/:]/).map(Number).filter(n=>n>0);
+    const curRatio = cd.length===2 ? cd[0]/cd[1] : 1;
+    sel.innerHTML = '';
+    CANON_SIZES.forEach(c => { const o=document.createElement('option');
+      o.value = fmt==='px' ? c.px : fmt==='colon' ? `${c.w}:${c.h}` : `${c.w}/${c.h}`;
+      o.textContent = c.l; sel.appendChild(o); });
+    let best=0, bd=Infinity;
+    CANON_SIZES.forEach((c,i)=>{ const d=Math.abs(c.w/c.h - curRatio); if(d<bd){ bd=d; best=i; } });
+    sel.selectedIndex = best; sel.dispatchEvent(new Event('change',{bubbles:true}));
+  }
   function wireSizeReadout(){
     const dock=document.getElementById('sizeDock');
-    const sel=dock && (dock.querySelector('#aspect') || dock.querySelector('select'));  // id varies (aspect / stAspect / …)
+    const sel=dock && (dock.querySelector('#aspect') || dock.querySelector('#format') || dock.querySelector('select'));  // id varies (aspect / format / stAspect / …)
     if(!dock || !sel || dock.dataset.sizeR) return;
     dock.dataset.sizeR='1';
+    applyCanonSizes(sel);   // unify the preset list across every tool
     let r=document.getElementById('dimReadout');
     if(!r){ r=document.createElement('span'); r.id='dimReadout'; dock.insertBefore(r, dock.firstChild); }
     const upd=()=>{
