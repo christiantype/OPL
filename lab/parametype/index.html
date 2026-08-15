@@ -100,7 +100,7 @@
     <div class="mp" id="mp-scribble">
       <div class="knob"><label>Points <b id="sc_ptR">300</b></label><input id="sc_pt" type="range" min="80" max="600" value="300"></div>
       <div class="knob"><label>Passes <b id="sc_paR">26</b></label><input id="sc_pa" type="range" min="4" max="80" value="26"></div>
-      <div class="knob"><label>Span <b id="sc_spR">6</b></label><input id="sc_sp" type="range" min="3" max="16" value="6"></div>
+      <div class="knob"><label>Looseness <b id="sc_spR">0.45</b></label><input id="sc_sp" type="range" min="0" max="100" value="45"></div>
       <div class="tog"><span>Nib dots</span><input type="checkbox" id="sc_dots" checked></div>
     </div>
 
@@ -163,7 +163,7 @@
   const P={ size:'1080/1080', word:'a', fsz:0.72, mode:'flock',
     fl_rib:20, fl_it:340, fl_sp:4.5, fl_tw:0.35, fl_ad:3, fl_fc:0.45, fl_op:0.55,
     ch_pt:320, ch_ds:190, ch_dn:0.9, ch_tw:0, ch_op:0.32, ch_ink:0.5,
-    sc_pt:300, sc_pa:26, sc_sp:6, sc_dots:true,
+    sc_pt:300, sc_pa:26, sc_sp:0.45, sc_dots:true,
     co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
     st_ly:20, st_gn:14000, st_sp:18, st_bl:4,
     we_ln:200, we_sp:1.0, we_ghost:true,
@@ -492,15 +492,18 @@
     for(let li=0;li<LET.letters.length;li++){
       const L=LET.letters[li];
       const pts=resample(closeFlat(L), P.sc_pt); const N=pts.length;
-      const jit=Math.max(2, Math.min(L.bbox.w,L.bbox.h)*0.020);   // looser → the mark implies the edge, doesn't trace it
+      const lo=P.sc_sp;                                            // Looseness 0..1 → how implied vs traced
+      const jit=Math.max(1.5, Math.min(L.bbox.w,L.bbox.h)*(0.005+lo*0.045)); // amplitude of the wander
+      const skipMax=1+Math.round(lo*6);                            // coarser steps skip more edge points
+      const jumpP=0.03+lo*0.09;                                    // looser → more loops/overshoots
       const passes=Math.max(4, Math.round(P.sc_pa));
       for(let n=0;n<passes;n++){
-        const runLen=Math.max(4, Math.round(N*(P.sc_sp/16)*(0.25+rng()*0.9)));   // wildly varied run lengths
+        const runLen=Math.max(4, Math.round(N*0.35*(0.25+rng()*0.9)));   // wildly varied run lengths
         let idx=(rng()*N)|0; const c=mix(rng()); const sp=[];
         for(let s=0;s<runLen;s++){
           const r=rng();
-          if(r<0.08) idx=(rng()*N)|0;          // jump → loop/overshoot across the letter
-          else idx=(idx + 1 + (rng()*3|0))%N;   // skip a few points → coarse, angular, not a faithful trace
+          if(r<jumpP) idx=(rng()*N)|0;         // jump → loop/overshoot across the letter
+          else idx=(idx + 1 + (rng()*skipMax|0))%N;   // skip points → coarse, angular, not a faithful trace
           const p=pts[idx];
           const g=(rng()*2-1)*jit*(0.6+rng());  // uneven jitter → some points wander far off
           const g2=(rng()*2-1)*jit*(0.6+rng());
@@ -845,7 +848,7 @@
   // scribble
   bind('sc_pt','sc_ptR',v=>P.sc_pt=v);
   bind('sc_pa','sc_paR',v=>P.sc_pa=v);
-  bind('sc_sp','sc_spR',v=>P.sc_sp=v);
+  bind('sc_sp','sc_spR',v=>P.sc_sp=v/100,v=>(v/100).toFixed(2));
   $('sc_dots').addEventListener('change',e=>{ P.sc_dots=e.target.checked; redraw(); });
   // contour
   bind('co_ln','co_lnR',v=>P.co_ln=v);
