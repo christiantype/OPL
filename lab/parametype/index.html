@@ -132,6 +132,7 @@
     <div class="group__t">Palette</div>
     <div class="crow"><label>Ink A</label><input type="color" class="sw" id="cA" value="#c3203b"></div>
     <div class="crow"><label>Ink B</label><input type="color" class="sw" id="cB" value="#2f7fa8"></div>
+    <div class="crow"><label>Background</label><input type="color" class="sw" id="cBg" value="#ffffff"></div>
     <div class="tog"><span>Fill body</span><input type="checkbox" id="fillOn"></div>
     <div class="tog"><span>Graph paper</span><input type="checkbox" id="gridOn"></div>
   </div>
@@ -167,7 +168,7 @@
     co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
     st_ly:20, st_gn:14000, st_sp:18, st_bl:4,
     we_ln:200, we_sp:1.0, we_ghost:true,
-    cA:'#c3203b', cB:'#2f7fa8', fill:false, grid:false, seed:1 };
+    cA:'#c3203b', cB:'#2f7fa8', bg:'#ffffff', fill:false, grid:false, seed:1 };
 
   // deterministic RNG (mulberry32) — chords/scribble seed from P.seed so the on-screen
   // tangle and the exported file are IDENTICAL. Redraw re-seeds for a fresh generation.
@@ -317,7 +318,7 @@
 
   // ---------- background: glow + grid ----------
   function paintBackground(vec){
-    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=P.bg; ctx.fillRect(0,0,W,H);
     if(P.grid){
       ctx.save(); ctx.strokeStyle='rgba(60,70,90,.07)'; ctx.lineWidth=1;
       const g=Math.max(24, Math.round(W/34));
@@ -690,7 +691,7 @@
     buildGeometry();
     const parts=[`<?xml version="1.0" encoding="UTF-8"?>`,
       `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
-      `<rect width="${W}" height="${H}" fill="#ffffff"/>`];
+      `<rect width="${W}" height="${H}" fill="${P.bg}"/>`];
     const line=(a,b,col,op,w)=>parts.push(`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${col}" stroke-opacity="${op.toFixed(3)}" stroke-width="${w}"/>`);
     const col=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
     if(P.fill && LET){ for(const L of LET.letters){ let d=''; for(const cont of L.contours){ d+='M'+cont.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join('L')+'Z'; } parts.push(`<path d="${d}" fill="${P.cB}" fill-opacity="0.3" fill-rule="evenodd"/>`); } }
@@ -798,7 +799,8 @@
     }
 
     // assemble the PDF: flip+scale the page so we can emit canvas coords directly
-    const content = `${sc.toFixed(6)} 0 0 ${(-sc).toFixed(6)} 0 ${TH} cm\n1 1 1 rg 0 0 ${(W).toFixed(1)} ${(H).toFixed(1)} re f\n` + body.join('\n');
+    const bgc=hex(P.bg), bgr=`${(bgc[0]/255).toFixed(3)} ${(bgc[1]/255).toFixed(3)} ${(bgc[2]/255).toFixed(3)}`;
+    const content = `${sc.toFixed(6)} 0 0 ${(-sc).toFixed(6)} 0 ${TH} cm\n${bgr} rg 0 0 ${(W).toFixed(1)} ${(H).toFixed(1)} re f\n` + body.join('\n');
     const objs=[];
     objs.push('<</Type/Catalog/Pages 2 0 R>>');
     objs.push('<</Type/Pages/Kids[3 0 R]/Count 1>>');
@@ -867,6 +869,7 @@
   // palette
   $('cA').addEventListener('input',e=>{ P.cA=e.target.value; redraw(); });
   $('cB').addEventListener('input',e=>{ P.cB=e.target.value; redraw(); });
+  $('cBg').addEventListener('input',e=>{ P.bg=e.target.value; redraw(); });
   $('fillOn').addEventListener('change',e=>{ P.fill=e.target.checked; redraw(); });
   $('gridOn').addEventListener('change',e=>{ P.grid=e.target.checked; redraw(); });
 
