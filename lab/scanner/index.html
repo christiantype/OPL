@@ -199,6 +199,7 @@
 <body>
 
 <div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="sizeDock"><span id="dimReadout"></span><select id="aspect" title="Canvas size"><option value="1:1">Square · 1:1</option></select></div>
 <div id="drop"><p>Add an image, then drag it while the bar scans</p></div>
 <div id="hint"></div>
 <div id="recDot"><i></i><b>REC</b></div>
@@ -333,8 +334,7 @@ function buildPanel(){
   seg(gL,'invert','Invert',[{t:'Off',v:0},{t:'On',v:1}]);
   const sr=el('div','swatches'); sr.appendChild(color('ink','Toner')); sr.appendChild(color('bg','Paper')); gL.appendChild(sr);
 
-  const gC=grp('Canvas','Output size.');
-  select(gC,'aspect','Aspect',[{t:'Portrait 4:5',v:'4:5'},{t:'Story 9:16',v:'9:16'},{t:'Square 1:1',v:'1:1'},{t:'Landscape 16:9',v:'16:9'}],()=>{ raw=null; resetScan(); });
+  const gC=grp('Canvas','Output resolution.');
   slider(gC,'longEdge','Long edge',720,1600,20,v=>v+' px',()=>{ raw=null; resetScan(); });
 
   // Output — Record + Save live in the bottom-right #output panel
@@ -392,6 +392,7 @@ function beginRec(){ const mime=pickMime(); if(!mime)return; const FPS=60, strea
 // ---------------- boot ----------------
 document.getElementById('file').addEventListener('change',e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); });
 resize(); ensureBuffers(); makeDefaultSubject(); buildPanel(); wireBar(); requestAnimationFrame(tick);
+document.getElementById('aspect').addEventListener('change', e=>{ P.aspect=e.target.value; raw=null; resetScan(); });
 addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return; if(e.key===' '){ e.preventDefault(); P.play=!P.play; setPlayIcon(); } if(e.key==='s'||e.key==='S'){ savePNG(); } });
 })();
 

@@ -213,6 +213,7 @@
 <body>
 
 <div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="sizeDock"><span id="dimReadout"></span><select id="aspect" title="Canvas size"><option value="1:1">Square · 1:1</option></select></div>
 <div id="drop"><div class="drop-in"><div class="drop-orb"></div><p>Drop an image<br><span>or Add image in the panel</span></p></div></div>
 <div id="hint"></div>
 <div id="recDot"><i></i><b>REC</b></div>
@@ -472,8 +473,7 @@ function buildPanel(){
   seg(gI,'transparent','Transparent PNG',[{t:'Off',v:0},{t:'On',v:1}]);
 
   // Canvas
-  const gC=grp('Canvas','Output size — what a still or recording is rendered at.');
-  select(gC,'aspect','Aspect',[{t:'Square 1:1',v:'1:1'},{t:'Portrait 4:5',v:'4:5'},{t:'Story 9:16',v:'9:16'},{t:'Landscape 16:9',v:'16:9'}],true);
+  const gC=grp('Canvas','Output resolution — the size a still or recording is rendered at.');
   slider(gC,'longEdge','Long edge',720,1600,20,v=>v+' px',true);
 
   // Particles
@@ -575,6 +575,8 @@ function beginRec(){ const mime=pickMime(); if(!mime){ return; } const FPS=60;
 
 // ---------------- boot ----------------
 resize(); buildPanel(); wireBar(); requestAnimationFrame(tick);
+// canvas-size dock (top-left): drives P.aspect; opal fills the canonical presets + 1:1 default
+document.getElementById('aspect').addEventListener('change', e=>{ P.aspect=e.target.value; buildParticles(); });
 addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
   if(e.key===' '){ e.preventDefault(); P.play=!P.play; setPlayIcon(); }
   if(e.key==='s'||e.key==='S'){ savePNG(); } });
