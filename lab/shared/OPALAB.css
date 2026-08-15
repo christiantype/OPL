@@ -73,19 +73,24 @@
    rail (e.g. fractal) redefine --nm-lo/--nm-hi in their own scope, after this file. */
 
 /* 1 — NEUMORPHISM — the component library =================================== */
-/* raised buttons */
+/* raised buttons — a soft convex gradient face lifted off the surface, that presses IN */
 :where(#dock,#rail,#panel,#output,#sizeDock,.opal-export,.opal-save__panel) button:not(.rowhead):not(.opal-info):not(.tw),
 .opal-sessions-btn, .filebtn, .chip, .seg button, .railact button, .btn{
-  background:var(--cell) !important; border:none !important; box-shadow:var(--shadow-sm) !important;
-  border-radius:var(--r-control) !important; color:var(--ink) !important; transition:box-shadow .12s ease, color .12s ease; }
+  background:linear-gradient(145deg, #fafafb, #e9e9ee) !important; border:none !important;
+  box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 1px rgba(60,70,90,.06) !important;
+  border-radius:var(--r-control) !important; color:var(--ink) !important;
+  transition:box-shadow .18s ease, transform .1s ease, color .15s ease; will-change:box-shadow, transform; }
 :where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) button:not(.rowhead):hover, .opal-sessions-btn:hover, .btn:hover, .seg button:hover{
-  box-shadow:-4px -4px 8px var(--nm-lo), 4px 4px 9px var(--nm-hi) !important; }
-/* pressed / selected → pushed IN (deep inset) + accent ink */
+  box-shadow:-4px -4px 9px var(--nm-lo), 5px 5px 11px var(--nm-hi), inset 0 1px 0 rgba(255,255,255,.6) !important; }
+/* click — a tactile press IN + a hair of scale */
+:where(#dock,#rail,#panel,#output,#sizeDock) button:active, .btn:active, .seg button:active, .railact button:active{
+  background:linear-gradient(145deg, #e9e9ee, #f3f3f6) !important;
+  box-shadow:var(--shadow-pressed) !important; transform:scale(.972); }
+/* selected / on → held IN (deep inset) + accent ink */
 :where(#dock,#rail,#panel,#output,#sizeDock) button[aria-pressed="true"], .seg button[aria-pressed="true"],
 .btn[aria-pressed="true"], .btn.primary, .chip.active, .railact button.primary, .railact button.on{
-  box-shadow:var(--shadow-pressed) !important; color:var(--accent) !important; background:var(--cell) !important; }
-:where(#dock,#rail,#panel,#output,#sizeDock) button:active, .btn:active, .seg button:active, .railact button:active{
-  box-shadow:var(--shadow-pressed) !important; }
+  background:linear-gradient(145deg, #e9e9ee, #f3f3f6) !important;
+  box-shadow:var(--shadow-pressed) !important; color:var(--accent) !important; }
 .seg{ border:none !important; background:transparent !important; box-shadow:none !important; gap:10px !important; display:flex !important; flex-wrap:wrap !important; }
 .seg button{ flex:0 1 auto; min-width:0; }
 /* fields — inset. background-COLOR only, so the tool's chevron survives; add our own chevron + padding */
@@ -124,15 +129,26 @@
   box-shadow:none !important; border:1px solid rgba(120,124,134,.26) !important; }
 /* every slider reads the same accent dial — native range thumbs AND custom SVG knobs */
 .knob .k-vl, .knob .k-pt{ stroke:var(--accent) !important; }
-/* checkboxes → soft pill switches */
+/* checkboxes → dimensional pill switches: a grooved track (goes green ON) + a knob with grip dots */
 :where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]{
-  -webkit-appearance:none !important; appearance:none !important; width:42px !important; height:24px !important; flex:none;
-  border-radius:999px !important; background:var(--cell) !important; box-shadow:var(--shadow-inset) !important; position:relative; cursor:pointer;
-  transition:background .15s ease; margin:0; }
+  -webkit-appearance:none !important; appearance:none !important; width:46px !important; height:26px !important; flex:none;
+  border-radius:999px !important; position:relative; cursor:pointer; margin:0;
+  background:linear-gradient(to bottom, #d3d3d8, #e8e8ec) !important;
+  box-shadow:inset 0 0 1px 2px rgba(255,255,255,.22), inset 0 1px 2px rgba(20,24,34,.4) !important;
+  transition:background .38s ease; }
 :where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]::after{
-  content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%;
-  background:var(--cell); box-shadow:var(--shadow-sm); transition:left .16s ease, background .16s ease; }
-:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]:checked::after{ left:21px; background:var(--accent); }
+  content:''; position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%;
+  /* three grip dots on a soft convex knob */
+  background:
+    radial-gradient(circle at 9px 11px, #bfbfc6 0 1.1px, transparent 1.7px),
+    radial-gradient(circle at 12px 11px, #bfbfc6 0 1.1px, transparent 1.7px),
+    radial-gradient(circle at 15px 11px, #bfbfc6 0 1.1px, transparent 1.7px),
+    linear-gradient(to bottom, #f4f4f6, #dcdce1);
+  box-shadow:inset 0 -1px 1px 2px rgba(20,24,34,.08), inset 0 3px 1px rgba(255,255,255,.55), 0 2px 3px rgba(20,24,34,.4);
+  transition:left .38s cubic-bezier(.5,.1,.3,1.2); }
+:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]:checked{
+  background:linear-gradient(to bottom, #2ea043, #34c759) !important; }
+:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]:checked::after{ left:22px; }
 /* islands lose their hairline border (shadow defines the edge) */
 #dock > .group, #dock > .row, #rail.rail-l .row, #output, .group.out, #sizeDock, #panel .grp, #panel .eng-params, .opal-sessions-pop{ border:none !important; }
 
