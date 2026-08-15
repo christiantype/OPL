@@ -170,7 +170,11 @@
     co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
     st_ly:20, st_gn:14000, st_sp:18, st_bl:4,
     we_ln:200, we_sp:1.0, we_ghost:true,
-    cA:'#111111', cB:'#d81f6a', glow:true, cG:'#f2d200', gl:0.5, fill:false, grid:false };
+    cA:'#111111', cB:'#d81f6a', glow:true, cG:'#f2d200', gl:0.5, fill:false, grid:false, seed:1 };
+
+  // deterministic RNG (mulberry32) — chords/scribble seed from P.seed so the on-screen
+  // tangle and the exported file are IDENTICAL. Redraw re-seeds for a fresh generation.
+  function rngFrom(seed){ let a=seed>>>0; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 
   const HINTS={
     flock:'Outline points become agents that chase a target travelling around the letter — the lag draws it as flowing ribbons.',
@@ -436,36 +440,53 @@
   }
 
   // ---- CHORDS (ch2): interior strings between edge points — bowed into a tangle ----
-  // Ink pool: multiply blending so crossings build up into darker ink-trap pools (contrast).
-  function drawChords(){
-    ctx.save();
-    if(P.ch_ink>0.01) ctx.globalCompositeOperation='multiply';
-    const inkBoost=0.5 + P.ch_ink*1.9;           // how much each string darkens where it crosses
+  // Generate the interior strings as flowing, wavy HAIR STRANDS (deterministic from P.seed).
+  // Each kept chord becomes a multi-bend strand: a travelling sine wave with its own phase,
+  // wavelength and lengthwise drift, anchored at the two edge points — so the web reads like
+  // unbrushed hair (clumping strands + flyaways) rather than straight lines. Returns
+  // {pts:[{x,y}…], col:[r,g,b], op}. Used by the on-screen draw AND the SVG/PDF exporters.
+  function chordStrands(){
+    const rng=rngFrom((P.seed||1)*2654435761 >>> 0);
+    const inkBoost=0.5 + P.ch_ink*1.9, op=Math.min(0.92, P.ch_op*inkBoost), tw=P.ch_tw;
+    const out=[];
     for(const L of LET.letters){
       const pts=resample(closeFlat(L), P.ch_pt);
       const maxD=P.ch_ds/300 * Math.max(L.bbox.w,L.bbox.h);
-      const keep=P.ch_dn, tw=P.ch_tw;
-      ctx.lineWidth=0.7; ctx.lineCap='round';
       for(let i=0;i<pts.length;i++){
         for(let j=i+2;j<pts.length;j++){
           const a=pts[i], b=pts[j];
           const d=Math.hypot(a.x-b.x,a.y-b.y);
           if(d>maxD || d<2) continue;
-          if(Math.random()>keep) continue;
+          if(rng()>P.ch_dn) continue;
           const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
-          if(!pointInLetter(L, mx, my)) continue;
-          if(crossesOutline(L, a, b)) continue;
+          if(!pointInLetter(L, mx, my) || crossesOutline(L, a, b)) continue;
           const c=mix(1 - d/maxD);
-          ctx.strokeStyle=rgba(c, Math.min(0.92, P.ch_op*inkBoost));
-          ctx.beginPath(); ctx.moveTo(a.x,a.y);
-          if(tw>0.01){                                 // bow the string off its chord for a wild tangle
-            const nx=-(b.y-a.y)/d, ny=(b.x-a.x)/d;
-            const bow=(Math.random()*2-1)*tw*Math.min(d*0.75, maxD*0.5);
-            ctx.quadraticCurveTo(mx+nx*bow, my+ny*bow, b.x, b.y);
-          } else ctx.lineTo(b.x,b.y);
-          ctx.stroke();
+          const dx=b.x-a.x, dy=b.y-a.y, nx=-dy/d, ny=dx/d;
+          if(tw<=0.01){ out.push({pts:[{x:a.x,y:a.y},{x:b.x,y:b.y}], col:c, op}); continue; }
+          const amp=tw*Math.min(d*0.55, maxD*0.5);
+          const ph=rng()*6.283, waves=0.5+rng()*3.0, drift=(rng()*2-1);
+          const SEG=Math.max(3, Math.round(d/Math.max(W,H)*41));   // resolution-independent → export matches preview exactly
+          const sp=[{x:a.x,y:a.y}];
+          for(let s=1;s<SEG;s++){ const u=s/SEG, env=Math.pow(Math.sin(u*Math.PI),0.7);
+            const off=(Math.sin(u*waves*6.283+ph) + drift*(u-0.5)*1.6) * amp * env;
+            sp.push({ x:a.x+dx*u+nx*off, y:a.y+dy*u+ny*off }); }
+          sp.push({x:b.x,y:b.y});
+          out.push({pts:sp, col:c, op});
         }
       }
+    }
+    return out;
+  }
+  // Ink pool: multiply blending so crossings build up into darker ink-trap pools (contrast).
+  function drawChords(){
+    ctx.save();
+    if(P.ch_ink>0.01) ctx.globalCompositeOperation='multiply';
+    ctx.lineWidth=0.7; ctx.lineCap='round'; ctx.lineJoin='round';
+    for(const s of chordStrands()){
+      ctx.strokeStyle=rgba(s.col, s.op); ctx.beginPath();
+      ctx.moveTo(s.pts[0].x, s.pts[0].y);
+      for(let k=1;k<s.pts.length;k++) ctx.lineTo(s.pts[k].x, s.pts[k].y);
+      ctx.stroke();
     }
     ctx.restore();
   }
@@ -663,15 +684,10 @@
     const col=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
     if(P.fill && LET){ for(const L of LET.letters){ let d=''; for(const cont of L.contours){ d+='M'+cont.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join('L')+'Z'; } parts.push(`<path d="${d}" fill="${P.cB}" fill-opacity="0.3" fill-rule="evenodd"/>`); } }
     if(P.mode==='chords'){
-      const inkBoost=0.5+P.ch_ink*1.9, op=Math.min(0.92,P.ch_op*inkBoost);
       if(P.ch_ink>0.01) parts.push('<g style="mix-blend-mode:multiply">');   // crossings pool darker
-      for(const L of LET.letters){ const pts=resample(closeFlat(L),P.ch_pt); const maxD=P.ch_ds/300*Math.max(L.bbox.w,L.bbox.h); const tw=P.ch_tw;
-        for(let i=0;i<pts.length;i++)for(let j=i+2;j<pts.length;j++){ const a=pts[i],b=pts[j],d=Math.hypot(a.x-b.x,a.y-b.y);
-          if(d>maxD||d<2||Math.random()>P.ch_dn) continue; const mx=(a.x+b.x)/2,my=(a.y+b.y)/2; if(!pointInLetter(L,mx,my)||crossesOutline(L,a,b)) continue;
-          const c=col(mix(1-d/maxD));
-          if(tw>0.01){ const nx=-(b.y-a.y)/d, ny=(b.x-a.x)/d, bow=(Math.random()*2-1)*tw*Math.min(d*0.75,maxD*0.5);
-            parts.push(`<path d="M${a.x.toFixed(1)} ${a.y.toFixed(1)}Q${(mx+nx*bow).toFixed(1)} ${(my+ny*bow).toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}" fill="none" stroke="${c}" stroke-opacity="${op.toFixed(3)}" stroke-width="0.7"/>`); }
-          else line(a,b,c,op,0.7); } }
+      for(const s of chordStrands()){ let d='M'+s.pts[0].x.toFixed(1)+' '+s.pts[0].y.toFixed(1);
+        for(let k=1;k<s.pts.length;k++) d+='L'+s.pts[k].x.toFixed(1)+' '+s.pts[k].y.toFixed(1);
+        parts.push(`<path d="${d}" fill="none" stroke="${col(s.col)}" stroke-opacity="${s.op.toFixed(3)}" stroke-width="0.7"/>`); }
       if(P.ch_ink>0.01) parts.push('</g>');
     } else if(P.mode==='weave'){
       const N=P.we_ln, per=LET.letters.map(L=>resample(closeFlat(L),N)); const b=LET.bbox, spread=P.we_sp*(H*0.18);
@@ -741,15 +757,10 @@
       fillPath(pd, hex(P.cB), 0.30); } }
 
     if(P.mode==='chords'){
-      const inkBoost=0.5+P.ch_ink*1.9, op=Math.min(0.92,P.ch_op*inkBoost), bm=P.ch_ink>0.01?'Multiply':'Normal';
-      for(const Lr of LET.letters){ const pts=resample(closeFlat(Lr),P.ch_pt); const maxD=P.ch_ds/300*Math.max(Lr.bbox.w,Lr.bbox.h); const tw=P.ch_tw;
-        for(let i=0;i<pts.length;i++)for(let j=i+2;j<pts.length;j++){ const a=pts[i],b=pts[j],d=Math.hypot(a.x-b.x,a.y-b.y);
-          if(d>maxD||d<2||Math.random()>P.ch_dn)continue; const mx=(a.x+b.x)/2,my=(a.y+b.y)/2; if(!pointInLetter(Lr,mx,my)||crossesOutline(Lr,a,b))continue;
-          const c=mix(1-d/maxD); let d2;
-          if(tw>0.01){ const nx=-(b.y-a.y)/d,ny=(b.x-a.x)/d,bow=(Math.random()*2-1)*tw*Math.min(d*0.75,maxD*0.5);
-            d2=M(a.x,a.y)+' '+Qc(a.x,a.y,mx+nx*bow,my+ny*bow,b.x,b.y); }
-          else d2=M(a.x,a.y)+' '+L(b.x,b.y);
-          strokePath(d2,c,op,0.7,bm); } }
+      const bm=P.ch_ink>0.01?'Multiply':'Normal';
+      for(const s of chordStrands()){ let d2=M(s.pts[0].x,s.pts[0].y);
+        for(let k=1;k<s.pts.length;k++) d2+=' '+L(s.pts[k].x,s.pts[k].y);
+        strokePath(d2, s.col, s.op, 0.7, bm); }
     } else if(P.mode==='weave'){
       const N=P.we_ln, per=LET.letters.map(Lr=>resample(closeFlat(Lr),N)); const bb=LET.bbox, spread=P.we_sp*(H*0.18);
       for(let i=0;i<N;i++){ const off=(-0.5+i/N)*spread; let d=M(-W*0.1, bb.y+bb.h/2+off);
@@ -853,7 +864,8 @@
   $('gridOn').addEventListener('change',e=>{ P.grid=e.target.checked; redraw(); });
 
   $('aspect').addEventListener('change',e=>{ P.size=e.target.value; fit(); });
-  $('regen').addEventListener('click',()=>{ if(animating){ buildGeometry(); paintBackground(); if(P.mode==='flock') flockInit(); } else renderStatic(); });
+  $('regen').addEventListener('click',()=>{ P.seed=(P.seed*1103515245+12345)&0x7fffffff;   // fresh generation
+    if(animating){ buildGeometry(); paintBackground(); if(P.mode==='flock') flockInit(); } else renderStatic(); });
   $('play').addEventListener('click',()=> animating?stopAnim():startAnim());
 
   // ---- Output: SVG-aware export + record ----
