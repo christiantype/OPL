@@ -86,6 +86,7 @@
       <div class="knob"><label>Density <b id="ch_dnR">0.9</b></label><input id="ch_dn" type="range" min="6" max="100" value="90"></div>
       <div class="knob"><label>Tangle <b id="ch_twR">0.4</b></label><input id="ch_tw" type="range" min="0" max="100" value="40"></div>
       <div class="knob"><label>Ink weight <b id="ch_opR">0.32</b></label><input id="ch_op" type="range" min="4" max="100" value="32"></div>
+      <div class="knob"><label>Ink pool <b id="ch_inkR">0.5</b></label><input id="ch_ink" type="range" min="0" max="100" value="50"></div>
     </div>
 
     <!-- SCRIBBLE -->
@@ -157,7 +158,7 @@
   let W=1080, H=1080, DPR=1;
   const P={ size:'1080/1080', word:'a', fsz:0.72, mode:'flock',
     fl_rib:20, fl_it:340, fl_sp:4.5, fl_tw:0.35, fl_ad:3, fl_fc:0.45, fl_op:0.55,
-    ch_pt:320, ch_ds:190, ch_dn:0.9, ch_tw:0.4, ch_op:0.32,
+    ch_pt:320, ch_ds:190, ch_dn:0.9, ch_tw:0.4, ch_op:0.32, ch_ink:0.5,
     sc_pt:300, sc_pa:26, sc_sp:6, sc_dots:true,
     co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
     st_ly:20, st_gn:14000, st_sp:18, st_bl:4,
@@ -422,7 +423,11 @@
   }
 
   // ---- CHORDS (ch2): interior strings between edge points — bowed into a tangle ----
+  // Ink pool: multiply blending so crossings build up into darker ink-trap pools (contrast).
   function drawChords(){
+    ctx.save();
+    if(P.ch_ink>0.01) ctx.globalCompositeOperation='multiply';
+    const inkBoost=0.5 + P.ch_ink*1.9;           // how much each string darkens where it crosses
     for(const L of LET.letters){
       const pts=resample(closeFlat(L), P.ch_pt);
       const maxD=P.ch_ds/300 * Math.max(L.bbox.w,L.bbox.h);
@@ -438,7 +443,7 @@
           if(!pointInLetter(L, mx, my)) continue;
           if(crossesOutline(L, a, b)) continue;
           const c=mix(1 - d/maxD);
-          ctx.strokeStyle=rgba(c, P.ch_op);
+          ctx.strokeStyle=rgba(c, Math.min(0.92, P.ch_op*inkBoost));
           ctx.beginPath(); ctx.moveTo(a.x,a.y);
           if(tw>0.01){                                 // bow the string off its chord for a wild tangle
             const nx=-(b.y-a.y)/d, ny=(b.x-a.x)/d;
@@ -449,6 +454,7 @@
         }
       }
     }
+    ctx.restore();
   }
 
   // ---- SCRIBBLE (ch8): loose jittered curve hops that build a sketched outline + dots ----
@@ -644,13 +650,16 @@
     const col=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
     if(P.fill && LET){ for(const L of LET.letters){ let d=''; for(const cont of L.contours){ d+='M'+cont.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join('L')+'Z'; } parts.push(`<path d="${d}" fill="${P.cB}" fill-opacity="0.3" fill-rule="evenodd"/>`); } }
     if(P.mode==='chords'){
+      const inkBoost=0.5+P.ch_ink*1.9, op=Math.min(0.92,P.ch_op*inkBoost);
+      if(P.ch_ink>0.01) parts.push('<g style="mix-blend-mode:multiply">');   // crossings pool darker
       for(const L of LET.letters){ const pts=resample(closeFlat(L),P.ch_pt); const maxD=P.ch_ds/300*Math.max(L.bbox.w,L.bbox.h); const tw=P.ch_tw;
         for(let i=0;i<pts.length;i++)for(let j=i+2;j<pts.length;j++){ const a=pts[i],b=pts[j],d=Math.hypot(a.x-b.x,a.y-b.y);
           if(d>maxD||d<2||Math.random()>P.ch_dn) continue; const mx=(a.x+b.x)/2,my=(a.y+b.y)/2; if(!pointInLetter(L,mx,my)||crossesOutline(L,a,b)) continue;
           const c=col(mix(1-d/maxD));
           if(tw>0.01){ const nx=-(b.y-a.y)/d, ny=(b.x-a.x)/d, bow=(Math.random()*2-1)*tw*Math.min(d*0.75,maxD*0.5);
-            parts.push(`<path d="M${a.x.toFixed(1)} ${a.y.toFixed(1)}Q${(mx+nx*bow).toFixed(1)} ${(my+ny*bow).toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}" fill="none" stroke="${c}" stroke-opacity="${P.ch_op.toFixed(3)}" stroke-width="0.7"/>`); }
-          else line(a,b,c,P.ch_op,0.7); } }
+            parts.push(`<path d="M${a.x.toFixed(1)} ${a.y.toFixed(1)}Q${(mx+nx*bow).toFixed(1)} ${(my+ny*bow).toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}" fill="none" stroke="${c}" stroke-opacity="${op.toFixed(3)}" stroke-width="0.7"/>`); }
+          else line(a,b,c,op,0.7); } }
+      if(P.ch_ink>0.01) parts.push('</g>');
     } else if(P.mode==='weave'){
       const N=P.we_ln, per=LET.letters.map(L=>resample(closeFlat(L),N)); const b=LET.bbox, spread=P.we_sp*(H*0.18);
       for(let i=0;i<N;i++){ const off=(-0.5+i/N)*spread; let d=`M${(-W*0.1).toFixed(1)} ${(b.y+b.h/2+off).toFixed(1)}`;
@@ -713,6 +722,7 @@
   bind('ch_dn','ch_dnR',v=>P.ch_dn=v/100,v=>(v/100).toFixed(2));
   bind('ch_tw','ch_twR',v=>P.ch_tw=v/100,v=>(v/100).toFixed(2));
   bind('ch_op','ch_opR',v=>P.ch_op=v/100,v=>(v/100).toFixed(2));
+  bind('ch_ink','ch_inkR',v=>P.ch_ink=v/100,v=>(v/100).toFixed(2));
   // scribble
   bind('sc_pt','sc_ptR',v=>P.sc_pt=v);
   bind('sc_pa','sc_paR',v=>P.sc_pa=v);
