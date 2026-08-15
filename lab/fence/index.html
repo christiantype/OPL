@@ -188,8 +188,8 @@
       </div>
     </div>
 
-    <!-- output -->
-    <div class="group out">
+    <!-- output — every export setting (format · pixels · print size · DPI) lives here -->
+    <div class="group out" data-export-custom>
       <div class="group__t">Output</div>
       <div class="grid2">
         <button class="btn" id="recBtn" aria-pressed="false">Record</button>
@@ -376,8 +376,42 @@
   function drawRef(a){ if(!traceRef) return; const d=refDims();
     ctx.save(); ctx.globalAlpha=a; ctx.drawImage(traceRef, d.x0, d.y0, d.dw, d.dh); ctx.restore(); }
   function startSim(){ ctx.fillStyle=bgColor; ctx.fillRect(0,0,W,H); aT=0; buildWalkers(); cancelAnimationFrame(raf); step(); }
-  function step(ts){ raf=requestAnimationFrame(step); F++;
+
+  // ---- true-resolution export (for the Output panel's PDF / PNG / JPG at print size) ----
+  // The bloom is an accumulating, stochastic sim, so we can't upscale the preview crisply —
+  // instead we REPLAY it at the requested long-edge into an offscreen canvas, then restore
+  // the live state. Draw mode just re-renders the line. Uses logical W,H with a scaled ctx
+  // transform, so all the sim's coordinate maths is unchanged.
+  function fenceDims(px){ return ASPECT>=1 ? [Math.round(px), Math.round(px/ASPECT)]
+                                           : [Math.round(px*ASPECT), Math.round(px)]; }
+  function renderExport(px){
+    const [ew,eh]=fenceDims(px);
+    const c=document.createElement('canvas'); c.width=ew; c.height=eh;
+    const ex=c.getContext('2d'); const s=ew/W;                    // logical W,H → export pixels
+    // swap the module drawing context to the offscreen; keep W,H logical
+    const sCtx=ctx, sWalkers=walkers, sAT=aT, sRT=RT, sF=F, sLast=lastTs, sSound=soundOn;
+    ctx=ex; ctx.setTransform(s,0,0,s,0,0); soundOn=false;   // no audio while replaying
+    ctx.fillStyle=bgColor; ctx.fillRect(0,0,W,H);
+    if(mode==='modify' && sWalkers.length){
+      // replay the bloom to the SAME motion-clock point the live view has reached
+      // (bounded so a very-long-running bloom still exports quickly — ~65s of emergence)
+      aT=0; RT=0; F=0; lastTs=0; buildWalkers();
+      let guard=0; const dt=1/60;
+      while(aT < sAT && guard++ < 4000) simFrame(dt);
+    } else {
+      // draw mode: re-render the drawn strokes (and any tracing photo) crisply
+      renderDraw();
+    }
+    // restore live state
+    ctx=sCtx; walkers=sWalkers; aT=sAT; RT=sRT; F=sF; lastTs=sLast; soundOn=sSound;
+    return c;
+  }
+  function step(ts){ raf=requestAnimationFrame(step);
     const dt=(lastTs&&ts)?Math.min(0.05,(ts-lastTs)/1000):0.016; if(ts) lastTs=ts;
+    simFrame(dt); }
+  // One simulation frame, WITHOUT scheduling the next — so export can replay the bloom
+  // synchronously at any resolution (the live loop calls this via step()).
+  function simFrame(dt){ F++;
     const secs=secsFor();
     aT += dt/Math.max(0.5,secs);   // shared motion clock — advances ~1 per pass, so Time slows the whole thing
     RT += dt;                         // always-running real-time clock, for each chain's slow attack
@@ -646,6 +680,9 @@
     if(mode==='modify') startSim(); });
   $('saveBtn').addEventListener('click', ()=>{ const a=document.createElement('a'); a.download='fence.png'; a.href=cv.toDataURL('image/png'); a.click(); });
 
+  // Output island: one consistent export panel (format · pixels · print size · DPI · quality),
+  // with a true-resolution replay of the bloom so PDFs print crisp at any size.
+  Opal.mountOutput(cv, 'bloom', { render: renderExport });
   fit(); renderDraw(); window.__fenceReady=true;
   addEventListener('resize', ()=>{ const wasMod=mode==='modify'; fit(); if(wasMod) startSim(); else renderDraw(); });
 
