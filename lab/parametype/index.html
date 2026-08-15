@@ -800,6 +800,10 @@
   function redraw(){ if(animating){ // reset the animation on a control change
       buildGeometry(); paintBackground(); if(P.mode==='flock') flockInit(); }
     else renderStatic(); }
+  // coalesce rapid input (colour-picker drags, slider scrubs) to one redraw per frame —
+  // a full render (esp. the Flock sim) is heavy, so firing it on every input event stutters.
+  let _rq=false;
+  function scheduleRedraw(){ if(_rq) return; _rq=true; requestAnimationFrame(()=>{ _rq=false; redraw(); }); }
 
   // ======================================================================
   //  SIZE / FIT
@@ -979,7 +983,7 @@
     $('modehint').textContent=HINTS[P.mode]||'';
   }
   function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); if(!el) return;
-    el.addEventListener('input',()=>{ fn(el.type==='range'?parseFloat(el.value):el.value); if(o)o.textContent=fmt?fmt(el.value):el.value; redraw(); }); }
+    el.addEventListener('input',()=>{ fn(el.type==='range'?parseFloat(el.value):el.value); if(o)o.textContent=fmt?fmt(el.value):el.value; scheduleRedraw(); }); }
 
   $('wordIn').addEventListener('input',e=>{ P.word=e.target.value||'a'; GEO_KEY=''; redraw(); });
   bind('fsz','fszR',v=>P.fsz=v/100,v=>(v/100).toFixed(2));
@@ -1028,9 +1032,9 @@
   $('ep_arms').addEventListener('change',e=>{ P.ep_arms=e.target.checked; redraw(); });
   $('ep_glow').addEventListener('change',e=>{ P.ep_glow=e.target.checked; redraw(); });
   // palette
-  $('cA').addEventListener('input',e=>{ P.cA=e.target.value; redraw(); });
-  $('cB').addEventListener('input',e=>{ P.cB=e.target.value; redraw(); });
-  $('cBg').addEventListener('input',e=>{ P.bg=e.target.value; redraw(); });
+  $('cA').addEventListener('input',e=>{ P.cA=e.target.value; scheduleRedraw(); });
+  $('cB').addEventListener('input',e=>{ P.cB=e.target.value; scheduleRedraw(); });
+  $('cBg').addEventListener('input',e=>{ P.bg=e.target.value; scheduleRedraw(); });
   $('fillOn').addEventListener('change',e=>{ P.fill=e.target.checked; redraw(); });
   $('gridOn').addEventListener('change',e=>{ P.grid=e.target.checked; redraw(); });
   $('htOn').addEventListener('change',e=>{ P.ht=e.target.checked; redraw(); });
@@ -1041,7 +1045,7 @@
   bind('htContrast','htContrastR',v=>P.htContrast=v);
   bind('htJitter','htJitterR',v=>P.htJitter=v);
   $('htColMode').addEventListener('change',e=>{ P.htColMode=e.target.value; redraw(); });
-  $('htCol').addEventListener('input',e=>{ P.htCol=e.target.value; redraw(); });
+  $('htCol').addEventListener('input',e=>{ P.htCol=e.target.value; scheduleRedraw(); });
 
   $('aspect').addEventListener('change',e=>{ P.size=e.target.value; fit(); });
   $('regen').addEventListener('click',()=>{ P.seed=(P.seed*1103515245+12345)&0x7fffffff;   // fresh generation
