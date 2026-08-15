@@ -69,7 +69,7 @@ const Opal = (() => {
     bar.innerHTML = `
       <a href="/lab/" class="opal-brand" aria-label="Tools home" style="color:inherit;text-decoration:none;">${WORDMARK}</a>
     `;
-    mountSessions(bar);   // "Sessions" — saved states, top-right of every tool
+    mountSessions(bar, name);   // "Sessions" — saved states, shared across every tool, top-right
 
     // Sub-header band BELOW the topbar: tool name · description · info · version — same on every tool.
     let sub = null;
@@ -186,10 +186,22 @@ const Opal = (() => {
     t.addEventListener('click', ()=>g.classList.toggle('collapsed'));
   }
   // --- Sessions: save/restore the tool's control state, per tool, top-right ---
-  function mountSessions(bar){
-    const KEY = 'opal-sessions:' + location.pathname;
-    const read = () => { try{ return JSON.parse(localStorage.getItem(KEY) || '[]'); }catch(e){ return []; } };
-    const write = a => { try{ localStorage.setItem(KEY, JSON.stringify(a)); }catch(e){} };
+  function mountSessions(bar, toolName){
+    // ONE shared store across every tool. A session records the tool it was saved in;
+    // opening one from another tool navigates there and restores it.
+    const GKEY = 'opal-sessions';
+    const path = (location.pathname.replace(/index\.html$/,'')) || location.pathname;
+    const label = toolName || (path.split('/').filter(Boolean).pop() || 'tool');
+    const readAll  = () => { try{ return JSON.parse(localStorage.getItem(GKEY) || '[]'); }catch(e){ return []; } };
+    const writeAll = a  => { try{ localStorage.setItem(GKEY, JSON.stringify(a)); }catch(e){} };
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+    // one-time migration of any old per-tool store into the shared one
+    (function(){ const ok = 'opal-sessions:' + location.pathname; let old;
+      try{ old = JSON.parse(localStorage.getItem(ok) || 'null'); }catch(e){}
+      if(old && old.length){ const all = readAll();
+        old.forEach(o => all.push({ id:uid(), name:o.name, path, label, state:o.state }));
+        writeAll(all); localStorage.removeItem(ok); } })();
+
     function capture(){
       const s = {};
       document.querySelectorAll('input, select, textarea').forEach(el => {
@@ -198,32 +210,52 @@ const Opal = (() => {
       });
       return s;
     }
-    function restore(s){
+    function applyState(s){
       Object.keys(s || {}).forEach(k => {
-        let el = document.getElementById(k); if(!el){ try{ el = document.querySelector('[name="'+k+'"]'); }catch(e){} }
+        let el = document.getElementById(k);
+        if(!el){ try{ el = document.querySelector('[name="'+(window.CSS&&CSS.escape?CSS.escape(k):k)+'"]'); }catch(e){} }
         if(!el) return; const d = s[k];
         if('c' in d) el.checked = d.c; else el.value = d.v;
         el.dispatchEvent(new Event('input', { bubbles:true }));
         el.dispatchEvent(new Event('change', { bubbles:true }));
       });
     }
+    // re-apply a few times so controls that a tool builds asynchronously still catch the values
+    function restore(s){ let n = 0; (function again(){ applyState(s); if(++n < 8) setTimeout(again, 180); })(); }
+
+    // cross-tool: if we arrived here to open a session, restore it once the tool has settled
+    (function(){ let p; try{ p = JSON.parse(sessionStorage.getItem('opal-session-open') || 'null'); }catch(e){}
+      if(p && p.path === path){ sessionStorage.removeItem('opal-session-open');
+        const s = readAll().find(x => x.id === p.id); if(s) setTimeout(() => restore(s.state), 280); } })();
+
     const btn = document.createElement('button');
     btn.className = 'opal-sessions-btn'; btn.type = 'button'; btn.setAttribute('aria-expanded','false');
     btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16"/></svg> Sessions';
     bar.appendChild(btn);
     const pop = document.createElement('div'); pop.className = 'opal-sessions-pop'; pop.hidden = true;
-    pop.innerHTML = '<div class="oss__save"><input type="text" placeholder="Name this session…" maxlength="48"><button type="button" class="oss__savebtn">Save</button></div><ul class="oss__list"></ul><p class="oss__hint">Saved in this browser, for this tool.</p>';
+    pop.innerHTML = '<div class="oss__save"><input type="text" placeholder="Name this session…" maxlength="48"><button type="button" class="oss__savebtn">Save</button></div><ul class="oss__list"></ul><p class="oss__hint">Saved in this browser, across every tool. Open one from another tool and it takes you there.</p>';
     document.body.appendChild(pop);
     const listEl = pop.querySelector('.oss__list'), nameEl = pop.querySelector('input'), saveBtn = pop.querySelector('.oss__savebtn');
     function renderList(){
-      const items = read(); listEl.innerHTML = '';
-      if(!items.length){ listEl.innerHTML = '<li class="oss__empty">No saved sessions yet.</li>'; return; }
-      items.forEach((it, i) => {
+      const all = readAll();
+      listEl.innerHTML = '';
+      if(!all.length){ listEl.innerHTML = '<li class="oss__empty">No saved sessions yet.</li>'; return; }
+      // this tool's sessions first, then the rest
+      all.map(it => it).sort((a,b) => (a.path===path?0:1) - (b.path===path?0:1)).forEach(it => {
+        const here = it.path === path;
         const li = document.createElement('li');
-        const load = document.createElement('button'); load.className = 'oss__load'; load.type = 'button'; load.textContent = it.name;
-        load.addEventListener('click', () => { restore(it.state); });
+        const load = document.createElement('button'); load.className = 'oss__load'; load.type = 'button';
+        load.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;';
+        const nm = document.createElement('span'); nm.textContent = it.name; nm.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        load.appendChild(nm);
+        if(!here){ const chip = document.createElement('em'); chip.textContent = it.label;
+          chip.style.cssText = 'font-style:normal;font-family:var(--mono);font-size:10px;color:var(--mute);background:rgba(127,127,127,.14);padding:2px 6px;border-radius:5px;flex:none;'; load.appendChild(chip); }
+        load.addEventListener('click', () => {
+          if(here){ restore(it.state); close(); }
+          else { sessionStorage.setItem('opal-session-open', JSON.stringify({ path: it.path, id: it.id })); location.href = it.path; }
+        });
         const del = document.createElement('button'); del.className = 'oss__del'; del.type = 'button'; del.setAttribute('aria-label','Delete'); del.textContent = '×';
-        del.addEventListener('click', () => { const a = read(); a.splice(i,1); write(a); renderList(); });
+        del.addEventListener('click', e => { e.stopPropagation(); const a = readAll(); const j = a.findIndex(x => x.id === it.id); if(j>=0){ a.splice(j,1); writeAll(a); } renderList(); });
         li.appendChild(load); li.appendChild(del); listEl.appendChild(li);
       });
     }
@@ -231,7 +263,11 @@ const Opal = (() => {
     function open(){ place(); renderList(); pop.hidden = false; btn.setAttribute('aria-expanded','true'); }
     function close(){ pop.hidden = true; btn.setAttribute('aria-expanded','false'); }
     btn.addEventListener('click', e => { e.stopPropagation(); pop.hidden ? open() : close(); });
-    saveBtn.addEventListener('click', () => { const nm = (nameEl.value||'').trim() || ('Session ' + (read().length + 1)); const a = read(); a.unshift({ name:nm, state:capture() }); write(a); nameEl.value=''; renderList(); });
+    saveBtn.addEventListener('click', () => {
+      const mine = readAll().filter(x => x.path === path).length;
+      const nm = (nameEl.value||'').trim() || ('Session ' + (mine + 1));
+      const a = readAll(); a.unshift({ id:uid(), name:nm, path, label, state:capture() }); writeAll(a); nameEl.value=''; renderList();
+    });
     nameEl.addEventListener('keydown', e => { if(e.key==='Enter') saveBtn.click(); });
     document.addEventListener('click', e => { if(!pop.hidden && !pop.contains(e.target) && !btn.contains(e.target)) close(); });
     window.addEventListener('keydown', e => { if(e.key==='Escape') close(); });
