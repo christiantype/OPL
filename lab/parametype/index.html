@@ -692,7 +692,7 @@
           for(let s=0;s<=P.sc_sp;s++){ const p=pts[(start+s)%pts.length]; const x=p.x+(Math.random()*2-1)*jit, y=p.y+(Math.random()*2-1)*jit; d+=(s===0?'M':'L')+x.toFixed(1)+' '+y.toFixed(1); }
           parts.push(`<path d="${d}" fill="none" stroke="${c}" stroke-opacity="0.26" stroke-width="0.8"/>`); }
         if(P.sc_dots) for(const p of pts) parts.push(`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="1.5" fill="${P.cB}"/>`); }
-    } else { // flock or stipple: not truly vector — embed a HIGH-RES raster re-render
+    } else { // flock / stipple: dense accumulation — embed a HIGH-RES raster (PNG, lossless)
       const hi = (typeof px==='number' && px>W) ? renderAt(px) : art;
       parts.push(`<image href="${hi.toDataURL('image/png')}" x="0" y="0" width="${W}" height="${H}"/>`);
     }
@@ -705,7 +705,7 @@
   //  Flock / Stipple return null so the Output panel falls back to a hi-res raster PDF.
   // ======================================================================
   function vectorPDF(px){
-    if(P.mode==='flock' || P.mode==='stipple') return null;
+    if(P.mode==='flock' || P.mode==='stipple') return null;   // dense accumulation → hi-res raster
     buildGeometry(); if(!LET || !LET.letters.length) return null;
     const ar=W/H, TW=Math.round(ar>=1?px:px*ar), TH=Math.round(ar>=1?px/ar:px), sc=TW/W;
     const body=[]; const gmap=new Map(), glist=[];
@@ -852,6 +852,11 @@
 
   // ---- Output: SVG-aware export + record ----
   Opal.mountOutput(art,'parametype',{ svg:(px)=>svgExport(px), pdf:(px)=>vectorPDF(px), render:px=>renderAt(px) });
+  // Default exports to a print-worthy resolution — the raster methods (Flock, Stipple) need
+  // real pixels, and the vector methods (Chords, Contour, Weave, Scribble) ignore it anyway.
+  (function(){ const s=document.querySelector('.opal-ex-scale'); if(!s) return;
+    const hi=Math.min(parseInt(s.max)||8192, 5000); s.value=String(hi); s.dataset.touched='1';
+    s.dispatchEvent(new Event('input',{bubbles:true})); })();
   let rec=null,rt=0,tk=0;
   $('recBtn').addEventListener('click',()=>{ if(rec){rec.stop();return;}
     if(!animating) startAnim();
