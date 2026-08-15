@@ -91,7 +91,7 @@
       <div class="knob"><label>Points <b id="ch_ptR">320</b></label><input id="ch_pt" type="range" min="60" max="520" value="320"></div>
       <div class="knob"><label>Reach <b id="ch_dsR">190</b></label><input id="ch_ds" type="range" min="30" max="300" value="190"></div>
       <div class="knob"><label>Density <b id="ch_dnR">0.9</b></label><input id="ch_dn" type="range" min="6" max="100" value="90"></div>
-      <div class="knob"><label>Tangle <b id="ch_twR">0.4</b></label><input id="ch_tw" type="range" min="0" max="100" value="40"></div>
+      <div class="knob"><label>Tangle (hair) <b id="ch_twR">0</b></label><input id="ch_tw" type="range" min="0" max="100" value="0"></div>
       <div class="knob"><label>Ink weight <b id="ch_opR">0.32</b></label><input id="ch_op" type="range" min="4" max="100" value="32"></div>
       <div class="knob"><label>Ink pool <b id="ch_inkR">0.5</b></label><input id="ch_ink" type="range" min="0" max="100" value="50"></div>
     </div>
@@ -130,11 +130,8 @@
 
   <div class="group">
     <div class="group__t">Palette</div>
-    <div class="crow"><label>Ink A</label><input type="color" class="sw" id="cA" value="#111111"></div>
-    <div class="crow"><label>Ink B</label><input type="color" class="sw" id="cB" value="#d81f6a"></div>
-    <div class="tog"><span>Glow</span><input type="checkbox" id="glowOn" checked></div>
-    <div class="crow"><label>Glow hue</label><input type="color" class="sw" id="cG" value="#f2d200"></div>
-    <div class="knob"><label>Glow strength <b id="glR">0.5</b></label><input id="gl" type="range" min="0" max="100" value="50"></div>
+    <div class="crow"><label>Ink A</label><input type="color" class="sw" id="cA" value="#c3203b"></div>
+    <div class="crow"><label>Ink B</label><input type="color" class="sw" id="cB" value="#2f7fa8"></div>
     <div class="tog"><span>Fill body</span><input type="checkbox" id="fillOn"></div>
     <div class="tog"><span>Graph paper</span><input type="checkbox" id="gridOn"></div>
   </div>
@@ -165,21 +162,30 @@
   let W=1080, H=1080, DPR=1;
   const P={ size:'1080/1080', word:'a', fsz:0.72, mode:'flock',
     fl_rib:20, fl_it:340, fl_sp:4.5, fl_tw:0.35, fl_ad:3, fl_fc:0.45, fl_op:0.55,
-    ch_pt:320, ch_ds:190, ch_dn:0.9, ch_tw:0.4, ch_op:0.32, ch_ink:0.5,
+    ch_pt:320, ch_ds:190, ch_dn:0.9, ch_tw:0, ch_op:0.32, ch_ink:0.5,
     sc_pt:300, sc_pa:26, sc_sp:6, sc_dots:true,
     co_ln:170, co_dt:80, co_pu:0.30, co_bl:6,
     st_ly:20, st_gn:14000, st_sp:18, st_bl:4,
     we_ln:200, we_sp:1.0, we_ghost:true,
-    cA:'#111111', cB:'#d81f6a', glow:true, cG:'#f2d200', gl:0.5, fill:false, grid:false, seed:1 };
+    cA:'#c3203b', cB:'#2f7fa8', fill:false, grid:false, seed:1 };
 
   // deterministic RNG (mulberry32) — chords/scribble seed from P.seed so the on-screen
   // tangle and the exported file are IDENTICAL. Redraw re-seeds for a fresh generation.
   function rngFrom(seed){ let a=seed>>>0; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  // smooth a polyline into a flowing quadratic-through-midpoints curve (used by the scribble)
+  function smoothCanvas(ctx,p){ if(p.length<3){ ctx.moveTo(p[0].x,p[0].y); for(let i=1;i<p.length;i++) ctx.lineTo(p[i].x,p[i].y); return; }
+    ctx.moveTo(p[0].x,p[0].y);
+    for(let i=1;i<p.length-1;i++){ ctx.quadraticCurveTo(p[i].x,p[i].y,(p[i].x+p[i+1].x)/2,(p[i].y+p[i+1].y)/2); }
+    ctx.lineTo(p[p.length-1].x,p[p.length-1].y); }
+  function smoothSVGd(p){ if(p.length<3) return 'M'+p.map(q=>q.x.toFixed(1)+' '+q.y.toFixed(1)).join('L');
+    let d='M'+p[0].x.toFixed(1)+' '+p[0].y.toFixed(1);
+    for(let i=1;i<p.length-1;i++) d+='Q'+p[i].x.toFixed(1)+' '+p[i].y.toFixed(1)+' '+((p[i].x+p[i+1].x)/2).toFixed(1)+' '+((p[i].y+p[i+1].y)/2).toFixed(1);
+    return d+'L'+p[p.length-1].x.toFixed(1)+' '+p[p.length-1].y.toFixed(1); }
 
   const HINTS={
     flock:'Outline points become agents that chase a target travelling around the letter — the lag draws it as flowing ribbons.',
     chords:'Every pair of edge points is joined by a line if it stays inside the letter — a taut interior web.',
-    scribble:'Short curved strokes hop between neighbouring edge points, sketching the letter loosely, with a nib dot on each point.',
+    scribble:'Loose, roughly implied strokes gesture around the letter — sketched, not traced — with a scatter of open nib dots along the edge.',
     contour:'Horizontal horizon lines run across the page and lift where the letter’s shadow falls beneath them.',
     stipple:'Layers of grain settle onto the letter, denser and darker toward the final layer — an airbrushed shade.',
     weave:'Threads pass through the same point on the outline, spreading from the left and drawing to a point at the right.'
@@ -319,24 +325,6 @@
       for(let x=0;x<=W;x+=g){ ctx.moveTo(x+.5,0); ctx.lineTo(x+.5,H); }
       for(let y=0;y<=H;y+=g){ ctx.moveTo(0,y+.5); ctx.lineTo(W,y+.5); }
       ctx.stroke(); ctx.restore();
-    }
-    if(P.glow && P.gl>0 && LET && LET.bbox){
-      const g=hex(P.cG); const b=LET.bbox;
-      // a couple of soft radial pools keyed to the letter box, plus a warm centre
-      const pools=[
-        { x:b.x+b.w*0.22, y:b.y+b.h*0.30, r:b.w*0.52, a:0.55 },
-        { x:b.x+b.w*0.78, y:b.y+b.h*0.72, r:b.w*0.46, a:0.42 },
-        { x:b.x+b.w*0.5,  y:b.y+b.h*0.5,  r:b.w*0.66, a:0.22 },
-      ];
-      ctx.save(); ctx.globalCompositeOperation='multiply';
-      for(const pl of pools){
-        const rg=ctx.createRadialGradient(pl.x,pl.y,0,pl.x,pl.y,pl.r);
-        const a=pl.a*P.gl;
-        rg.addColorStop(0, rgba(g, a));
-        rg.addColorStop(1, rgba(g, 0));
-        ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(pl.x,pl.y,pl.r,0,7); ctx.fill();
-      }
-      ctx.restore();
     }
     if(P.fill && LET){
       ctx.save();
@@ -494,31 +482,46 @@
   // ---- SCRIBBLE (ch8): loose jittered curve hops that build a sketched outline + dots ----
   // Deterministic from P.seed (shared by the on-screen draw AND the SVG/PDF exporters) so the
   // export is identical to the preview. Returns { strokes:[{pts,col}], dots:[{x,y}], dotR }.
+  // Each stroke is one CONTINUOUS run that walks along the outline (with an occasional
+  // jump that throws a loop across the letter), smoothed into a flowing scribble — the
+  // bold looping line of the original ch8, not short hops. Span = how much of the outline
+  // one run traces. Open blue nib dots sit on the outline points.
   function scribbleData(){
     const rng=rngFrom((P.seed||1)*40503 >>> 0);
     const strokes=[], dots=[];
     for(let li=0;li<LET.letters.length;li++){
       const L=LET.letters[li];
-      const pts=resample(closeFlat(L), P.sc_pt);
-      const jit=Math.max(2, Math.min(L.bbox.w,L.bbox.h)*0.014);
-      const passes=Math.round(P.sc_pa*pts.length/26);
+      const pts=resample(closeFlat(L), P.sc_pt); const N=pts.length;
+      const jit=Math.max(2, Math.min(L.bbox.w,L.bbox.h)*0.020);   // looser → the mark implies the edge, doesn't trace it
+      const passes=Math.max(4, Math.round(P.sc_pa));
       for(let n=0;n<passes;n++){
-        const start=(rng()*pts.length)|0, c=mix(rng()*0.5), sp=[];
-        for(let s=0;s<=P.sc_sp;s++){ const p=pts[(start+s)%pts.length];
-          sp.push({ x:p.x+(rng()*2-1)*jit, y:p.y+(rng()*2-1)*jit }); }
-        strokes.push({ pts:sp, col:c });
+        const runLen=Math.max(4, Math.round(N*(P.sc_sp/16)*(0.25+rng()*0.9)));   // wildly varied run lengths
+        let idx=(rng()*N)|0; const c=mix(rng()); const sp=[];
+        for(let s=0;s<runLen;s++){
+          const r=rng();
+          if(r<0.08) idx=(rng()*N)|0;          // jump → loop/overshoot across the letter
+          else idx=(idx + 1 + (rng()*3|0))%N;   // skip a few points → coarse, angular, not a faithful trace
+          const p=pts[idx];
+          const g=(rng()*2-1)*jit*(0.6+rng());  // uneven jitter → some points wander far off
+          const g2=(rng()*2-1)*jit*(0.6+rng());
+          sp.push({ x:p.x+g, y:p.y+g2 });
+        }
+        strokes.push({ pts:sp, col:c, op:0.38 });
       }
-      if(P.sc_dots) for(const p of pts) dots.push({x:p.x,y:p.y});
+      // dots: a scattered SUBSET (not every point) so the outline reads as suggested, not pinned
+      if(P.sc_dots){ const every=Math.max(2, Math.round(N/46)), dj=Math.min(L.bbox.w,L.bbox.h)*0.006;
+        for(let i=(rng()*every)|0; i<N; i+=every){ const p=pts[i];
+          dots.push({ x:p.x+(rng()*2-1)*dj, y:p.y+(rng()*2-1)*dj }); } }
     }
-    return { strokes, dots, dotR:1.5*Math.max(1, Math.max(W,H)/1400) };
+    return { strokes, dots, dotR:3*Math.max(1, Math.max(W,H)/1400) };
   }
   function drawScribble(){
-    const {strokes,dots,dotR}=scribbleData();
-    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=0.8;
-    for(const st of strokes){ ctx.strokeStyle=rgba(st.col,0.26); ctx.beginPath();
+    const {strokes,dots,dotR}=scribbleData(); const sc=Math.max(1, Math.max(W,H)/1400);
+    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=1.1*sc;
+    for(const st of strokes){ ctx.strokeStyle=rgba(st.col, st.op); ctx.beginPath();   // raw polyline → rough, implied, un-smoothed
       ctx.moveTo(st.pts[0].x,st.pts[0].y); for(let k=1;k<st.pts.length;k++) ctx.lineTo(st.pts[k].x,st.pts[k].y); ctx.stroke(); }
-    if(dots.length){ const d=hex(P.cB); ctx.fillStyle=rgba(d,0.85);
-      for(const p of dots){ ctx.beginPath(); ctx.arc(p.x,p.y,dotR,0,7); ctx.fill(); } }
+    if(dots.length){ ctx.strokeStyle=rgba(hex(P.cB),0.9); ctx.lineWidth=Math.max(1, dotR*0.32);
+      for(const p of dots){ ctx.beginPath(); ctx.arc(p.x,p.y,dotR,0,7); ctx.stroke(); } }   // open nib circles
   }
 
   // ---- CONTOUR (ch1): horizon lines lifted by the letter's shadow ----
@@ -716,8 +719,8 @@
       const sd=scribbleData();
       for(const st of sd.strokes){ let d='M'+st.pts[0].x.toFixed(1)+' '+st.pts[0].y.toFixed(1);
         for(let k=1;k<st.pts.length;k++) d+='L'+st.pts[k].x.toFixed(1)+' '+st.pts[k].y.toFixed(1);
-        parts.push(`<path d="${d}" fill="none" stroke="${col(st.col)}" stroke-opacity="0.26" stroke-width="0.8"/>`); }
-      for(const p of sd.dots) parts.push(`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${sd.dotR.toFixed(2)}" fill="${P.cB}"/>`);
+        parts.push(`<path d="${d}" fill="none" stroke="${col(st.col)}" stroke-opacity="${st.op}" stroke-width="1.1"/>`); }
+      for(const p of sd.dots) parts.push(`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${sd.dotR.toFixed(2)}" fill="none" stroke="${P.cB}" stroke-width="${(sd.dotR*0.32).toFixed(2)}"/>`);
     } else { // flock / stipple: dense accumulation — embed a HIGH-RES raster (PNG, lossless)
       const hi = (typeof px==='number' && px>W) ? renderAt(px) : art;
       parts.push(`<image href="${hi.toDataURL('image/png')}" x="0" y="0" width="${W}" height="${H}"/>`);
@@ -751,9 +754,10 @@
     const fillPath=(d,c,op)=>{ const g=gs(op,'Normal'); body.push('/'+g+' gs'); cGS=g;
       body.push(RGB(c)+' rg'); cCol=null; body.push(d+' f*'); };
     // circle as 4 cubic arcs (for the scribble nib dots)
-    const circle=(x,y,r,c)=>{ const k=0.5523*r; const g=gs(1,'Normal'); body.push('/'+g+' gs'); cGS=g;
-      body.push(RGB(c)+' rg'); cCol=null;
-      body.push(`${(x+r).toFixed(2)} ${y.toFixed(2)} m ${(x+r).toFixed(2)} ${(y+k).toFixed(2)} ${(x+k).toFixed(2)} ${(y+r).toFixed(2)} ${x.toFixed(2)} ${(y+r).toFixed(2)} c ${(x-k).toFixed(2)} ${(y+r).toFixed(2)} ${(x-r).toFixed(2)} ${(y+k).toFixed(2)} ${(x-r).toFixed(2)} ${y.toFixed(2)} c ${(x-r).toFixed(2)} ${(y-k).toFixed(2)} ${(x-k).toFixed(2)} ${(y-r).toFixed(2)} ${x.toFixed(2)} ${(y-r).toFixed(2)} c ${(x+k).toFixed(2)} ${(y-r).toFixed(2)} ${(x+r).toFixed(2)} ${(y-k).toFixed(2)} ${(x+r).toFixed(2)} ${y.toFixed(2)} c f`); };
+    const circPath=(x,y,r)=>{ const k=0.5523*r;
+      return `${(x+r).toFixed(2)} ${y.toFixed(2)} m ${(x+r).toFixed(2)} ${(y+k).toFixed(2)} ${(x+k).toFixed(2)} ${(y+r).toFixed(2)} ${x.toFixed(2)} ${(y+r).toFixed(2)} c ${(x-k).toFixed(2)} ${(y+r).toFixed(2)} ${(x-r).toFixed(2)} ${(y+k).toFixed(2)} ${(x-r).toFixed(2)} ${y.toFixed(2)} c ${(x-r).toFixed(2)} ${(y-k).toFixed(2)} ${(x-k).toFixed(2)} ${(y-r).toFixed(2)} ${x.toFixed(2)} ${(y-r).toFixed(2)} c ${(x+k).toFixed(2)} ${(y-r).toFixed(2)} ${(x+r).toFixed(2)} ${(y-k).toFixed(2)} ${(x+r).toFixed(2)} ${y.toFixed(2)} c`; };
+    const circle=(x,y,r,c)=>{ const g=gs(1,'Normal'); body.push('/'+g+' gs'); cGS=g; body.push(RGB(c)+' rg'); cCol=null; body.push(circPath(x,y,r)+' f'); };
+    const circleStroke=(x,y,r,c,w)=>{ const g=gs(0.9,'Normal'); body.push('/'+g+' gs'); cGS=g; body.push(RGB(c)+' RG'); cCol=null; body.push(w+' w'); cW=w; body.push(circPath(x,y,r)+' S'); };
 
     if(P.fill){ for(const Lr of LET.letters){ let d=''; for(const cont of Lr.contours){ d+='M'+cont.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join('L')+'Z'; }
       // build even-odd fill path in PDF ops
@@ -784,10 +788,10 @@
         d+=' '+L(W,y); strokePath(d, mix(i/Nl), 0.95, 2, 'Normal'); }
     } else if(P.mode==='scribble'){
       const sd=scribbleData();
-      for(const st of sd.strokes){ let d=M(st.pts[0].x,st.pts[0].y);
-        for(let k=1;k<st.pts.length;k++) d+=' '+L(st.pts[k].x,st.pts[k].y);
-        strokePath(d, st.col, 0.26, 0.8, 'Normal'); }
-      const dc=hex(P.cB); for(const p of sd.dots) circle(p.x,p.y,sd.dotR,dc);
+      for(const st of sd.strokes){ const p=st.pts; let d=M(p[0].x,p[0].y);
+        for(let k=1;k<p.length;k++) d+=' '+L(p[k].x,p[k].y);
+        strokePath(d, st.col, st.op, 1.1, 'Normal'); }
+      const dc=hex(P.cB); for(const p of sd.dots) circleStroke(p.x,p.y,sd.dotR,dc,sd.dotR*0.32);
     }
 
     // assemble the PDF: flip+scale the page so we can emit canvas coords directly
@@ -860,9 +864,6 @@
   // palette
   $('cA').addEventListener('input',e=>{ P.cA=e.target.value; redraw(); });
   $('cB').addEventListener('input',e=>{ P.cB=e.target.value; redraw(); });
-  $('glowOn').addEventListener('change',e=>{ P.glow=e.target.checked; redraw(); });
-  $('cG').addEventListener('input',e=>{ P.cG=e.target.value; redraw(); });
-  bind('gl','glR',v=>P.gl=v/100,v=>(v/100).toFixed(2));
   $('fillOn').addEventListener('change',e=>{ P.fill=e.target.checked; redraw(); });
   $('gridOn').addEventListener('change',e=>{ P.grid=e.target.checked; redraw(); });
 
