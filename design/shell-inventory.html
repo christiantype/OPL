@@ -1,0 +1,262 @@
+<title>OP/AL Lab — Shell Inventory</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#f4f6f8; --surface:#ffffff; --surface-2:#fafbfc;
+    --ink:#14161a; --mute:#5f636c; --faint:#9aa0ab;
+    --line:rgba(20,22,26,.12); --line-2:rgba(20,22,26,.06);
+    --accent:#0f62fe;                 /* IBM blue — the OP/AL accent */
+    --ok:#12855a; --ok-bg:rgba(18,133,90,.10);
+    --warn:#b4690e; --warn-bg:rgba(180,105,14,.11);
+    --custom:#0f62fe; --custom-bg:rgba(15,98,254,.10);
+    --na:#a2a7b0;
+    --radius:12px; --radius-s:8px;
+    --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","IBM Plex Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#121317; --surface:#1a1c22; --surface-2:#1e2027;
+      --ink:#eceef2; --mute:#9aa0ab; --faint:#6b7079;
+      --line:rgba(255,255,255,.13); --line-2:rgba(255,255,255,.06);
+      --accent:#5b93ff;
+      --ok:#38caa0; --ok-bg:rgba(56,202,160,.12);
+      --warn:#e0a94a; --warn-bg:rgba(224,169,74,.13);
+      --custom:#5b93ff; --custom-bg:rgba(91,147,255,.13);
+      --na:#5c616b;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6f8; --surface:#ffffff; --surface-2:#fafbfc;
+    --ink:#14161a; --mute:#5f636c; --faint:#9aa0ab;
+    --line:rgba(20,22,26,.12); --line-2:rgba(20,22,26,.06);
+    --accent:#0f62fe; --ok:#12855a; --ok-bg:rgba(18,133,90,.10);
+    --warn:#b4690e; --warn-bg:rgba(180,105,14,.11);
+    --custom:#0f62fe; --custom-bg:rgba(15,98,254,.10); --na:#a2a7b0;
+  }
+  :root[data-theme="dark"]{
+    --bg:#121317; --surface:#1a1c22; --surface-2:#1e2027;
+    --ink:#eceef2; --mute:#9aa0ab; --faint:#6b7079;
+    --line:rgba(255,255,255,.13); --line-2:rgba(255,255,255,.06);
+    --accent:#5b93ff; --ok:#38caa0; --ok-bg:rgba(56,202,160,.12);
+    --warn:#e0a94a; --warn-bg:rgba(224,169,74,.13);
+    --custom:#5b93ff; --custom-bg:rgba(91,147,255,.13); --na:#5c616b;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1120px;margin:0 auto;padding:clamp(28px,5vw,64px) clamp(18px,4vw,40px) 80px;}
+
+  /* ---- header ---- */
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);
+    display:flex;align-items:center;gap:10px;}
+  .eyebrow .mark{font-weight:600;color:var(--ink);letter-spacing:.22em}
+  h1{font-size:clamp(28px,4.6vw,44px);line-height:1.08;letter-spacing:-.02em;font-weight:600;
+    text-wrap:balance;margin:.5em 0 .35em;}
+  .lede{font-size:clamp(16px,2vw,18px);color:var(--mute);max-width:62ch;margin:0;}
+
+  /* ---- stat strip ---- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;
+    background:var(--line-2);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin:36px 0 8px;}
+  .stat{background:var(--surface);padding:16px 18px;}
+  .stat b{display:block;font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;line-height:1;}
+  .stat span{display:block;font-size:12.5px;color:var(--mute);margin-top:7px;}
+  .stat.accent b{color:var(--accent)} .stat.ok b{color:var(--ok)} .stat.warn b{color:var(--warn)}
+
+  section{margin-top:52px;}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:18px;}
+  .sec-head h2{font-size:13px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;
+    color:var(--mute);font-weight:600;margin:0;}
+  .sec-head .rule{flex:1;height:1px;background:var(--line);}
+
+  /* ---- table ---- */
+  .tablewrap{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface);}
+  .scroll{overflow-x:auto;}
+  table{border-collapse:collapse;width:100%;min-width:820px;}
+  thead th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);
+    font-weight:500;text-align:center;padding:13px 8px;background:var(--surface-2);
+    border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;}
+  thead th.l{text-align:left;padding-left:18px;}
+  tbody td{padding:11px 8px;text-align:center;border-bottom:1px solid var(--line-2);font-size:13.5px;}
+  tbody tr:last-child td{border-bottom:0;}
+  tbody tr:hover td{background:var(--surface-2);}
+  .tool{font-family:var(--mono);font-size:13px;text-align:left;padding-left:18px;font-weight:500;white-space:nowrap;}
+  .shell{font-family:var(--mono);font-size:11.5px;color:var(--mute);text-align:left;white-space:nowrap;}
+  .grp-label td{background:var(--surface-2);border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);
+    text-align:left;padding:9px 18px;}
+
+  /* ---- state cells ---- */
+  .s{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;
+    font-size:12px;font-weight:700;line-height:1;}
+  .s.ok{color:var(--ok);background:var(--ok-bg);}
+  .s.custom{color:var(--custom);background:var(--custom-bg);}
+  .s.gap{color:var(--warn);background:var(--warn-bg);}
+  .s.na{color:var(--na);background:transparent;font-weight:400;}
+  .orphan .tool::after{content:"orphan";font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;
+    color:var(--warn);background:var(--warn-bg);padding:2px 6px;border-radius:5px;margin-left:9px;vertical-align:middle;}
+
+  /* ---- legend ---- */
+  .legend{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:16px;font-size:13px;color:var(--mute);}
+  .legend span{display:inline-flex;align-items:center;gap:8px;}
+
+  /* ---- findings ---- */
+  .findings{display:grid;gap:1px;background:var(--line-2);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .finding{background:var(--surface);padding:16px 20px;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;}
+  .finding .n{font-family:var(--mono);font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums;padding-top:3px;}
+  .finding h3{margin:0 0 3px;font-size:15px;font-weight:600;}
+  .finding p{margin:0;color:var(--mute);font-size:14px;}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;padding:2px 7px;border-radius:5px;
+    margin-left:8px;vertical-align:middle;}
+  .tag.gap{color:var(--warn);background:var(--warn-bg);} .tag.custom{color:var(--custom);background:var(--custom-bg);}
+
+  /* ---- roadmap ---- */
+  .phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;}
+  .phase{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:20px 20px 22px;
+    display:flex;flex-direction:column;gap:2px;}
+  .phase .ph-k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+  .phase h3{margin:0 0 12px;font-size:16px;font-weight:600;}
+  .phase ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px;}
+  .phase li{position:relative;padding-left:22px;font-size:14px;color:var(--ink);}
+  .phase li::before{content:"";position:absolute;left:0;top:7px;width:8px;height:8px;border-radius:2px;
+    background:var(--accent);opacity:.85;}
+  .phase li small{display:block;color:var(--mute);font-size:12.5px;margin-top:2px;}
+  .decided{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;color:var(--ok);background:var(--ok-bg);
+    padding:2px 6px;border-radius:5px;margin-left:6px;vertical-align:middle;text-transform:uppercase;}
+
+  footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);color:var(--faint);
+    font-family:var(--mono);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  @media (max-width:560px){ .finding{grid-template-columns:1fr;gap:4px} .finding .n{padding-top:0} }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><span class="mark">O P / A L</span> · Lab shell audit · 2026-08-15</div>
+    <h1>Shell inventory &amp; convergence roadmap</h1>
+    <p class="lede">Every Lab tool measured against the shared shell — topbar, subhead, Sessions, size dock, Output, the DPI export panel, and parameter islands. Runtime-verified across 25 tools; no console errors on any published tool.</p>
+
+    <div class="stats">
+      <div class="stat"><b>25</b><span>tool directories</span></div>
+      <div class="stat ok"><b>25</b><span>published in gallery</span></div>
+      <div class="stat ok"><b>0</b><span>orphans left</span></div>
+      <div class="stat"><b>2</b><span>shell systems</span></div>
+      <div class="stat accent"><b>0</b><span>console errors</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><h2>Conformance matrix</h2><div class="rule"></div></div>
+    <div class="tablewrap"><div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="l">Tool</th><th class="l">Shell</th>
+            <th>Topbar</th><th>Subhead</th><th>Sessions</th><th>Size&nbsp;dock</th><th>Output</th><th>DPI&nbsp;export</th><th>Islands</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="grp-label"><td colspan="9">tool.css · #dock island shell — the reference (16)</td></tr>
+          <!-- fully standard -->
+          <!-- rows -->
+          <tr><td class="tool">facet</td><td class="shell">tool.css</td><td><i class="s ok" title="present">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">fence</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">prism</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">offset</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">static</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">sequins</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">spectral-smear</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">tape</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">windchime</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">overset</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">visual-poetry</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">halftone</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">angel</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">image-train</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">open-lab</td><td class="shell">tool.css</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s custom" title="custom export — to be unified">◆</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">lab-design-system</td><td class="shell">tool.css · doc</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s na" title="n/a — reference page">–</i></td><td><i class="s ok">✓</i></td><td><i class="s na">–</i></td><td><i class="s na">–</i></td></tr>
+
+          <tr class="grp-label"><td colspan="9">ibm.css · flat / panel shells — convergence targets (5)</td></tr>
+          <tr><td class="tool">ash</td><td class="shell">ibm · #rail</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s na" title="no canvas resize">–</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">scanner</td><td class="shell">ibm · #rail</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s na">–</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">letter-strings</td><td class="shell">ibm · #rail</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s na">–</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">flux</td><td class="shell">ibm · #panel</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s custom" title="own Canvas tab + print presets">◆</i></td><td><i class="s ok">✓</i></td><td><i class="s custom" title="custom export — to be unified">◆</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr><td class="tool">lake-opeka</td><td class="shell">ibm · bespoke</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s custom">◆</i></td><td><i class="s ok">✓</i></td></tr>
+
+          <tr class="grp-label"><td colspan="9">Formerly orphaned — now shelled &amp; published (4)</td></tr>
+          <tr class=""><td class="tool">open-capture</td><td class="shell">ibm</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s na">–</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr class=""><td class="tool">open-reel</td><td class="shell">ibm</td><td><i class="s ok" title="no topbar">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s na">–</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr class=""><td class="tool">open-slots</td><td class="shell">ibm</td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s na">–</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+          <tr class=""><td class="tool">fractal</td><td class="shell">none</td><td><i class="s ok" title="no shell at all">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td><td><i class="s ok">✓</i></td></tr>
+        </tbody>
+      </table>
+    </div></div>
+    <div class="legend">
+      <span><i class="s ok">✓</i> standard — shared shell</span>
+      <span><i class="s custom">◆</i> custom / by-design (or minor parity gap)</span>
+      <span><i class="s gap">▲</i> gap — drift to fix</span>
+      <span><i class="s na">–</i> not applicable</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Findings</h2><div class="rule"></div></div>
+    <div class="findings">
+      <div class="finding"><div class="n">01</div><div><h3>Two shell systems, and the drift lives in one<span class="tag custom">structural</span></h3><p><code>tool.css</code> (#dock islands) is the clean reference across 16 tools. The <code>ibm.css</code> family is where nearly every inconsistency sits — size dock, export panel, and island styling all vary there.</p></div></div>
+      <div class="finding"><div class="n">02</div><div><h3>Four orphan tools off the gallery<span class="tag custom">resolved</span></h3><p><code>fractal</code> was a loose shader — now built into a full tool on the shell. The OP/EN trio (<code>open-capture / open-reel / open-slots</code>) is shelled (topbar · subhead · Sessions) and all four are published as OP-LAB-021–024.</p></div></div>
+      <div class="finding"><div class="n">03</div><div><h3>lake-opeka parameters aren't islands<span class="tag gap">gap</span></h3><p>Its <code>.controls</code> aside never got the island treatment every other tool has, so its rail reads differently.</p></div></div>
+      <div class="finding"><div class="n">04</div><div><h3>Export isn't fully unified<span class="tag custom">by-design → unify</span></h3><p><code>flux</code>, <code>lake-opeka</code>, and <code>open-lab</code> keep custom export instead of the shared <em>format · pixels · print-size · DPI</em> panel every other tool now uses.</p></div></div>
+      <div class="finding"><div class="n">05</div><div><h3>Island drop-shadow parity<span class="tag custom">polish</span></h3><p>The ibm rail cards (ash / scanner / letter-strings) are bordered cards without the soft float-shadow the <code>tool.css</code> islands carry — so close, not identical.</p></div></div>
+      <div class="finding"><div class="n">06</div><div><h3>Size-dock &amp; theme are unspecified axes<span class="tag custom">decide</span></h3><p>Several ibm tools have no size dock (likely fixed-aspect — worth confirming vs. omission). Dark- vs light-bodied defaults are split with no shared rule or toggle.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Roadmap — decided</h2><div class="rule"></div></div>
+    <div class="phases">
+      <div class="phase">
+        <div class="ph-k">Now · high ROI</div>
+        <h3>Close the gaps</h3>
+        <ul>
+          <li>Finish &amp; publish all 4 orphans <span class="decided">done</span><small>fractal built into a full tool; OP/EN trio shelled; all four in the gallery (OP-LAB-021–024).</small></li>
+          <li>lake-opeka controls → islands <span class="decided">done</span><small>each group now its own island card.</small></li>
+          <li>ibm rail cards get the island shadow <span class="decided">done</span><small>ash / scanner / letter-strings now match the tool.css islands pixel-for-pixel.</small></li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="ph-k">Next · unify the model</div>
+        <h3>One Output, everywhere</h3>
+        <ul>
+          <li>Unify export <span class="decided">chosen</span><small>migrate flux / lake-opeka / open-lab onto the shared DPI panel via render/svg hooks — vector export preserved.</small></li>
+          <li>Size-dock parity<small>every tool gets the bottom-centre size island, or a documented reason it has none.</small></li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="ph-k">Structural · prevent drift</div>
+        <h3>Converge on one shell</h3>
+        <ul>
+          <li>Retire ibm.css → tool.css <span class="decided">chosen</span><small>migrate the ibm family to the #dock island shell; keep Flux's Morflax panel as the one deliberate exception.</small></li>
+          <li>Shell-conformance lint<small>this exact audit as a script, so any new tool missing a shell part gets flagged.</small></li>
+          <li>A theme rule<small>dark-vs-light by canvas type, plus a topbar theme toggle.</small></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>OP/AL Lab · shell inventory</span>
+    <span>25 tools · runtime-verified · 2026-08-15</span>
+  </footer>
+</div>
+
+<script>
+  // keep the viewer's toggle authoritative in both directions
+  (function(){
+    var root=document.documentElement;
+    try{
+      var mq=window.matchMedia('(prefers-color-scheme:dark)');
+      if(mq.addEventListener) mq.addEventListener('change',function(){/* tokens follow media query automatically */});
+    }catch(e){}
+  })();
+</script>
