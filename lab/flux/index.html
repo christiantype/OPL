@@ -1781,9 +1781,13 @@ function drawShatter(glyphs,C,W,H,fill,bg){
   const cx=(x0+x1)/2, cy=(y0+y1)/2, blast=S.pSpread*0.55, spin=S.fieldDrift*0.004;
   const diag=Math.max(1,Math.hypot(x1-x0,y1-y0));
   const tris=delaunay(P);
-  // the "content behind the glass": the word, drawn once into a texture
-  const wc=document.createElement('canvas'); wc.width=W; wc.height=H;
-  const wx=wc.getContext('2d'); wx.fillStyle=bg; wx.fillRect(0,0,W,H); wx.fillStyle=fill;
+  // Render the glass at the FULL backing resolution (logical size × device scale), so the
+  // shards are as crisp as the rest of the tool and export print-ready at any doc size.
+  const DS=Math.max(1, curDpr||1), RW=Math.round(W*DS), RH=Math.round(H*DS);
+  // the "content behind the glass": the word, drawn once into a texture (at render res)
+  const wc=document.createElement('canvas'); wc.width=RW; wc.height=RH;
+  const wx=wc.getContext('2d'); wx.setTransform(DS,0,0,DS,0,0);
+  wx.fillStyle=bg; wx.fillRect(0,0,W,H); wx.fillStyle=fill;
   for(const gl of glyphs){const T=makeT(gl,C); wx.fill(new Path2D(buildD(gl,T,0)));}
   // build the shard triangle mesh (thrown off centre, with a per-shard facet normal)
   const V=[];
@@ -1808,11 +1812,12 @@ function drawShatter(glyphs,C,W,H,fill,bg){
   });
   ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
   if(!V.length){ return; }
-  const gl=glCtx(W,H);
-  if(!gl){ // 2D fallback — flat faceted panes tinted by the word behind
-    ctx.imageSmoothingEnabled=true; ctx.drawImage(wc,0,0); return; }
+  const gl=glCtx(RW,RH);
+  if(!gl){ // 2D fallback — draw the word (no glass) at full backing resolution
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.imageSmoothingEnabled=true;
+    ctx.drawImage(wc,0,0,canvas.width,canvas.height); ctx.restore(); return; }
   const prog=glProgram(gl,'shards',SHARD_VS,SHARD_FS);
-  gl.viewport(0,0,W,H); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.viewport(0,0,RW,RH); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
   gl.disable(gl.BLEND);
   gl.useProgram(prog);
   const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
@@ -1829,7 +1834,7 @@ function drawShatter(glyphs,C,W,H,fill,bg){
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,wc);
   const rgb=hexRGB(fill);
   gl.uniform1i(gl.getUniformLocation(prog,'u_word'),0);
-  gl.uniform2f(gl.getUniformLocation(prog,'u_res'),W,H);
+  gl.uniform2f(gl.getUniformLocation(prog,'u_res'),RW,RH);
   gl.uniform1f(gl.getUniformLocation(prog,'u_refl'),S.shReflect/100);
   gl.uniform1f(gl.getUniformLocation(prog,'u_refract'),S.shRefract/100);
   gl.uniform1f(gl.getUniformLocation(prog,'u_disp'),S.shDisp/100);
@@ -1839,8 +1844,11 @@ function drawShatter(glyphs,C,W,H,fill,bg){
   gl.uniform3f(gl.getUniformLocation(prog,'u_tint'),rgb[0]/255,rgb[1]/255,rgb[2]/255);
   gl.drawArrays(gl.TRIANGLES,0,V.length/8);
   gl.deleteBuffer(buf); gl.deleteTexture(tex);
+  // blit the full-res glass 1:1 into the canvas backing store
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0);
   ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
-  ctx.drawImage(_glc,0,0);
+  ctx.drawImage(_glc,0,0,canvas.width,canvas.height);
+  ctx.restore();
 }
 /* ---- blueprint: the word as a drafting sheet — outline, ticks, dimension rules ---- */
 function drawBlueprint(glyphs,C,W,H,fill,svg){
