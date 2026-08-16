@@ -59,7 +59,11 @@
   <div class="group">
     <div class="group__t">Letter</div>
     <input class="opal-input" id="letterIn" type="text" value="C" maxlength="40" spellcheck="false" autocomplete="off">
-    <div class="knob"><label>Size <b id="lszR">0.72</b></label><input id="lsz" type="range" min="20" max="98" value="72"></div>
+    <div class="knob"><label>Text size <b id="tsizeR">62</b></label><input id="tsize" type="range" min="8" max="130" value="62"></div>
+    <div class="duo">
+      <div class="knob"><label>Letter-spacing <b id="trackR">0</b></label><input id="track" type="range" min="-40" max="120" value="0"></div>
+      <div class="knob"><label>Line-height <b id="leadR">116</b></label><input id="lead" type="range" min="70" max="240" value="116"></div>
+    </div>
   </div>
 
   <div class="group">
@@ -117,10 +121,10 @@
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const art=$('art'); let ctx=art.getContext('2d');
-  const P={ letter:'C', lsz:0.72, cell:40, angle:50, contrast:55, jitter:0, blur:0, wave:15,
+  const P={ letter:'C', size:62, track:0, lead:116, cell:40, angle:50, contrast:55, jitter:0, blur:0, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95}, {color:'#7a2bd6', blur:48, opacity:0.6} ] };
-  let W=1400,H=1400, RS=1, LDATA=null, CHARBOXES=[], GLYPHH=0, t0=performance.now(), clock=0;
+  let W=1400,H=1400, RS=1, LDATA=null, t0=performance.now(), clock=0;
   const letterCv=document.createElement('canvas'), lctx=letterCv.getContext('2d',{willReadFrequently:true});
   const dotCv=document.createElement('canvas'), dctx=dotCv.getContext('2d');
   const d2=document.createElement('canvas'), d2ctx=d2.getContext('2d',{willReadFrequently:true});
@@ -130,23 +134,27 @@
   function rngFrom(s){ let a=s>>>0; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 
   const FONT=fp=>'400 '+fp+'px "Sidepiece","Arial Black",system-ui,sans-serif';   // same house display as OPEN LAB
-  // ---- word → white glyphs (coverage only; NEVER drawn to screen) + per-CHARACTER x-boxes ----
+  // one line of text, centred, with manual letter-spacing when the API lacks it — mirrors OPEN LAB
+  function drawLine(g,line,cx,y,trackPx,canSpace){
+    if(canSpace){ g.fillText(line,cx,y); return; }
+    const prev=g.textAlign; g.textAlign='left'; const ch=[...line];
+    const widths=ch.map(c=>g.measureText(c).width); const total=widths.reduce((a,b)=>a+b,0)+trackPx*Math.max(0,ch.length-1);
+    let x=cx-total/2; for(let i=0;i<ch.length;i++){ g.fillText(ch[i],x,y); x+=widths[i]+trackPx; } g.textAlign=prev;
+  }
+  // ---- word → white glyphs (coverage only; NEVER drawn to screen) ----
+  // Sized EXACTLY like OPEN LAB: fontPx = H·(0.03 + size·0.26), centred, with letter-spacing + line-height.
   function buildLetters(){
     letterCv.width=W; letterCv.height=H; lctx.clearRect(0,0,W,H);
-    const word=(P.letter||'C'); lctx.fillStyle='#fff'; lctx.textAlign='left'; lctx.textBaseline='middle';
-    // grow the font until the whole word fills P.lsz of the canvas
-    let fp=Math.round(H*0.9); lctx.font=FONT(fp);
-    let m=lctx.measureText(word); const targetW=W*P.lsz, targetH=H*P.lsz;
-    const sw=targetW/(m.width||1), sh=targetH/((m.actualBoundingBoxAscent+m.actualBoundingBoxDescent)||fp*0.7);
-    fp=Math.max(20, Math.round(fp*Math.min(sw,sh)));
-    lctx.font=FONT(fp);
-    m=lctx.measureText(word);
-    GLYPHH=(m.actualBoundingBoxAscent+m.actualBoundingBoxDescent)||fp*0.7;
-    let x=(W-m.width)/2; const y=H/2, boxes=[];
-    for(const ch of word){ const cw=lctx.measureText(ch).width;
-      if(ch.trim()){ lctx.fillText(ch, x, y); boxes.push({x0:x, x1:x+cw}); }
-      x+=cw; }
-    LDATA=lctx.getImageData(0,0,W,H).data; CHARBOXES=boxes;
+    const word=((P.letter!=null?P.letter:'C')+'')||' ';
+    lctx.fillStyle='#fff'; lctx.textAlign='center'; lctx.textBaseline='middle';
+    const fontPx=H*(0.03+(P.size/100)*0.26); lctx.font=FONT(fontPx);
+    const trackPx=(P.track/100)*fontPx*0.5, canSpace=('letterSpacing' in lctx);
+    if(canSpace) lctx.letterSpacing=trackPx+'px';
+    const lines=word.split('\n'), lh=fontPx*(P.lead/100), total=lh*lines.length;
+    let y=H/2 - total/2 + lh/2;
+    for(const line of lines){ drawLine(lctx, line||' ', W/2, y, trackPx, canSpace); y+=lh; }
+    if(canSpace) lctx.letterSpacing='0px';
+    LDATA=lctx.getImageData(0,0,W,H).data;
   }
   const hash=(i,j,s)=>{ const x=Math.sin(i*127.1+j*311.7+s*74.7)*43758.5453; return x-Math.floor(x); };
   const covA=(x,y,w)=>{ x|=0; y|=0; if(x<0||y<0||x>=w||!LDATA) return 0; const idx=((y*w+x)<<2)+3; return idx<LDATA.length?LDATA[idx]/255:0; };
@@ -175,7 +183,7 @@
     if(dotCv.width!==w||dotCv.height!==h){ dotCv.width=w; dotCv.height=h; }
     dctx.setTransform(1,0,0,1,0,0); dctx.globalCompositeOperation='source-over'; dctx.filter='none';
     dctx.clearRect(0,0,w,h); dctx.fillStyle=P.dotCol;
-    const cell=(14+(P.cell/100)*54)*RS;                      // 14–68px: chunkier floor so low cell isn't hundreds of dots. RS keeps density constant at export res
+    const cell=(6+(P.cell/100)*46)*RS;                       // exactly OPEN LAB. RS keeps density constant at export res
     const ang=((P.angle/100)*2-1)*Math.PI/4, ca=Math.cos(ang), sa=Math.sin(ang), cx=w/2, cy=h/2;
     const N=Math.ceil(Math.hypot(w,h)/cell/2)+2, gamma=0.4+(1-P.contrast/100)*1.7;
     const jit=P.jitter/100, waveA=P.wave/100, t=time, blurFrac=P.blur/100, s1=(P.seed||1)>>>0;
@@ -221,8 +229,11 @@
   function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); if(!el) return;
     el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; scheduleDraw(); }); }
   $('letterIn').addEventListener('input',e=>{ P.letter=e.target.value||'C'; buildLetters(); scheduleDraw(); });
-  bind('lsz','lszR',v=>P.lsz=v/100,v=>(v/100).toFixed(2));
-  $('lsz').addEventListener('input',()=>{ buildLetters(); });   // letter size needs a letter rebuild
+  function bindText(id,rid,fn){ const el=$(id),o=$(rid); if(!el) return;
+    el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=el.value; buildLetters(); scheduleDraw(); }); }
+  bindText('tsize','tsizeR',v=>P.size=v);
+  bindText('track','trackR',v=>P.track=v);
+  bindText('lead','leadR',v=>P.lead=v);
   bind('cell','cellR',v=>P.cell=v,v=>(v|0));
   bind('angle','angleR',v=>P.angle=v,v=>(v|0));
   bind('contrast','contrastR',v=>P.contrast=v,v=>(v|0));
