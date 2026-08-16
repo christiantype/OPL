@@ -7,6 +7,7 @@
 <title>Mitsuo — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css" />
 <style>
+  @font-face{ font-family:'Sidepiece'; src:url('/shared/fonts/Sidepiece-HoneyPie.woff2') format('woff2'), url('/shared/fonts/Sidepiece-HoneyPie.ttf') format('truetype'); font-weight:normal; font-display:swap; }
   :root{ --rail:300px; --top:120px; }
   @media (max-width:560px){ :root{ --top:112px; } }
   *{ box-sizing:border-box; }
@@ -57,7 +58,7 @@
 <div id="dock">
   <div class="group">
     <div class="group__t">Letter</div>
-    <input class="opal-input" id="letterIn" type="text" value="C" maxlength="4" spellcheck="false" autocomplete="off">
+    <input class="opal-input" id="letterIn" type="text" value="C" maxlength="40" spellcheck="false" autocomplete="off">
     <div class="knob"><label>Size <b id="lszR">0.72</b></label><input id="lsz" type="range" min="20" max="98" value="72"></div>
   </div>
 
@@ -128,7 +129,7 @@
   const hex=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
   function rngFrom(s){ let a=s>>>0; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 
-  const FONT=fp=>'900 '+fp+'px "Arial Black","Helvetica Neue",system-ui,sans-serif';
+  const FONT=fp=>'400 '+fp+'px "Sidepiece","Arial Black",system-ui,sans-serif';   // same house display as OPEN LAB
   // ---- word → white glyphs (coverage only; NEVER drawn to screen) + per-CHARACTER x-boxes ----
   function buildLetters(){
     letterCv.width=W; letterCv.height=H; lctx.clearRect(0,0,W,H);
@@ -174,7 +175,7 @@
     if(dotCv.width!==w||dotCv.height!==h){ dotCv.width=w; dotCv.height=h; }
     dctx.setTransform(1,0,0,1,0,0); dctx.globalCompositeOperation='source-over'; dctx.filter='none';
     dctx.clearRect(0,0,w,h); dctx.fillStyle=P.dotCol;
-    const cell=(6+(P.cell/100)*46)*RS;                       // RS keeps dot density constant at export res
+    const cell=(14+(P.cell/100)*54)*RS;                      // 14–68px: chunkier floor so low cell isn't hundreds of dots. RS keeps density constant at export res
     const ang=((P.angle/100)*2-1)*Math.PI/4, ca=Math.cos(ang), sa=Math.sin(ang), cx=w/2, cy=h/2;
     const N=Math.ceil(Math.hypot(w,h)/cell/2)+2, gamma=0.4+(1-P.contrast/100)*1.7;
     const jit=P.jitter/100, waveA=P.wave/100, t=time, blurFrac=P.blur/100, s1=(P.seed||1)>>>0;
@@ -282,6 +283,8 @@
 
   // ---- boot ----
   renderGlows(); setPlay(); fit(); requestAnimationFrame(tick);
+  // re-measure the glyphs once the Sidepiece web font is ready
+  if(document.fonts){ try{ document.fonts.load('40px Sidepiece').then(()=>{ buildLetters(); scheduleDraw(); }).catch(()=>{}); document.fonts.ready.then(()=>{ buildLetters(); scheduleDraw(); }); }catch(e){} }
 })();
 </script>
 </body>
