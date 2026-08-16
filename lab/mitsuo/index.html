@@ -71,13 +71,12 @@
     <p class="rowhint">The letter printed as a halftone screen of dots (exactly like OPEN LAB) — the dots <b>are</b> the letterform. Colour them, then add coloured blurs below.</p>
     <div class="duo">
       <div class="knob"><label>Cell <b id="cellR">40</b></label><input id="cell" type="range" min="0" max="100" value="40"></div>
-      <div class="knob"><label>Angle <b id="angleR">50</b></label><input id="angle" type="range" min="0" max="100" value="50"></div>
+      <div class="knob"><label>Contrast <b id="contrastR">55</b></label><input id="contrast" type="range" min="0" max="100" value="55"></div>
     </div>
     <div class="duo">
-      <div class="knob"><label>Contrast <b id="contrastR">55</b></label><input id="contrast" type="range" min="0" max="100" value="55"></div>
       <div class="knob"><label>Size jitter <b id="jitterR">0</b></label><input id="jitter" type="range" min="0" max="100" value="0"></div>
+      <div class="knob"><label>Blur dots <b id="blurR">0</b></label><input id="blur" type="range" min="0" max="100" value="0"></div>
     </div>
-    <div class="knob"><label>Blur dots <b id="blurR">0</b></label><input id="blur" type="range" min="0" max="100" value="0"></div>
     <div class="crow"><label>Dot colour</label><input type="color" class="sw" id="dotCol" value="#f4f0ff"></div>
   </div>
 
@@ -113,7 +112,7 @@
 
 <script src="/lab/shared/opal.js"></script>
 <script>Opal.mountTopbar({ name:'Mitsuo', desc:'A halftone screen, brought into colour',
-  about:'After Mitsuo Katsui. OPEN LAB’s halftone screen, brought into colour. Type a word and it prints as a screen of dots — a rotated cell grid, each dot sized by the letterform (cell, angle, contrast, size jitter), with a share thrown out of focus. The dots ARE the letter; nothing is ever drawn plainly behind them. Colour the dots, then stack blurred, slightly-offset copies of that same dot field beneath — a soft coloured aura, tinted per layer, for a thermal, molten ground. Set it in motion — the dots breathe on a travelling wave, the aura drifts. Export a still, or record the flow.',
+  about:'After Mitsuo Katsui. OPEN LAB’s halftone screen, brought into colour. Type a word and it prints as a screen of dots — a cell grid, each dot sized by the letterform (cell, contrast, size jitter), with a share thrown out of focus. The dots ARE the letter; nothing is ever drawn plainly behind them. Colour the dots, then stack blurred, slightly-offset copies of that same dot field beneath — a soft coloured aura, tinted per layer, for a thermal, molten ground. Set it in motion — the dots breathe on a travelling wave, the aura drifts. Export a still, or record the flow.',
   version:'v1' });</script>
 <script>
 'use strict';
@@ -121,7 +120,7 @@
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const art=$('art'); let ctx=art.getContext('2d');
-  const P={ letter:'C', size:62, track:0, lead:116, cell:40, angle:50, contrast:55, jitter:0, blur:0, wave:15,
+  const P={ letter:'C', size:62, track:0, lead:116, cell:40, contrast:55, jitter:0, blur:0, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95}, {color:'#7a2bd6', blur:48, opacity:0.6} ] };
   let W=1400,H=1400, RS=1, LDATA=null, t0=performance.now(), clock=0;
@@ -184,11 +183,11 @@
     dctx.setTransform(1,0,0,1,0,0); dctx.globalCompositeOperation='source-over'; dctx.filter='none';
     dctx.clearRect(0,0,w,h); dctx.fillStyle=P.dotCol;
     const cell=(6+(P.cell/100)*46)*RS;                       // exactly OPEN LAB. RS keeps density constant at export res
-    const ang=((P.angle/100)*2-1)*Math.PI/4, ca=Math.cos(ang), sa=Math.sin(ang), cx=w/2, cy=h/2;
-    const N=Math.ceil(Math.hypot(w,h)/cell/2)+2, gamma=0.4+(1-P.contrast/100)*1.7;
+    const cx=w/2, cy=h/2;   // the screen is axis-aligned — no angle
+    const Nx=Math.ceil(w/cell/2)+1, Ny=Math.ceil(h/cell/2)+1, gamma=0.4+(1-P.contrast/100)*1.7;
     const jit=P.jitter/100, waveA=P.wave/100, t=time, blurFrac=P.blur/100, s1=(P.seed||1)>>>0;
-    for(let i=-N;i<=N;i++){ for(let j=-N;j<=N;j++){
-      const gx=i*cell, gy=j*cell, x=cx+gx*ca-gy*sa, y=cy+gx*sa+gy*ca;
+    for(let i=-Nx;i<=Nx;i++){ for(let j=-Ny;j<=Ny;j++){
+      const x=cx+i*cell, y=cy+j*cell;
       if(x<-cell||x>w+cell||y<-cell||y>h+cell) continue;
       const c=covA(x,y,w); if(c<=0.03) continue;
       let cc=Math.pow(c,gamma); if(cc>1) cc=1;
@@ -235,7 +234,6 @@
   bindText('track','trackR',v=>P.track=v);
   bindText('lead','leadR',v=>P.lead=v);
   bind('cell','cellR',v=>P.cell=v,v=>(v|0));
-  bind('angle','angleR',v=>P.angle=v,v=>(v|0));
   bind('contrast','contrastR',v=>P.contrast=v,v=>(v|0));
   bind('jitter','jitterR',v=>P.jitter=v,v=>(v|0));
   bind('blur','blurR',v=>P.blur=v,v=>(v|0));
