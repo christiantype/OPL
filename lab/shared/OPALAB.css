@@ -343,3 +343,44 @@ input[type=color]::-moz-color-swatch{ border:none; border-radius:0; }
 #output .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 #output .grid2 .btn{ width:100%; }
 #output .btn[aria-pressed="true"], #output .btn.on, #output .btn.primary{ color:var(--accent); }
+
+/* 12 — MOBILE ( ≤760px ): the left rail becomes a slide-in drawer =========== */
+/* Hamburger + scrim are injected by opal.js on every tool; hidden on desktop.   */
+.opal-navtoggle{ display:none; position:fixed; top:calc(var(--top, 120px) + 10px); left:12px; z-index:62;
+  width:44px; height:44px; padding:0; border:none; border-radius:12px; background:var(--island);
+  box-shadow:var(--shadow-float); cursor:pointer; align-items:center; justify-content:center;
+  flex-direction:column; gap:4px; }
+.opal-navtoggle i{ display:block; width:18px; height:2px; background:var(--ink); border-radius:2px;
+  transition:transform .25s ease, opacity .2s ease; }
+body.opal-nav-open .opal-navtoggle i:nth-child(1){ transform:translateY(6px) rotate(45deg); }
+body.opal-nav-open .opal-navtoggle i:nth-child(2){ opacity:0; }
+body.opal-nav-open .opal-navtoggle i:nth-child(3){ transform:translateY(-6px) rotate(-45deg); }
+.opal-navscrim{ display:none; position:fixed; inset:var(--top, 120px) 0 0 0; z-index:55;
+  background:rgba(20,24,34,.34); opacity:0; pointer-events:none; transition:opacity .28s ease; }
+
+@media (max-width:760px){
+  :root{ --rail:0px; }                       /* collapses every left:var(--rail) / calc(var(--rail)+x) */
+  .opal-navtoggle{ display:flex; }
+  .opal-navscrim{ display:block; }
+  body.opal-nav-open .opal-navscrim{ opacity:1; pointer-events:auto; }
+
+  /* rail → left slide-in drawer. Uses `left` (NOT transform) so it never becomes a
+     containing block that would trap the fixed bottom-right OUTPUT island.
+     (#panel / flux is excluded — it ships its own bespoke bottom-sheet mobile layout.) */
+  body.opal-drawer #dock, body.opal-drawer #rail, body.opal-drawer #rail.rail-l{
+    position:fixed !important; top:var(--top) !important; bottom:0 !important;
+    left:calc(-1 * min(86vw, 340px)) !important; right:auto !important;
+    width:min(86vw, 340px) !important; max-width:340px !important;
+    padding-top:60px !important;               /* clear the hamburger / close button */
+    transition:left .28s cubic-bezier(.4,0,.2,1) !important; z-index:60 !important;
+    box-shadow:10px 0 44px rgba(20,24,34,.30) !important;
+    overflow-y:auto !important; -webkit-overflow-scrolling:touch; }
+  body.opal-drawer.opal-nav-open #dock, body.opal-drawer.opal-nav-open #rail{ left:0 !important; }
+
+  /* size dock → top-right, clear of the hamburger at top-left */
+  #sizeDock{ left:auto !important; right:12px !important; top:calc(var(--top) + 10px) !important; }
+
+  .opal-subhead{ padding:0 16px !important; }
+  .opal-subhead__ver{ display:none; }        /* keep the name+desc; drop the version chip */
+}
+@media (max-width:440px){ .opal-subhead__desc{ display:none; } }

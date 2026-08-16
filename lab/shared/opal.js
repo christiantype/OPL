@@ -511,7 +511,30 @@ const Opal = (() => {
       wireSizeReadout();
       autoMountOutput();
       wireOutputCollapse();
+      mountNav();
     }catch(e){}
+  }
+  // MOBILE: a hamburger that slides the control rail in/out as a drawer. Idempotent.
+  function mountNav(){
+    // Skip tools that ship their own bespoke mobile nav: #panel (flux) and any tool
+    // with its own .m-toggle drawer buttons (lake-opeka's dual bottom-sheets).
+    if(document.querySelector('.m-toggle')) return;
+    const rail = document.querySelector('#dock, #rail');
+    if(!rail || document.querySelector('.opal-navtoggle')) return;
+    document.body.classList.add('opal-drawer');   // gate the drawer CSS to tools that got a hamburger
+    const btn = document.createElement('button');
+    btn.className = 'opal-navtoggle'; btn.type = 'button';
+    btn.setAttribute('aria-label','Controls'); btn.setAttribute('aria-expanded','false');
+    btn.innerHTML = '<i></i><i></i><i></i>';
+    const scrim = document.createElement('div'); scrim.className = 'opal-navscrim';
+    const close = () => { document.body.classList.remove('opal-nav-open'); btn.setAttribute('aria-expanded','false'); };
+    btn.addEventListener('click', () => {
+      const open = document.body.classList.toggle('opal-nav-open');
+      btn.setAttribute('aria-expanded', String(open));
+    });
+    scrim.addEventListener('click', close);
+    window.addEventListener('resize', () => { if (window.innerWidth > 760) close(); });
+    document.body.appendChild(scrim); document.body.appendChild(btn);
   }
   // Output island starts COLLAPSED — just the heading + a caret; click to open it.
   function wireOutputCollapse(){
