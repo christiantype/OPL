@@ -184,14 +184,16 @@
     dctx.clearRect(0,0,w,h); dctx.fillStyle=P.dotCol;
     const cell=(6+(P.cell/100)*46)*RS;                       // exactly OPEN LAB. RS keeps density constant at export res
     const cx=w/2, cy=h/2;   // the screen is axis-aligned — no angle
-    const Nx=Math.ceil(w/cell/2)+1, Ny=Math.ceil(h/cell/2)+1, gamma=0.4+(1-P.contrast/100)*1.7;
+    const Nx=Math.ceil(w/cell/2)+1, Ny=Math.ceil(h/cell/2)+1, gamma=0.12+(1-P.contrast/100)*2.0;
+    // above the OPEN LAB midpoint, Contrast also grows the dot so high contrast fills solid, not just crisp
+    const rad=0.62 + Math.max(0,(P.contrast-55)/45)*0.30;
     const jit=P.jitter/100, waveA=P.wave/100, t=time, blurFrac=P.blur/100, s1=(P.seed||1)>>>0;
     for(let i=-Nx;i<=Nx;i++){ for(let j=-Ny;j<=Ny;j++){
       const x=cx+i*cell, y=cy+j*cell;
       if(x<-cell||x>w+cell||y<-cell||y>h+cell) continue;
       const c=covA(x,y,w); if(c<=0.03) continue;
       let cc=Math.pow(c,gamma); if(cc>1) cc=1;
-      let r=cell*0.62*cc; r*=(1+(hash(i,j,s1)-0.5)*jit*1.4);
+      let r=cell*rad*cc; r*=(1+(hash(i,j,s1)-0.5)*jit*1.4);
       if(waveA>0) r*=1+waveA*0.5*Math.sin(x*0.018 - t*2.2 + y*0.006);
       if(r<0.35) continue;
       if(blurFrac>0 && hash(i,j,s1+7) < blurFrac){                 // a share thrown out of focus
