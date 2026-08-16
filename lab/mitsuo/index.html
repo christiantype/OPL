@@ -62,17 +62,17 @@
   </div>
 
   <div class="group">
-    <div class="group__t">Liquid dots</div>
-    <p class="rowhint">The letter dissolved into dots that connect and flow like liquid metal.</p>
+    <div class="group__t">Dots</div>
+    <p class="rowhint">A few large circles trace the letter and fuse into liquid metaballs where they meet.</p>
     <div class="duo">
-      <div class="knob"><label>Dot size <b id="dszR">46</b></label><input id="dsz" type="range" min="8" max="120" value="46"></div>
-      <div class="knob"><label>Spacing <b id="spcR">44</b></label><input id="spc" type="range" min="12" max="120" value="44"></div>
+      <div class="knob"><label>Count <b id="countR">6</b></label><input id="count" type="range" min="2" max="14" value="6"></div>
+      <div class="knob"><label>Size <b id="sizeR">52</b></label><input id="size" type="range" min="0" max="100" value="52"></div>
     </div>
     <div class="duo">
-      <div class="knob"><label>Randomness <b id="rndR">0.35</b></label><input id="rnd" type="range" min="0" max="100" value="35"></div>
-      <div class="knob"><label>Connection <b id="conR">0.5</b></label><input id="con" type="range" min="0" max="100" value="50"></div>
+      <div class="knob"><label>Size jitter <b id="jitterR">28</b></label><input id="jitter" type="range" min="0" max="100" value="28"></div>
+      <div class="knob"><label>Connection <b id="conR">0.55</b></label><input id="con" type="range" min="0" max="100" value="55"></div>
     </div>
-    <div class="knob"><label>Blurry dots <b id="blfR">0.12</b></label><input id="blf" type="range" min="0" max="100" value="12"></div>
+    <div class="knob"><label>Blur dots <b id="blurR">12</b></label><input id="blur" type="range" min="0" max="100" value="12"></div>
     <div class="crow"><label>Dot colour</label><input type="color" class="sw" id="dotCol" value="#f4f0ff"></div>
   </div>
 
@@ -90,9 +90,10 @@
       <button class="btn" id="reseedBtn">Reseed</button>
     </div>
     <div class="duo">
-      <div class="knob"><label>Drift <b id="mvR">0.5</b></label><input id="mv" type="range" min="0" max="100" value="50"></div>
-      <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="1" max="40" value="10"></div>
+      <div class="knob"><label>Wave <b id="waveR">15</b></label><input id="wave" type="range" min="0" max="100" value="15"></div>
+      <div class="knob"><label>Glow drift <b id="mvR">0.5</b></label><input id="mv" type="range" min="0" max="100" value="50"></div>
     </div>
+    <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="1" max="40" value="10"></div>
     <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#b11a10"></div>
   </div>
 
@@ -107,7 +108,7 @@
 
 <script src="/lab/shared/opal.js"></script>
 <script>Opal.mountTopbar({ name:'Mitsuo', desc:'A letter, poured into liquid dots',
-  about:'After Mitsuo Katsui. Type a letter and it dissolves into a field of dots that connect and flow like liquid metal — adjust the dot size, spacing, randomness and how strongly they merge, and randomly throw some dots out of focus. Beneath them, stack soft Gaussian glow clouds and colour each one for a thermal, molten ground. Then set it all in motion — the dots wobble and merge, the glows drift. Export a still, or record the flow.',
+  about:'After Mitsuo Katsui. Type a letter and a few large circles trace its shape — set how many (a handful, no more), how big, and how much they vary — then fuse into smooth liquid metaballs where they meet. Throw some out of focus for depth. Beneath them, stack soft Gaussian glow clouds and colour each one for a thermal, molten ground. Then set it all in motion — the circles breathe so they connect and part, the glows drift. Export a still, or record the flow.',
   version:'v1' });</script>
 <script>
 'use strict';
@@ -115,10 +116,10 @@
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const art=$('art'); let ctx=art.getContext('2d');
-  const P={ letter:'C', lsz:0.72, dsz:46, spc:44, rnd:0.35, con:0.5, blf:0.12,
+  const P={ letter:'C', lsz:0.72, count:6, size:52, jitter:28, con:0.55, blur:12, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95}, {color:'#7a2bd6', blur:48, opacity:0.6} ] };
-  let W=1400,H=1400, RS=1, dots=null, t0=performance.now(), clock=0;
+  let W=1400,H=1400, RS=1, LDATA=null, t0=performance.now(), clock=0;
   const letterCv=document.createElement('canvas'), lctx=letterCv.getContext('2d',{willReadFrequently:true});
   const dotCv=document.createElement('canvas'), dctx=dotCv.getContext('2d');
   const d2=document.createElement('canvas'), d2ctx=d2.getContext('2d',{willReadFrequently:true});
@@ -138,8 +139,11 @@
     fp=Math.max(20, Math.round(fp*Math.min(sw,sh)));
     lctx.font='900 '+fp+'px "Arial Black","Helvetica Neue",system-ui,sans-serif';
     lctx.fillText(word, W/2, H/2);
+    LDATA=lctx.getImageData(0,0,W,H).data;
     for(const k in tintCache) delete tintCache[k];
   }
+  const hash=(i,j,s)=>{ const x=Math.sin(i*127.1+j*311.7+s*74.7)*43758.5453; return x-Math.floor(x); };
+  const covA=(x,y,w)=>{ x|=0; y|=0; if(x<0||y<0||x>=w||!LDATA) return 0; const idx=((y*w+x)<<2)+3; return idx<LDATA.length?LDATA[idx]/255:0; };
   function tinted(color){ if(tintCache[color]) return tintCache[color];
     const c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
     g.drawImage(letterCv,0,0); g.globalCompositeOperation='source-in'; g.fillStyle=color; g.fillRect(0,0,W,H);
@@ -152,21 +156,6 @@
     for(let i=0;i<=8;i++){ const h=(((i/8)+off)%1)*360; grad.addColorStop(i/8, 'hsl('+h+',88%,58%)'); }
     _rbx.fillStyle=grad; _rbx.fillRect(0,0,W,H); _rbx.globalCompositeOperation='source-over'; return _rb; }
 
-  // ---- sample the glyph into liquid dots ----
-  function buildDots(){
-    if(!letterCv.width) return;
-    const data=lctx.getImageData(0,0,W,H).data;
-    const spc=Math.max(6, P.spc*RS), rnd=P.rnd, rng=rngFrom((P.seed||1)*2654435761>>>0);
-    const arr=[]; const cov=(x,y)=>data[(((y|0)*W+(x|0))<<2)+3]>90;
-    for(let y=spc/2;y<H;y+=spc) for(let x=spc/2;x<W;x+=spc){
-      const jx=x+(rng()*2-1)*spc*0.5*rnd, jy=y+(rng()*2-1)*spc*0.5*rnd;
-      if(!cov(clamp(jx,0,W-1),clamp(jy,0,H-1))) continue;
-      arr.push({ bx:jx, by:jy, r:P.dsz*RS*(0.7+rng()*0.6*(0.4+rnd)), ph:rng()*TAU, ph2:rng()*TAU,
-        soft: rng()<P.blf });
-    }
-    dots=arr;
-  }
-
   // ---- render one frame into g at size w×h ----
   function render(g,w,h,time){
     g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
@@ -177,30 +166,50 @@
       const dx=Math.sin(sp*0.6+i*1.7)*drift*36*RS, dy=Math.cos(sp*0.5+i*2.3)*drift*30*RS;
       g.save(); g.globalAlpha=L.opacity; g.filter='blur('+(L.blur*RS)+'px)';
       g.drawImage(L.rainbow ? rainbowLetter(time) : tinted(L.color), dx, dy); g.restore(); }
-    if(!dots){ return; }
-    // 2) liquid metaball dots — SOLID + hard-edged, in the dot colour, merged where they meet.
-    //    Draw opaque dots → blur → hard-threshold the ALPHA → solid crisp blobs (like OPEN LAB, but liquid).
+    if(!LDATA) return;
+    // 2) a FEW LARGE circles that trace the letter (≤ Count), placed by farthest-point sampling so
+    //    they spread evenly across the strokes, then fused as METABALLS where neighbours touch.
+    const R=(34+(P.size/100)*200)*RS;             // big circle radius
+    const jit=P.jitter/100, waveA=P.wave/100, blurFrac=P.blur/100;
+    // candidate points = covered cells on a coarse grid, spaced ~ the circle radius
+    const step=Math.max(6, R*0.5), cands=[];
+    for(let y=step*0.5;y<h;y+=step) for(let x=step*0.5;x<w;x+=step){ if(covA(x,y,w)>0.5) cands.push([x,y]); }
+    if(!cands.length) return;
+    // min-distance ("beads on the stroke") sampling — neighbours sit ~1.4·R apart so they OVERLAP
+    // into smooth necks, deterministically shuffled (Reseed reshuffles), capped at Count.
+    const d2fn=(a,b)=>{ const dx=a[0]-b[0],dy=a[1]-b[1]; return dx*dx+dy*dy; };
+    const rng=rngFrom(((P.seed||1)*2654435761)>>>0), Dmin=R*1.7, Dmin2=Dmin*Dmin;
+    const order=cands.map((_,i)=>i);
+    for(let i=order.length-1;i>0;i--){ const j=(rng()*(i+1))|0; const t=order[i]; order[i]=order[j]; order[j]=t; }
+    const chosen=[];
+    for(const idx of order){ if(chosen.length>=P.count) break; const c=cands[idx];
+      let ok=true; for(let q=0;q<chosen.length;q++){ if(d2fn(c,chosen[q])<Dmin2){ ok=false; break; } }
+      if(ok) chosen.push(c); }
+    // draw the solid circles into dotCv; stash the out-of-focus ones for a soft pass on top
+    if(dotCv.width!==w||dotCv.height!==h){ dotCv.width=w; dotCv.height=h; }
     dctx.setTransform(1,0,0,1,0,0); dctx.filter='none'; dctx.globalCompositeOperation='source-over';
     dctx.clearRect(0,0,w,h); dctx.fillStyle=P.dotCol;
-    for(const d of dots){ if(d.soft) continue;
-      const x=d.bx+Math.sin(sp+d.ph)*drift*d.r*0.9, y=d.by+Math.cos(sp*1.1+d.ph2)*drift*d.r*0.9;
-      dctx.beginPath(); dctx.arc(x,y,d.r,0,TAU); dctx.fill(); }
-    const conn=P.con*(P.dsz*RS)*1.7;                    // merge reach (blur), 0 = distinct crisp dots
+    const soft=[];
+    for(let n=0;n<chosen.length;n++){ const x=chosen[n][0], y=chosen[n][1];
+      let r=R*(1+(hash(n,7,P.seed)-0.5)*jit*1.1);
+      if(waveA>0) r*=1+waveA*0.45*Math.sin(n*1.9 - time*2.2);      // gentle breathing = motion
+      if(r<1) continue;
+      if(blurFrac>0 && hash(n,3,P.seed+7)<blurFrac){ soft.push([x,y,r]); continue; }
+      dctx.beginPath(); dctx.arc(x,y,r,0,TAU); dctx.fill();
+    }
+    // metaball union: blur the solid field then hard-threshold the alpha → smooth necks where circles meet
+    const conn=P.con*R*0.9;                        // connection reach; 0 = distinct circles
     if(d2.width!==w||d2.height!==h){ d2.width=w; d2.height=h; }
     d2ctx.setTransform(1,0,0,1,0,0); d2ctx.globalCompositeOperation='source-over'; d2ctx.clearRect(0,0,w,h);
     d2ctx.filter = conn>0.5 ? 'blur('+conn.toFixed(1)+'px)' : 'none'; d2ctx.drawImage(dotCv,0,0); d2ctx.filter='none';
-    const im=d2ctx.getImageData(0,0,w,h), D=im.data, cc=hex(P.dotCol), T=128;
-    for(let i=0;i<D.length;i+=4){ if(D[i+3]>=T){ D[i]=cc[0]; D[i+1]=cc[1]; D[i+2]=cc[2]; D[i+3]=255; } else D[i+3]=0; }
+    const im=d2ctx.getImageData(0,0,w,h), D=im.data, dc=hex(P.dotCol), T=128;
+    for(let k=0;k<D.length;k+=4){ if(D[k+3]>=T){ D[k]=dc[0]; D[k+1]=dc[1]; D[k+2]=dc[2]; D[k+3]=255; } else D[k+3]=0; }
     d2ctx.putImageData(im,0,0);
-    g.drawImage(d2,0,0);                                 // solid, hard-edged, over the glow
-    // 3) the randomly-blurry dots — soft glowing pucks, over the top
-    const dc=hex(P.dotCol); g.save(); g.globalCompositeOperation='screen';
-    for(const d of dots){ if(!d.soft) continue;
-      const x=d.bx+Math.sin(sp+d.ph)*drift*d.r*0.9, y=d.by+Math.cos(sp*1.1+d.ph2)*drift*d.r*0.9, r=d.r*2.4;
-      const rg=g.createRadialGradient(x,y,0,x,y,r);
-      rg.addColorStop(0,'rgba('+dc[0]+','+dc[1]+','+dc[2]+',0.95)'); rg.addColorStop(0.5,'rgba('+dc[0]+','+dc[1]+','+dc[2]+',0.35)'); rg.addColorStop(1,'rgba('+dc[0]+','+dc[1]+','+dc[2]+',0)');
-      g.fillStyle=rg; g.beginPath(); g.arc(x,y,r,0,TAU); g.fill(); }
-    g.restore(); g.filter='none';
+    g.drawImage(d2,0,0);                            // solid, hard-edged, connected — over the glow
+    // 3) the out-of-focus circles — soft pucks in the dot colour, on top
+    if(soft.length){ g.save(); g.fillStyle=P.dotCol;
+      for(const s of soft){ g.filter='blur('+(s[2]*0.5).toFixed(1)+'px)'; g.beginPath(); g.arc(s[0],s[1],s[2],0,TAU); g.fill(); }
+      g.restore(); g.filter='none'; }
   }
 
   // ---- size / fit ----
@@ -210,7 +219,7 @@
     const box=$('wrap').getBoundingClientRect(), s=Math.min(box.width/W,box.height/H);
     art.style.width=(W*s)+'px'; art.style.height=(H*s)+'px';
     const dr=$('dimReadout'); if(dr){ const p=(P.aspect||'').split(/[/:x]/).map(Number); dr.textContent=(p[0]||W)+' × '+(p[1]||H); }
-    buildLetter(); buildDots(); }
+    buildLetter(); }
 
   function tick(){ const now=performance.now(), dt=Math.min(0.05,(now-t0)/1000); t0=now;
     if(P.play) clock+=dt*P.spd; render(ctx,W,H,clock); requestAnimationFrame(tick); }
@@ -218,24 +227,25 @@
   // ---- controls ----
   let _rq=false; function draw(){ if(!P.play) render(ctx,W,H,clock); }
   function scheduleDraw(){ if(_rq||P.play) return; _rq=true; requestAnimationFrame(()=>{ _rq=false; render(ctx,W,H,clock); }); }
-  function bind(id,rid,fn,fmt,rebuild){ const el=$(id),o=$(rid); if(!el) return;
-    el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; if(rebuild) buildDots(); scheduleDraw(); }); }
-  $('letterIn').addEventListener('input',e=>{ P.letter=e.target.value||'C'; buildLetter(); buildDots(); scheduleDraw(); });
-  bind('lsz','lszR',v=>P.lsz=v/100,v=>(v/100).toFixed(2),'letter+dots');
-  $('lsz').addEventListener('input',()=>{ buildLetter(); buildDots(); });   // letter size needs a letter rebuild
-  bind('dsz','dszR',v=>P.dsz=v,v=>(v|0),true);
-  bind('spc','spcR',v=>P.spc=v,v=>(v|0),true);
-  bind('rnd','rndR',v=>P.rnd=v/100,v=>(v/100).toFixed(2),true);
-  bind('con','conR',v=>P.con=v/100,v=>(v/100).toFixed(2),false);
-  bind('blf','blfR',v=>P.blf=v/100,v=>(v/100).toFixed(2),true);
-  bind('mv','mvR',v=>P.mv=v/100,v=>(v/100).toFixed(2),false);
-  bind('spd','spdR',v=>P.spd=v/10,v=>(v/10).toFixed(1),false);
+  function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); if(!el) return;
+    el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; scheduleDraw(); }); }
+  $('letterIn').addEventListener('input',e=>{ P.letter=e.target.value||'C'; buildLetter(); scheduleDraw(); });
+  bind('lsz','lszR',v=>P.lsz=v/100,v=>(v/100).toFixed(2));
+  $('lsz').addEventListener('input',()=>{ buildLetter(); });   // letter size needs a letter rebuild
+  bind('count','countR',v=>P.count=v,v=>(v|0));
+  bind('size','sizeR',v=>P.size=v,v=>(v|0));
+  bind('jitter','jitterR',v=>P.jitter=v,v=>(v|0));
+  bind('con','conR',v=>P.con=v/100,v=>(v/100).toFixed(2));
+  bind('blur','blurR',v=>P.blur=v,v=>(v|0));
+  bind('wave','waveR',v=>P.wave=v,v=>(v|0));
+  bind('mv','mvR',v=>P.mv=v/100,v=>(v/100).toFixed(2));
+  bind('spd','spdR',v=>P.spd=v/10,v=>(v/10).toFixed(1));
   $('dotCol').addEventListener('input',e=>{ P.dotCol=e.target.value; scheduleDraw(); });
   $('bg').addEventListener('input',e=>{ P.bg=e.target.value; scheduleDraw(); });
   $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); scheduleDraw(); });
   function setPlay(){ $('playBtn').textContent=P.play?'Pause':'Play'; $('playBtn').setAttribute('aria-pressed',String(P.play)); }
   $('playBtn').addEventListener('click',()=>{ P.play=!P.play; setPlay(); });
-  $('reseedBtn').addEventListener('click',()=>{ P.seed=(P.seed*1103515245+12345)&0x7fffffff; buildDots(); scheduleDraw(); });
+  $('reseedBtn').addEventListener('click',()=>{ P.seed=(P.seed*1103515245+12345)&0x7fffffff; scheduleDraw(); });
 
   // glow-layer list (add / remove / recolour / reblur)
   function renderGlows(){ const host=$('glowList'); host.innerHTML='';
@@ -257,9 +267,9 @@
   function renderExport(px){
     const [aw,ah]=aspectWH(), long=Math.max(aw,ah), ew=Math.round(px*aw/long), eh=Math.round(px*ah/long);
     const off=document.createElement('canvas'); off.width=ew; off.height=eh;
-    const sW=W,sH=H,sRS=RS,sDots=dots; W=ew; H=eh; RS=Math.max(1,px/long);
-    buildLetter(); buildDots(); render(off.getContext('2d'), ew, eh, clock);
-    W=sW; H=sH; RS=sRS; dots=sDots; buildLetter();   // restore display state
+    const sW=W,sH=H,sRS=RS; W=ew; H=eh; RS=Math.max(1,px/long);
+    buildLetter(); render(off.getContext('2d'), ew, eh, clock);
+    W=sW; H=sH; RS=sRS; buildLetter();   // restore display state
     return off;
   }
   Opal.mountOutput(art, 'mitsuo', { render: renderExport });
