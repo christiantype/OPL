@@ -123,7 +123,7 @@
   const P={ letter:'C', size:126, track:25, lead:116, cell:100, contrast:38, jitter:100, blur:50, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95}, {color:'#7a2bd6', blur:48, opacity:0.6} ] };
-  let W=1400,H=1400, RS=1, LDATA=null, t0=performance.now(), clock=0;
+  let W=1400,H=1400, RS=1, LDATA=null, CHARBOXES=[], t0=performance.now(), clock=0;
   const letterCv=document.createElement('canvas'), lctx=letterCv.getContext('2d',{willReadFrequently:true});
   const dotCv=document.createElement('canvas'), dctx=dotCv.getContext('2d');
   const d2=document.createElement('canvas'), d2ctx=d2.getContext('2d',{willReadFrequently:true});
@@ -134,61 +134,71 @@
   function rngFrom(s){ let a=s>>>0; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 
   const FONT=fp=>'400 '+fp+'px "Sidepiece","Arial Black",system-ui,sans-serif';   // same house display as OPEN LAB
-  // one line of text, centred, with manual letter-spacing when the API lacks it — mirrors OPEN LAB
-  function drawLine(g,line,cx,y,trackPx,canSpace){
-    if(canSpace){ g.fillText(line,cx,y); return; }
-    const prev=g.textAlign; g.textAlign='left'; const ch=[...line];
-    const widths=ch.map(c=>g.measureText(c).width); const total=widths.reduce((a,b)=>a+b,0)+trackPx*Math.max(0,ch.length-1);
-    let x=cx-total/2; for(let i=0;i<ch.length;i++){ g.fillText(ch[i],x,y); x+=widths[i]+trackPx; } g.textAlign=prev;
-  }
-  // ---- word → white glyphs (coverage only; NEVER drawn to screen) ----
+  // ---- word → white glyphs (coverage + the glow's fill shape) and per-CHARACTER boxes ----
   // Sized EXACTLY like OPEN LAB: fontPx = H·(0.03 + size·0.26), centred, with letter-spacing + line-height.
+  // Boxes let us cap the number of dots PER CHARACTER.
   function buildLetters(){
     letterCv.width=W; letterCv.height=H; lctx.clearRect(0,0,W,H);
     const word=((P.letter!=null?P.letter:'C')+'')||' ';
-    lctx.fillStyle='#fff'; lctx.textAlign='center'; lctx.textBaseline='middle';
+    lctx.fillStyle='#fff'; lctx.textAlign='left'; lctx.textBaseline='middle';
     const fontPx=H*(0.03+(P.size/100)*0.26); lctx.font=FONT(fontPx);
-    const trackPx=(P.track/100)*fontPx*0.5, canSpace=('letterSpacing' in lctx);
-    if(canSpace) lctx.letterSpacing=trackPx+'px';
+    const trackPx=(P.track/100)*fontPx*0.5;
     const lines=word.split('\n'), lh=fontPx*(P.lead/100), total=lh*lines.length;
-    let y=H/2 - total/2 + lh/2;
-    for(const line of lines){ drawLine(lctx, line||' ', W/2, y, trackPx, canSpace); y+=lh; }
-    if(canSpace) lctx.letterSpacing='0px';
-    LDATA=lctx.getImageData(0,0,W,H).data;
+    let y=H/2 - total/2 + lh/2; const boxes=[];
+    for(const line of lines){
+      const chs=[...line], widths=chs.map(c=>lctx.measureText(c).width);
+      const tot=widths.reduce((a,b)=>a+b,0)+trackPx*Math.max(0,chs.length-1);
+      let x=W/2 - tot/2;
+      for(let k=0;k<chs.length;k++){
+        if(chs[k].trim()){ lctx.fillText(chs[k], x, y); boxes.push({x0:x, x1:x+widths[k], y0:y-lh*0.6, y1:y+lh*0.6}); }
+        x+=widths[k]+trackPx;
+      }
+      y+=lh;
+    }
+    LDATA=lctx.getImageData(0,0,W,H).data; CHARBOXES=boxes;
+  }
+  // busiest character's dot count at a given cell — used to enforce ≤15 dots per character
+  function busiestCharDots(cell,w,h){
+    const n=CHARBOXES.length; if(!n) return 0;
+    const cx=w/2, cy=h/2, Nx=Math.ceil(w/cell/2)+1, Ny=Math.ceil(h/cell/2)+1, counts=new Int32Array(n); let mx=0;
+    for(let i=-Nx;i<=Nx;i++){ for(let j=-Ny;j<=Ny;j++){
+      const x=cx+i*cell, y=cy+j*cell; if(covA(x,y,w)<=0.03) continue;
+      for(let b=0;b<n;b++){ const B=CHARBOXES[b]; if(x>=B.x0&&x<B.x1&&y>=B.y0&&y<B.y1){ if(++counts[b]>mx) mx=counts[b]; break; } }
+    }}
+    return mx;
   }
   const hash=(i,j,s)=>{ const x=Math.sin(i*127.1+j*311.7+s*74.7)*43758.5453; return x-Math.floor(x); };
   const covA=(x,y,w)=>{ x|=0; y|=0; if(x<0||y<0||x>=w||!LDATA) return 0; const idx=((y*w+x)<<2)+3; return idx<LDATA.length?LDATA[idx]/255:0; };
-  // tint the DOT FIELD (src) into a colour (or a travelling rainbow) — this is what the glow layers blur,
+  // tint the DOT FIELD (src) into a colour — this is what the glow layers blur,
   // so the aura is made of the dots themselves, never a visible letterform.
   function tintField(src, L, time, w, h){
     if(tintCv.width!==w||tintCv.height!==h){ tintCv.width=w; tintCv.height=h; }
     tctx.setTransform(1,0,0,1,0,0); tctx.globalCompositeOperation='source-over'; tctx.clearRect(0,0,w,h);
     tctx.drawImage(src,0,0); tctx.globalCompositeOperation='source-in';
-    if(L.rainbow){ const grad=tctx.createLinearGradient(0,h,w,0), off=(time*0.12)%1;
-      for(let i=0;i<=8;i++){ const hh=(((i/8)+off)%1)*360; grad.addColorStop(i/8,'hsl('+hh+',88%,58%)'); } tctx.fillStyle=grad; }
-    else tctx.fillStyle=L.color;
-    tctx.fillRect(0,0,w,h); tctx.globalCompositeOperation='source-over'; return tintCv;
+    tctx.fillStyle=L.color; tctx.fillRect(0,0,w,h); tctx.globalCompositeOperation='source-over'; return tintCv;
   }
 
   // ---- render one frame into g at size w×h ----
-  // The letterform is a HALFTONE dot screen, built exactly as OPEN LAB's "Words, printed in dots":
-  // a rotated cell grid, each dot sized by the letter's coverage (contrast γ), with size jitter and
-  // a share thrown out of focus (blur dots). Behind it: blurred, slightly-offset tinted copies of the
-  // same dot field — the Katsui aura, made of the dots themselves. No letterform is ever drawn plainly.
+  // The letterform is a HALFTONE dot screen (OPEN LAB's "Words, printed in dots"): a cell grid, each dot
+  // sized by the letter's coverage (contrast γ), with size jitter and a share thrown out of focus.
+  // The dot count PER CHARACTER is capped at 15. The glow layers are colour that FILLS THE GAPS between
+  // the firm dots (masked to the glyph, dots punched out) — no outer halo/ring, solid at 100% opacity.
   function render(g,w,h,time){
     g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
     g.fillStyle=P.bg; g.fillRect(0,0,w,h);
     if(!LDATA) return;
-    // 1) OPEN LAB halftone → offscreen dotCv (in the dot colour)
+    // 1) HALFTONE — coarsen the cell until the busiest character has ≤ 15 dots
+    let cell=(6+(P.cell/100)*46)*RS;
+    if(CHARBOXES.length){ let N=busiestCharDots(cell,w,h), guard=0;
+      while(N>15 && guard++<24){ cell*=Math.max(1.1, Math.sqrt(N/15)); N=busiestCharDots(cell,w,h); } }
+    const cx=w/2, cy=h/2;
+    const Nx=Math.ceil(w/cell/2)+1, Ny=Math.ceil(h/cell/2)+1, gamma=0.12+(1-P.contrast/100)*2.0;
+    const rad=0.62 + Math.max(0,(P.contrast-55)/45)*0.30;
+    const jit=P.jitter/100, waveA=P.wave/100, t=time, blurFrac=P.blur/100, s1=(P.seed||1)>>>0;
     if(dotCv.width!==w||dotCv.height!==h){ dotCv.width=w; dotCv.height=h; }
     dctx.setTransform(1,0,0,1,0,0); dctx.globalCompositeOperation='source-over'; dctx.filter='none';
     dctx.clearRect(0,0,w,h); dctx.fillStyle=P.dotCol;
-    const cell=(6+(P.cell/100)*46)*RS;                       // exactly OPEN LAB. RS keeps density constant at export res
-    const cx=w/2, cy=h/2;   // the screen is axis-aligned — no angle
-    const Nx=Math.ceil(w/cell/2)+1, Ny=Math.ceil(h/cell/2)+1, gamma=0.12+(1-P.contrast/100)*2.0;
-    // above the OPEN LAB midpoint, Contrast also grows the dot so high contrast fills solid, not just crisp
-    const rad=0.62 + Math.max(0,(P.contrast-55)/45)*0.30;
-    const jit=P.jitter/100, waveA=P.wave/100, t=time, blurFrac=P.blur/100, s1=(P.seed||1)>>>0;
+    const soft=[];
     for(let i=-Nx;i<=Nx;i++){ for(let j=-Ny;j<=Ny;j++){
       const x=cx+i*cell, y=cy+j*cell;
       if(x<-cell||x>w+cell||y<-cell||y>h+cell) continue;
@@ -197,28 +207,25 @@
       let r=cell*rad*cc; r*=(1+(hash(i,j,s1)-0.5)*jit*1.4);
       if(waveA>0) r*=1+waveA*0.5*Math.sin(x*0.018 - t*2.2 + y*0.006);
       if(r<0.35) continue;
-      if(blurFrac>0 && hash(i,j,s1+7) < blurFrac){                 // a share thrown out of focus
-        const amt=r*(0.35+hash(j,i,s1)*0.7);
-        dctx.filter='blur('+amt.toFixed(2)+'px)'; dctx.beginPath(); dctx.arc(x,y,r,0,TAU); dctx.fill(); dctx.filter='none';
-      } else { dctx.beginPath(); dctx.arc(x,y,r,0,TAU); dctx.fill(); }
+      if(blurFrac>0 && hash(i,j,s1+7) < blurFrac) soft.push([x,y,r]);   // out-of-focus dot → soft pass on top
+      else { dctx.beginPath(); dctx.arc(x,y,r,0,TAU); dctx.fill(); }     // FIRM dot
     }}
-    // 2) GLOW — blurred, slightly-offset, tinted copies of the dot field, stacked behind.
-    // A pure blur washes out as it widens, so we STAMP the pre-blurred field a few more times as
-    // the blur grows — the dense core saturates into a heavy halo while the far edge still fades.
+    // 2) GLOW — soft, tinted, blurred copies of the DOTS (never the letterform), which fill the gaps
+    // between the dots. No glyph mask → no visible letter shape; no self-composite → no ring. Drawn
+    // twice at the layer opacity so 100% reads strong, without the banding a hard solidify caused.
     const drift=P.mv, sp=time;
     if(gGlow.width!==w||gGlow.height!==h){ gGlow.width=w; gGlow.height=h; }
     for(let i=0;i<P.glows.length;i++){ const L=P.glows[i];
-      const dx=(6*RS + Math.sin(sp*0.6+i*1.7)*drift*30*RS), dy=(4*RS + Math.cos(sp*0.5+i*2.3)*drift*26*RS);
-      ggx.setTransform(1,0,0,1,0,0); ggx.globalAlpha=1; ggx.filter='none'; ggx.clearRect(0,0,w,h);
+      const dx=Math.sin(sp*0.6+i*1.7)*drift*22*RS, dy=Math.cos(sp*0.5+i*2.3)*drift*20*RS;
+      ggx.setTransform(1,0,0,1,0,0); ggx.globalAlpha=1; ggx.globalCompositeOperation='source-over'; ggx.filter='none'; ggx.clearRect(0,0,w,h);
       ggx.filter='blur('+(L.blur*RS)+'px)'; ggx.drawImage(tintField(dotCv,L,time,w,h),0,0); ggx.filter='none';
-      const reps=1+Math.floor(L.blur/80);       // blur 34 → 1 (unchanged); blur 360 → 5 → dense halo
-      const jx=(L.blur*RS)*0.05, jy=(L.blur*RS)*0.035;   // desync the stamps so they don't ring
-      g.save(); g.globalAlpha=L.opacity;
-      for(let k=0;k<reps;k++) g.drawImage(gGlow, dx + (k-(reps-1)/2)*jx, dy + (k-(reps-1)/2)*jy);
-      g.restore(); }
+      g.save(); g.globalAlpha=L.opacity; g.drawImage(gGlow,dx,dy); g.drawImage(gGlow,dx,dy); g.restore(); }
     g.filter='none'; g.globalAlpha=1;
-    // 3) the crisp halftone on top
+    // 3) firm dots crisp on top, then the out-of-focus dots as soft pucks
     g.drawImage(dotCv,0,0);
+    if(soft.length){ g.save(); g.fillStyle=P.dotCol;
+      for(const s of soft){ g.filter='blur('+(s[2]*0.5).toFixed(1)+'px)'; g.beginPath(); g.arc(s[0],s[1],s[2],0,TAU); g.fill(); }
+      g.restore(); g.filter='none'; }
   }
 
   // ---- size / fit ----
@@ -261,12 +268,11 @@
   // glow-layer list (add / remove / recolour / reblur)
   function renderGlows(){ const host=$('glowList'); host.innerHTML='';
     P.glows.forEach((L,i)=>{ const row=document.createElement('div'); row.className='glow-row';
-      row.innerHTML='<div class="top"><input type="color" value="'+L.color+'"'+(L.rainbow?' disabled':'')+'>'+
-        '<button class="btn rb" style="flex:1" aria-pressed="'+(L.rainbow?'true':'false')+'">Rainbow</button>'+
+      row.innerHTML='<div class="top"><input type="color" value="'+L.color+'">'+
+        '<span class="lbl">Glow</span>'+
         '<button class="btn x" title="Remove">×</button></div>'+
         '<div class="knob"><label>Blur <b>'+(L.blur|0)+'</b></label><input class="bl" type="range" min="2" max="200" value="'+L.blur+'"></div>'+
         '<div class="knob"><label>Opacity <b>'+L.opacity.toFixed(2)+'</b></label><input class="op" type="range" min="0" max="100" value="'+Math.round(L.opacity*100)+'"></div>';
-      row.querySelector('.rb').addEventListener('click',e=>{ L.rainbow=!L.rainbow; renderGlows(); scheduleDraw(); });
       row.querySelector('input[type=color]').addEventListener('input',e=>{ L.color=e.target.value; scheduleDraw(); });
       const bl=row.querySelector('.bl'); bl.addEventListener('input',e=>{ L.blur=+e.target.value; bl.previousElementSibling.querySelector('b').textContent=(L.blur|0); scheduleDraw(); });
       const op=row.querySelector('.op'); op.addEventListener('input',e=>{ L.opacity=+e.target.value/100; op.previousElementSibling.querySelector('b').textContent=L.opacity.toFixed(2); scheduleDraw(); });
