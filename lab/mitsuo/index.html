@@ -423,7 +423,14 @@
   bind('mv','mvR',v=>P.mv=v/100,v=>(v/100).toFixed(2));
   bind('spd','spdR',v=>P.spd=v/10,v=>(v/10).toFixed(1));
   $('dotCol').addEventListener('input',e=>{ P.dotCol=e.target.value; scheduleDraw(); });
-  $('bg').addEventListener('input',e=>{ if(P.engine==='fan') P.bgFan=e.target.value; else P.bg=e.target.value; scheduleDraw(); });
+  const lumOf=c=>{ const h=hex(c); return (0.299*h[0]+0.587*h[1]+0.114*h[2])/255; };
+  $('bg').addEventListener('input',e=>{
+    if(P.engine==='fan'){ P.bgFan=e.target.value; const L=lumOf(e.target.value);
+      // Screen is invisible on a light ground; Multiply is invisible on a dark ground — keep the fan visible
+      if(L>0.6 && P.fanBlend==='screen'){ P.fanBlend='multiply'; $('fanBlend').value='multiply'; }
+      else if(L<0.22 && P.fanBlend==='multiply'){ P.fanBlend='screen'; $('fanBlend').value='screen'; }
+    } else P.bg=e.target.value;
+    scheduleDraw(); });
   $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); scheduleDraw(); });
   // Fan engine controls
   bind('fanCount','fanCountR',v=>P.fanCount=v,v=>(v|0));
