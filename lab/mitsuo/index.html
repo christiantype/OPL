@@ -376,14 +376,18 @@
     g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
     const mb=(P.fanMoBlur||0)/100;
     if(mb>0.01){
-      // MOTION BLUR — fade the previous frame toward the ground (instead of a hard clear), then LIGHTEN
-      // this frame's clean fan over it, so movement leaves a trail without ever running away to white.
+      // MOTION BLUR — fade the previous frame toward the ground, then composite this frame's clean fan
+      // over it so movement leaves a trail without running away. On a DARK ground the fan is brighter than
+      // the trail (LIGHTEN keeps it); on a LIGHT ground the fan is darker (DARKEN keeps it). Picking the
+      // wrong one erases the fan — which is why a white background used to go blank.
+      const bh=hex(P.bgFan), bgLum=(0.299*bh[0]+0.587*bh[1]+0.114*bh[2])/255;
+      const feedback = bgLum>0.5 ? 'darken' : 'lighten';
       g.globalAlpha=Math.max(0.06, 1-mb*0.92); g.fillStyle=P.bgFan; g.fillRect(0,0,w,h); g.globalAlpha=1;
       if(fanBuf.width!==w||fanBuf.height!==h){ fanBuf.width=w; fanBuf.height=h; }
       fbx.setTransform(1,0,0,1,0,0); fbx.globalCompositeOperation='source-over'; fbx.globalAlpha=1; fbx.filter='none';
       fbx.fillStyle=P.bgFan; fbx.fillRect(0,0,w,h);
       drawFanCopies(fbx,w,h,time);
-      g.globalCompositeOperation='lighten'; g.drawImage(fanBuf,0,0); g.globalCompositeOperation='source-over';
+      g.globalCompositeOperation=feedback; g.drawImage(fanBuf,0,0); g.globalCompositeOperation='source-over';
     } else {
       g.fillStyle=P.bgFan; g.fillRect(0,0,w,h);
       drawFanCopies(g,w,h,time);
