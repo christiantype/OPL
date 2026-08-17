@@ -497,16 +497,27 @@
   (function(){ const s=document.querySelector('.opal-ex-scale'); if(!s) return;
     const hi=Math.min(parseInt(s.max)||8192, 2600); s.value=String(hi); s.dataset.touched='1'; s.dispatchEvent(new Event('input',{bubbles:true})); })();
 
-  // ---- record ----
+  // ---- record — works the same for BOTH engines (they both draw to #art, which is what we capture) ----
   let rec=null, chunks=[], rt=0, tk=0;
-  $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
-    if(!P.play){ P.play=true; setPlay(); }
-    const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
-    rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime}:undefined); chunks=[];
-    rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
-    rec.onstop=()=>{ clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
-      const bl=new Blob(chunks,{type:chunks[0]?.type||'video/webm'}); const a=document.createElement('a'); a.download='mitsuo.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); rec=null; };
-    rec.start(); rt=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
+  function resetRecUI(){ clearInterval(tk); tk=0; const dot=$('recDot'); if(dot) dot.classList.remove('on');
+    const btn=$('recBtn'); if(btn){ btn.textContent='Record'; btn.classList.remove('is-recording'); btn.setAttribute('aria-pressed','false'); } }
+  $('recBtn').addEventListener('click',()=>{
+    if(rec){ const r=rec; try{ r.stop(); }catch(e){}
+      // safety: if onstop never fires, force a reset so a new recording can always start
+      setTimeout(()=>{ if(rec===r){ resetRecUI(); rec=null; } }, 900); return; }
+    if(!P.play){ P.play=true; setPlay(); }                 // recording always runs the animation
+    let stream; try{ stream=art.captureStream(30); }catch(e){ alert('Recording is not supported in this browser.'); return; }
+    const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>{ try{ return MediaRecorder.isTypeSupported(m); }catch(e){ return false; } })||'';
+    try{ rec=new MediaRecorder(stream, mime?{mimeType:mime}:undefined); }catch(e){ try{ rec=new MediaRecorder(stream); }catch(e2){ alert('Recording is not supported in this browser.'); return; } }
+    chunks=[];
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onerror=()=>{ resetRecUI(); rec=null; };
+    rec.onstop=()=>{ resetRecUI();
+      if(chunks.length){ const bl=new Blob(chunks,{type:chunks[0].type||mime||'video/webm'});
+        const a=document.createElement('a'); a.download='mitsuo-'+P.engine+'.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); }
+      rec=null; };
+    rec.start(1000);   // flush a chunk every second → robust even on long clips / abrupt stops
+    rt=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
     tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
 
   addEventListener('resize',()=>{ const box=$('wrap').getBoundingClientRect(),s=Math.min(box.width/W,box.height/H); art.style.width=(W*s)+'px'; art.style.height=(H*s)+'px'; });
