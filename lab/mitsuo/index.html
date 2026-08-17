@@ -38,6 +38,16 @@
   .glow-row .top input[type=color]{ width:34px; height:24px; }
   .glow-row .top .lbl{ font-size:12px; color:var(--mute); flex:1; }
   .glow-row .x{ width:24px; height:24px; padding:0; font-size:14px; line-height:1; }
+  /* engine show/hide */
+  body.eng-metaball .eng-fan{ display:none !important; }
+  body.eng-fan .eng-metaball{ display:none !important; }
+  /* fan palette swatches */
+  #fanColList{ display:flex; flex-wrap:wrap; gap:8px; }
+  .fan-col{ position:relative; }
+  .fan-col input[type=color]{ width:40px; height:34px; }
+  .fan-col .x{ position:absolute; top:-6px; right:-6px; width:18px; height:18px; padding:0; font-size:11px; line-height:1;
+    border-radius:50%; display:none; }
+  .fan-col:hover .x{ display:block; }
 </style>
 <link rel="stylesheet" href="/lab/shared/OPALAB.css" />
 </head>
@@ -57,6 +67,14 @@
 
 <div id="dock">
   <div class="group">
+    <div class="group__t">Engine</div>
+    <div class="grid2" id="engSeg">
+      <button class="btn" aria-pressed="true" data-eng="metaball">Metaball</button>
+      <button class="btn" data-eng="fan">Fan</button>
+    </div>
+  </div>
+
+  <div class="group">
     <div class="group__t">Letter</div>
     <input class="opal-input" id="letterIn" type="text" value="C" maxlength="40" spellcheck="false" autocomplete="off">
     <div class="knob"><label>Text size <b id="tsizeR">126</b></label><input id="tsize" type="range" min="8" max="500" value="126"></div>
@@ -66,7 +84,7 @@
     </div>
   </div>
 
-  <div class="group">
+  <div class="group eng-metaball">
     <div class="group__t">Dots</div>
     <p class="rowhint">The letter printed as a halftone screen of dots (exactly like OPEN LAB) — the dots <b>are</b> the letterform. Colour them, then add coloured blurs below.</p>
     <div class="duo">
@@ -80,14 +98,15 @@
     <div class="crow"><label>Dot colour</label><input type="color" class="sw" id="dotCol" value="#f4f0ff"></div>
   </div>
 
-  <div class="group">
+  <div class="group eng-metaball">
     <div class="group__t">Glow layers</div>
-    <p class="rowhint">The blurred, slightly-offset dots that sit behind — a soft coloured aura made of the dots themselves. Stack as many as you like, colour each.</p>
+    <p class="rowhint">The blurred dots that sit behind — a soft coloured aura made of the dots themselves. Displace them off the dots for more contrast. Stack as many as you like, colour each.</p>
+    <div class="knob"><label>Displace <b id="glowDispR">40</b></label><input id="glowDisp" type="range" min="0" max="100" value="40"></div>
     <div id="glowList"></div>
     <button class="btn" id="addGlow">+ Add glow</button>
   </div>
 
-  <div class="group">
+  <div class="group eng-metaball">
     <div class="group__t">Motion</div>
     <div class="grid2">
       <button class="btn" id="playBtn" aria-pressed="true">Pause</button>
@@ -98,7 +117,41 @@
       <div class="knob"><label>Glow drift <b id="mvR">0.5</b></label><input id="mv" type="range" min="0" max="100" value="50"></div>
     </div>
     <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="1" max="40" value="10"></div>
-    <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#b11a10"></div>
+  </div>
+
+  <div class="group eng-fan">
+    <div class="group__t">Fan</div>
+    <p class="rowhint">The letterform multiplied and flared left &amp; right from the centre axis — each copy tinted from the palette below, stacked with your blend.</p>
+    <div class="duo">
+      <div class="knob"><label>Multiply <b id="fanCountR">24</b></label><input id="fanCount" type="range" min="2" max="80" value="24"></div>
+      <div class="knob"><label>Spread <b id="fanSpreadR">60</b></label><input id="fanSpread" type="range" min="0" max="100" value="60"></div>
+    </div>
+    <div class="duo">
+      <div class="knob"><label>Flare <b id="fanFlareR">30</b></label><input id="fanFlare" type="range" min="0" max="100" value="30"></div>
+      <div class="knob"><label>Opacity <b id="fanOpR">0.45</b></label><input id="fanOp" type="range" min="2" max="100" value="45"></div>
+    </div>
+    <div class="crow"><label>Blend</label>
+      <select id="fanBlend">
+        <option value="multiply" selected>Multiply</option>
+        <option value="screen">Screen</option>
+        <option value="lighten">Lighten</option>
+        <option value="darken">Darken</option>
+        <option value="overlay">Overlay</option>
+        <option value="source-over">Normal</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="group eng-fan">
+    <div class="group__t">Colours</div>
+    <p class="rowhint">The palette spread across the copies. Add, remove, recolour — the fan blends between them.</p>
+    <div id="fanColList"></div>
+    <button class="btn" id="addFanCol">+ Add colour</button>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Background</div>
+    <div class="crow"><label>Colour</label><input type="color" class="sw" id="bg" value="#b11a10"></div>
   </div>
 
   <div class="group out" id="output" data-export-custom>
@@ -120,9 +173,11 @@
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const art=$('art'); let ctx=art.getContext('2d');
-  const P={ letter:'C', size:126, track:25, lead:116, cell:100, contrast:38, jitter:100, blur:50, wave:15,
-    dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, spd:1.0, play:true, aspect:'1080/1080', seed:1,
-    glows:[ {color:'#160a12', blur:34, opacity:0.95}, {color:'#7a2bd6', blur:48, opacity:0.6} ] };
+  const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, cell:100, contrast:38, jitter:100, blur:50, wave:15,
+    dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, glowDisp:40, spd:1.0, play:true, aspect:'1080/1080', seed:1,
+    glows:[ {color:'#160a12', blur:34, opacity:0.95}, {color:'#7a2bd6', blur:48, opacity:0.6} ],
+    fanCount:24, fanSpread:60, fanFlare:30, fanOp:0.45, fanBlend:'multiply',
+    fanColors:['#2f7fa8','#4bd0c0','#5be584','#ffd23f','#ff8a3d','#ff5ea8','#c9a3ff'] };
   let W=1400,H=1400, RS=1, LDATA=null, CHARBOXES=[], t0=performance.now(), clock=0;
   const letterCv=document.createElement('canvas'), lctx=letterCv.getContext('2d',{willReadFrequently:true});
   const dotCv=document.createElement('canvas'), dctx=dotCv.getContext('2d');
@@ -213,10 +268,11 @@
     // 2) GLOW — soft, tinted, blurred copies of the DOTS (never the letterform), which fill the gaps
     // between the dots. No glyph mask → no visible letter shape; no self-composite → no ring. Drawn
     // twice at the layer opacity so 100% reads strong, without the banding a hard solidify caused.
-    const drift=P.mv, sp=time;
+    const drift=P.mv, sp=time, disp=(P.glowDisp/100)*160*RS;   // Displace the glow off the dots for contrast
     if(gGlow.width!==w||gGlow.height!==h){ gGlow.width=w; gGlow.height=h; }
     for(let i=0;i<P.glows.length;i++){ const L=P.glows[i];
-      const dx=Math.sin(sp*0.6+i*1.7)*drift*22*RS, dy=Math.cos(sp*0.5+i*2.3)*drift*20*RS;
+      const dx=disp+i*disp*0.45 + Math.sin(sp*0.6+i*1.7)*drift*22*RS,
+            dy=disp*0.7+i*disp*0.3 + Math.cos(sp*0.5+i*2.3)*drift*20*RS;
       ggx.setTransform(1,0,0,1,0,0); ggx.globalAlpha=1; ggx.globalCompositeOperation='source-over'; ggx.filter='none'; ggx.clearRect(0,0,w,h);
       ggx.filter='blur('+(L.blur*RS)+'px)'; ggx.drawImage(tintField(dotCv,L,time,w,h),0,0); ggx.filter='none';
       g.save(); g.globalAlpha=L.opacity; g.drawImage(gGlow,dx,dy); g.drawImage(gGlow,dx,dy); g.restore(); }
@@ -228,6 +284,35 @@
       g.restore(); g.filter='none'; }
   }
 
+  // ---- FAN ENGINE: the letterform multiplied and flared left & right from the centre axis ----
+  function lerpHex(a,b,t){ const A=hex(a),B=hex(b);
+    return 'rgb('+Math.round(A[0]+(B[0]-A[0])*t)+','+Math.round(A[1]+(B[1]-A[1])*t)+','+Math.round(A[2]+(B[2]-A[2])*t)+')'; }
+  function paletteAt(cols,f){ if(cols.length<2) return cols[0]||'#ffffff';
+    const x=Math.max(0,Math.min(1,f))*(cols.length-1), i=Math.floor(x); if(i>=cols.length-1) return cols[cols.length-1];
+    return lerpHex(cols[i],cols[i+1],x-i); }
+  function renderFan(g,w,h,time){
+    g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
+    g.fillStyle=P.bg; g.fillRect(0,0,w,h);
+    if(!LDATA) return;
+    const N=Math.max(1,P.fanCount|0), cx=w/2, cy=h/2;
+    const spread=(P.fanSpread/100)*(Math.PI*0.5*0.96);   // max rotation about the vertical centre axis
+    const flare=(P.fanFlare/100)*0.55;                   // lateral spread, as a fraction of the width
+    const cols=(P.fanColors&&P.fanColors.length)?P.fanColors:['#ffffff'];
+    g.globalCompositeOperation=P.fanBlend;
+    g.globalAlpha=P.fanOp;
+    // draw outermost → innermost so the centre (front-facing) copy lands on top
+    const order=[]; for(let k=0;k<N;k++) order.push(k);
+    order.sort((a,b)=> Math.abs((N>1?(b/(N-1))*2-1:0)) - Math.abs((N>1?(a/(N-1))*2-1:0)));
+    for(const k of order){
+      const t = N>1 ? (k/(N-1))*2-1 : 0;                 // -1 (far left) .. +1 (far right)
+      const th=t*spread, sx=Math.cos(th), tx=t*flare*w + Math.sin(th)*w*0.06;
+      const col=paletteAt(cols, N>1? k/(N-1):0.5);
+      const tf=tintField(letterCv, {color:col}, time, w, h);
+      g.save(); g.translate(cx+tx, cy); g.scale(sx,1); g.drawImage(tf, -w/2, -h/2); g.restore();
+    }
+    g.globalCompositeOperation='source-over'; g.globalAlpha=1;
+  }
+
   // ---- size / fit ----
   function aspectWH(){ const p=(P.aspect||'1080/1080').split(/[/:x]/).map(Number),a=p[0]||1,b=p[1]||1,long=1400;
     return a>=b?[long,Math.round(long*b/a)]:[Math.round(long*a/b),long]; }
@@ -237,12 +322,13 @@
     const dr=$('dimReadout'); if(dr){ const p=(P.aspect||'').split(/[/:x]/).map(Number); dr.textContent=(p[0]||W)+' × '+(p[1]||H); }
     buildLetters(); }
 
+  function paint(g,w,h,t){ (P.engine==='fan'?renderFan:render)(g,w,h,t); }
   function tick(){ const now=performance.now(), dt=Math.min(0.05,(now-t0)/1000); t0=now;
-    if(P.play) clock+=dt*P.spd; render(ctx,W,H,clock); requestAnimationFrame(tick); }
+    if(P.play) clock+=dt*P.spd; paint(ctx,W,H,clock); requestAnimationFrame(tick); }
 
   // ---- controls ----
-  let _rq=false; function draw(){ if(!P.play) render(ctx,W,H,clock); }
-  function scheduleDraw(){ if(_rq||P.play) return; _rq=true; requestAnimationFrame(()=>{ _rq=false; render(ctx,W,H,clock); }); }
+  let _rq=false; function draw(){ if(!P.play) paint(ctx,W,H,clock); }
+  function scheduleDraw(){ if(_rq||P.play) return; _rq=true; requestAnimationFrame(()=>{ _rq=false; paint(ctx,W,H,clock); }); }
   function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); if(!el) return;
     el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; scheduleDraw(); }); }
   $('letterIn').addEventListener('input',e=>{ P.letter=e.target.value||'C'; buildLetters(); scheduleDraw(); });
@@ -257,10 +343,31 @@
   bind('blur','blurR',v=>P.blur=v,v=>(v|0));
   bind('wave','waveR',v=>P.wave=v,v=>(v|0));
   bind('mv','mvR',v=>P.mv=v/100,v=>(v/100).toFixed(2));
+  bind('glowDisp','glowDispR',v=>P.glowDisp=v,v=>(v|0));
   bind('spd','spdR',v=>P.spd=v/10,v=>(v/10).toFixed(1));
   $('dotCol').addEventListener('input',e=>{ P.dotCol=e.target.value; scheduleDraw(); });
   $('bg').addEventListener('input',e=>{ P.bg=e.target.value; scheduleDraw(); });
   $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); scheduleDraw(); });
+  // Fan engine controls
+  bind('fanCount','fanCountR',v=>P.fanCount=v,v=>(v|0));
+  bind('fanSpread','fanSpreadR',v=>P.fanSpread=v,v=>(v|0));
+  bind('fanFlare','fanFlareR',v=>P.fanFlare=v,v=>(v|0));
+  bind('fanOp','fanOpR',v=>P.fanOp=v/100,v=>(v/100).toFixed(2));
+  $('fanBlend').addEventListener('change',e=>{ P.fanBlend=e.target.value; scheduleDraw(); });
+  function setEngine(e){ P.engine=e;
+    document.body.classList.toggle('eng-fan', e==='fan');
+    document.body.classList.toggle('eng-metaball', e!=='fan');
+    $('engSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.eng===e)));
+    scheduleDraw(); }
+  $('engSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setEngine(b.dataset.eng)));
+  // Fan palette (add / remove / recolour)
+  function renderFanCols(){ const host=$('fanColList'); if(!host) return; host.innerHTML='';
+    P.fanColors.forEach((c,i)=>{ const d=document.createElement('div'); d.className='fan-col';
+      d.innerHTML='<input type="color" value="'+c+'"><button class="btn x" title="Remove">×</button>';
+      d.querySelector('input').addEventListener('input',e=>{ P.fanColors[i]=e.target.value; scheduleDraw(); });
+      d.querySelector('.x').addEventListener('click',()=>{ if(P.fanColors.length>1){ P.fanColors.splice(i,1); renderFanCols(); scheduleDraw(); } });
+      host.appendChild(d); }); }
+  $('addFanCol').addEventListener('click',()=>{ P.fanColors.push(P.fanColors[P.fanColors.length-1]||'#ffffff'); renderFanCols(); scheduleDraw(); });
   function setPlay(){ $('playBtn').textContent=P.play?'Pause':'Play'; $('playBtn').setAttribute('aria-pressed',String(P.play)); }
   $('playBtn').addEventListener('click',()=>{ P.play=!P.play; setPlay(); });
   $('reseedBtn').addEventListener('click',()=>{ P.seed=(P.seed*1103515245+12345)&0x7fffffff; scheduleDraw(); });
@@ -285,7 +392,7 @@
     const [aw,ah]=aspectWH(), long=Math.max(aw,ah), ew=Math.round(px*aw/long), eh=Math.round(px*ah/long);
     const off=document.createElement('canvas'); off.width=ew; off.height=eh;
     const sW=W,sH=H,sRS=RS; W=ew; H=eh; RS=Math.max(1,px/long);
-    buildLetters(); render(off.getContext('2d'), ew, eh, clock);
+    buildLetters(); paint(off.getContext('2d'), ew, eh, clock);
     W=sW; H=sH; RS=sRS; buildLetters();   // restore display state
     return off;
   }
@@ -308,7 +415,7 @@
   addEventListener('resize',()=>{ const box=$('wrap').getBoundingClientRect(),s=Math.min(box.width/W,box.height/H); art.style.width=(W*s)+'px'; art.style.height=(H*s)+'px'; });
 
   // ---- boot ----
-  renderGlows(); setPlay(); fit(); requestAnimationFrame(tick);
+  renderGlows(); renderFanCols(); setEngine(P.engine); setPlay(); fit(); requestAnimationFrame(tick);
   // re-measure the glyphs once the Sidepiece web font is ready
   if(document.fonts){ try{ document.fonts.load('40px Sidepiece').then(()=>{ buildLetters(); scheduleDraw(); }).catch(()=>{}); document.fonts.ready.then(()=>{ buildLetters(); scheduleDraw(); }); }catch(e){} }
 })();
