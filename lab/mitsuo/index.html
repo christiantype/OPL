@@ -121,28 +121,19 @@
 
   <div class="group eng-fan">
     <div class="group__t">Fan</div>
-    <p class="rowhint">The letterform multiplied and fanned around a single shared anchor at its base. Try each Mode — every copy is pinned to the same point, only the transform differs.</p>
-    <div class="crow"><label>Mode</label>
-      <select id="fanMode">
-        <option value="rotate">Rotate (Z) — swing</option>
-        <option value="shear">Shear — lean</option>
-        <option value="widen">Widen — nest</option>
-        <option value="turn" selected>Turn (Y) — ribs</option>
-        <option value="tilt">Tilt (X) — bell</option>
-      </select>
+    <p class="rowhint">The letterform multiplied and turned around its vertical (Y) axis — the copies fan into ribs. Tinted from the palette, stacked with your blend.</p>
+    <div class="duo">
+      <div class="knob"><label>Multiply <b id="fanCountR">48</b></label><input id="fanCount" type="range" min="2" max="80" value="48"></div>
+      <div class="knob"><label>Spread <b id="fanSpreadR">72</b></label><input id="fanSpread" type="range" min="0" max="100" value="72"></div>
     </div>
     <div class="duo">
-      <div class="knob"><label>Multiply <b id="fanCountR">44</b></label><input id="fanCount" type="range" min="2" max="80" value="44"></div>
-      <div class="knob"><label>Spread <b id="fanSpreadR">82</b></label><input id="fanSpread" type="range" min="0" max="100" value="82"></div>
-    </div>
-    <div class="duo">
-      <div class="knob"><label>Flare <b id="fanFlareR">0</b></label><input id="fanFlare" type="range" min="0" max="100" value="0"></div>
-      <div class="knob"><label>Opacity <b id="fanOpR">0.42</b></label><input id="fanOp" type="range" min="2" max="100" value="42"></div>
+      <div class="knob"><label>Perspective <b id="fanPerspR">60</b></label><input id="fanPersp" type="range" min="0" max="100" value="60"></div>
+      <div class="knob"><label>Opacity <b id="fanOpR">0.20</b></label><input id="fanOp" type="range" min="2" max="100" value="20"></div>
     </div>
     <div class="crow"><label>Blend</label>
       <select id="fanBlend">
-        <option value="multiply" selected>Multiply</option>
-        <option value="screen">Screen</option>
+        <option value="multiply">Multiply</option>
+        <option value="screen" selected>Screen</option>
         <option value="lighten">Lighten</option>
         <option value="darken">Darken</option>
         <option value="overlay">Overlay</option>
@@ -185,8 +176,8 @@
   const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, cell:100, contrast:38, jitter:100, blur:50, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, glowDisp:40, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95, on:true}, {color:'#7a2bd6', blur:48, opacity:0.6, on:true} ],
-    bgFan:'#ffffff', fanMode:'turn', fanCount:44, fanSpread:82, fanFlare:0, fanOp:0.42, fanBlend:'multiply',
-    fanColors:['#2f7fa8','#4bd0c0','#5be584','#ffd23f','#ff8a3d','#ff5ea8','#c9a3ff'] };
+    letterFan:'X', sizeFan:300, bgFan:'#2a49b0', fanMode:'turn', fanCount:48, fanSpread:72, fanPersp:60, fanOp:0.2, fanBlend:'screen',
+    fanColors:['#ff2626','#2f6bff','#2fd44f'] };
   let W=1400,H=1400, RS=1, LDATA=null, CHARBOXES=[], BASEY=0, t0=performance.now(), clock=0;
   const letterCv=document.createElement('canvas'), lctx=letterCv.getContext('2d',{willReadFrequently:true});
   const dotCv=document.createElement('canvas'), dctx=dotCv.getContext('2d');
@@ -203,9 +194,11 @@
   // Boxes let us cap the number of dots PER CHARACTER.
   function buildLetters(){
     letterCv.width=W; letterCv.height=H; lctx.clearRect(0,0,W,H);
-    const word=((P.letter!=null?P.letter:'C')+'')||' ';
+    const lw=(P.engine==='fan'? P.letterFan : P.letter);
+    const word=((lw!=null?lw:'C')+'')||' ';
     lctx.fillStyle='#fff'; lctx.textAlign='left'; lctx.textBaseline='middle';
-    const fontPx=H*(0.03+(P.size/100)*0.26); lctx.font=FONT(fontPx);
+    const sz=(P.engine==='fan'? P.sizeFan : P.size);
+    const fontPx=H*(0.03+(sz/100)*0.26); lctx.font=FONT(fontPx);
     const trackPx=(P.track/100)*fontPx*0.5;
     const lines=word.split('\n'), lh=fontPx*(P.lead/100), total=lh*lines.length;
     let y=H/2 - total/2 + lh/2; const boxes=[];
@@ -304,41 +297,37 @@
   function paletteAt(cols,f){ if(cols.length<2) return cols[0]||'#ffffff';
     const x=Math.max(0,Math.min(1,f))*(cols.length-1), i=Math.floor(x); if(i>=cols.length-1) return cols[cols.length-1];
     return lerpHex(cols[i],cols[i+1],x-i); }
+  // A single copy, turned around the vertical (Y) axis and PERSPECTIVE-projected: sliced into vertical
+  // strips, each scaled by its depth so the copy becomes a keystone (near edge tall, far edge small).
+  function drawTurnPersp(g, src, a, cx, cy, w, h, d){
+    const K=18, sinA=Math.sin(a), cosA=Math.cos(a);
+    for(let s=0;s<K;s++){
+      const u0=s/K-0.5, u1=(s+1)/K-0.5, uc=(u0+u1)/2;   // card-x fraction, −0.5..0.5
+      const z=1 + uc*sinA/d; if(z<=0.06) continue;      // depth (relative to the focal distance d)
+      const sc=1/z;                                     // perspective scale for this strip
+      const dw=(u1-u0)*cosA*w*sc; if(dw<=0.25) continue; // strip width on screen (cosA foreshortening)
+      g.drawImage(src, (u0+0.5)*w, 0, (u1-u0)*w, h,     // source strip
+                       cx + uc*cosA*w*sc - dw/2, cy-(h*0.5)*sc, dw, h*sc);   // → keystoned strip
+    }
+  }
   function renderFan(g,w,h,time){
     g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
     g.fillStyle=P.bgFan; g.fillRect(0,0,w,h);
     if(!LDATA) return;
-    const N=Math.max(1,P.fanCount|0), px=w/2, py=(BASEY||h*0.5), cy=h/2;   // pivot at the BASE of the letterform
-    const ang=(P.fanSpread/100)*(Math.PI*0.72);     // ± swing / turn of the outermost copies
-    const wid=(P.fanSpread/100)*1.4;                // horizontal spread for the 'widen' mode
-    const flare=(P.fanFlare/100)*1.4;               // optional growth of the outer copies
-    const mode=P.fanMode||'rotate';
+    const N=Math.max(1,P.fanCount|0), cx=w/2, cy=h/2;
+    const ang=(P.fanSpread/100)*(Math.PI*0.47);   // ± Y-rotation, capped < ~85° so copies never flip through edge-on
+    const d=3.2-(P.fanPersp/100)*2.7;             // focal distance — small d = strong perspective keystone
     const cols=(P.fanColors&&P.fanColors.length)?P.fanColors:['#ffffff'];
     g.globalCompositeOperation=P.fanBlend;
     g.globalAlpha=P.fanOp;
-    // draw outermost → innermost so the upright centre copy lands on top
+    // draw outermost → innermost so the front-facing centre copy lands on top
     const order=[]; for(let k=0;k<N;k++) order.push(k);
     order.sort((a,b)=> Math.abs((N>1?(b/(N-1))*2-1:0)) - Math.abs((N>1?(a/(N-1))*2-1:0)));
     for(const k of order){
-      const t = N>1 ? (k/(N-1))*2-1 : 0;             // -1 (left) .. +1 (right)
-      const at=Math.abs(t), a=t*ang, s=1+at*flare;
+      const t = N>1 ? (k/(N-1))*2-1 : 0;             // -1 (turned left) .. +1 (turned right)
       const col=paletteAt(cols, N>1? k/(N-1):0.5);
       const tf=tintField(letterCv, {color:col}, time, w, h);
-      g.save();
-      // every copy shares the same base/centre anchor — no displacement, only the transform differs
-      if(mode==='shear'){          // base stays flat, only the TOP leans left/right
-        g.translate(0,py); g.transform(1,0,Math.tan(a*0.8),1,0,0); g.translate(0,-py);
-        if(flare){ g.translate(px,py); g.scale(1,s); g.translate(-px,-py); }
-      } else if(mode==='widen'){   // scale wider & wider around the centre line (concentric)
-        g.translate(px,cy); g.scale(1+t*wid, 1+at*flare); g.translate(-px,-cy);
-      } else if(mode==='turn'){    // 3D turn around the vertical stem (venetian-blind ribs)
-        g.translate(px,cy); g.scale(Math.cos(a), 1+at*flare*0.3); g.translate(-px,-cy);
-      } else if(mode==='tilt'){    // 3D tilt around the base (foreshortened bell / trumpet)
-        g.translate(px,py); g.scale(1+at*flare*0.5, Math.cos(a)); g.translate(-px,-py);
-      } else {                     // 'rotate' — in-plane Z rotation about the base
-        g.translate(px,py); g.rotate(a); g.scale(s,s); g.translate(-px,-py);
-      }
-      g.drawImage(tf, 0, 0); g.restore();
+      drawTurnPersp(g, tf, t*ang, cx, cy, w, h, d);
     }
     g.globalCompositeOperation='source-over'; g.globalAlpha=1;
   }
@@ -361,10 +350,10 @@
   function scheduleDraw(){ if(_rq||P.play) return; _rq=true; requestAnimationFrame(()=>{ _rq=false; paint(ctx,W,H,clock); }); }
   function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); if(!el) return;
     el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; scheduleDraw(); }); }
-  $('letterIn').addEventListener('input',e=>{ P.letter=e.target.value||'C'; buildLetters(); scheduleDraw(); });
+  $('letterIn').addEventListener('input',e=>{ const v=e.target.value||'C'; if(P.engine==='fan') P.letterFan=v; else P.letter=v; buildLetters(); scheduleDraw(); });
   function bindText(id,rid,fn){ const el=$(id),o=$(rid); if(!el) return;
     el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=el.value; buildLetters(); scheduleDraw(); }); }
-  bindText('tsize','tsizeR',v=>P.size=v);
+  bindText('tsize','tsizeR',v=>{ if(P.engine==='fan') P.sizeFan=v; else P.size=v; });
   bindText('track','trackR',v=>P.track=v);
   bindText('lead','leadR',v=>P.lead=v);
   bind('cell','cellR',v=>P.cell=v,v=>(v|0));
@@ -381,16 +370,17 @@
   // Fan engine controls
   bind('fanCount','fanCountR',v=>P.fanCount=v,v=>(v|0));
   bind('fanSpread','fanSpreadR',v=>P.fanSpread=v,v=>(v|0));
-  bind('fanFlare','fanFlareR',v=>P.fanFlare=v,v=>(v|0));
+  bind('fanPersp','fanPerspR',v=>P.fanPersp=v,v=>(v|0));
   bind('fanOp','fanOpR',v=>P.fanOp=v/100,v=>(v/100).toFixed(2));
   $('fanBlend').addEventListener('change',e=>{ P.fanBlend=e.target.value; scheduleDraw(); });
-  $('fanMode').addEventListener('change',e=>{ P.fanMode=e.target.value; scheduleDraw(); });
   function setEngine(e){ P.engine=e;
     document.body.classList.toggle('eng-fan', e==='fan');
     document.body.classList.toggle('eng-metaball', e!=='fan');
     $('engSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.eng===e)));
     $('bg').value = (e==='fan'? P.bgFan : P.bg);   // the Background control edits the active engine's ground
-    scheduleDraw(); }
+    $('letterIn').value = (e==='fan'? P.letterFan : P.letter);   // each engine keeps its own letter
+    { const ts=$('tsize'), sv=(e==='fan'? P.sizeFan : P.size); if(ts){ ts.value=sv; const r=$('tsizeR'); if(r) r.textContent=sv; } }
+    buildLetters(); scheduleDraw(); }
   $('engSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setEngine(b.dataset.eng)));
   // Fan palette (add / remove / recolour)
   function renderFanCols(){ const host=$('fanColList'); if(!host) return; host.innerHTML='';
