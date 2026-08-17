@@ -175,7 +175,7 @@
   const art=$('art'); let ctx=art.getContext('2d');
   const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, cell:100, contrast:38, jitter:100, blur:50, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, glowDisp:40, spd:1.0, play:true, aspect:'1080/1080', seed:1,
-    glows:[ {color:'#160a12', blur:34, opacity:0.95}, {color:'#7a2bd6', blur:48, opacity:0.6} ],
+    glows:[ {color:'#160a12', blur:34, opacity:0.95, on:true}, {color:'#7a2bd6', blur:48, opacity:0.6, on:true} ],
     fanCount:24, fanSpread:60, fanFlare:30, fanOp:0.45, fanBlend:'multiply',
     fanColors:['#2f7fa8','#4bd0c0','#5be584','#ffd23f','#ff8a3d','#ff5ea8','#c9a3ff'] };
   let W=1400,H=1400, RS=1, LDATA=null, CHARBOXES=[], t0=performance.now(), clock=0;
@@ -270,7 +270,7 @@
     // twice at the layer opacity so 100% reads strong, without the banding a hard solidify caused.
     const drift=P.mv, sp=time, disp=(P.glowDisp/100)*160*RS;   // Displace the glow off the dots for contrast
     if(gGlow.width!==w||gGlow.height!==h){ gGlow.width=w; gGlow.height=h; }
-    for(let i=0;i<P.glows.length;i++){ const L=P.glows[i];
+    for(let i=0;i<P.glows.length;i++){ const L=P.glows[i]; if(L.on===false) continue;
       const dx=disp+i*disp*0.45 + Math.sin(sp*0.6+i*1.7)*drift*22*RS,
             dy=disp*0.7+i*disp*0.3 + Math.cos(sp*0.5+i*2.3)*drift*20*RS;
       ggx.setTransform(1,0,0,1,0,0); ggx.globalAlpha=1; ggx.globalCompositeOperation='source-over'; ggx.filter='none'; ggx.clearRect(0,0,w,h);
@@ -295,20 +295,23 @@
     g.fillStyle=P.bg; g.fillRect(0,0,w,h);
     if(!LDATA) return;
     const N=Math.max(1,P.fanCount|0), cx=w/2, cy=h/2;
-    const spread=(P.fanSpread/100)*(Math.PI*0.5*0.96);   // max rotation about the vertical centre axis
-    const flare=(P.fanFlare/100)*0.55;                   // lateral spread, as a fraction of the width
+    const spreadX=(P.fanSpread/100)*0.72;   // how far the ends splay from centre (fraction of width, each side)
+    const flareV=(P.fanFlare/100)*2.8;      // TRUMPET: how much taller/wider the copies grow toward the ends
     const cols=(P.fanColors&&P.fanColors.length)?P.fanColors:['#ffffff'];
     g.globalCompositeOperation=P.fanBlend;
     g.globalAlpha=P.fanOp;
-    // draw outermost → innermost so the centre (front-facing) copy lands on top
+    // draw outermost → innermost so the narrow centre copy lands on top
     const order=[]; for(let k=0;k<N;k++) order.push(k);
     order.sort((a,b)=> Math.abs((N>1?(b/(N-1))*2-1:0)) - Math.abs((N>1?(a/(N-1))*2-1:0)));
     for(const k of order){
       const t = N>1 ? (k/(N-1))*2-1 : 0;                 // -1 (far left) .. +1 (far right)
-      const th=t*spread, sx=Math.cos(th), tx=t*flare*w + Math.sin(th)*w*0.06;
+      const at=Math.abs(t);
+      const tx = Math.sign(t)*Math.pow(at,0.72)*spreadX*w;   // bunched in the centre, splayed at the ends
+      const sy = 1 + at*flareV;                              // bell mouth: taller toward the ends
+      const sx = 1 + at*flareV*0.35;                         // and a touch wider
       const col=paletteAt(cols, N>1? k/(N-1):0.5);
       const tf=tintField(letterCv, {color:col}, time, w, h);
-      g.save(); g.translate(cx+tx, cy); g.scale(sx,1); g.drawImage(tf, -w/2, -h/2); g.restore();
+      g.save(); g.translate(cx+tx, cy); g.scale(sx,sy); g.drawImage(tf, -w/2, -h/2); g.restore();
     }
     g.globalCompositeOperation='source-over'; g.globalAlpha=1;
   }
@@ -375,17 +378,20 @@
   // glow-layer list (add / remove / recolour / reblur)
   function renderGlows(){ const host=$('glowList'); host.innerHTML='';
     P.glows.forEach((L,i)=>{ const row=document.createElement('div'); row.className='glow-row';
-      row.innerHTML='<div class="top"><input type="color" value="'+L.color+'">'+
-        '<span class="lbl">Glow</span>'+
+      row.innerHTML='<div class="top"><input type="checkbox" class="vis"'+(L.on!==false?' checked':'')+' title="Show this layer">'+
+        '<input type="color" value="'+L.color+'">'+
+        '<span class="lbl">Glow '+(i+1)+'</span>'+
         '<button class="btn x" title="Remove">×</button></div>'+
         '<div class="knob"><label>Blur <b>'+(L.blur|0)+'</b></label><input class="bl" type="range" min="2" max="200" value="'+L.blur+'"></div>'+
         '<div class="knob"><label>Opacity <b>'+L.opacity.toFixed(2)+'</b></label><input class="op" type="range" min="0" max="100" value="'+Math.round(L.opacity*100)+'"></div>';
+      row.querySelector('.vis').addEventListener('change',e=>{ L.on=e.target.checked; row.style.opacity=L.on?'':'0.5'; scheduleDraw(); });
+      if(L.on===false) row.style.opacity='0.5';
       row.querySelector('input[type=color]').addEventListener('input',e=>{ L.color=e.target.value; scheduleDraw(); });
       const bl=row.querySelector('.bl'); bl.addEventListener('input',e=>{ L.blur=+e.target.value; bl.previousElementSibling.querySelector('b').textContent=(L.blur|0); scheduleDraw(); });
       const op=row.querySelector('.op'); op.addEventListener('input',e=>{ L.opacity=+e.target.value/100; op.previousElementSibling.querySelector('b').textContent=L.opacity.toFixed(2); scheduleDraw(); });
       row.querySelector('.x').addEventListener('click',()=>{ P.glows.splice(i,1); renderGlows(); scheduleDraw(); });
       host.appendChild(row); }); }
-  $('addGlow').addEventListener('click',()=>{ P.glows.push({color:'#7a2bd6', blur:44, opacity:0.55}); renderGlows(); scheduleDraw(); });
+  $('addGlow').addEventListener('click',()=>{ P.glows.push({color:'#7a2bd6', blur:44, opacity:0.55, on:true}); renderGlows(); scheduleDraw(); });
 
   // ---- export: re-render the exact frame at any resolution (everything scales by RS) ----
   function renderExport(px){
