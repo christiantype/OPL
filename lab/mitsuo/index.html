@@ -99,13 +99,13 @@
       <div class="knob"><label>Size jitter <b id="jitterR">100</b></label><input id="jitter" type="range" min="0" max="100" value="100"></div>
       <div class="knob"><label>Blur dots <b id="blurR">50</b></label><input id="blur" type="range" min="0" max="100" value="50"></div>
     </div>
+    <div class="knob"><label>Connect <b id="gooR">50</b></label><input id="goo" type="range" min="0" max="100" value="50"></div>
     <div class="crow"><label>Dot colour</label><input type="color" class="sw" id="dotCol" value="#f4f0ff"></div>
   </div>
 
   <div class="group eng-metaball">
     <div class="group__t">Glow layers</div>
-    <p class="rowhint">The blurred dots that sit behind — a soft coloured aura made of the dots themselves. Displace them off the dots for more contrast. Stack as many as you like, colour each.</p>
-    <div class="knob"><label>Displace <b id="glowDispR">40</b></label><input id="glowDisp" type="range" min="0" max="100" value="40"></div>
+    <p class="rowhint">The blurred dots that sit behind — a soft coloured aura made of the dots themselves. Displace each layer off the dots for contrast. Stack as many as you like, colour each.</p>
     <div id="glowList"></div>
     <button class="btn" id="addGlow">+ Add glow</button>
   </div>
@@ -190,9 +190,9 @@
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const art=$('art'); let ctx=art.getContext('2d');
-  const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, posX:0.5, posY:0.5, cell:100, contrast:38, jitter:100, blur:50, wave:15,
-    dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, glowDisp:40, spd:1.0, play:true, aspect:'1080/1080', seed:1,
-    glows:[ {color:'#160a12', blur:34, opacity:0.95, on:true}, {color:'#7a2bd6', blur:48, opacity:0.6, on:true} ],
+  const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, posX:0.5, posY:0.5, cell:100, contrast:38, jitter:100, blur:50, wave:15, goo:50,
+    dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, spd:1.0, play:true, aspect:'1080/1080', seed:1,
+    glows:[ {color:'#160a12', blur:34, opacity:0.95, on:true, disp:22}, {color:'#7a2bd6', blur:48, opacity:0.6, on:true, disp:55} ],
     letterFan:'CC', sizeFan:184, trackFan:-1, leadFan:199, bgFan:'#000000', fanMode:'turn', fanCount:80, fanSpread:100, fanPersp:100, fanOp:0.19, fanBlend:'screen',
     fanSpd:1.0, fanSway:50, fanBreathe:50, fanMoBlur:30,
     fanColors:['#ff2626','#2f6bff','#2fd44f'] };
@@ -292,15 +292,28 @@
       if(blurFrac>0 && hash(i,j,s1+7) < blurFrac) soft.push([x,y,r]);   // out-of-focus dot → soft pass on top
       else { dctx.beginPath(); dctx.arc(x,y,r,0,TAU); dctx.fill(); }     // FIRM dot
     }}
+    // 1b) METABALL — blur the dot field then HARD-threshold the alpha, so neighbouring dots fuse with
+    // smooth liquid necks. As the dots pulse (Wave), the necks stretch and break — a true metaball feel.
+    if(P.goo>0){
+      const conn=(P.goo/100)*cell*1.1;
+      if(d2.width!==w||d2.height!==h){ d2.width=w; d2.height=h; }
+      d2ctx.setTransform(1,0,0,1,0,0); d2ctx.globalCompositeOperation='source-over'; d2ctx.filter='none'; d2ctx.clearRect(0,0,w,h);
+      d2ctx.filter='blur('+conn.toFixed(1)+'px)'; d2ctx.drawImage(dotCv,0,0); d2ctx.filter='none';
+      const im=d2ctx.getImageData(0,0,w,h), D=im.data, dc=hex(P.dotCol), T=128;
+      for(let k=0;k<D.length;k+=4){ if(D[k+3]>=T){ D[k]=dc[0]; D[k+1]=dc[1]; D[k+2]=dc[2]; D[k+3]=255; } else D[k+3]=0; }
+      d2ctx.putImageData(im,0,0);
+      dctx.clearRect(0,0,w,h); dctx.drawImage(d2,0,0);   // dotCv is now the fused metaball field
+    }
     // 2) GLOW — soft, tinted, blurred copies of the DOTS (never the letterform), which fill the gaps
     // between the dots. No glyph mask → no visible letter shape; no self-composite → no ring. Drawn
     // twice at the layer opacity so 100% reads strong, without the banding a hard solidify caused.
-    const drift=P.mv, sp=time, disp=(P.glowDisp/100)*160*RS;   // Displace the glow off the dots for contrast
+    const drift=P.mv, sp=time;
     g.save(); g.translate((P.posX-0.5)*w, (P.posY-0.5)*h);      // POSITION on the frame
     if(gGlow.width!==w||gGlow.height!==h){ gGlow.width=w; gGlow.height=h; }
     for(let i=0;i<P.glows.length;i++){ const L=P.glows[i]; if(L.on===false) continue;
-      const dx=disp+i*disp*0.45 + Math.sin(sp*0.6+i*1.7)*drift*22*RS,
-            dy=disp*0.7+i*disp*0.3 + Math.cos(sp*0.5+i*2.3)*drift*20*RS;
+      const ld=((L.disp||0)/100)*180*RS;   // THIS layer's displacement off the dots
+      const dx=ld + Math.sin(sp*0.6+i*1.7)*drift*22*RS,
+            dy=ld*0.7 + Math.cos(sp*0.5+i*2.3)*drift*20*RS;
       ggx.setTransform(1,0,0,1,0,0); ggx.globalAlpha=1; ggx.globalCompositeOperation='source-over'; ggx.filter='none'; ggx.clearRect(0,0,w,h);
       ggx.filter='blur('+(L.blur*RS)+'px)'; ggx.drawImage(tintField(dotCv,L,time,w,h),0,0); ggx.filter='none';
       g.save(); g.globalAlpha=L.opacity; g.drawImage(gGlow,dx,dy); g.drawImage(gGlow,dx,dy); g.restore(); }
@@ -405,9 +418,9 @@
   bind('contrast','contrastR',v=>P.contrast=v,v=>(v|0));
   bind('jitter','jitterR',v=>P.jitter=v,v=>(v|0));
   bind('blur','blurR',v=>P.blur=v,v=>(v|0));
+  bind('goo','gooR',v=>P.goo=v,v=>(v|0));
   bind('wave','waveR',v=>P.wave=v,v=>(v|0));
   bind('mv','mvR',v=>P.mv=v/100,v=>(v/100).toFixed(2));
-  bind('glowDisp','glowDispR',v=>P.glowDisp=v,v=>(v|0));
   bind('spd','spdR',v=>P.spd=v/10,v=>(v/10).toFixed(1));
   $('dotCol').addEventListener('input',e=>{ P.dotCol=e.target.value; scheduleDraw(); });
   $('bg').addEventListener('input',e=>{ if(P.engine==='fan') P.bgFan=e.target.value; else P.bg=e.target.value; scheduleDraw(); });
@@ -459,15 +472,17 @@
         '<span class="lbl">Glow '+(i+1)+'</span>'+
         '<button class="btn x" title="Remove">×</button></div>'+
         '<div class="knob"><label>Blur <b>'+(L.blur|0)+'</b></label><input class="bl" type="range" min="2" max="200" value="'+L.blur+'"></div>'+
-        '<div class="knob"><label>Opacity <b>'+L.opacity.toFixed(2)+'</b></label><input class="op" type="range" min="0" max="100" value="'+Math.round(L.opacity*100)+'"></div>';
+        '<div class="knob"><label>Opacity <b>'+L.opacity.toFixed(2)+'</b></label><input class="op" type="range" min="0" max="100" value="'+Math.round(L.opacity*100)+'"></div>'+
+        '<div class="knob"><label>Displace <b>'+((L.disp||0)|0)+'</b></label><input class="ds" type="range" min="0" max="100" value="'+(L.disp||0)+'"></div>';
       row.querySelector('.vis').addEventListener('change',e=>{ L.on=e.target.checked; row.style.opacity=L.on?'':'0.5'; scheduleDraw(); });
       if(L.on===false) row.style.opacity='0.5';
       row.querySelector('input[type=color]').addEventListener('input',e=>{ L.color=e.target.value; scheduleDraw(); });
       const bl=row.querySelector('.bl'); bl.addEventListener('input',e=>{ L.blur=+e.target.value; bl.previousElementSibling.querySelector('b').textContent=(L.blur|0); scheduleDraw(); });
       const op=row.querySelector('.op'); op.addEventListener('input',e=>{ L.opacity=+e.target.value/100; op.previousElementSibling.querySelector('b').textContent=L.opacity.toFixed(2); scheduleDraw(); });
+      const ds=row.querySelector('.ds'); ds.addEventListener('input',e=>{ L.disp=+e.target.value; ds.previousElementSibling.querySelector('b').textContent=(L.disp|0); scheduleDraw(); });
       row.querySelector('.x').addEventListener('click',()=>{ P.glows.splice(i,1); renderGlows(); scheduleDraw(); });
       host.appendChild(row); }); }
-  $('addGlow').addEventListener('click',()=>{ P.glows.push({color:'#7a2bd6', blur:44, opacity:0.55, on:true}); renderGlows(); scheduleDraw(); });
+  $('addGlow').addEventListener('click',()=>{ P.glows.push({color:'#7a2bd6', blur:44, opacity:0.55, on:true, disp:40}); renderGlows(); scheduleDraw(); });
 
   // ---- export: re-render the exact frame at any resolution (everything scales by RS) ----
   function renderExport(px){
