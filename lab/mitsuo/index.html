@@ -82,6 +82,10 @@
       <div class="knob"><label>Letter-spacing <b id="trackR">25</b></label><input id="track" type="range" min="-40" max="120" value="25"></div>
       <div class="knob"><label>Line-height <b id="leadR">116</b></label><input id="lead" type="range" min="70" max="240" value="116"></div>
     </div>
+    <div class="duo">
+      <div class="knob"><label>Position X <b id="posXR">0.50</b></label><input id="posX" type="range" min="0" max="100" value="50"></div>
+      <div class="knob"><label>Position Y <b id="posYR">0.50</b></label><input id="posY" type="range" min="0" max="100" value="50"></div>
+    </div>
   </div>
 
   <div class="group eng-metaball">
@@ -149,6 +153,16 @@
     <button class="btn" id="addFanCol">+ Add colour</button>
   </div>
 
+  <div class="group eng-fan">
+    <div class="group__t">Motion</div>
+    <button class="btn" id="fanPlay" aria-pressed="true" style="width:100%">Pause</button>
+    <div class="duo">
+      <div class="knob"><label>Speed <b id="fanSpdR">1.0</b></label><input id="fanSpd" type="range" min="0" max="40" value="10"></div>
+      <div class="knob"><label>Sway <b id="fanSwayR">50</b></label><input id="fanSway" type="range" min="0" max="200" value="50"></div>
+    </div>
+    <div class="knob"><label>Breathe <b id="fanBreatheR">50</b></label><input id="fanBreathe" type="range" min="0" max="200" value="50"></div>
+  </div>
+
   <div class="group">
     <div class="group__t">Background</div>
     <div class="crow"><label>Colour</label><input type="color" class="sw" id="bg" value="#b11a10"></div>
@@ -173,10 +187,11 @@
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const art=$('art'); let ctx=art.getContext('2d');
-  const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, cell:100, contrast:38, jitter:100, blur:50, wave:15,
+  const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, posX:0.5, posY:0.5, cell:100, contrast:38, jitter:100, blur:50, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, glowDisp:40, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95, on:true}, {color:'#7a2bd6', blur:48, opacity:0.6, on:true} ],
     letterFan:'CC', sizeFan:184, trackFan:-1, leadFan:199, bgFan:'#000000', fanMode:'turn', fanCount:80, fanSpread:100, fanPersp:100, fanOp:0.19, fanBlend:'screen',
+    fanSpd:1.0, fanSway:50, fanBreathe:50,
     fanColors:['#ff2626','#2f6bff','#2fd44f'] };
   let W=1400,H=1400, RS=1, LDATA=null, CHARBOXES=[], BASEY=0, t0=performance.now(), clock=0;
   const letterCv=document.createElement('canvas'), lctx=letterCv.getContext('2d',{willReadFrequently:true});
@@ -277,6 +292,7 @@
     // between the dots. No glyph mask → no visible letter shape; no self-composite → no ring. Drawn
     // twice at the layer opacity so 100% reads strong, without the banding a hard solidify caused.
     const drift=P.mv, sp=time, disp=(P.glowDisp/100)*160*RS;   // Displace the glow off the dots for contrast
+    g.save(); g.translate((P.posX-0.5)*w, (P.posY-0.5)*h);      // POSITION on the frame
     if(gGlow.width!==w||gGlow.height!==h){ gGlow.width=w; gGlow.height=h; }
     for(let i=0;i<P.glows.length;i++){ const L=P.glows[i]; if(L.on===false) continue;
       const dx=disp+i*disp*0.45 + Math.sin(sp*0.6+i*1.7)*drift*22*RS,
@@ -290,6 +306,7 @@
     if(soft.length){ g.save(); g.fillStyle=P.dotCol;
       for(const s of soft){ g.filter='blur('+(s[2]*0.5).toFixed(1)+'px)'; g.beginPath(); g.arc(s[0],s[1],s[2],0,TAU); g.fill(); }
       g.restore(); g.filter='none'; }
+    g.restore();   // end POSITION translate
   }
 
   // ---- FAN ENGINE: the letterform multiplied and flared left & right from the centre axis ----
@@ -316,15 +333,17 @@
     g.fillStyle=P.bgFan; g.fillRect(0,0,w,h);
     if(!LDATA) return;
     const N=Math.max(1,P.fanCount|0), cx=w/2, cy=h/2;
-    // subtle, elegant motion: the whole turn gently breathes — a slow sway of the viewing angle
-    // (two slow sines so it never feels mechanical) plus a faint opening/closing of the spread.
-    const sway=Math.sin(time*0.5)*0.09 + Math.sin(time*0.23+1.3)*0.05;
-    const breathe=1 + Math.sin(time*0.33+0.7)*0.05;
+    // subtle, elegant motion: the whole turn gently sways (two slow sines so it never feels mechanical)
+    // plus a faint opening/closing of the spread — both scaled by the Sway / Breathe controls.
+    const sf=P.fanSway/50, bf=P.fanBreathe/50;
+    const sway=(Math.sin(time*0.5)*0.09 + Math.sin(time*0.23+1.3)*0.05)*sf;
+    const breathe=1 + Math.sin(time*0.33+0.7)*0.05*bf;
     const ang=(P.fanSpread/100)*(Math.PI*0.47)*breathe;   // ± Y-rotation, capped < ~85° so copies never flip
     const d=3.2-(P.fanPersp/100)*2.7;             // focal distance — small d = strong perspective keystone
     const cols=(P.fanColors&&P.fanColors.length)?P.fanColors:['#ffffff'];
     g.globalCompositeOperation=P.fanBlend;
     g.globalAlpha=P.fanOp;
+    g.save(); g.translate((P.posX-0.5)*w, (P.posY-0.5)*h);   // POSITION on the frame
     // draw outermost → innermost so the front-facing centre copy lands on top
     const order=[]; for(let k=0;k<N;k++) order.push(k);
     order.sort((a,b)=> Math.abs((N>1?(b/(N-1))*2-1:0)) - Math.abs((N>1?(a/(N-1))*2-1:0)));
@@ -334,6 +353,7 @@
       const tf=tintField(letterCv, {color:col}, time, w, h);
       drawTurnPersp(g, tf, t*ang + sway, cx, cy, w, h, d);
     }
+    g.restore();
     g.globalCompositeOperation='source-over'; g.globalAlpha=1;
   }
 
@@ -348,7 +368,7 @@
 
   function paint(g,w,h,t){ (P.engine==='fan'?renderFan:render)(g,w,h,t); }
   function tick(){ const now=performance.now(), dt=Math.min(0.05,(now-t0)/1000); t0=now;
-    if(P.play) clock+=dt*P.spd; paint(ctx,W,H,clock); requestAnimationFrame(tick); }
+    if(P.play) clock+=dt*(P.engine==='fan'? P.fanSpd : P.spd); paint(ctx,W,H,clock); requestAnimationFrame(tick); }
 
   // ---- controls ----
   let _rq=false; function draw(){ if(!P.play) paint(ctx,W,H,clock); }
@@ -376,6 +396,12 @@
   bind('fanCount','fanCountR',v=>P.fanCount=v,v=>(v|0));
   bind('fanSpread','fanSpreadR',v=>P.fanSpread=v,v=>(v|0));
   bind('fanPersp','fanPerspR',v=>P.fanPersp=v,v=>(v|0));
+  bind('posX','posXR',v=>P.posX=v/100,v=>(v/100).toFixed(2));
+  bind('posY','posYR',v=>P.posY=v/100,v=>(v/100).toFixed(2));
+  bind('fanSpd','fanSpdR',v=>P.fanSpd=v/10,v=>(v/10).toFixed(1));
+  bind('fanSway','fanSwayR',v=>P.fanSway=v,v=>(v|0));
+  bind('fanBreathe','fanBreatheR',v=>P.fanBreathe=v,v=>(v|0));
+  $('fanPlay').addEventListener('click',()=>{ P.play=!P.play; setPlay(); });
   bind('fanOp','fanOpR',v=>P.fanOp=v/100,v=>(v/100).toFixed(2));
   $('fanBlend').addEventListener('change',e=>{ P.fanBlend=e.target.value; scheduleDraw(); });
   function setEngine(e){ P.engine=e;
@@ -398,7 +424,8 @@
       d.querySelector('.x').addEventListener('click',()=>{ if(P.fanColors.length>1){ P.fanColors.splice(i,1); renderFanCols(); scheduleDraw(); } });
       host.appendChild(d); }); }
   $('addFanCol').addEventListener('click',()=>{ P.fanColors.push(P.fanColors[P.fanColors.length-1]||'#ffffff'); renderFanCols(); scheduleDraw(); });
-  function setPlay(){ $('playBtn').textContent=P.play?'Pause':'Play'; $('playBtn').setAttribute('aria-pressed',String(P.play)); }
+  function setPlay(){ const lbl=P.play?'Pause':'Play';
+    ['playBtn','fanPlay'].forEach(id=>{ const b=$(id); if(b){ b.textContent=lbl; b.setAttribute('aria-pressed',String(P.play)); } }); }
   $('playBtn').addEventListener('click',()=>{ P.play=!P.play; setPlay(); });
   $('reseedBtn').addEventListener('click',()=>{ P.seed=(P.seed*1103515245+12345)&0x7fffffff; scheduleDraw(); });
 
