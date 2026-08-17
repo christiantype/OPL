@@ -213,10 +213,18 @@ const Opal = (() => {
         const k = el.id || el.name; if(!k || el.type === 'file') return;
         s[k] = (el.type === 'checkbox' || el.type === 'radio') ? { c: el.checked } : { v: el.value };
       });
+      // nested "engine"/tab state — the active [data-eng] toggle, so restoring lands in the right engine
+      const eng = document.querySelector('[data-eng][aria-pressed="true"]');
+      if(eng) s.__engine = eng.getAttribute('data-eng');
       return s;
     }
     function applyState(s){
-      Object.keys(s || {}).forEach(k => {
+      if(!s) return;
+      // switch to the saved engine FIRST, so per-engine controls apply to the right engine
+      if(s.__engine){ const eb = document.querySelector('[data-eng="'+s.__engine+'"]');
+        if(eb && eb.getAttribute('aria-pressed') !== 'true') eb.click(); }
+      Object.keys(s).forEach(k => {
+        if(k === '__engine') return;
         let el = document.getElementById(k);
         if(!el){ try{ el = document.querySelector('[name="'+(window.CSS&&CSS.escape?CSS.escape(k):k)+'"]'); }catch(e){} }
         if(!el) return; const d = s[k];
@@ -225,8 +233,8 @@ const Opal = (() => {
         el.dispatchEvent(new Event('change', { bubbles:true }));
       });
     }
-    // re-apply a few times so controls that a tool builds asynchronously still catch the values
-    function restore(s){ let n = 0; (function again(){ applyState(s); if(++n < 8) setTimeout(again, 180); })(); }
+    // apply once, then a couple of quick re-applies to catch async-built controls (fast, not 1.4s of churn)
+    function restore(s){ applyState(s); setTimeout(()=>applyState(s), 120); setTimeout(()=>applyState(s), 340); }
 
     // cross-tool: if we arrived here to open a session, restore it once the tool has settled
     (function(){ let p; try{ p = JSON.parse(sessionStorage.getItem('opal-session-open') || 'null'); }catch(e){}
@@ -251,8 +259,11 @@ const Opal = (() => {
         const li = document.createElement('li');
         const load = document.createElement('button'); load.className = 'oss__load'; load.type = 'button';
         load.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;';
-        const nm = document.createElement('span'); nm.textContent = it.name; nm.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        const nm = document.createElement('span'); nm.textContent = it.name; nm.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         load.appendChild(nm);
+        if(it.ts){ const dt = document.createElement('em');
+          try{ dt.textContent = new Date(it.ts).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'2-digit'}); }catch(e){ dt.textContent=''; }
+          dt.style.cssText = 'font-style:normal;font-family:var(--mono);font-size:10px;color:var(--mute);flex:none;'; load.appendChild(dt); }
         if(!here){ const chip = document.createElement('em'); chip.textContent = it.label;
           chip.style.cssText = 'font-style:normal;font-family:var(--mono);font-size:10px;color:var(--mute);background:rgba(127,127,127,.14);padding:2px 6px;border-radius:5px;flex:none;'; load.appendChild(chip); }
         load.addEventListener('click', () => {
@@ -271,7 +282,7 @@ const Opal = (() => {
     saveBtn.addEventListener('click', () => {
       const mine = readAll().filter(x => x.path === path).length;
       const nm = (nameEl.value||'').trim() || ('Session ' + (mine + 1));
-      const a = readAll(); a.unshift({ id:uid(), name:nm, path, label, state:capture() }); writeAll(a); nameEl.value=''; renderList();
+      const a = readAll(); a.unshift({ id:uid(), name:nm, path, label, ts:Date.now(), state:capture() }); writeAll(a); nameEl.value=''; renderList();
     });
     nameEl.addEventListener('keydown', e => { if(e.key==='Enter') saveBtn.click(); });
     document.addEventListener('click', e => { if(!pop.hidden && !pop.contains(e.target) && !btn.contains(e.target)) close(); });
