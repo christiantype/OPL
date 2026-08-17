@@ -121,13 +121,13 @@
 
   <div class="group eng-fan">
     <div class="group__t">Fan</div>
-    <p class="rowhint">The letterform multiplied and flared left &amp; right from the centre axis — each copy tinted from the palette below, stacked with your blend.</p>
+    <p class="rowhint">The letterform multiplied and fanned around a single shared anchor — every copy pinned to the same point, rotated left &amp; right. Each tinted from the palette, stacked with your blend.</p>
     <div class="duo">
       <div class="knob"><label>Multiply <b id="fanCountR">24</b></label><input id="fanCount" type="range" min="2" max="80" value="24"></div>
-      <div class="knob"><label>Spread <b id="fanSpreadR">60</b></label><input id="fanSpread" type="range" min="0" max="100" value="60"></div>
+      <div class="knob"><label>Spread <b id="fanSpreadR">38</b></label><input id="fanSpread" type="range" min="0" max="100" value="38"></div>
     </div>
     <div class="duo">
-      <div class="knob"><label>Flare <b id="fanFlareR">30</b></label><input id="fanFlare" type="range" min="0" max="100" value="30"></div>
+      <div class="knob"><label>Flare <b id="fanFlareR">10</b></label><input id="fanFlare" type="range" min="0" max="100" value="10"></div>
       <div class="knob"><label>Opacity <b id="fanOpR">0.45</b></label><input id="fanOp" type="range" min="2" max="100" value="45"></div>
     </div>
     <div class="crow"><label>Blend</label>
@@ -176,9 +176,9 @@
   const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, cell:100, contrast:38, jitter:100, blur:50, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, glowDisp:40, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95, on:true}, {color:'#7a2bd6', blur:48, opacity:0.6, on:true} ],
-    fanCount:24, fanSpread:60, fanFlare:30, fanOp:0.45, fanBlend:'multiply',
+    fanCount:24, fanSpread:38, fanFlare:10, fanOp:0.45, fanBlend:'multiply',
     fanColors:['#2f7fa8','#4bd0c0','#5be584','#ffd23f','#ff8a3d','#ff5ea8','#c9a3ff'] };
-  let W=1400,H=1400, RS=1, LDATA=null, CHARBOXES=[], t0=performance.now(), clock=0;
+  let W=1400,H=1400, RS=1, LDATA=null, CHARBOXES=[], BASEY=0, t0=performance.now(), clock=0;
   const letterCv=document.createElement('canvas'), lctx=letterCv.getContext('2d',{willReadFrequently:true});
   const dotCv=document.createElement('canvas'), dctx=dotCv.getContext('2d');
   const d2=document.createElement('canvas'), d2ctx=d2.getContext('2d',{willReadFrequently:true});
@@ -211,6 +211,11 @@
       y+=lh;
     }
     LDATA=lctx.getImageData(0,0,W,H).data; CHARBOXES=boxes;
+    // the BASE of the letterform (lowest covered row) — the Fan engine pivots every copy here
+    BASEY=Math.round(H/2);
+    for(let yy=H-1; yy>=0; yy--){ let any=false, base=yy*W;
+      for(let xx=0; xx<W; xx+=3){ if(LDATA[((base+xx)<<2)+3]>60){ any=true; break; } }
+      if(any){ BASEY=yy; break; } }
   }
   // busiest character's dot count at a given cell — used to enforce ≤15 dots per character
   function busiestCharDots(cell,w,h){
@@ -294,24 +299,22 @@
     g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
     g.fillStyle=P.bg; g.fillRect(0,0,w,h);
     if(!LDATA) return;
-    const N=Math.max(1,P.fanCount|0), cx=w/2, cy=h/2;
-    const spreadX=(P.fanSpread/100)*0.72;   // how far the ends splay from centre (fraction of width, each side)
-    const flareV=(P.fanFlare/100)*2.8;      // TRUMPET: how much taller/wider the copies grow toward the ends
+    const N=Math.max(1,P.fanCount|0), px=w/2, py=(BASEY||h*0.5);   // pivot at the BASE of the letterform
+    const maxAng=(P.fanSpread/100)*(Math.PI*0.75);  // ± swing of the outermost copies, left & right
+    const flare=(P.fanFlare/100)*1.4;               // optional growth of the outer copies (still anchored at the base)
     const cols=(P.fanColors&&P.fanColors.length)?P.fanColors:['#ffffff'];
     g.globalCompositeOperation=P.fanBlend;
     g.globalAlpha=P.fanOp;
-    // draw outermost → innermost so the narrow centre copy lands on top
+    // draw outermost → innermost so the upright centre copy lands on top
     const order=[]; for(let k=0;k<N;k++) order.push(k);
     order.sort((a,b)=> Math.abs((N>1?(b/(N-1))*2-1:0)) - Math.abs((N>1?(a/(N-1))*2-1:0)));
     for(const k of order){
-      const t = N>1 ? (k/(N-1))*2-1 : 0;                 // -1 (far left) .. +1 (far right)
-      const at=Math.abs(t);
-      const tx = Math.sign(t)*Math.pow(at,0.72)*spreadX*w;   // bunched in the centre, splayed at the ends
-      const sy = 1 + at*flareV;                              // bell mouth: taller toward the ends
-      const sx = 1 + at*flareV*0.35;                         // and a touch wider
+      const t = N>1 ? (k/(N-1))*2-1 : 0;             // -1 (swung left) .. +1 (swung right)
+      const th=t*maxAng, s=1+Math.abs(t)*flare;
       const col=paletteAt(cols, N>1? k/(N-1):0.5);
       const tf=tintField(letterCv, {color:col}, time, w, h);
-      g.save(); g.translate(cx+tx, cy); g.scale(sx,sy); g.drawImage(tf, -w/2, -h/2); g.restore();
+      // EVERY copy pivots on the same base point (px,py) — no displacement, they only swing left/right
+      g.save(); g.translate(px,py); g.rotate(th); g.scale(s,s); g.translate(-px,-py); g.drawImage(tf, 0, 0); g.restore();
     }
     g.globalCompositeOperation='source-over'; g.globalAlpha=1;
   }
