@@ -59,9 +59,9 @@
   <div class="group">
     <div class="group__t">Letter</div>
     <input class="opal-input" id="letterIn" type="text" value="C" maxlength="40" spellcheck="false" autocomplete="off">
-    <div class="knob"><label>Text size <b id="tsizeR">62</b></label><input id="tsize" type="range" min="8" max="500" value="62"></div>
+    <div class="knob"><label>Text size <b id="tsizeR">126</b></label><input id="tsize" type="range" min="8" max="500" value="126"></div>
     <div class="duo">
-      <div class="knob"><label>Letter-spacing <b id="trackR">0</b></label><input id="track" type="range" min="-40" max="120" value="0"></div>
+      <div class="knob"><label>Letter-spacing <b id="trackR">25</b></label><input id="track" type="range" min="-40" max="120" value="25"></div>
       <div class="knob"><label>Line-height <b id="leadR">116</b></label><input id="lead" type="range" min="70" max="240" value="116"></div>
     </div>
   </div>
@@ -70,12 +70,12 @@
     <div class="group__t">Dots</div>
     <p class="rowhint">The letter printed as a halftone screen of dots (exactly like OPEN LAB) — the dots <b>are</b> the letterform. Colour them, then add coloured blurs below.</p>
     <div class="duo">
-      <div class="knob"><label>Cell <b id="cellR">40</b></label><input id="cell" type="range" min="0" max="100" value="40"></div>
-      <div class="knob"><label>Contrast <b id="contrastR">55</b></label><input id="contrast" type="range" min="0" max="100" value="55"></div>
+      <div class="knob"><label>Cell <b id="cellR">100</b></label><input id="cell" type="range" min="0" max="100" value="100"></div>
+      <div class="knob"><label>Contrast <b id="contrastR">38</b></label><input id="contrast" type="range" min="0" max="100" value="38"></div>
     </div>
     <div class="duo">
-      <div class="knob"><label>Size jitter <b id="jitterR">0</b></label><input id="jitter" type="range" min="0" max="100" value="0"></div>
-      <div class="knob"><label>Blur dots <b id="blurR">0</b></label><input id="blur" type="range" min="0" max="100" value="0"></div>
+      <div class="knob"><label>Size jitter <b id="jitterR">100</b></label><input id="jitter" type="range" min="0" max="100" value="100"></div>
+      <div class="knob"><label>Blur dots <b id="blurR">50</b></label><input id="blur" type="range" min="0" max="100" value="50"></div>
     </div>
     <div class="crow"><label>Dot colour</label><input type="color" class="sw" id="dotCol" value="#f4f0ff"></div>
   </div>
@@ -120,7 +120,7 @@
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const art=$('art'); let ctx=art.getContext('2d');
-  const P={ letter:'C', size:62, track:0, lead:116, cell:40, contrast:55, jitter:0, blur:0, wave:15,
+  const P={ letter:'C', size:126, track:25, lead:116, cell:100, contrast:38, jitter:100, blur:50, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95}, {color:'#7a2bd6', blur:48, opacity:0.6} ] };
   let W=1400,H=1400, RS=1, LDATA=null, t0=performance.now(), clock=0;
@@ -264,7 +264,7 @@
       row.innerHTML='<div class="top"><input type="color" value="'+L.color+'"'+(L.rainbow?' disabled':'')+'>'+
         '<button class="btn rb" style="flex:1" aria-pressed="'+(L.rainbow?'true':'false')+'">Rainbow</button>'+
         '<button class="btn x" title="Remove">×</button></div>'+
-        '<div class="knob"><label>Blur <b>'+(L.blur|0)+'</b></label><input class="bl" type="range" min="2" max="400" value="'+L.blur+'"></div>'+
+        '<div class="knob"><label>Blur <b>'+(L.blur|0)+'</b></label><input class="bl" type="range" min="2" max="200" value="'+L.blur+'"></div>'+
         '<div class="knob"><label>Opacity <b>'+L.opacity.toFixed(2)+'</b></label><input class="op" type="range" min="0" max="100" value="'+Math.round(L.opacity*100)+'"></div>';
       row.querySelector('.rb').addEventListener('click',e=>{ L.rainbow=!L.rainbow; renderGlows(); scheduleDraw(); });
       row.querySelector('input[type=color]').addEventListener('input',e=>{ L.color=e.target.value; scheduleDraw(); });
