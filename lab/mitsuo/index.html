@@ -123,12 +123,12 @@
     <div class="group__t">Fan</div>
     <p class="rowhint">The letterform multiplied and turned around its vertical (Y) axis — the copies fan into ribs. Tinted from the palette, stacked with your blend.</p>
     <div class="duo">
-      <div class="knob"><label>Multiply <b id="fanCountR">48</b></label><input id="fanCount" type="range" min="2" max="80" value="48"></div>
-      <div class="knob"><label>Spread <b id="fanSpreadR">72</b></label><input id="fanSpread" type="range" min="0" max="100" value="72"></div>
+      <div class="knob"><label>Multiply <b id="fanCountR">80</b></label><input id="fanCount" type="range" min="2" max="120" value="80"></div>
+      <div class="knob"><label>Spread <b id="fanSpreadR">100</b></label><input id="fanSpread" type="range" min="0" max="100" value="100"></div>
     </div>
     <div class="duo">
-      <div class="knob"><label>Perspective <b id="fanPerspR">60</b></label><input id="fanPersp" type="range" min="0" max="100" value="60"></div>
-      <div class="knob"><label>Opacity <b id="fanOpR">0.20</b></label><input id="fanOp" type="range" min="2" max="100" value="20"></div>
+      <div class="knob"><label>Perspective <b id="fanPerspR">100</b></label><input id="fanPersp" type="range" min="0" max="100" value="100"></div>
+      <div class="knob"><label>Opacity <b id="fanOpR">0.19</b></label><input id="fanOp" type="range" min="2" max="100" value="19"></div>
     </div>
     <div class="crow"><label>Blend</label>
       <select id="fanBlend">
@@ -176,7 +176,7 @@
   const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, cell:100, contrast:38, jitter:100, blur:50, wave:15,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, glowDisp:40, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95, on:true}, {color:'#7a2bd6', blur:48, opacity:0.6, on:true} ],
-    letterFan:'X', sizeFan:300, bgFan:'#2a49b0', fanMode:'turn', fanCount:48, fanSpread:72, fanPersp:60, fanOp:0.2, fanBlend:'screen',
+    letterFan:'CC', sizeFan:184, trackFan:-1, leadFan:199, bgFan:'#000000', fanMode:'turn', fanCount:80, fanSpread:100, fanPersp:100, fanOp:0.19, fanBlend:'screen',
     fanColors:['#ff2626','#2f6bff','#2fd44f'] };
   let W=1400,H=1400, RS=1, LDATA=null, CHARBOXES=[], BASEY=0, t0=performance.now(), clock=0;
   const letterCv=document.createElement('canvas'), lctx=letterCv.getContext('2d',{willReadFrequently:true});
@@ -197,10 +197,11 @@
     const lw=(P.engine==='fan'? P.letterFan : P.letter);
     const word=((lw!=null?lw:'C')+'')||' ';
     lctx.fillStyle='#fff'; lctx.textAlign='left'; lctx.textBaseline='middle';
-    const sz=(P.engine==='fan'? P.sizeFan : P.size);
+    const fan=(P.engine==='fan');
+    const sz=(fan? P.sizeFan : P.size), tr=(fan? P.trackFan : P.track), ld=(fan? P.leadFan : P.lead);
     const fontPx=H*(0.03+(sz/100)*0.26); lctx.font=FONT(fontPx);
-    const trackPx=(P.track/100)*fontPx*0.5;
-    const lines=word.split('\n'), lh=fontPx*(P.lead/100), total=lh*lines.length;
+    const trackPx=(tr/100)*fontPx*0.5;
+    const lines=word.split('\n'), lh=fontPx*(ld/100), total=lh*lines.length;
     let y=H/2 - total/2 + lh/2; const boxes=[];
     for(const line of lines){
       const chs=[...line], widths=chs.map(c=>lctx.measureText(c).width);
@@ -315,7 +316,11 @@
     g.fillStyle=P.bgFan; g.fillRect(0,0,w,h);
     if(!LDATA) return;
     const N=Math.max(1,P.fanCount|0), cx=w/2, cy=h/2;
-    const ang=(P.fanSpread/100)*(Math.PI*0.47);   // ± Y-rotation, capped < ~85° so copies never flip through edge-on
+    // subtle, elegant motion: the whole turn gently breathes — a slow sway of the viewing angle
+    // (two slow sines so it never feels mechanical) plus a faint opening/closing of the spread.
+    const sway=Math.sin(time*0.5)*0.09 + Math.sin(time*0.23+1.3)*0.05;
+    const breathe=1 + Math.sin(time*0.33+0.7)*0.05;
+    const ang=(P.fanSpread/100)*(Math.PI*0.47)*breathe;   // ± Y-rotation, capped < ~85° so copies never flip
     const d=3.2-(P.fanPersp/100)*2.7;             // focal distance — small d = strong perspective keystone
     const cols=(P.fanColors&&P.fanColors.length)?P.fanColors:['#ffffff'];
     g.globalCompositeOperation=P.fanBlend;
@@ -327,7 +332,7 @@
       const t = N>1 ? (k/(N-1))*2-1 : 0;             // -1 (turned left) .. +1 (turned right)
       const col=paletteAt(cols, N>1? k/(N-1):0.5);
       const tf=tintField(letterCv, {color:col}, time, w, h);
-      drawTurnPersp(g, tf, t*ang, cx, cy, w, h, d);
+      drawTurnPersp(g, tf, t*ang + sway, cx, cy, w, h, d);
     }
     g.globalCompositeOperation='source-over'; g.globalAlpha=1;
   }
@@ -354,8 +359,8 @@
   function bindText(id,rid,fn){ const el=$(id),o=$(rid); if(!el) return;
     el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=el.value; buildLetters(); scheduleDraw(); }); }
   bindText('tsize','tsizeR',v=>{ if(P.engine==='fan') P.sizeFan=v; else P.size=v; });
-  bindText('track','trackR',v=>P.track=v);
-  bindText('lead','leadR',v=>P.lead=v);
+  bindText('track','trackR',v=>{ if(P.engine==='fan') P.trackFan=v; else P.track=v; });
+  bindText('lead','leadR',v=>{ if(P.engine==='fan') P.leadFan=v; else P.lead=v; });
   bind('cell','cellR',v=>P.cell=v,v=>(v|0));
   bind('contrast','contrastR',v=>P.contrast=v,v=>(v|0));
   bind('jitter','jitterR',v=>P.jitter=v,v=>(v|0));
@@ -379,7 +384,10 @@
     $('engSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.eng===e)));
     $('bg').value = (e==='fan'? P.bgFan : P.bg);   // the Background control edits the active engine's ground
     $('letterIn').value = (e==='fan'? P.letterFan : P.letter);   // each engine keeps its own letter
-    { const ts=$('tsize'), sv=(e==='fan'? P.sizeFan : P.size); if(ts){ ts.value=sv; const r=$('tsizeR'); if(r) r.textContent=sv; } }
+    const sync=(id,rid,val)=>{ const el=$(id); if(el){ el.value=val; const r=$(rid); if(r) r.textContent=val; } };
+    sync('tsize','tsizeR', e==='fan'? P.sizeFan : P.size);
+    sync('track','trackR', e==='fan'? P.trackFan : P.track);
+    sync('lead','leadR', e==='fan'? P.leadFan : P.lead);
     buildLetters(); scheduleDraw(); }
   $('engSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setEngine(b.dataset.eng)));
   // Fan palette (add / remove / recolour)
