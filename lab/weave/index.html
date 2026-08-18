@@ -82,7 +82,7 @@
 
   <div class="group">
     <div class="group__t">Weave</div>
-    <p class="rowhint">Each cell takes a random photo (and a random crop of it) — Shuffle for a new arrangement.</p>
+    <p class="rowhint">Each photo fills the whole canvas; the grid slices between them, so cells sharing a photo line up into one continuous image. Shuffle re-deals.</p>
     <div class="grid2">
       <button class="btn" id="shuffleBtn">Shuffle</button>
       <label class="row" style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><span class="rowhint">No repeats</span><input type="checkbox" id="norep" checked></label>
@@ -157,17 +157,18 @@
     if(!imgs.length){ drawEmpty(g,w,h,cw,ch,gap,rad); return; }
     for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
       const cell=r*cols+c, x=gap+c*(cw+gap), y=gap+r*(ch+gap);
-      const im=imgs[assign[cell]!=null?assign[cell]:0]; if(!im||!im.naturalWidth) continue;
+      const idx=assign[cell]!=null?assign[cell]:0, im=imgs[idx]; if(!im||!im.naturalWidth) continue;
       g.save();
       roundRect(g,x,y,cw,ch,rad); g.clip();
-      // random tilt about the cell centre (over-scale so no gaps show through)
-      const tilt=(rand(cell,33)*2-1)*(P.tilt/100)*0.28;
-      let over=1; if(tilt){ g.translate(x+cw/2,y+ch/2); g.rotate(tilt); g.translate(-(x+cw/2),-(y+ch/2)); over=1+Math.abs(tilt)*1.6; }
-      // cover-fit the photo into the cell, zoomed, with a random crop offset
-      const scale=Math.max(cw/im.naturalWidth, ch/im.naturalHeight)*P.zoom*over;
+      // Each photo is laid across the WHOLE canvas (cover) and this cell is just a MASK onto it.
+      // Placement is seeded by the PHOTO index (not the cell), so every cell holding the same photo
+      // lines up into one continuous image — the photos slice through each other along the grid.
+      const tilt=(rand(idx,33)*2-1)*(P.tilt/100)*0.28;
+      let over=1; if(tilt){ g.translate(w/2,h/2); g.rotate(tilt); g.translate(-w/2,-h/2); over=1+Math.abs(tilt)*1.6; }
+      const scale=Math.max(w/im.naturalWidth, h/im.naturalHeight)*P.zoom*over;
       const dw=im.naturalWidth*scale, dh=im.naturalHeight*scale;
-      const vx=(rand(cell,11)*2-1)*P.vary, vy=(rand(cell,22)*2-1)*P.vary;
-      const ox=x+(cw-dw)/2 + vx*(dw-cw)/2, oy=y+(ch-dh)/2 + vy*(dh-ch)/2;
+      const vx=(rand(idx,11)*2-1)*P.vary, vy=(rand(idx,22)*2-1)*P.vary;
+      const ox=(w-dw)/2 + vx*(dw-w)/2, oy=(h-dh)/2 + vy*(dh-h)/2;
       g.drawImage(im, ox,oy, dw,dh);
       g.restore();
     }
