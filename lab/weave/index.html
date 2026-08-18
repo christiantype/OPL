@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Weave — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --rail:300px; --top:120px; }
+  @media (max-width:560px){ :root{ --top:112px; } }
+  *{ box-sizing:border-box; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center; padding:28px; }
+  #art{ max-width:100%; max-height:100%; }
+  #wrap.drop{ outline:2px dashed var(--accent); outline-offset:-14px; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); }
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
+  #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .knob label{ display:flex; justify-content:space-between; }
+  .crow{ display:flex; align-items:center; justify-content:space-between; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .rowhint{ margin:0; font-size:12px; color:var(--mute); line-height:1.45; }
+  .filebtn{ display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+  .filebtn input{ display:none; }
+  /* photo thumbnails */
+  #thumbs{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  #thumbs:empty{ display:none; }
+  .thumb{ position:relative; aspect-ratio:1/1; border-radius:var(--r-input); overflow:hidden;
+    box-shadow:var(--shadow-inset); background:var(--cell); }
+  .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .thumb button{ position:absolute; top:2px; right:2px; width:18px; height:18px; padding:0; line-height:1;
+    font-size:12px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:rgba(20,22,28,.72); color:#fff; border:none; cursor:pointer; }
+  .count{ font-family:var(--mono); font-size:11px; color:var(--mute); }
+</style>
+<link rel="stylesheet" href="/lab/shared/OPALAB.css" />
+</head>
+<body class="dark">
+
+<div id="wrap"><canvas id="art"></canvas></div>
+<div id="recDot"><i></i><b>0:00</b></div>
+<div id="sizeDock">
+  <span id="dimReadout">1080 × 1080</span>
+  <select id="aspect" title="Canvas size">
+    <option value="1080/1080" selected>Square · 1:1</option>
+    <option value="1080/1350">Portrait · 4:5</option>
+    <option value="1080/1920">Story · 9:16</option>
+    <option value="1920/1080">Landscape · 16:9</option>
+  </select>
+</div>
+
+<div id="dock">
+  <div class="group">
+    <div class="group__t">Photos</div>
+    <p class="rowhint">Add photos, then weave them into the grid. Drag &amp; drop onto the canvas works too. <b class="count" id="photoCount"></b></p>
+    <div class="grid2">
+      <label class="btn filebtn">Add photos<input id="fileIn" type="file" accept="image/*" multiple></label>
+      <button class="btn" id="clearBtn">Clear</button>
+    </div>
+    <div id="thumbs"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Grid</div>
+    <div class="duo">
+      <div class="knob"><label>Columns <b id="colsR">6</b></label><input id="cols" type="range" min="1" max="24" value="6"></div>
+      <div class="knob"><label>Rows <b id="rowsR">6</b></label><input id="rows" type="range" min="1" max="24" value="6"></div>
+    </div>
+    <div class="duo">
+      <div class="knob"><label>Gap <b id="gapR">6</b></label><input id="gap" type="range" min="0" max="40" value="6"></div>
+      <div class="knob"><label>Corner <b id="radR">0</b></label><input id="rad" type="range" min="0" max="50" value="0"></div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Weave</div>
+    <p class="rowhint">Each cell takes a random photo (and a random crop of it) — Shuffle for a new arrangement.</p>
+    <div class="grid2">
+      <button class="btn" id="shuffleBtn">Shuffle</button>
+      <label class="row" style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><span class="rowhint">No repeats</span><input type="checkbox" id="norep" checked></label>
+    </div>
+    <div class="duo">
+      <div class="knob"><label>Zoom <b id="zoomR">1.0</b></label><input id="zoom" type="range" min="100" max="300" value="100"></div>
+      <div class="knob"><label>Crop <b id="varyR">0.6</b></label><input id="vary" type="range" min="0" max="100" value="60"></div>
+    </div>
+    <div class="knob"><label>Tilt <b id="tiltR">0</b></label><input id="tilt" type="range" min="0" max="100" value="0"></div>
+    <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#0e0e12"></div>
+  </div>
+
+  <div class="group out" id="output" data-export-custom>
+    <div class="group__t">Output</div>
+    <div class="grid2">
+      <button class="btn" id="recBtn">Record</button>
+      <button class="btn" id="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'Weave', desc:'Photos, woven into a patchwork grid',
+  about:'Add a handful of photos and Weave stitches them into a grid — set the number of columns and rows, and each cell takes a random photo (and a random crop of it) to build a patchwork, checkerboard quilt. Adjust the gap, the corner radius, how far each tile zooms and crops, and a little tilt for a hand-set feel; Shuffle re-deals the whole board. Everything is seeded, so the high-res export is exactly what you see. Nothing leaves this page.',
+  version:'v1' });</script>
+<script>
+'use strict';
+(function(){
+  const $=id=>document.getElementById(id);
+  const art=$('art'); const ctx=art.getContext('2d');
+  const P={ cols:6, rows:6, gap:6, rad:0, zoom:1.0, vary:0.6, tilt:0, norep:true, bg:'#0e0e12', seed:1, aspect:'1080/1080' };
+  let W=1400,H=1400, imgs=[], assign=[];
+
+  // seeded hash → 0..1, deterministic per (cell, salt, seed) so export matches preview
+  const rand=(i,salt)=>{ const x=Math.sin(i*127.1 + salt*311.7 + (P.seed||1)*74.7)*43758.5453; return x-Math.floor(x); };
+
+  // decide which photo lands in each cell (optionally avoiding adjacent repeats)
+  function buildAssign(){
+    assign=[]; const n=imgs.length; if(!n) return;
+    for(let r=0;r<P.rows;r++) for(let c=0;c<P.cols;c++){
+      const cell=r*P.cols+c; let idx=Math.floor(rand(cell,7)*n);
+      if(P.norep && n>1){
+        let guard=0;
+        while(guard++<n && ((c>0 && assign[cell-1]===idx) || (r>0 && assign[cell-P.cols]===idx))) idx=(idx+1)%n;
+      }
+      assign[cell]=idx;
+    }
+  }
+
+  function roundRect(g,x,y,w,h,r){ r=Math.min(r,w/2,h/2);
+    g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
+    g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+
+  function drawEmpty(g,w,h,cw,ch,gap,rad){
+    // faint placeholder grid + a hint so the board reads before any photo is added
+    for(let r=0;r<P.rows;r++) for(let c=0;c<P.cols;c++){
+      const x=gap+c*(cw+gap), y=gap+r*(ch+gap);
+      roundRect(g,x,y,cw,ch,rad); g.fillStyle=((r+c)%2? 'rgba(255,255,255,.06)':'rgba(255,255,255,.11)'); g.fill();
+    }
+    g.fillStyle='rgba(255,255,255,.55)'; g.textAlign='center'; g.textBaseline='middle';
+    g.font='500 '+Math.round(h*0.026)+'px "IBM Plex Sans",system-ui,sans-serif';
+    g.fillText('Add photos to weave the grid', w/2, h/2);
+  }
+
+  function render(g,w,h){
+    const RS=Math.max(w,h)/1400;
+    g.setTransform(1,0,0,1,0,0); g.globalAlpha=1;
+    g.fillStyle=P.bg; g.fillRect(0,0,w,h);
+    const cols=P.cols, rows=P.rows, gap=P.gap*RS, rad=P.rad*RS;
+    const cw=(w-gap*(cols+1))/cols, ch=(h-gap*(rows+1))/rows;
+    if(cw<=0||ch<=0) return;
+    if(!imgs.length){ drawEmpty(g,w,h,cw,ch,gap,rad); return; }
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const cell=r*cols+c, x=gap+c*(cw+gap), y=gap+r*(ch+gap);
+      const im=imgs[assign[cell]!=null?assign[cell]:0]; if(!im||!im.naturalWidth) continue;
+      g.save();
+      roundRect(g,x,y,cw,ch,rad); g.clip();
+      // random tilt about the cell centre (over-scale so no gaps show through)
+      const tilt=(rand(cell,33)*2-1)*(P.tilt/100)*0.28;
+      let over=1; if(tilt){ g.translate(x+cw/2,y+ch/2); g.rotate(tilt); g.translate(-(x+cw/2),-(y+ch/2)); over=1+Math.abs(tilt)*1.6; }
+      // cover-fit the photo into the cell, zoomed, with a random crop offset
+      const scale=Math.max(cw/im.naturalWidth, ch/im.naturalHeight)*P.zoom*over;
+      const dw=im.naturalWidth*scale, dh=im.naturalHeight*scale;
+      const vx=(rand(cell,11)*2-1)*P.vary, vy=(rand(cell,22)*2-1)*P.vary;
+      const ox=x+(cw-dw)/2 + vx*(dw-cw)/2, oy=y+(ch-dh)/2 + vy*(dh-ch)/2;
+      g.drawImage(im, ox,oy, dw,dh);
+      g.restore();
+    }
+  }
+
+  // ---- photo library ----
+  function renderThumbs(){ const host=$('thumbs'); host.innerHTML='';
+    imgs.forEach((im,i)=>{ const d=document.createElement('div'); d.className='thumb';
+      const t=document.createElement('img'); t.src=im.src; d.appendChild(t);
+      const x=document.createElement('button'); x.textContent='×'; x.title='Remove';
+      x.addEventListener('click',()=>{ imgs.splice(i,1); afterLibraryChange(); }); d.appendChild(x);
+      host.appendChild(d); });
+    $('photoCount').textContent = imgs.length ? imgs.length+(imgs.length===1?' photo':' photos') : '';
+  }
+  function afterLibraryChange(){ renderThumbs(); buildAssign(); draw(); }
+  function addFiles(files){
+    [...files].forEach(f=>{ if(!f.type.startsWith('image/')) return;
+      const im=new Image(); im.onload=()=>{ imgs.push(im); afterLibraryChange(); };
+      im.src=URL.createObjectURL(f); });
+  }
+  $('fileIn').addEventListener('change',e=>{ addFiles(e.target.files); e.target.value=''; });
+  $('clearBtn').addEventListener('click',()=>{ imgs=[]; afterLibraryChange(); });
+  // drag & drop onto the canvas
+  const wrap=$('wrap');
+  ['dragenter','dragover'].forEach(ev=>wrap.addEventListener(ev,e=>{ e.preventDefault(); wrap.classList.add('drop'); }));
+  ['dragleave','drop'].forEach(ev=>wrap.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'&&e.dataTransfer) addFiles(e.dataTransfer.files); wrap.classList.remove('drop'); }));
+
+  // ---- size / fit ----
+  function aspectWH(){ const p=(P.aspect||'1080/1080').split(/[/:x]/).map(Number),a=p[0]||1,b=p[1]||1,long=1400;
+    return a>=b?[long,Math.round(long*b/a)]:[Math.round(long*a/b),long]; }
+  function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H;
+    const box=$('wrap').getBoundingClientRect(), s=Math.min(box.width/W,box.height/H);
+    art.style.width=(W*s)+'px'; art.style.height=(H*s)+'px';
+    const dr=$('dimReadout'); if(dr){ const p=(P.aspect||'').split(/[/:x]/).map(Number); dr.textContent=(p[0]||W)+' × '+(p[1]||H); }
+    draw(); }
+
+  // ---- controls ----
+  let _rq=false; function draw(){ if(_rq) return; _rq=true; requestAnimationFrame(()=>{ _rq=false; render(ctx,W,H); }); }
+  function bind(id,rid,fn,fmt,rebuild){ const el=$(id),o=$(rid); if(!el) return;
+    el.addEventListener('input',()=>{ fn(parseFloat(el.value)); if(o)o.textContent=fmt?fmt(el.value):el.value; if(rebuild) buildAssign(); draw(); }); }
+  bind('cols','colsR',v=>P.cols=v,v=>(v|0),true);
+  bind('rows','rowsR',v=>P.rows=v,v=>(v|0),true);
+  bind('gap','gapR',v=>P.gap=v,v=>(v|0),false);
+  bind('rad','radR',v=>P.rad=v,v=>(v|0),false);
+  bind('zoom','zoomR',v=>P.zoom=v/100,v=>(v/100).toFixed(1),false);
+  bind('vary','varyR',v=>P.vary=v/100,v=>(v/100).toFixed(1),false);
+  bind('tilt','tiltR',v=>P.tilt=v,v=>(v|0),false);
+  $('norep').addEventListener('change',e=>{ P.norep=e.target.checked; buildAssign(); draw(); });
+  $('bg').addEventListener('input',e=>{ P.bg=e.target.value; draw(); });
+  $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
+  $('shuffleBtn').addEventListener('click',()=>{ P.seed=(P.seed*1103515245+12345)&0x7fffffff; buildAssign(); draw(); });
+
+  // ---- export: re-render at any resolution (all sizes scale by RS) ----
+  function renderExport(px){
+    const [aw,ah]=aspectWH(), long=Math.max(aw,ah), ew=Math.round(px*aw/long), eh=Math.round(px*ah/long);
+    const off=document.createElement('canvas'); off.width=ew; off.height=eh;
+    render(off.getContext('2d'), ew, eh);
+    return off;
+  }
+
+  // ---- record (captures a live Shuffle etc.) ----
+  let rec=null, chunks=[], rt=0, tk=0;
+  $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
+    const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+    rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime}:undefined); chunks=[];
+    rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+    rec.onstop=()=>{ clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
+      const bl=new Blob(chunks,{type:chunks[0]?.type||'video/webm'}); const a=document.createElement('a'); a.download='weave.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); rec=null; };
+    rec.start(1000); rt=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
+    tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
+
+  addEventListener('resize',()=>{ const box=$('wrap').getBoundingClientRect(),s=Math.min(box.width/W,box.height/H); art.style.width=(W*s)+'px'; art.style.height=(H*s)+'px'; });
+
+  // ---- boot ----
+  Opal.mountOutput(art,'weave',{ render:renderExport });
+  buildAssign(); fit();
+})();
+</script>
+</body>
+</html>
