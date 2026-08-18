@@ -75,8 +75,8 @@
       <div class="knob"><label>Rows <b id="rowsR">6</b></label><input id="rows" type="range" min="1" max="24" value="6"></div>
     </div>
     <div class="duo">
-      <div class="knob"><label>Gap <b id="gapR">6</b></label><input id="gap" type="range" min="0" max="40" value="6"></div>
-      <div class="knob"><label>Corner <b id="radR">0</b></label><input id="rad" type="range" min="0" max="50" value="0"></div>
+      <div class="knob"><label>Gap <b id="gapR">0</b></label><input id="gap" type="range" min="0" max="40" value="0"></div>
+      <div class="knob"><label>Corner <b id="radR">0</b></label><input id="rad" type="range" min="0" max="100" value="0"></div>
     </div>
   </div>
 
@@ -113,7 +113,7 @@
 (function(){
   const $=id=>document.getElementById(id);
   const art=$('art'); const ctx=art.getContext('2d');
-  const P={ cols:6, rows:6, gap:6, rad:0, zoom:1.0, vary:0.6, tilt:0, norep:true, bg:'#0e0e12', seed:1, aspect:'1080/1080' };
+  const P={ cols:6, rows:6, gap:0, rad:0, zoom:1.0, vary:0.6, tilt:0, norep:true, bg:'#0e0e12', seed:1, aspect:'1080/1080' };
   let W=1400,H=1400, imgs=[], assign=[];
 
   // seeded hash → 0..1, deterministic per (cell, salt, seed) so export matches preview
@@ -136,11 +136,12 @@
     g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
     g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
 
-  function drawEmpty(g,w,h,cw,ch,gap,rad){
+  function drawEmpty(g,w,h,cw,ch,gap,radPct){
     // faint placeholder grid + a hint so the board reads before any photo is added
+    const radPx=radPct*Math.min(cw,ch)/2;
     for(let r=0;r<P.rows;r++) for(let c=0;c<P.cols;c++){
       const x=gap+c*(cw+gap), y=gap+r*(ch+gap);
-      roundRect(g,x,y,cw,ch,rad); g.fillStyle=((r+c)%2? 'rgba(255,255,255,.06)':'rgba(255,255,255,.11)'); g.fill();
+      roundRect(g,x,y,cw,ch,radPx); g.fillStyle=((r+c)%2? 'rgba(255,255,255,.06)':'rgba(255,255,255,.11)'); g.fill();
     }
     g.fillStyle='rgba(255,255,255,.55)'; g.textAlign='center'; g.textBaseline='middle';
     g.font='500 '+Math.round(h*0.026)+'px "IBM Plex Sans",system-ui,sans-serif';
@@ -151,15 +152,19 @@
     const RS=Math.max(w,h)/1400;
     g.setTransform(1,0,0,1,0,0); g.globalAlpha=1;
     g.fillStyle=P.bg; g.fillRect(0,0,w,h);
-    const cols=P.cols, rows=P.rows, gap=P.gap*RS, rad=P.rad*RS;
+    const cols=P.cols, rows=P.rows, gap=P.gap*RS, radPct=P.rad/100;
     const cw=(w-gap*(cols+1))/cols, ch=(h-gap*(rows+1))/rows;
     if(cw<=0||ch<=0) return;
-    if(!imgs.length){ drawEmpty(g,w,h,cw,ch,gap,rad); return; }
+    if(!imgs.length){ drawEmpty(g,w,h,cw,ch,gap,radPct); return; }
     for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-      const cell=r*cols+c, x=gap+c*(cw+gap), y=gap+r*(ch+gap);
+      const cell=r*cols+c;
       const idx=assign[cell]!=null?assign[cell]:0, im=imgs[idx]; if(!im||!im.naturalWidth) continue;
+      // integer cell edges so tiles butt seamlessly — at gap 0 the shared edge is identical (no light seam)
+      const x=Math.round(gap+c*(cw+gap)), x1=Math.round(gap+c*(cw+gap)+cw), cwi=x1-x;
+      const y=Math.round(gap+r*(ch+gap)), y1=Math.round(gap+r*(ch+gap)+ch), chi=y1-y;
+      const radPx=radPct*Math.min(cwi,chi)/2;   // 100% → a perfect circle (for square cells)
       g.save();
-      roundRect(g,x,y,cw,ch,rad); g.clip();
+      roundRect(g,x,y,cwi,chi,radPx); g.clip();
       // Each photo is laid across the WHOLE canvas (cover) and this cell is just a MASK onto it.
       // Placement is seeded by the PHOTO index (not the cell), so every cell holding the same photo
       // lines up into one continuous image — the photos slice through each other along the grid.
