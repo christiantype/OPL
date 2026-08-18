@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Roll Call — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css" />
+<style>
+  :root{ --rail:320px; --top:120px; }
+  @media (max-width:560px){ :root{ --top:112px; } }
+  *{ box-sizing:border-box; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center; padding:28px; }
+  #art{ max-width:100%; max-height:100%; box-shadow:0 10px 40px rgba(0,0,0,.28); }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); }
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
+  #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .knob label{ display:flex; justify-content:space-between; }
+  .crow{ display:flex; align-items:center; justify-content:space-between; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .rowhint{ margin:0; font-size:12px; color:var(--mute); line-height:1.45; }
+  #names{ width:100%; height:150px; resize:vertical; font-family:var(--mono); font-size:12px; line-height:1.5; }
+  .stat{ font-family:var(--mono); font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; }
+  .field{ width:100%; }
+</style>
+<link rel="stylesheet" href="/lab/shared/OPALAB.css" />
+</head>
+<body class="dark">
+
+<div id="wrap"><canvas id="art"></canvas></div>
+<div id="recDot"><i></i><b>0:00</b></div>
+<div id="sizeDock">
+  <span id="dimReadout">1080 × 1920</span>
+  <select id="aspect" title="Canvas size" data-canon="1" data-sq-default="1">
+    <option value="1080/1920" selected>Reel · 9:16</option>
+    <option value="1080/1350">Portrait · 4:5</option>
+    <option value="1080/1080">Square · 1:1</option>
+  </select>
+</div>
+
+<div id="dock">
+  <div class="group">
+    <div class="group__t">Names</div>
+    <p class="rowhint">One person per line — <b class="stat" id="count"></b>. Edit freely: reorder, fix, add or remove.</p>
+    <textarea id="names" spellcheck="false"></textarea>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Reel</div>
+    <div class="grid2">
+      <button class="btn primary" id="playBtn">Play</button>
+      <button class="btn" id="restartBtn">Restart</button>
+    </div>
+    <div class="knob"><label>Length <b id="totalR">90s</b></label><input id="total" type="range" min="15" max="180" value="90"></div>
+    <p class="rowhint"><b class="stat" id="perName"></b></p>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Sound</div>
+    <div class="crow"><label>Click on each name</label><input type="checkbox" id="clickOn" checked></div>
+    <div class="knob"><label>Sound</label>
+      <select id="clickType" class="field">
+        <option value="click" selected>Click</option>
+        <option value="tick">Tick</option>
+        <option value="pop">Pop</option>
+        <option value="beep">Beep</option>
+        <option value="shutter">Shutter</option>
+      </select>
+    </div>
+    <div class="knob"><label>Volume <b id="volR">0.6</b></label><input id="vol" type="range" min="0" max="100" value="60"></div>
+  </div>
+
+  <div class="group">
+    <div class="group__t">Look</div>
+    <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#0d0d10"></div>
+    <div class="crow"><label>Text</label><input type="color" class="sw" id="fg" value="#f4f4f6"></div>
+    <div class="crow"><label>Accent</label><input type="color" class="sw" id="accent" value="#0f8b50"></div>
+    <input class="opal-input field" id="header" type="text" value="UNDERSCORE" placeholder="Header" maxlength="40">
+    <input class="opal-input field" id="footer" type="text" value="THE CHICAGO GRAPHIC DESIGN CLUB" placeholder="Footer" maxlength="60">
+    <div class="crow"><label>Counter</label><input type="checkbox" id="showCount" checked></div>
+    <div class="crow"><label>Progress bar</label><input type="checkbox" id="showProg" checked></div>
+  </div>
+
+  <div class="group out" id="output" data-export-custom>
+    <div class="group__t">Output</div>
+    <div class="grid2">
+      <button class="btn" id="recBtn">Record</button>
+      <button class="btn" id="saveBtn">Save frame</button>
+    </div>
+    <p class="rowhint">Record plays the full reel and captures video <b>with the clicks</b> → an MP4 ready for Instagram.</p>
+  </div>
+</div>
+
+<script src="/lab/shared/opal.js"></script>
+<script>Opal.mountTopbar({ name:'Roll Call', desc:'Every name, one click at a time',
+  about:'A name reel for Instagram. Paste a list of people — one per line — and Roll Call rolls through every one, evenly paced to fill a length you set (90 seconds by default), with a click on each new name. Pre-loaded with every guest of Underscore, the Chicago Graphic Design Club podcast, pulled from the show feed. Set the sound, the type, the colours and the header/footer, then Record — it plays the whole reel and captures the video with the clicks baked in as an MP4, ready to post. Nothing leaves this page.',
+  version:'v1' });</script>
+<script>
+'use strict';
+(function(){
+  const $=id=>document.getElementById(id);
+  const art=$('art'); const ctx=art.getContext('2d');
+  const DEFAULT_NAMES=[
+    'Christian Solorzano','John Hatherly','Chelsie Tamms','Brooke Kravitz','Nick Haas','Patric King',
+    'MX Studio','Bob Zeni','Carlos Segura','Nick Adam','Francis','Tanner Woodford','Ashley Lukasik',
+    'Brian Morris','Steven White','Mick Champayne','Richard Zeid','Crissy Chahyadi','The Narrative',
+    'Lashun Tines','Jay Byrnes','David Sieren','Grace Hamilton','Joseph Michael Essex','Nicolette Stosur-Bassett',
+    'Iicky','Patrick Smith','Heather Snyder Quinn','Nermin Moufti','Kristin Lueke','Nathan Matteson',
+    'Sharon Oiga','Guy Villa','John Pobojewski','Cheryl Bever','Will Miller','Sajad Amini','Tyler English',
+    'Bud Rodecker','Brian Shutters','Rich Alapack','Sean Fermoyle','Amira Hegazy','Sharlene King',
+    'Benjamin Edgar','Rick Valicenti','Points of Sail','Alyssa Low','Chuck Anderson','Vida Sačić',
+    'Rotimi Solola','Candace Solola','Johnny Mei','Andrea Villasenor','Denny Liu','Michal Janicki',
+    'George Aye','Sabine Lenz','Valerie Craig','Simple Truth','Chris Leather','Mira Kida','Tony Bynum',
+    'Alexis Gonzalez','Hamid Alavi','Antonio Garcia','Robert Robbins','Chris Eichenseer','Nathaniel Haefner',
+    'Lauren Gallagher','Cris Hernández','Violet Luczak','Jeffrey Hitchens','Andrew Dembitz','Aggie Toppins',
+    'Wendy Robles','Jamie Gannon','Barry Deck','Aliona Solamadina','Cristobal Mora','Betsy Schuster',
+    'Suzie Shin','Sun Segura','Ashley Bedore','José Rosa','Matt Avery','Dave Pabellon','Blaze Smith',
+    'JJ Salgado','Pedro Neves','Mary Foyder','Oscar Solis','Heart & Bone','Rod Hunting','Nika Simovich Fisher',
+    'Eric Hotchkiss','Hannah Cormier','Liam Guiritan','Sarah Adler','Derek Desormeaux','Matthew Hoffman',
+    'Cass Pokora','Daniel Swartz','Jo-Nell Sieren','Jarrett Fuller','Dana Arnett','Coby Regehr'
+  ];
+  const P={ total:90, clickOn:true, clickType:'click', vol:0.6, bg:'#0d0d10', fg:'#f4f4f6', accent:'#0f8b50',
+    header:'UNDERSCORE', footer:'THE CHICAGO GRAPHIC DESIGN CLUB', showCount:true, showProg:true, aspect:'1080/1920' };
+  let W=1080,H=1920, names=[], playing=false, clock=0, lastIdx=-1, t0=performance.now();
+
+  // ---- audio (also feeds a MediaStream so the clicks are recorded) ----
+  let audio=null, clickDest=null;
+  function ensureAudio(){ if(audio) return; try{ audio=new (window.AudioContext||window.webkitAudioContext)();
+    clickDest=audio.createMediaStreamDestination(); }catch(e){} }
+  function playClick(){ if(!P.clickOn||!audio) return; const t=audio.currentTime, v=P.vol;
+    const g=audio.createGain(); g.gain.value=0; g.connect(audio.destination); if(clickDest) g.connect(clickDest);
+    const type=P.clickType;
+    if(type==='shutter'){
+      const n=audio.createBufferSource(), len=Math.floor(audio.sampleRate*0.05), buf=audio.createBuffer(1,len,audio.sampleRate), d=buf.getChannelData(0);
+      for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len); n.buffer=buf;
+      const f=audio.createBiquadFilter(); f.type='highpass'; f.frequency.value=1200; n.connect(f); f.connect(g);
+      g.gain.setValueAtTime(v*0.9,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.05); n.start(t); n.stop(t+0.06);
+    } else {
+      const o=audio.createOscillator();
+      const freq={click:1300,tick:2400,pop:600,beep:880}[type]||1300;
+      o.type = type==='beep'?'sine':(type==='pop'?'sine':'triangle');
+      o.frequency.setValueAtTime(freq,t);
+      if(type==='pop') o.frequency.exponentialRampToValueAtTime(freq*0.5,t+0.06);
+      o.connect(g);
+      const dur = type==='beep'?0.09:0.035;
+      g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o.start(t); o.stop(t+dur+0.02);
+    }
+  }
+
+  function parseNames(){ names=($('names').value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    $('count').textContent = names.length+' names';
+    $('perName').textContent = names.length ? (P.total/names.length).toFixed(2)+'s per name · '+names.length+' names' : '—';
+  }
+  function splitName(nm){ const w=nm.split(/\s+/); if(w.length<2) return [nm,'']; return [w[0], w.slice(1).join(' ')]; }
+
+  function fitFont(g,text,weight,maxW,startPx){ let px=startPx;
+    for(let k=0;k<40;k++){ g.font=weight+' '+px+'px "Helvetica Neue",Arial,system-ui,sans-serif';
+      if(g.measureText(text).width<=maxW || px<=14) break; px*=0.94; } return px; }
+
+  function render(g,w,h,elapsed){
+    g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.textAlign='center'; g.textBaseline='middle';
+    g.fillStyle=P.bg; g.fillRect(0,0,w,h);
+    const N=names.length, pad=w*0.09;
+    // header
+    if(P.header){ g.fillStyle=P.accent; g.textBaseline='alphabetic';
+      g.font='700 '+Math.round(h*0.019)+'px "Helvetica Neue",Arial,sans-serif';
+      g.save(); g.translate(w/2, h*0.11); const hd=P.header.toUpperCase(); const ls=Math.round(h*0.006);
+      // letter-spaced header
+      let tot=0; for(const ch of hd) tot+=g.measureText(ch).width+ls; let x=-tot/2+ls/2;
+      for(const ch of hd){ g.textAlign='left'; g.fillText(ch,x,0); x+=g.measureText(ch).width+ls; } g.restore();
+      g.textAlign='center'; }
+    if(!N){ g.fillStyle=P.fg; g.globalAlpha=.6; g.textBaseline='middle';
+      g.font='500 '+Math.round(h*0.026)+'px "Helvetica Neue",Arial,sans-serif';
+      g.fillText('Add names, one per line', w/2, h/2); return; }
+    const per=P.total/N, idx=Math.max(0,Math.min(N-1, Math.floor(elapsed/per)));
+    const lp=Math.max(0,Math.min(1,(elapsed-idx*per)/per));
+    const pop=Math.min(1, lp/0.10);                     // quick pop-in synced to the click
+    const scale=0.955+0.045*pop;
+    const [first,last]=splitName(names[idx]);
+    g.textBaseline='middle';
+    g.save(); g.globalAlpha=1; g.translate(w/2,h*0.47); g.scale(scale,scale); g.fillStyle=P.fg;
+    if(last){
+      const f1=fitFont(g,first,'800',w-pad*2,h*0.115); g.font='800 '+f1+'px "Helvetica Neue",Arial,sans-serif';
+      g.fillText(first,0,-h*0.062);
+      const f2=fitFont(g,last,'800',w-pad*2,h*0.115); g.font='800 '+f2+'px "Helvetica Neue",Arial,sans-serif';
+      g.fillText(last,0,h*0.062);
+    } else {
+      const f1=fitFont(g,first,'800',w-pad*2,h*0.13); g.font='800 '+f1+'px "Helvetica Neue",Arial,sans-serif';
+      g.fillText(first,0,0);
+    }
+    g.restore();
+    // counter
+    if(P.showCount){ g.fillStyle=P.fg; g.globalAlpha=.45; g.textBaseline='middle';
+      g.font='600 '+Math.round(h*0.016)+'px "IBM Plex Mono",monospace';
+      g.fillText(String(idx+1).padStart(3,'0')+'  ·  '+N, w/2, h*0.62); g.globalAlpha=1; }
+    // footer
+    if(P.footer){ g.fillStyle=P.fg; g.globalAlpha=.5; g.textBaseline='alphabetic';
+      g.font='600 '+Math.round(h*0.0145)+'px "Helvetica Neue",Arial,sans-serif';
+      g.save(); g.translate(w/2,h*0.9); const ft=P.footer.toUpperCase(); const ls=Math.round(h*0.0035);
+      let tot=0; for(const ch of ft) tot+=g.measureText(ch).width+ls; let x=-tot/2+ls/2;
+      for(const ch of ft){ g.textAlign='left'; g.fillText(ch,x,0); x+=g.measureText(ch).width+ls; } g.restore();
+      g.textAlign='center'; g.globalAlpha=1; }
+    // progress bar
+    if(P.showProg){ const bw=w*0.82, bx=(w-bw)/2, by=h*0.945, prog=Math.max(0,Math.min(1,elapsed/P.total));
+      g.fillStyle=P.fg; g.globalAlpha=.16; g.fillRect(bx,by,bw,Math.max(2,h*0.0018));
+      g.globalAlpha=1; g.fillStyle=P.accent; g.fillRect(bx,by,bw*prog,Math.max(2,h*0.0018)); }
+  }
+
+  // ---- playback loop ----
+  function frame(){ const now=performance.now(), dt=Math.min(0.05,(now-t0)/1000); t0=now;
+    if(playing){ clock+=dt;
+      const N=names.length; if(N){ const per=P.total/N, idx=Math.min(N-1,Math.floor(clock/per));
+        if(idx!==lastIdx){ lastIdx=idx; playClick(); } }
+      if(clock>=P.total){ clock=P.total; stop(); if(rec) rec.stop(); }
+    }
+    render(ctx,W,H,clock); requestAnimationFrame(frame);
+  }
+  function start(){ ensureAudio(); if(audio&&audio.state==='suspended') audio.resume(); playing=true; setPlay(); }
+  function stop(){ playing=false; setPlay(); }
+  function restart(){ clock=0; lastIdx=-1; }
+  function setPlay(){ $('playBtn').textContent=playing?'Pause':'Play'; $('playBtn').setAttribute('aria-pressed',String(playing)); }
+  $('playBtn').addEventListener('click',()=>{ if(clock>=P.total) restart(); playing?stop():start(); });
+  $('restartBtn').addEventListener('click',()=>{ restart(); render(ctx,W,H,clock); });
+
+  // ---- controls ----
+  $('names').addEventListener('input',()=>{ parseNames(); if(!playing) render(ctx,W,H,clock); });
+  function bindColor(id,key){ $(id).addEventListener('input',e=>{ P[key]=e.target.value; if(!playing) render(ctx,W,H,clock); }); }
+  bindColor('bg','bg'); bindColor('fg','fg'); bindColor('accent','accent');
+  function bindText(id,key){ $(id).addEventListener('input',e=>{ P[key]=e.target.value; if(!playing) render(ctx,W,H,clock); }); }
+  bindText('header','header'); bindText('footer','footer');
+  function bindChk(id,key){ $(id).addEventListener('change',e=>{ P[key]=e.target.checked; if(!playing) render(ctx,W,H,clock); }); }
+  bindChk('clickOn','clickOn'); bindChk('showCount','showCount'); bindChk('showProg','showProg');
+  $('total').addEventListener('input',e=>{ P.total=+e.target.value; $('totalR').textContent=P.total+'s'; parseNames(); if(!playing) render(ctx,W,H,clock); });
+  $('clickType').addEventListener('change',e=>{ P.clickType=e.target.value; });
+  $('vol').addEventListener('input',e=>{ P.vol=+e.target.value/100; $('volR').textContent=P.vol.toFixed(1); });
+  $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
+
+  // ---- size / fit ----
+  function aspectWH(){ const p=(P.aspect||'1080/1920').split('/').map(Number),a=p[0]||9,b=p[1]||16,long=1920;
+    return a>=b?[long,Math.round(long*b/a)]:[Math.round(long*a/b),long]; }
+  function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H;
+    const box=$('wrap').getBoundingClientRect(), s=Math.min(box.width/W,box.height/H);
+    art.style.width=(W*s)+'px'; art.style.height=(H*s)+'px';
+    const dr=$('dimReadout'); if(dr) dr.textContent=W+' × '+H;
+    render(ctx,W,H,clock); }
+  addEventListener('resize',()=>{ const box=$('wrap').getBoundingClientRect(),s=Math.min(box.width/W,box.height/H); art.style.width=(W*s)+'px'; art.style.height=(H*s)+'px'; });
+
+  // ---- save a still frame ----
+  $('saveBtn').addEventListener('click',()=>{ const a=document.createElement('a'); a.download='roll-call.png'; a.href=art.toDataURL('image/png'); a.click(); });
+
+  // ---- record the whole reel, video + click audio → MP4 ----
+  let rec=null, chunks=[], rt=0, tk=0;
+  $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
+    ensureAudio(); if(audio&&audio.state==='suspended') audio.resume();
+    const vtrack=art.captureStream(30).getVideoTracks()[0];
+    const tracks=[vtrack]; if(clickDest){ const a=clickDest.stream.getAudioTracks()[0]; if(a) tracks.push(a); }
+    const stream=new MediaStream(tracks);
+    const mime=['video/mp4;codecs=avc1,mp4a','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+    rec=new MediaRecorder(stream, mime?{mimeType:mime}:undefined); chunks=[];
+    rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+    rec.onstop=()=>{ clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; $('recBtn').setAttribute('aria-pressed','false');
+      const bl=new Blob(chunks,{type:chunks[0]?.type||'video/webm'}); const a=document.createElement('a');
+      a.download='underscore-roll-call.'+(bl.type.indexOf('mp4')>=0?'mp4':'webm'); a.href=URL.createObjectURL(bl); a.click(); rec=null; };
+    // play from the top and record the full length
+    restart(); start(); rec.start(1000);
+    rt=Date.now(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true');
+    tk=setInterval(()=>{ const s=Math.floor((Date.now()-rt)/1000); $('recDot').querySelector('b').textContent=(s/60|0)+':'+String(s%60).padStart(2,'0'); },250); });
+
+  // ---- boot ----
+  $('names').value=DEFAULT_NAMES.join('\n');
+  parseNames(); fit(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
