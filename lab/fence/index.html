@@ -115,6 +115,7 @@
     <div class="group">
       <div class="group__t">Form</div>
       <div id="sliders">
+        <div class="knob" data-tip="The mark-making style of the ink — Charcoal grain, a smooth Ink stroke, a fine Pen line, a soft airbrush Spray, or Pencil graphite."><label>Brush</label><select id="brush" class="btn full"><option value="charcoal" selected>Charcoal</option><option value="ink">Ink — smooth</option><option value="pen">Pen — fine line</option><option value="spray">Spray — airbrush</option><option value="pencil">Pencil</option></select></div>
         <div class="knob" data-tip="How many stems of ink trail along each line you drew. More stems build up denser, richer growth."><label>Stems <b id="densityR">10</b></label><input id="density" type="range" min="0" max="100" value="10" /></div>
         <div class="knob" data-tip="How much the stems bloom outward from your line. Low hugs your stroke; high sends them looping and expanding off it."><label>Expand <b id="flowR">100</b></label><input id="flow" type="range" min="0" max="100" value="100" /></div>
         <div class="knob" data-tip="Adds a circular swirl to the stems' motion, coiling the lines as they travel."><label>Swirl <b id="spiralR">100</b></label><input id="spiral" type="range" min="0" max="100" value="100" /></div>
@@ -212,7 +213,7 @@
   let ASPECT=1080/1920;   // default: Instagram Reel (9:16)
   let W=0,H=0,dpr=1, mode='draw';
   let strokes=[], strokeCol=[], cur=null, walkers=[], raf=0, F=0, lastTs=0, aT=0, gT=0, RT=0, traceRef=null;
-  const P={ density:10, length:50, flow:100, spiral:100, weight:10, ink:10, wet:0, time:20, color:0, flash:0 };
+  const P={ density:10, length:50, flow:100, spiral:100, weight:10, ink:10, wet:0, time:20, color:0, flash:0, brush:'charcoal' };
 
   function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
     t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -459,11 +460,34 @@
         ctx.fillStyle = 'rgba('+cr+','+cg+','+cb+','+alpha.toFixed(3)+')';
       }
       const wr=1+wet*1.9, wj=1-wet*0.4;                                                 // WET: fatter dabs, less scatter → a fuller, bleeding stroke
-      for(let i=0;i<w.nodes.length;i++){ const a=w.last[i], b=w.nodes[i];
-        for(let o=0;o<5;o++){ const px=a.x+(b.x-a.x)*o/5, py=a.y+(b.y-a.y)*o/5;
-          if(chrome) ctx.fillStyle = darkPaper ? chromeCol(py/H, (0.25 + ink*w.ink*3.0)*born*(0.6+Math.random()*0.7))              // bright reflections build on black
-                                               : chromeColL(py/H, Math.min(0.9, (0.34 + ink*w.ink*4.0)*born*(0.62+Math.random()*0.5)));  // solid polished metal on light paper
-          ctx.beginPath(); ctx.arc(px+(Math.random()-0.5)*wBase*grow*wj, py+(Math.random()-0.5)*wBase*grow*wj, Math.random()*wBase*w.brushW*grow*wr, 0, 6.2832); ctx.fill(); } }
+      const brush = chrome ? 'charcoal' : (P.brush||'charcoal');                        // chrome keeps its own dab look
+      if(brush==='ink' || brush==='pen'){
+        // a SMOOTH continuous stroke through the chain — sumi ink, or a fine technical pen
+        ctx.strokeStyle=ctx.fillStyle; ctx.lineCap='round'; ctx.lineJoin='round';
+        ctx.lineWidth = brush==='pen' ? Math.max(0.7, wBase*w.brushW*grow*0.5)
+                                      : wBase*w.brushW*grow*(0.9+wet*1.8);
+        ctx.beginPath(); ctx.moveTo(w.nodes[0].x, w.nodes[0].y);
+        for(let i=1;i<w.nodes.length;i++) ctx.lineTo(w.nodes[i].x, w.nodes[i].y);
+        ctx.stroke();
+      } else {
+        for(let i=0;i<w.nodes.length;i++){ const a=w.last[i], b=w.nodes[i];
+          if(brush==='spray'){
+            // AIRBRUSH — a soft cloud of tiny specks scattered over a wide radius
+            const R=wBase*w.brushW*grow*(2.4+wet*3.2);
+            for(let o=0;o<7;o++){ const ang=Math.random()*6.2832, rr=Math.sqrt(Math.random())*R;
+              ctx.beginPath(); ctx.arc(b.x+Math.cos(ang)*rr, b.y+Math.sin(ang)*rr, Math.random()*0.9+0.25, 0, 6.2832); ctx.fill(); }
+          } else if(brush==='pencil'){
+            // GRAPHITE — fine, light, grainy short marks
+            for(let o=0;o<3;o++){ const px=a.x+(b.x-a.x)*o/3, py=a.y+(b.y-a.y)*o/3;
+              ctx.beginPath(); ctx.arc(px+(Math.random()-0.5)*wBase*grow*0.8, py+(Math.random()-0.5)*wBase*grow*0.8, Math.random()*wBase*w.brushW*grow*0.5, 0, 6.2832); ctx.fill(); }
+          } else {
+            // CHARCOAL (default) — scattered grainy dabs
+            for(let o=0;o<5;o++){ const px=a.x+(b.x-a.x)*o/5, py=a.y+(b.y-a.y)*o/5;
+              if(chrome) ctx.fillStyle = darkPaper ? chromeCol(py/H, (0.25 + ink*w.ink*3.0)*born*(0.6+Math.random()*0.7))              // bright reflections build on black
+                                                   : chromeColL(py/H, Math.min(0.9, (0.34 + ink*w.ink*4.0)*born*(0.62+Math.random()*0.5)));  // solid polished metal on light paper
+              ctx.beginPath(); ctx.arc(px+(Math.random()-0.5)*wBase*grow*wj, py+(Math.random()-0.5)*wBase*grow*wj, Math.random()*wBase*w.brushW*grow*wr, 0, 6.2832); ctx.fill(); } }
+        }
+      }
       // WET — a soft, fatter dab bleeds off the head; where chains cross, these build up into solid pools of ink
       if(wet>0.02 && !chrome){
         const hb=w.nodes[0], hr=wBase*w.brushW*grow*(1.4+wet*5.5)*(0.55+Math.random()*0.6);
@@ -488,7 +512,9 @@
     strokes.forEach((s,si)=>{ const have=by[si]||[];
       if(have.length>dens){ const rm=new Set(have.slice(dens)); walkers=walkers.filter(w=>!rm.has(w)); }
       else if(have.length<dens){ walkersFor(prep(s.map(p=>({x:p.x,y:p.y}))), si).slice(have.length).forEach(w=>walkers.push(w)); } }); }
-  Object.keys(P).forEach(k=>{ const inp=$(k), out=$(k+'R'); if(!inp) return;
+  // Brush is a select (string), not a numeric slider — wire it on its own
+  { const bs=$('brush'); if(bs) bs.addEventListener('change', ()=>{ P.brush=bs.value; }); }
+  Object.keys(P).forEach(k=>{ if(typeof P[k]!=='number') return; const inp=$(k), out=$(k+'R'); if(!inp) return;
     inp.addEventListener('input', ()=>{ P[k]=+inp.value; out.textContent=(k==='time')?Math.round(secsFor())+'s':inp.value;
       if(mode!=='modify') return;
       // Flow, Spiral, Weight, Ink, Speed, Colour are all read live in step() — they never reset.
