@@ -220,10 +220,7 @@
   const lines=[];
   function makeLine(inst,deg,pat){ const n=16; const steps=new Array(n).fill(false); if(pat) pat.forEach(i=>{ if(i<n) steps[i]=true; }); return { inst, deg, steps, level:80, amp:0, phase:Math.random()*TAU, col:INST[inst].col.slice() }; }
   function defaultLines(){ lines.length=0;
-    lines.push(makeLine('koto', 7, [0,4,8,12]));
-    lines.push(makeLine('koto', 4, [2,6,10,14]));
-    lines.push(makeLine('bell', 11, [0,7]));
-    lines.push(makeLine('drum', 0, [0,8])); }
+    lines.push(makeLine('koto', 7, [0,4,8,12])); }   // start with a single string — add more as you like
   function buildLines(){ const host=$('lines'); host.innerHTML='';
     lines.forEach((L,li)=>{ const card=document.createElement('div'); card.className='linec';
       const midi=scaleMidi(L.deg); const nn=NOTES[((midi%12)+12)%12]+(Math.floor(midi/12)-1);
@@ -235,8 +232,9 @@
         '<div class="noter"><span>Level</span><input class="lvl" type="range" min="0" max="100" value="'+L.level+'"><b class="lv">'+L.level+'</b></div>'+
         '<div class="steps"></div>';
       const grid=card.querySelector('.steps'); grid.style.gridTemplateColumns='repeat('+P.steps+',1fr)';
+      L.els=[];
       for(let s=0;s<P.steps;s++){ const b=document.createElement('button'); b.className='stp'+(L.steps[s]?' on':'')+(s%4===0?' beat':''); b.dataset.s=s;
-        b.addEventListener('click',()=>{ L.steps[s]=!L.steps[s]; b.classList.toggle('on',L.steps[s]); }); grid.appendChild(b); }
+        b.addEventListener('click',()=>{ L.steps[s]=!L.steps[s]; b.classList.toggle('on',L.steps[s]); }); grid.appendChild(b); L.els.push(b); }
       card.querySelector('.lcol').addEventListener('input',e=>{ L.col=hexToRgb(e.target.value); });
       card.querySelector('.inst').addEventListener('change',e=>{ L.inst=e.target.value; });
       card.querySelector('.note').addEventListener('input',e=>{ L.deg=+e.target.value; const m=scaleMidi(L.deg); card.querySelector('.nn').textContent=NOTES[((m%12)+12)%12]+(Math.floor(m/12)-1); });
@@ -253,10 +251,13 @@
 
   // ---------- clock ----------
   let T=0, t0=performance.now(), phase=0, lastStep=-1;
+  // highlight the CURRENTLY-PLAYING step column across every line in the rail (cs<0 clears)
+  function paintCur(cs){ for(const L of lines){ if(!L.els) continue;
+    for(let s=0;s<L.els.length;s++) L.els[s].classList.toggle('pcur', s===cs); } }
   function step(dt){ if(!playing) return; T+=dt;
     const bpm=60+(P.tempo/100)*150; const stepDur=60/bpm/4; phase += dt/stepDur;
     const cur=Math.floor(phase)%P.steps;
-    if(cur!==lastStep){ lastStep=cur;
+    if(cur!==lastStep){ lastStep=cur; paintCur(cur);
       for(const L of lines){ if(L.steps[cur] && L.level>0){ playInst(L.inst, mtof(scaleMidi(L.deg)), 0.9*(L.level/100)); L.amp=Math.min(1.5, L.amp+0.4+0.6*(L.level/100)); } }
     }
     for(const L of lines){ if(L.amp>0) L.amp=Math.max(0, L.amp-dt*2.0); }
@@ -290,7 +291,7 @@
   function tick(now){ requestAnimationFrame(tick); const dt=Math.min(0.05,(now-t0)/1000); t0=now; step(dt); render(); }
 
   // ---------- controls ----------
-  function setPlaying(on){ playing=on; const A=audio(); if(A.state==='suspended') A.resume(); if(on){ phase=0; lastStep=-1; }
+  function setPlaying(on){ playing=on; const A=audio(); if(A.state==='suspended') A.resume(); if(on){ phase=0; lastStep=-1; } else paintCur(-1);
     $('startBtn').textContent=on?'Stop':'Play'; $('startBtn').setAttribute('aria-pressed',on?'true':'false'); }
   $('startBtn').addEventListener('click',()=>setPlaying(!playing));
   $('addBtn').addEventListener('click',()=>{ if(lines.length<10){ lines.push(makeLine(INST_ORDER[lines.length%4], 5+lines.length, [ (lines.length*3)%P.steps ])); buildLines(); } });
