@@ -27,7 +27,9 @@
   .crow{ display:flex; align-items:center; justify-content:space-between; }
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   select.full{ width:100%; }
-  #wordIn{ width:100%; font-size:15px; letter-spacing:.02em; }
+  #wordIn{ width:100%; font-size:15px; letter-spacing:.02em; resize:vertical; min-height:44px; line-height:1.35; }
+  .filebtn{ display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+  .filebtn input{ display:none; }
   .modehint{ margin:0; font-size:12px; color:var(--mute); line-height:1.45; }
   .tog{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .tog > span{ font-size:12px; color:var(--ink); }
@@ -52,7 +54,7 @@
 <div id="dock">
   <div class="group">
     <div class="group__t">Letterform</div>
-    <input class="opal-input" id="wordIn" type="text" value="a" maxlength="12" spellcheck="false" autocomplete="off">
+    <textarea class="opal-input" id="wordIn" rows="2" maxlength="80" spellcheck="false" autocomplete="off" placeholder="Type — press Enter for a new line">a</textarea>
     <select class="full" id="fontSel" title="Typeface">
       <option value="/shared/fonts/chaparral-regular.ttf" selected>Serif · Chaparral</option>
       <option value="/shared/fonts/UniversNextPro-Medium.ttf">Sans · Univers</option>
@@ -60,6 +62,11 @@
       <option value="/shared/fonts/playfair-regular.ttf">Display · Playfair</option>
       <option value="/shared/fonts/pirata-one.ttf">Blackletter · Pirata</option>
     </select>
+    <div class="grid2">
+      <label class="btn filebtn">Add SVG<input id="svgIn" type="file" accept=".svg,image/svg+xml"></label>
+      <button class="btn" id="svgClr">Use text</button>
+    </div>
+    <p class="rowhint" id="svgName" style="margin:0;font-size:12px;color:var(--mute)"></p>
     <div class="knob"><label>Size <b id="fszR">0.72</b></label><input id="fsz" type="range" min="20" max="98" value="72"></div>
   </div>
 
@@ -242,6 +249,7 @@
   let FONT=null, fontReady=false;
   // per render: letters = [{ contours:[[{x,y}...],...], bbox:{x,y,w,h} }], overall bbox
   let LET=null, GEO_KEY='';
+  let svgContours=null, svgKey='';   // when set, the methods apply to an uploaded SVG instead of the typeface
 
   function flattenPath(cmds){
     // returns array of contours; each contour = array of {x,y}
@@ -282,30 +290,30 @@
 
   // build the letter geometry for the current word, laid out & scaled to the canvas
   function buildGeometry(){
-    if(!fontReady) return;
-    const key=P.word+'|'+P.fsz+'|'+W+'x'+H;
+    if(!fontReady && !svgContours) return;
+    const key=(svgContours?('svg|'+svgKey):P.word)+'|'+P.fsz+'|'+W+'x'+H;
     if(key===GEO_KEY && LET) return;
-    const word=(P.word||'a');
-    const single = word.trim().length<=1;
-    // measure at unit size then scale to fit
     const em=1000;
-    const glyphs=FONT.stringToGlyphs(word);
-    // layout advance
-    let adv=0; const placed=[];
-    for(let i=0;i<glyphs.length;i++){ const g=glyphs[i];
-      placed.push({ g, x:adv }); adv += (g.advanceWidth||em*0.5); }
-    const scaleUnit=1; // path space
-    // path for whole word at fontSize em, origin baseline at 0
     const letters=[];
-    let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
-    for(const pl of placed){
-      const path=pl.g.getPath(pl.x, 0, em);
-      const contours=flattenPath(path.commands);
-      if(!contours.length) continue;
+    let single=false, minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+    const bump=(contours)=>{ if(!contours || !contours.length) return;
       let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9;
       for(const c of contours) for(const p of c){ if(p.x<bx0)bx0=p.x; if(p.y<by0)by0=p.y; if(p.x>bx1)bx1=p.x; if(p.y>by1)by1=p.y; }
       letters.push({ contours, bbox:{x:bx0,y:by0,w:bx1-bx0,h:by1-by0} });
-      minX=Math.min(minX,bx0); minY=Math.min(minY,by0); maxX=Math.max(maxX,bx1); maxY=Math.max(maxY,by1);
+      minX=Math.min(minX,bx0); minY=Math.min(minY,by0); maxX=Math.max(maxX,bx1); maxY=Math.max(maxY,by1); };
+    if(svgContours){
+      // apply the methods to an uploaded SVG — one glyph holding all its outline contours
+      bump(svgContours.map(c=>c.map(p=>({x:p.x,y:p.y}))));
+    } else {
+      const word=(P.word||'a'); single = word.trim().replace(/\n/g,'').length<=1;
+      const lines=word.split('\n'), lineH=em*1.14;   // stack lines; each line centred on x=0
+      for(let li=0; li<lines.length; li++){
+        const glyphs=FONT.stringToGlyphs(lines[li]);
+        let lineAdv=0; for(const g of glyphs) lineAdv+=(g.advanceWidth||em*0.5);
+        let adv=-lineAdv/2; const yBase=li*lineH;
+        for(const g of glyphs){ const path=g.getPath(adv, yBase, em); adv+=(g.advanceWidth||em*0.5);
+          bump(flattenPath(path.commands)); }
+      }
     }
     if(!letters.length){ LET={letters:[], bbox:null}; GEO_KEY=key; return; }
     const gw=maxX-minX, gh=maxY-minY;
@@ -985,7 +993,45 @@
   function bind(id,rid,fn,fmt){ const el=$(id),o=$(rid); if(!el) return;
     el.addEventListener('input',()=>{ fn(el.type==='range'?parseFloat(el.value):el.value); if(o)o.textContent=fmt?fmt(el.value):el.value; scheduleRedraw(); }); }
 
-  $('wordIn').addEventListener('input',e=>{ P.word=e.target.value||'a'; GEO_KEY=''; redraw(); });
+  $('wordIn').addEventListener('input',e=>{ P.word=e.target.value||'a'; if(!svgContours){ GEO_KEY=''; redraw(); } });
+
+  // ---- SVG source: sample an uploaded SVG's outlines into contours the methods run on ----
+  function svgToContours(txt){
+    const doc=new DOMParser().parseFromString(txt,'image/svg+xml');
+    if(doc.querySelector('parsererror')) return null;
+    const NS='http://www.w3.org/2000/svg';
+    const host=document.createElementNS(NS,'svg');
+    host.setAttribute('width','10'); host.setAttribute('height','10');
+    host.style.cssText='position:absolute;left:-99999px;top:-99999px;width:10px;height:10px;overflow:hidden';
+    document.body.appendChild(host);
+    const contours=[];
+    const els=[...doc.querySelectorAll('path,rect,circle,ellipse,polygon,polyline')];
+    for(const el of els){
+      let clone; try{ clone=document.importNode(el,true); host.appendChild(clone); }catch(e){ continue; }
+      try{
+        const total=clone.getTotalLength?clone.getTotalLength():0;
+        if(total>0.5){
+          const step=Math.max(0.4, total/1600);   // dense enough to keep curves smooth, capped for speed
+          let cur=[], prev=null;
+          for(let l=0;l<=total;l+=step){ const pt=clone.getPointAtLength(l);
+            if(prev){ const d=Math.hypot(pt.x-prev.x, pt.y-prev.y); if(d>step*8){ if(cur.length>2) contours.push(cur); cur=[]; } }
+            cur.push({x:pt.x, y:pt.y}); prev=pt; }
+          if(cur.length>2) contours.push(cur);
+        }
+      }catch(e){}
+      host.removeChild(clone);
+    }
+    document.body.removeChild(host);
+    return contours.length?contours:null;
+  }
+  function useText(){ svgContours=null; svgKey=''; $('svgName').textContent=''; GEO_KEY=''; redraw(); }
+  $('svgIn').addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return;
+    const rd=new FileReader(); rd.onload=()=>{ const cs=svgToContours(String(rd.result));
+      if(!cs){ $('svgName').textContent='No drawable paths found in that SVG.'; return; }
+      svgContours=cs; svgKey=f.name+'|'+String(rd.result).length; $('svgName').textContent='SVG · '+f.name+' — applying methods';
+      GEO_KEY=''; redraw(); };
+    rd.readAsText(f); e.target.value=''; });
+  $('svgClr').addEventListener('click',useText);
   bind('fsz','fszR',v=>P.fsz=v/100,v=>(v/100).toFixed(2));
   $('mode').addEventListener('change',e=>{ P.mode=e.target.value; showMode(); if(animating){stopAnim();} renderStatic(); });
 
