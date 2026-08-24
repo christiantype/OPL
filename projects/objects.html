@@ -24,8 +24,8 @@
   --line-strong:#393939;
   --mid:#868686;
   --signal:#FF94C9;
-  --panel-w:34%;
-  --viewer-w:66%;
+  --panel-w:28%;
+  --viewer-w:72%;
   --disp:"Sidepiece", Helvetica, Arial, sans-serif;
   --mono:'IBM Plex Mono', ui-monospace, monospace;
 }
@@ -39,6 +39,11 @@ body.objects{
 body.objects ::selection{ background:var(--signal); color:var(--paper); }
 body.objects a{color:inherit;}
 body.objects button{font-family:var(--disp); cursor:pointer;}
+
+/* standard project top (#hero + #credits) — keep the site's own type; just fix colours for the light ground */
+body.objects #hero h1, body.objects #hero h2, body.objects #hero p, body.objects #credits p{ color:var(--ink); }
+body.objects #credits{ border-top-color:var(--line); }
+body.objects .label, body.objects .text-mid{ color:var(--mid); }
 
 .objects-wrap .eyebrow{
   font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--mid);
@@ -180,41 +185,33 @@ details.fab-notes summary{ font-family:var(--mono); font-size:10.5px; letter-spa
 <script src="../shared/nav.js"></script>
 
 <div class="objects-wrap">
-<!-- ============================================================ INTRO ============================================================ -->
-<section class="intro">
-  <div class="intro-top">
-    <div class="eyebrow">Product Development Tool — Not For Fabrication</div>
-    <h1 class="intro-title">OPAL <span style="color:var(--signal)">×</span> TWO J'S
-      <small>Object Studies · 001–005</small>
-    </h1>
-  </div>
-
-  <div class="intro-mid">
-    <p class="intro-statement">An evolving collection of functional metal objects developed through graphic form, industrial material, and local fabrication.</p>
-    <div class="intro-meta">
-      Designed by <b>OPAL</b><br>
-      Fabrication development with <b>Two J's</b><br>
-      Chicago, Illinois<br><br>
-      1 unit = 1 inch — true relative scale
+<!-- ============================================================ HERO (standard project top) ============================================================ -->
+<section id="hero">
+  <div class="container">
+    <div class="grid">
+      <h1 class="col-12">Objects</h1>
     </div>
-  </div>
-
-  <div class="intro-nav" id="introNav">
-    <a class="intro-nav-item" href="#obj-001"><span class="num">001</span><span class="name">M/U Desktop Organizer</span><span class="go">View →</span></a>
-    <a class="intro-nav-item" href="#obj-002"><span class="num">002</span><span class="name">One-Inch Incense Cube</span><span class="go">View →</span></a>
-    <a class="intro-nav-item" href="#obj-003"><span class="num">003</span><span class="name">Record Storage + Now Playing</span><span class="go">View →</span></a>
-    <a class="intro-nav-item" href="#obj-004"><span class="num">004</span><span class="name">Chicago Brick Six-Pen Holder</span><span class="go">View →</span></a>
-    <a class="intro-nav-item" href="#obj-005"><span class="num">005</span><span class="name">Spill Paperweight</span><span class="go">View →</span></a>
-    <a class="intro-nav-item" href="#collection"><span class="num">—</span><span class="name">All Objects — Relative Scale</span><span class="go">View →</span></a>
-  </div>
-
-  <div class="intro-bottom">
-    <div class="scroll-cue">SCROLL<div class="bar"></div></div>
-    <div class="eyebrow">Prototype — Not Yet Fabrication Validated</div>
+    <div class="grid">
+      <h2 class="col-9">An evolving collection of functional metal objects — developed by OPAL through graphic form, industrial material, and local fabrication with Two J's. Five studies, shown in raw metal at true relative scale.</h2>
+    </div>
   </div>
 </section>
 
-<!-- object sections + collection + material lab injected by JS -->
+<section id="credits">
+  <div class="container">
+    <div class="grid">
+      <div class="col-3"><span class="label">Discipline</span><p>Product Development</p></div>
+      <div class="col-3"><span class="label">Material</span><p>Metal Objects</p></div>
+      <div class="col-3"><span class="label">Year</span><p>Ongoing · 2026</p></div>
+      <div class="col-3"><span class="label">Acknowledgements</span>
+        <p>OPAL<br><span class="text-mid">Design</span></p>
+        <p>Two J's<br><span class="text-mid">Fabrication · Chicago, IL</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- object sections + collection injected by JS -->
 <main id="app"></main>
 </div>
 
@@ -229,6 +226,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 
 /* ---- EMBEDDED SOURCE MESHES (from Two J's / OPAL concept OBJ exports, 1 unit = 1 inch) ---- */
 const OBJ001_TEXT = `# https://github.com/mikedh/trimesh
@@ -1258,14 +1256,33 @@ class Viewer{
 /* ============================================================================================
    OBJECT BUILDERS
    ============================================================================================ */
+/* The organizer's "M" is built from an SVG letterform, extruded to the object's depth.
+   To use a different M, replace ORGANIZER_M_SVG (keep the viewBox proportional to W:H = 15:8.5). */
+const ORGANIZER_M_VBW = 150, ORGANIZER_M_VBH = 85;
+const ORGANIZER_M_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 85"><path d="M0,85 L0,0 L30,0 L75,52 L120,0 L150,0 L150,85 L120,85 L120,34 L86,74 L64,74 L30,34 L30,85 Z"/></svg>`;
 function buildOrganizer(spec, group){
   group.clear();
   try{
-    const mesh=parseOBJ(OBJ001_TEXT, 'obj001');
-    mesh.position.x = -spec.W/2; // source file spans X:0->W; center it like the rest of the scene
-    group.add(mesh);
+    const W=spec.W, H=spec.H, D=spec.D, vbW=ORGANIZER_M_VBW, vbH=ORGANIZER_M_VBH;
+    const paths=new SVGLoader().parse(ORGANIZER_M_SVG).paths;
+    const mat=makeMaterial(spec.defaultMaterial);
+    const g=new THREE.Group();
+    let made=0;
+    paths.forEach(p=>{
+      SVGLoader.createShapes(p).forEach(shape=>{
+        const geo=new THREE.ExtrudeGeometry(shape, {depth:vbH, bevelEnabled:false, curveSegments:16});
+        geo.computeVertexNormals();
+        const m=new THREE.Mesh(geo, mat); g.add(m); made++;
+      });
+    });
+    if(!made) throw new Error('no shapes in organizer SVG');
+    // SVG space (x:0..vbW, y:0..vbH down, z:0..vbH) → inches, upright (rigid X-rotation keeps normals correct)
+    g.scale.set(W/vbW, H/vbH, D/vbH);
+    g.rotation.x=Math.PI;
+    g.position.set(-W/2, H, D/2);
+    group.add(g);
   }catch(err){
-    console.warn('OBJ001 parse failed, using procedural fallback', err);
+    console.warn('SVG organizer build failed, using procedural fallback', err);
     buildOrganizerProcedural(spec, group);
   }
   return { frameCenterY: spec.H/2.4, frameDistance: 22 };
@@ -1450,57 +1467,45 @@ function seededRandom(seed){
 }
 function buildSpill(spec, group, seed){
   group.clear();
-  if(seed===0){
-    // Spill 001 — the actual scrap-offcut concept mesh supplied by Two J's, used as-is
-    try{
-      const mesh=parseOBJ(OBJ005_TEXT, 'obj005');
-      group.add(mesh);
-      const box=new THREE.Box3().setFromObject(mesh);
-      const dims={ W:box.max.x-box.min.x, D:box.max.z-box.min.z, H:box.max.y-box.min.y };
-      return { frameCenterY:0.6, frameDistance:6.5, dims };
-    }catch(err){
-      console.warn('OBJ005 parse failed, using procedural fallback', err);
-    }
-  }
-  return buildSpillProcedural(spec, group, seed||1);
+  return buildSpillProcedural(spec, group, seed===0 ? 3 : (seed||1));
+}
+// mirror-polished liquid metal — reflects the environment like a bead of mercury.
+// (bright, low-roughness chrome; a touch of diffuse so it reads silver, not black, in a dim env)
+function mercuryMat(){
+  return new THREE.MeshStandardMaterial({ color:0xf0f3f5, metalness:0.86, roughness:0.08, envMapIntensity:2.6 });
 }
 function buildSpillProcedural(spec, group, seed){
   const rand=seededRandom(seed);
-  const cx=0, cy=0;
-  const nPts=10+Math.floor(rand()*6); // 10-15
-  const baseR=(spec.Wmax+spec.Wmin)/4.4;
+  const mat=mercuryMat();
+  // an organic, rounded puddle outline (chunky — no thin necks, so the big bevel stays clean)
+  const nPts=9+Math.floor(rand()*5);
+  const baseR=(spec.Wmax+spec.Wmin)/4.7;
+  const lobeBias=new Array(nPts).fill(0);
+  const lobeCount=2+Math.floor(rand()*3);
+  for(let l=0;l<lobeCount;l++){ const c=Math.floor(rand()*nPts), s=0.3+rand()*0.55;
+    for(let k=-1;k<=1;k++){ lobeBias[(c+k+nPts)%nPts]+=s*(k===0?1:0.5); } }
   const pts=[];
-  const lobeBias=[];
-  const lobeCount=3+Math.floor(rand()*5); // 3-7
-  for(let i=0;i<nPts;i++) lobeBias.push(0);
-  for(let l=0;l<lobeCount;l++){
-    const center=Math.floor(rand()*nPts);
-    const strength=0.35+rand()*0.55;
-    for(let k=-1;k<=1;k++){
-      const idx=(center+k+nPts)%nPts;
-      lobeBias[idx]+=strength*(k===0?1:0.45);
-    }
-  }
-  for(let i=0;i<nPts;i++){
-    const ang=(i/nPts)*Math.PI*2;
-    const jitter=0.72+rand()*0.5;
-    const r=baseR*jitter*(1+lobeBias[i]*0.55);
-    pts.push(new THREE.Vector2(cx+Math.cos(ang)*r, cy+Math.sin(ang)*r));
-  }
-  const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p.x,p.y,0)), true, 'catmullrom', 0.55);
-  const samples=curve.getPoints(96);
-  const shape=new THREE.Shape(samples.map(p=>new THREE.Vector2(p.x,p.y)));
-  const H = spec.nominal.H;
-  const geo=new THREE.ExtrudeGeometry(shape, {depth:H, bevelEnabled:true, bevelThickness:spec.edgeRadius, bevelSize:spec.edgeRadius, bevelSegments:3, curveSegments:2});
+  for(let i=0;i<nPts;i++){ const a=(i/nPts)*Math.PI*2, jit=0.8+rand()*0.4, r=baseR*jit*(1+lobeBias[i]*0.55);
+    pts.push(new THREE.Vector3(Math.cos(a)*r, Math.sin(a)*r, 0)); }
+  const curve=new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.6);
+  const shape=new THREE.Shape(curve.getPoints(120).map(p=>new THREE.Vector2(p.x,p.y)));
+  // a big rounded bevel domes it into a surface-tension liquid puddle
+  const geo=new THREE.ExtrudeGeometry(shape, {depth:0.02, bevelEnabled:true, bevelThickness:0.18, bevelSize:0.22, bevelSegments:10, curveSegments:2});
   geo.rotateX(-Math.PI/2);
-  geo.translate(0,H,0);
-  const mesh=new THREE.Mesh(geo, makeMaterial(spec.defaultMaterial));
-  group.add(mesh);
-  // compute rough bounding box for panel display
-  geo.computeBoundingBox();
-  const bb=geo.boundingBox;
-  const dims={W:(bb.max.x-bb.min.x), D:(bb.max.z-bb.min.z), H:H};
-  return { frameCenterY:0.6, frameDistance:6.5, dims };
+  geo.computeBoundingBox(); geo.translate(0, -geo.boundingBox.min.y, 0);   // sit on the ground
+  geo.computeVertexNormals();
+  const mesh=new THREE.Mesh(geo, mat); mesh.userData.paintable=false; group.add(mesh);
+  geo.computeBoundingBox(); const bb=geo.boundingBox;
+  const dims={ W:bb.max.x-bb.min.x, D:bb.max.z-bb.min.z, H:bb.max.y-bb.min.y };
+  // a few loose beads scattered around, flattened a touch by gravity — like the mercury reference
+  const beadN=3+Math.floor(rand()*3);
+  for(let i=0;i<beadN;i++){
+    const rr=0.12+rand()*0.26, ang=rand()*Math.PI*2, dist=(dims.W*0.5)*(0.85+rand()*0.85);
+    const s=new THREE.Mesh(new THREE.SphereGeometry(rr,28,20), mat);
+    s.scale.y=0.82; s.position.set(Math.cos(ang)*dist, rr*0.82, Math.sin(ang)*dist*0.78);
+    s.userData.paintable=false; group.add(s);
+  }
+  return { frameCenterY:0.5, frameDistance:6.5, dims };
 }
 
 /* ============================================================================================
@@ -1509,30 +1514,7 @@ function buildSpillProcedural(spec, group, seed){
 const app=document.getElementById('app');
 
 function commonControlsHTML(id){
-  return `
-  <div class="viewer-hud">
-    <span class="tag">DRAG ROTATE · SCROLL ZOOM · RIGHT-DRAG PAN</span>
-    <span class="tag" data-role="matlabel-${id}">MATERIAL</span>
-  </div>
-  <div class="viewer-controls">
-    <div class="ctrl-group">
-      <button class="btn" data-act="auto" data-id="${id}">Auto Rotate</button>
-      <button class="btn" data-act="reset" data-id="${id}">Reset View</button>
-    </div>
-    <div class="ctrl-sep"></div>
-    <div class="ctrl-group">
-      <button class="btn" data-act="front" data-id="${id}">Front</button>
-      <button class="btn" data-act="side" data-id="${id}">Side</button>
-      <button class="btn" data-act="top" data-id="${id}">Top</button>
-      <button class="btn" data-act="perspective" data-id="${id}">Perspective</button>
-    </div>
-    <div class="ctrl-sep"></div>
-    <div class="ctrl-group">
-      <button class="btn" data-act="grid" data-id="${id}">Grid</button>
-      <button class="btn" data-act="dims" data-id="${id}">Dimensions</button>
-      <button class="btn" data-act="ortho" data-id="${id}">Orthographic</button>
-    </div>
-  </div>`;
+  return `<div class="viewer-hud"><span class="tag">DRAG TO ROTATE · SCROLL TO ZOOM</span></div>`;
 }
 
 function panelCommonHTML(id, spec){
@@ -1601,16 +1583,12 @@ function section(spec, extraControls, extraPanel, dimHTML, scaleOpts){
       <div class="viewer-col">
         <div class="viewer-canvas-wrap" id="canvas-${id}"></div>
         ${commonControlsHTML(id)}
-        <div style="position:absolute; bottom:52px; left:14px; display:flex; gap:6px;" id="extra-controls-${id}">${extraControls||''}</div>
       </div>
       <div class="panel-col">
         <div class="panel-block"><span class="status-pill" id="status-${id}">Prototype — Not Yet Fabrication Validated</span></div>
         <div class="panel-block"><h4>Function</h4><p class="func-text">${spec.func}</p></div>
         <div class="panel-block"><h4>Dimensions</h4>${dimHTML}</div>
         ${extraPanel||''}
-        ${panelCommonHTML(id, spec)}
-        ${scaleRefHTML(id, scaleOpts||[])}
-        ${fabNotesHTML(id, spec)}
       </div>
     </div>`;
   app.appendChild(el);
@@ -1706,32 +1684,9 @@ collSection.innerHTML=`
           <span class="k">005 Spill Paperweight</span><span class="v">~4.50 × 3.25 × 0.375″</span>
         </div>
       </div>
-      ${panelCommonHTML('collection', {defaultMaterial:'blackPowder'})}
     </div>
   </div>`;
 app.appendChild(collSection);
-
-/* ---- MATERIAL LAB ---- */
-const matSection=document.createElement('section');
-matSection.className='matlab';
-matSection.innerHTML=`
-  <div class="obj-header">
-    <div><div class="obj-num">REFERENCE</div><h2 class="obj-title">Material Lab</h2></div>
-    <div class="obj-sub">Select a finish to preview it applied across the full collection scene above.</div>
-  </div>
-  <div class="matlab-grid" id="matlabGrid"></div>`;
-app.appendChild(matSection);
-const matlabGrid=matSection.querySelector('#matlabGrid');
-Object.keys(MATERIALS).forEach(k=>{
-  const m=MATERIALS[k];
-  const div=document.createElement('div');
-  div.className='matlab-swatch'; div.dataset.mat=k;
-  const hex='#'+m.color.toString(16).padStart(6,'0');
-  div.innerHTML=`<div class="disc" style="background:radial-gradient(circle at 32% 28%, #fff8, ${hex} 55%, #0006 100%);"></div>
-    <div class="name">${m.label}</div>
-    <div class="spec">METAL ${m.metalness.toFixed(2)} · ROUGH ${m.roughness.toFixed(2)}</div>`;
-  matlabGrid.appendChild(div);
-});
 
 /* ============================================================================================
    INSTANTIATE VIEWERS
@@ -1756,7 +1711,7 @@ function makeViewer(id, opts){
   addDimLine(g,[-spec.W/2-0.6,0,spec.D/2+0.4],[-spec.W/2-0.6,spec.H,spec.D/2+0.4], `H ${spec.H.toFixed(2)}″`);
   addDimLine(g,[-spec.W/2,-0.6,-spec.D/2],[-spec.W/2,-0.6,spec.D/2], `D ${spec.D.toFixed(2)}″`);
   addDimLine(g,[spec.W/2+0.4,0,spec.D/2],[spec.W/2+0.4,spec.thickness*40,spec.D/2], `T ${spec.thickness.toFixed(3)}″ (16ga)`);
-  v.setMaterial(spec.defaultMaterial);
+  v.setMaterial('rawSteel');
 }
 
 // OBJECT 002
@@ -1771,14 +1726,14 @@ function makeViewer(id, opts){
   addDimLine(g,[-spec.W/2-0.18,0,spec.D/2+0.18],[-spec.W/2-0.18,spec.H,spec.D/2+0.18], `H ${spec.H.toFixed(3)}″`,0.05);
   addDimLine(g,[spec.W/2+0.18,spec.H/2+0.4,0],[spec.W/2+0.18,spec.H/2+0.4-spec.holeDepth,0], `HOLE DEPTH ${spec.holeDepth.toFixed(3)}″`,0.05);
   addDimLine(g,[-spec.holeD/2,spec.H/2+0.15,-spec.D/2-0.1],[spec.holeD/2,spec.H/2+0.15,-spec.D/2-0.1], `⌀ ${spec.holeD.toFixed(3)}″`,0.03);
-  v.setMaterial(spec.defaultMaterial);
+  v.setMaterial('rawSteel');
   v.userState=state;
 }
 
 // OBJECT 003
 {
   const spec=OPAL_SPECS.obj003;
-  const state={records:true};
+  const state={records:false};
   const v=makeViewer('obj003',{ groundY:0, gridSize:26, minDistance:5, maxDistance:60, target:[0,4,0], defaultCam:{pos:[15,9,17], target:[0,4,0]} });
   const frame=buildRecordHolder(spec, v.objectGroup, state);
   v.frameCenterY=frame.frameCenterY; v.frameDistance=frame.frameDistance;
@@ -1787,7 +1742,7 @@ function makeViewer(id, opts){
   addDimLine(g,[-spec.W/2-0.5,0,spec.D/2+0.4],[-spec.W/2-0.5,spec.H,spec.D/2+0.4], `H ${spec.H.toFixed(2)}″`);
   addDimLine(g,[-spec.W/2,-0.5,-spec.D/2],[-spec.W/2,-0.5,spec.D/2], `D ${spec.D.toFixed(2)}″`);
   addDimLine(g,[spec.W/2+0.3,0,spec.D/2-0.2],[spec.W/2+0.3,spec.lipH,spec.D/2-0.2], `LIP ${spec.lipH.toFixed(3)}″`);
-  v.setMaterial(spec.defaultMaterial);
+  v.setMaterial('rawSteel');
   v.userState=state;
 }
 
@@ -1804,7 +1759,7 @@ function makeViewer(id, opts){
   addDimLine(g,[-spec.W/2,-0.3,-spec.D/2],[-spec.W/2,-0.3,spec.D/2], `D ${spec.D.toFixed(2)}″`,0.08);
   addDimLine(g,[-3.0-spec.holeD/2,spec.H+0.2,1.6],[-3.0+spec.holeD/2,spec.H+0.2,1.6], `⌀ ${spec.holeD.toFixed(3)}″`,0.06);
   addDimLine(g,[-3.0,1.6,spec.D/2+0.2],[0,1.6,spec.D/2+0.2], `2.00″ SPACING`,0.06);
-  v.setMaterial(spec.defaultMaterial);
+  v.setMaterial('rawSteel');
   v.userState=state;
 }
 
@@ -1826,7 +1781,7 @@ function makeViewer(id, opts){
   }
   rebuildDims(frame.dims);
   v.rebuildDims=rebuildDims;
-  v.setMaterial(spec.defaultMaterial);
+  v.setMaterial('rawSteel');
   // scale reference (paper) needs to sit below object
   v.scaleRefOffsetY=-0.001;
 }
@@ -1847,7 +1802,7 @@ function makeViewer(id, opts){
     const mat=makeMaterial(key);
     g.traverse(o=>{ if(o.isMesh && o.userData.paintable!==false) o.material=mat; });
   };
-  v.setMaterial('blackPowder');
+  v.setMaterial('rawSteel');
 }
 
 /* ============================================================================================
@@ -1923,17 +1878,6 @@ document.addEventListener('input', (e)=>{
   else if(role==='amb') v.setAmbIntensity(val);
   else if(role==='angh') v.setKeyAngleH(val);
   else if(role==='angv') v.setKeyAngleV(val);
-});
-
-// material lab -> apply to collection
-matlabGrid.addEventListener('click',(e)=>{
-  const sw=e.target.closest('.matlab-swatch'); if(!sw) return;
-  matlabGrid.querySelectorAll('.matlab-swatch').forEach(s=>s.classList.remove('active'));
-  sw.classList.add('active');
-  const key=sw.dataset.mat;
-  viewers['collection'].setMaterial(key);
-  const sel=document.querySelector('select[data-role="material"][data-id="collection"]');
-  if(sel) sel.value=key;
 });
 </script>
 
