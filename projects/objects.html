@@ -17,12 +17,12 @@
    accent (technical annotation) #FF94C9
    ============================================================ */
 :root{
-  --paper:#FFFFFF;
-  --paper-dim:#F4F3EF;
-  --ink:#393939;
-  --line:#E4E3DE;
-  --line-strong:#393939;
-  --mid:#868686;
+  --paper:#000000;
+  --paper-dim:#0d0d0d;
+  --ink:#F4F4F2;
+  --line:#242424;
+  --line-strong:#333333;
+  --mid:#8a8a8a;
   --signal:#FF94C9;
   --panel-w:28%;
   --viewer-w:72%;
@@ -107,7 +107,7 @@ body.objects .label, body.objects .text-mid{ color:var(--mid); }
   position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:14px;
   pointer-events:none; font-family:var(--mono);
 }
-.viewer-hud .tag{ font-size:10px; letter-spacing:.1em; color:var(--mid); background:rgba(255,255,255,.85); padding:4px 8px; }
+.viewer-hud .tag{ font-size:10px; letter-spacing:.1em; color:var(--mid); background:rgba(0,0,0,.55); padding:4px 8px; }
 .viewer-controls{ position:absolute; bottom:0; left:0; right:0; padding:12px 14px; display:flex; flex-wrap:wrap; gap:6px; background:linear-gradient(to top, rgba(255,255,255,.94), rgba(255,255,255,0)); }
 .objects-wrap .btn{
   font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase;
@@ -916,7 +916,7 @@ function makeMaterial(key){
 }
 
 const ENVIRONMENTS = {
-  studio:   {key:2.2, fill:0.55, amb:0.45, bg:0xececea, keyColor:0xffffff, fillColor:0xffffff},
+  studio:   {key:2.6, fill:0.6,  amb:0.5,  bg:0x0d0d0d, keyColor:0xffffff, fillColor:0xffffff},
   soft:     {key:1.15,fill:1.0, amb:0.85, bg:0xf1f1ee, keyColor:0xfff3e6, fillColor:0xe6f0ff},
   dramatic: {key:3.1, fill:0.10,amb:0.12, bg:0x131311, keyColor:0xffffff, fillColor:0x88aaff},
   flat:     {key:1.0, fill:1.0, amb:1.2,  bg:0xf6f6f3, keyColor:0xffffff, fillColor:0xffffff}
@@ -1133,7 +1133,7 @@ class Viewer{
 
     // ground plane (subtle) always present for shadow/context feel (no real shadows to keep light)
     const groundGeo=new THREE.PlaneGeometry(gridSize,gridSize);
-    const groundMat=new THREE.MeshStandardMaterial({color:0xf1f0ec, roughness:1, metalness:0});
+    const groundMat=new THREE.MeshStandardMaterial({color:0x161616, roughness:1, metalness:0});
     this.ground=new THREE.Mesh(groundGeo, groundMat);
     this.ground.rotation.x=-Math.PI/2; this.ground.position.y=(opts.groundY!==undefined?opts.groundY:0)-0.001;
     this.scene.add(this.ground);
@@ -1827,7 +1827,7 @@ function makeViewer(id, opts){
   const gOrg=new THREE.Group(); buildOrganizer(OPAL_SPECS.obj001, gOrg); gOrg.position.set(-13,0,0); g.add(gOrg);
   const gBrick=new THREE.Group(); buildBrick(OPAL_SPECS.obj004, gBrick, {hollow:true}); gBrick.position.set(-0.5,0,-2); g.add(gBrick);
   const gCube=new THREE.Group(); buildCube(OPAL_SPECS.obj002, gCube, {hollow:false}); gCube.position.set(-1,0,5); g.add(gCube);
-  const gSpill=new THREE.Group(); buildSpill(OPAL_SPECS.obj005, gSpill, 7); gSpill.position.set(4.5,0,5); g.add(gSpill);
+  const gSpill=new THREE.Group(); buildSpill(OPAL_SPECS.obj005, gSpill, 7); gSpill.position.set(3,0,7.5); g.add(gSpill);
   const gRec=new THREE.Group(); buildRecordHolder(OPAL_SPECS.obj003, gRec, {records:true}); gRec.position.set(14,0,-1); g.add(gRec);
   v.collectionGroups={organizer:gOrg,cube:gCube,record:gRec,brick:gBrick,spill:gSpill};
   v.setMaterial=function(key){
