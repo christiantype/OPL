@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>Objects — OP/AL</title>
+<meta name="robots" content="noindex, nofollow" />
+<!-- Hidden project · Original Practice · not listed in projects.json -->
+<link rel="stylesheet" href="../shared/styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   OBJECTS — OPAL × TWO J'S · retyped into the OP/AL house style
+   ground #FFFFFF · ink #393939 · line #E4E3DE · mid #868686
+   accent (technical annotation) #FF94C9
+   ============================================================ */
+:root{
+  --paper:#FFFFFF;
+  --paper-dim:#F4F3EF;
+  --ink:#393939;
+  --line:#E4E3DE;
+  --line-strong:#393939;
+  --mid:#868686;
+  --signal:#FF94C9;
+  --panel-w:34%;
+  --viewer-w:66%;
+  --disp:"Sidepiece", Helvetica, Arial, sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, monospace;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body.objects{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--disp); line-height:1.4; -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body.objects ::selection{ background:var(--signal); color:var(--paper); }
+body.objects a{color:inherit;}
+body.objects button{font-family:var(--disp); cursor:pointer;}
+
+.objects-wrap .eyebrow{
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--mid);
+}
+.objects-wrap .rule{ height:1px; background:var(--line); border:0; margin:0; }
+.objects-wrap .rule-strong{ height:1px; background:var(--line-strong); border:0; margin:0; }
+
+/* ---------------- INTRO ---------------- */
+.intro{
+  min-height:100vh; display:flex; flex-direction:column; justify-content:space-between;
+  padding:calc(4em + 5vh) 5vw 5vh; position:relative;
+}
+.intro-top .eyebrow{margin-bottom:18px;}
+.intro-title{
+  font-family:var(--disp); font-size:clamp(44px, 9vw, 122px); font-weight:700; line-height:.94; letter-spacing:-0.02em; margin:0;
+}
+.intro-title small{
+  display:block; font-family:var(--mono); font-weight:400; font-size:clamp(12px,1.6vw,16px);
+  letter-spacing:.16em; color:var(--mid); margin-top:18px; text-transform:uppercase;
+}
+.intro-mid{
+  display:grid; grid-template-columns: 1.3fr 1fr; gap:60px; margin:8vh 0 6vh; align-items:start;
+}
+.intro-statement{ font-size:clamp(18px,2.4vw,26px); line-height:1.4; font-weight:400; max-width:640px; }
+.intro-meta{ font-family:var(--mono); font-size:12.5px; line-height:2; color:var(--mid); }
+.intro-meta b{ color:var(--ink); font-weight:500; }
+.intro-nav{ display:flex; flex-direction:column; gap:0; border-top:1px solid var(--line); }
+.intro-nav-item{
+  display:flex; align-items:center; gap:22px; padding:16px 2px; border-bottom:1px solid var(--line);
+  text-decoration:none; color:var(--ink); transition:padding-left .25s ease, color .25s ease;
+}
+.intro-nav-item:hover{ padding-left:14px; color:var(--signal); }
+.intro-nav-item .num{ font-family:var(--mono); font-size:13px; color:var(--mid); width:34px; }
+.intro-nav-item:hover .num{color:var(--signal);}
+.intro-nav-item .name{ font-size:16px; font-weight:400; letter-spacing:-0.01em; flex:1; }
+.intro-nav-item .go{ font-family:var(--mono); font-size:11px; color:var(--mid); opacity:0; transition:opacity .2s; }
+.intro-nav-item:hover .go{ opacity:1; }
+.intro-bottom{ display:flex; justify-content:space-between; align-items:flex-end; }
+.scroll-cue{ font-family:var(--mono); font-size:11px; color:var(--mid); letter-spacing:.1em; }
+.scroll-cue .bar{ width:1px; height:34px; background:var(--line-strong); margin:8px auto 0; animation:scrollcue 1.8s ease-in-out infinite; }
+@keyframes scrollcue{ 0%,100%{transform:scaleY(1); opacity:1;} 50%{transform:scaleY(.4); opacity:.4;} }
+
+/* ---------------- OBJECT SECTION ---------------- */
+.object-section{
+  min-height:104vh; padding:9vh 5vw 8vh; border-top:1px solid var(--line-strong);
+  display:flex; flex-direction:column; scroll-margin-top:5em;
+}
+.obj-header{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:5vh; gap:24px; flex-wrap:wrap;}
+.obj-num{ font-family:var(--mono); font-size:14px; color:var(--signal); letter-spacing:.1em; }
+.obj-title{ font-family:var(--disp); font-size:clamp(30px,5vw,60px); font-weight:700; letter-spacing:-0.02em; margin:6px 0 0; line-height:1; }
+.obj-sub{ font-family:var(--mono); font-size:12px; color:var(--mid); text-align:right; max-width:340px; line-height:1.6; }
+
+.obj-body{ display:flex; gap:0; flex:1; min-height:640px; border:1px solid var(--line-strong); }
+.viewer-col{ width:var(--viewer-w); position:relative; background:var(--paper-dim); border-right:1px solid var(--line-strong); }
+.panel-col{ width:var(--panel-w); padding:26px 26px 30px; overflow-y:auto; max-height:900px; }
+
+.viewer-canvas-wrap{ position:absolute; inset:0; }
+.viewer-canvas-wrap canvas{ display:block; width:100%; height:100%; touch-action:none; }
+
+.viewer-hud{
+  position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:14px;
+  pointer-events:none; font-family:var(--mono);
+}
+.viewer-hud .tag{ font-size:10px; letter-spacing:.1em; color:var(--mid); background:rgba(255,255,255,.85); padding:4px 8px; }
+.viewer-controls{ position:absolute; bottom:0; left:0; right:0; padding:12px 14px; display:flex; flex-wrap:wrap; gap:6px; background:linear-gradient(to top, rgba(255,255,255,.94), rgba(255,255,255,0)); }
+.objects-wrap .btn{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase;
+  background:var(--paper); border:1px solid var(--line-strong); color:var(--ink); padding:7px 10px;
+  transition:background .15s, color .15s;
+}
+.objects-wrap .btn:hover{ background:var(--ink); color:var(--paper); }
+.objects-wrap .btn.active{ background:var(--signal); border-color:var(--signal); color:var(--ink); }
+.objects-wrap .btn.wide{ padding-left:14px; padding-right:14px; }
+.ctrl-group{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.ctrl-sep{ width:1px; align-self:stretch; background:var(--line-strong); margin:0 2px; }
+
+/* panel */
+.panel-block{ padding:16px 0; border-bottom:1px solid var(--line); }
+.panel-block:first-child{ padding-top:0; }
+.panel-block h4{ font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--mid); margin:0 0 10px; }
+.status-pill{ font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; display:inline-block; padding:5px 9px; border:1px solid var(--signal); color:var(--signal); }
+.dim-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; font-family:var(--mono); font-size:12.5px; }
+.dim-grid .k{ color:var(--mid); }
+.dim-grid .v{ text-align:right; font-weight:500; }
+.func-text{ font-size:14px; line-height:1.55; margin:0; }
+.mini-note{ font-family:var(--mono); font-size:11px; color:var(--mid); line-height:1.6; margin:8px 0 0; }
+
+.select-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px; }
+.select-row label{ font-family:var(--mono); font-size:11px; color:var(--mid); }
+.objects-wrap select{
+  font-family:var(--mono); font-size:11px; background:var(--paper); border:1px solid var(--line-strong); padding:6px 8px; color:var(--ink); max-width:180px;
+}
+.slider-row{ margin-bottom:10px; }
+.slider-row .lbl{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:10.5px; color:var(--mid); margin-bottom:4px; }
+.objects-wrap input[type=range]{ width:100%; accent-color:var(--signal); }
+
+details.fab-notes{ margin-top:4px; }
+details.fab-notes summary{ font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:4px 0; color:var(--ink); }
+.fab-warn{ font-family:var(--mono); font-size:10.5px; color:var(--signal); line-height:1.6; margin:8px 0 12px; padding:8px 10px; border-left:2px solid var(--signal); background:rgba(255,148,201,.10); }
+.fab-fields{ display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; font-family:var(--mono); font-size:11.5px; margin-bottom:10px;}
+.fab-fields .k{color:var(--mid);}
+.fab-fields .v{}
+.q-list{ list-style:none; margin:0; padding:0; font-size:12.5px; }
+.q-list li{ padding:7px 0; border-top:1px dashed var(--line); display:flex; gap:8px; }
+.q-list li:before{ content:'→'; color:var(--signal); flex:none; }
+
+/* ---------------- COLLECTION ---------------- */
+.collection-section{ min-height:104vh; padding:9vh 5vw 8vh; border-top:1px solid var(--line-strong); display:flex; flex-direction:column; scroll-margin-top:5em;}
+
+/* ---------------- MATERIAL LAB ---------------- */
+.matlab{ padding:9vh 5vw 10vh; border-top:1px solid var(--line-strong); scroll-margin-top:5em; }
+.matlab-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:1px; background:var(--line-strong); border:1px solid var(--line-strong); margin-top:5vh; }
+.matlab-swatch{ background:var(--paper); padding:22px 16px; cursor:pointer; transition:background .2s; }
+.matlab-swatch:hover{ background:var(--paper-dim); }
+.matlab-swatch.active{ background:var(--ink); color:var(--paper); }
+.matlab-swatch .disc{ width:56px; height:56px; border-radius:50%; margin-bottom:16px; }
+.matlab-swatch .name{ font-size:13px; font-weight:400; letter-spacing:-0.01em; }
+.matlab-swatch .spec{ font-family:var(--mono); font-size:10px; color:var(--mid); margin-top:6px; }
+.matlab-swatch.active .spec{ color:#bbb; }
+
+@media (max-width: 880px){
+  :root{ --panel-w:100%; --viewer-w:100%; }
+  .obj-body{ flex-direction:column; }
+  .viewer-col{ width:100%; height:64vh; border-right:0; border-bottom:1px solid var(--line-strong); }
+  .panel-col{ width:100%; max-height:none; }
+  .intro-mid{ grid-template-columns:1fr; }
+  .obj-sub{ text-align:left; }
+}
+</style>
+</head>
+<body class="project objects">
+<script src="../shared/nav.js"></script>
+
+<div class="objects-wrap">
+<!-- ============================================================ INTRO ============================================================ -->
+<section class="intro">
+  <div class="intro-top">
+    <div class="eyebrow">Product Development Tool — Not For Fabrication</div>
+    <h1 class="intro-title">OPAL <span style="color:var(--signal)">×</span> TWO J'S
+      <small>Object Studies · 001–005</small>
+    </h1>
+  </div>
+
+  <div class="intro-mid">
+    <p class="intro-statement">An evolving collection of functional metal objects developed through graphic form, industrial material, and local fabrication.</p>
+    <div class="intro-meta">
+      Designed by <b>OPAL</b><br>
+      Fabrication development with <b>Two J's</b><br>
+      Chicago, Illinois<br><br>
+      1 unit = 1 inch — true relative scale
+    </div>
+  </div>
+
+  <div class="intro-nav" id="introNav">
+    <a class="intro-nav-item" href="#obj-001"><span class="num">001</span><span class="name">M/U Desktop Organizer</span><span class="go">View →</span></a>
+    <a class="intro-nav-item" href="#obj-002"><span class="num">002</span><span class="name">One-Inch Incense Cube</span><span class="go">View →</span></a>
+    <a class="intro-nav-item" href="#obj-003"><span class="num">003</span><span class="name">Record Storage + Now Playing</span><span class="go">View →</span></a>
+    <a class="intro-nav-item" href="#obj-004"><span class="num">004</span><span class="name">Chicago Brick Six-Pen Holder</span><span class="go">View →</span></a>
+    <a class="intro-nav-item" href="#obj-005"><span class="num">005</span><span class="name">Spill Paperweight</span><span class="go">View →</span></a>
+    <a class="intro-nav-item" href="#collection"><span class="num">—</span><span class="name">All Objects — Relative Scale</span><span class="go">View →</span></a>
+  </div>
+
+  <div class="intro-bottom">
+    <div class="scroll-cue">SCROLL<div class="bar"></div></div>
+    <div class="eyebrow">Prototype — Not Yet Fabrication Validated</div>
+  </div>
+</section>
+
+<!-- object sections + collection + material lab injected by JS -->
+<main id="app"></main>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+
+/* ---- EMBEDDED SOURCE MESHES (from Two J's / OPAL concept OBJ exports, 1 unit = 1 inch) ---- */
+const OBJ001_TEXT = `# https://github.com/mikedh/trimesh
+
+o left_leg
+v 0.00000000 -2.00000000 0.00000000
+v 0.00000000 -2.00000000 8.50000000
+v 0.00000000 2.00000000 0.00000000
+v 0.00000000 2.00000000 8.50000000
+v 0.18000000 -2.00000000 0.00000000
+v 0.18000000 -2.00000000 8.50000000
+v 0.18000000 2.00000000 0.00000000
+v 0.18000000 2.00000000 8.50000000
+f 2 4 1
+f 5 2 1
+f 1 4 3
+f 3 5 1
+f 2 8 4
+f 6 2 5
+f 6 8 2
+f 4 8 3
+f 7 5 3
+f 3 8 7
+f 7 6 5
+f 8 6 7
+
+o mid_leg
+v 2.91000000 -2.00000000 0.00000000
+v 2.91000000 -2.00000000 6.90000000
+v 2.91000000 2.00000000 0.00000000
+v 2.91000000 2.00000000 6.90000000
+v 3.09000000 -2.00000000 0.00000000
+v 3.09000000 -2.00000000 6.90000000
+v 3.09000000 2.00000000 0.00000000
+v 3.09000000 2.00000000 6.90000000
+f 10 12 9
+f 13 10 9
+f 9 12 11
+f 11 13 9
+f 10 16 12
+f 14 10 13
+f 14 16 10
+f 12 16 11
+f 15 13 11
+f 11 16 15
+f 15 14 13
+f 16 14 15
+
+o left_top
+v 0.00000000 -2.00000000 8.32000000
+v 0.00000000 -2.00000000 8.50000000
+v 0.00000000 2.00000000 8.32000000
+v 0.00000000 2.00000000 8.50000000
+v 2.00000000 -2.00000000 8.32000000
+v 2.00000000 -2.00000000 8.50000000
+v 2.00000000 2.00000000 8.32000000
+v 2.00000000 2.00000000 8.50000000
+f 18 20 17
+f 21 18 17
+f 17 20 19
+f 19 21 17
+f 18 24 20
+f 22 18 21
+f 22 24 18
+f 20 24 19
+f 23 21 19
+f 19 24 23
+f 23 22 21
+f 24 22 23
+
+o mid_top
+v 2.97500000 -2.00000000 8.32000000
+v 2.97500000 -2.00000000 8.50000000
+v 2.97500000 2.00000000 8.32000000
+v 2.97500000 2.00000000 8.50000000
+v 5.22500000 -2.00000000 8.32000000
+v 5.22500000 -2.00000000 8.50000000
+v 5.22500000 2.00000000 8.32000000
+v 5.22500000 2.00000000 8.50000000
+f 26 28 25
+f 29 26 25
+f 25 28 27
+f 27 29 25
+f 26 32 28
+f 30 26 29
+f 30 32 26
+f 28 32 27
+f 31 29 27
+f 27 32 31
+f 31 30 29
+f 32 30 31
+
+o transition
+v 5.16000000 -2.00000000 2.90000000
+v 5.16000000 -2.00000000 8.40000000
+v 5.16000000 2.00000000 2.90000000
+v 5.16000000 2.00000000 8.40000000
+v 5.34000000 -2.00000000 2.90000000
+v 5.34000000 -2.00000000 8.40000000
+v 5.34000000 2.00000000 2.90000000
+v 5.34000000 2.00000000 8.40000000
+f 34 36 33
+f 37 34 33
+f 33 36 35
+f 35 37 33
+f 34 40 36
+f 38 34 37
+f 38 40 34
+f 36 40 35
+f 39 37 35
+f 35 40 39
+f 39 38 37
+f 40 38 39
+
+o u_bottom
+v 5.25000000 -2.00000000 1.16000000
+v 5.25000000 -2.00000000 1.34000000
+v 5.25000000 2.00000000 1.16000000
+v 5.25000000 2.00000000 1.34000000
+v 15.00000000 -2.00000000 1.16000000
+v 15.00000000 -2.00000000 1.34000000
+v 15.00000000 2.00000000 1.16000000
+v 15.00000000 2.00000000 1.34000000
+f 42 44 41
+f 45 42 41
+f 41 44 43
+f 43 45 41
+f 42 48 44
+f 46 42 45
+f 46 48 42
+f 44 48 43
+f 47 45 43
+f 43 48 47
+f 47 46 45
+f 48 46 47
+
+o right_wall
+v 14.82000000 -2.00000000 1.15500000
+v 14.82000000 -2.00000000 5.90500000
+v 14.82000000 2.00000000 1.15500000
+v 14.82000000 2.00000000 5.90500000
+v 15.00000000 -2.00000000 1.15500000
+v 15.00000000 -2.00000000 5.90500000
+v 15.00000000 2.00000000 1.15500000
+v 15.00000000 2.00000000 5.90500000
+f 50 52 49
+f 53 50 49
+f 49 52 51
+f 51 53 49
+f 50 56 52
+f 54 50 53
+f 54 56 50
+f 52 56 51
+f 55 53 51
+f 51 56 55
+f 55 54 53
+f 56 54 55
+
+`;
+const OBJ002_TEXT = `# https://github.com/mikedh/trimesh
+
+o left_wall
+v -0.50000000 -0.50000000 0.00000000
+v -0.50000000 -0.50000000 1.00000000
+v -0.50000000 0.50000000 0.00000000
+v -0.50000000 0.50000000 1.00000000
+v -0.44000000 -0.50000000 0.00000000
+v -0.44000000 -0.50000000 1.00000000
+v -0.44000000 0.50000000 0.00000000
+v -0.44000000 0.50000000 1.00000000
+f 2 4 1
+f 5 2 1
+f 1 4 3
+f 3 5 1
+f 2 8 4
+f 6 2 5
+f 6 8 2
+f 4 8 3
+f 7 5 3
+f 3 8 7
+f 7 6 5
+f 8 6 7
+
+o right_wall
+v 0.44000000 -0.50000000 0.00000000
+v 0.44000000 -0.50000000 1.00000000
+v 0.44000000 0.50000000 0.00000000
+v 0.44000000 0.50000000 1.00000000
+v 0.50000000 -0.50000000 0.00000000
+v 0.50000000 -0.50000000 1.00000000
+v 0.50000000 0.50000000 0.00000000
+v 0.50000000 0.50000000 1.00000000
+f 10 12 9
+f 13 10 9
+f 9 12 11
+f 11 13 9
+f 10 16 12
+f 14 10 13
+f 14 16 10
+f 12 16 11
+f 15 13 11
+f 11 16 15
+f 15 14 13
+f 16 14 15
+
+o front_wall
+v -0.44000000 -0.50000000 0.00000000
+v -0.44000000 -0.50000000 1.00000000
+v -0.44000000 -0.44000000 0.00000000
+v -0.44000000 -0.44000000 1.00000000
+v 0.44000000 -0.50000000 0.00000000
+v 0.44000000 -0.50000000 1.00000000
+v 0.44000000 -0.44000000 0.00000000
+v 0.44000000 -0.44000000 1.00000000
+f 18 20 17
+f 21 18 17
+f 17 20 19
+f 19 21 17
+f 18 24 20
+f 22 18 21
+f 22 24 18
+f 20 24 19
+f 23 21 19
+f 19 24 23
+f 23 22 21
+f 24 22 23
+
+o back_wall
+v -0.44000000 0.44000000 0.00000000
+v -0.44000000 0.44000000 1.00000000
+v -0.44000000 0.50000000 0.00000000
+v -0.44000000 0.50000000 1.00000000
+v 0.44000000 0.44000000 0.00000000
+v 0.44000000 0.44000000 1.00000000
+v 0.44000000 0.50000000 0.00000000
+v 0.44000000 0.50000000 1.00000000
+f 26 28 25
+f 29 26 25
+f 25 28 27
+f 27 29 25
+f 26 32 28
+f 30 26 29
+f 30 32 26
+f 28 32 27
+f 31 29 27
+f 27 32 31
+f 31 30 29
+f 32 30 31
+
+o bottom
+v -0.44000000 -0.44000000 0.00000000
+v -0.44000000 -0.44000000 0.06000000
+v -0.44000000 0.44000000 0.00000000
+v -0.44000000 0.44000000 0.06000000
+v 0.44000000 -0.44000000 0.00000000
+v 0.44000000 -0.44000000 0.06000000
+v 0.44000000 0.44000000 0.00000000
+v 0.44000000 0.44000000 0.06000000
+f 34 36 33
+f 37 34 33
+f 33 36 35
+f 35 37 33
+f 34 40 36
+f 38 34 37
+f 38 40 34
+f 36 40 35
+f 39 37 35
+f 35 40 39
+f 39 38 37
+f 40 38 39
+
+o top_left
+v -0.50000000 -0.50000000 0.94000000
+v -0.50000000 -0.50000000 1.00000000
+v -0.50000000 0.50000000 0.94000000
+v -0.50000000 0.50000000 1.00000000
+v -0.07800000 -0.50000000 0.94000000
+v -0.07800000 -0.50000000 1.00000000
+v -0.07800000 0.50000000 0.94000000
+v -0.07800000 0.50000000 1.00000000
+f 42 44 41
+f 45 42 41
+f 41 44 43
+f 43 45 41
+f 42 48 44
+f 46 42 45
+f 46 48 42
+f 44 48 43
+f 47 45 43
+f 43 48 47
+f 47 46 45
+f 48 46 47
+
+o top_right
+v 0.07800000 -0.50000000 0.94000000
+v 0.07800000 -0.50000000 1.00000000
+v 0.07800000 0.50000000 0.94000000
+v 0.07800000 0.50000000 1.00000000
+v 0.50000000 -0.50000000 0.94000000
+v 0.50000000 -0.50000000 1.00000000
+v 0.50000000 0.50000000 0.94000000
+v 0.50000000 0.50000000 1.00000000
+f 50 52 49
+f 53 50 49
+f 49 52 51
+f 51 53 49
+f 50 56 52
+f 54 50 53
+f 54 56 50
+f 52 56 51
+f 55 53 51
+f 51 56 55
+f 55 54 53
+f 56 54 55
+
+o top_front
+v -0.07800000 -0.50000000 0.94000000
+v -0.07800000 -0.50000000 1.00000000
+v -0.07800000 -0.07800000 0.94000000
+v -0.07800000 -0.07800000 1.00000000
+v 0.07800000 -0.50000000 0.94000000
+v 0.07800000 -0.50000000 1.00000000
+v 0.07800000 -0.07800000 0.94000000
+v 0.07800000 -0.07800000 1.00000000
+f 58 60 57
+f 61 58 57
+f 57 60 59
+f 59 61 57
+f 58 64 60
+f 62 58 61
+f 62 64 58
+f 60 64 59
+f 63 61 59
+f 59 64 63
+f 63 62 61
+f 64 62 63
+
+o top_back
+v -0.07800000 0.07800000 0.94000000
+v -0.07800000 0.07800000 1.00000000
+v -0.07800000 0.50000000 0.94000000
+v -0.07800000 0.50000000 1.00000000
+v 0.07800000 0.07800000 0.94000000
+v 0.07800000 0.07800000 1.00000000
+v 0.07800000 0.50000000 0.94000000
+v 0.07800000 0.50000000 1.00000000
+f 66 68 65
+f 69 66 65
+f 65 68 67
+f 67 69 65
+f 66 72 68
+f 70 66 69
+f 70 72 66
+f 68 72 67
+f 71 69 67
+f 67 72 71
+f 71 70 69
+f 72 70 71
+
+`;
+const OBJ003_TEXT = `# https://github.com/mikedh/trimesh
+
+o base
+v -6.75000000 -5.50000000 0.00000000
+v -6.75000000 -5.50000000 0.06000000
+v -6.75000000 5.50000000 0.00000000
+v -6.75000000 5.50000000 0.06000000
+v 6.75000000 -5.50000000 0.00000000
+v 6.75000000 -5.50000000 0.06000000
+v 6.75000000 5.50000000 0.00000000
+v 6.75000000 5.50000000 0.06000000
+f 2 4 1
+f 5 2 1
+f 1 4 3
+f 3 5 1
+f 2 8 4
+f 6 2 5
+f 6 8 2
+f 4 8 3
+f 7 5 3
+f 3 8 7
+f 7 6 5
+f 8 6 7
+
+o left_side
+v -6.75000000 -5.50000000 0.00000000
+v -6.75000000 -5.50000000 8.50000000
+v -6.75000000 5.50000000 0.00000000
+v -6.75000000 5.50000000 8.50000000
+v -6.69000000 -5.50000000 0.00000000
+v -6.69000000 -5.50000000 8.50000000
+v -6.69000000 5.50000000 0.00000000
+v -6.69000000 5.50000000 8.50000000
+f 10 12 9
+f 13 10 9
+f 9 12 11
+f 11 13 9
+f 10 16 12
+f 14 10 13
+f 14 16 10
+f 12 16 11
+f 15 13 11
+f 11 16 15
+f 15 14 13
+f 16 14 15
+
+o right_side
+v 6.69000000 -5.50000000 0.00000000
+v 6.69000000 -5.50000000 8.50000000
+v 6.69000000 5.50000000 0.00000000
+v 6.69000000 5.50000000 8.50000000
+v 6.75000000 -5.50000000 0.00000000
+v 6.75000000 -5.50000000 8.50000000
+v 6.75000000 5.50000000 0.00000000
+v 6.75000000 5.50000000 8.50000000
+f 18 20 17
+f 21 18 17
+f 17 20 19
+f 19 21 17
+f 18 24 20
+f 22 18 21
+f 22 24 18
+f 20 24 19
+f 23 21 19
+f 19 24 23
+f 23 22 21
+f 24 22 23
+
+o rear_wall
+v -6.69000000 5.44000000 0.00000000
+v -6.69000000 5.44000000 8.50000000
+v -6.69000000 5.50000000 0.00000000
+v -6.69000000 5.50000000 8.50000000
+v 6.69000000 5.44000000 0.00000000
+v 6.69000000 5.44000000 8.50000000
+v 6.69000000 5.50000000 0.00000000
+v 6.69000000 5.50000000 8.50000000
+f 26 28 25
+f 29 26 25
+f 25 28 27
+f 27 29 25
+f 26 32 28
+f 30 26 29
+f 30 32 26
+f 28 32 27
+f 31 29 27
+f 27 32 31
+f 31 30 29
+f 32 30 31
+
+o front_ledge
+v -6.75000000 -5.50000000 0.02000000
+v -6.75000000 -5.50000000 0.08000000
+v -6.75000000 -4.25000000 0.02000000
+v -6.75000000 -4.25000000 0.08000000
+v 6.75000000 -5.50000000 0.02000000
+v 6.75000000 -5.50000000 0.08000000
+v 6.75000000 -4.25000000 0.02000000
+v 6.75000000 -4.25000000 0.08000000
+f 34 36 33
+f 37 34 33
+f 33 36 35
+f 35 37 33
+f 34 40 36
+f 38 34 37
+f 38 40 34
+f 36 40 35
+f 39 37 35
+f 35 40 39
+f 39 38 37
+f 40 38 39
+
+o front_lip
+v -6.75000000 -5.50000000 0.00000000
+v -6.75000000 -5.50000000 0.87500000
+v -6.75000000 -5.44000000 0.00000000
+v -6.75000000 -5.44000000 0.87500000
+v 6.75000000 -5.50000000 0.00000000
+v 6.75000000 -5.50000000 0.87500000
+v 6.75000000 -5.44000000 0.00000000
+v 6.75000000 -5.44000000 0.87500000
+f 42 44 41
+f 45 42 41
+f 41 44 43
+f 43 45 41
+f 42 48 44
+f 46 42 45
+f 46 48 42
+f 44 48 43
+f 47 45 43
+f 43 48 47
+f 47 46 45
+f 48 46 47
+
+o divider
+v -6.75000000 -4.28000000 0.00000000
+v -6.75000000 -4.28000000 4.00000000
+v -6.75000000 -4.22000000 0.00000000
+v -6.75000000 -4.22000000 4.00000000
+v 6.75000000 -4.28000000 0.00000000
+v 6.75000000 -4.28000000 4.00000000
+v 6.75000000 -4.22000000 0.00000000
+v 6.75000000 -4.22000000 4.00000000
+f 50 52 49
+f 53 50 49
+f 49 52 51
+f 51 53 49
+f 50 56 52
+f 54 50 53
+f 54 56 50
+f 52 56 51
+f 55 53 51
+f 51 56 55
+f 55 54 53
+f 56 54 55
+
+`;
+const OBJ005_TEXT = `# https://github.com/mikedh/trimesh
+
+o spill_paperweight
+v 1.99042319 -0.13255318 0.00000000
+v 1.95411809 0.49470444 0.00000000
+v 2.04620308 1.12668226 0.00000000
+v 1.43489567 1.67230141 0.00000000
+v 0.47052879 1.67356314 0.00000000
+v -0.70936446 1.42727455 0.00000000
+v -1.23163639 1.02255376 0.00000000
+v -1.61946866 0.67121412 0.00000000
+v -2.11767772 0.35214589 0.00000000
+v -2.45379692 -0.34095984 0.00000000
+v -2.43089278 -0.91119404 0.00000000
+v -1.83224804 -1.27868836 0.00000000
+v -1.20386001 -1.25156303 0.00000000
+v -0.62254475 -1.32294803 0.00000000
+v -0.01480681 -1.52818852 0.00000000
+v 0.76826266 -1.57643686 0.00000000
+v 1.48711032 -1.28461965 0.00000000
+v 2.00632060 -0.77406665 0.00000000
+v 1.99042319 -0.13255318 0.37500000
+v 1.95411809 0.49470444 0.37500000
+v 2.04620308 1.12668226 0.37500000
+v 1.43489567 1.67230141 0.37500000
+v 0.47052879 1.67356314 0.37500000
+v -0.70936446 1.42727455 0.37500000
+v -1.23163639 1.02255376 0.37500000
+v -1.61946866 0.67121412 0.37500000
+v -2.11767772 0.35214589 0.37500000
+v -2.45379692 -0.34095984 0.37500000
+v -2.43089278 -0.91119404 0.37500000
+v -1.83224804 -1.27868836 0.37500000
+v -1.20386001 -1.25156303 0.37500000
+v -0.62254475 -1.32294803 0.37500000
+v -0.01480681 -1.52818852 0.37500000
+v 0.76826266 -1.57643686 0.37500000
+v 1.48711032 -1.28461965 0.37500000
+v 2.00632060 -0.77406665 0.37500000
+v -0.34279237 -0.13255318 0.00000000
+v -0.34279237 -0.13255318 0.37500000
+f 38 19 20
+f 37 2 1
+f 1 2 20
+f 1 20 19
+f 38 20 21
+f 37 3 2
+f 2 3 21
+f 2 21 20
+f 38 21 22
+f 37 4 3
+f 3 4 22
+f 3 22 21
+f 38 22 23
+f 37 5 4
+f 4 5 23
+f 4 23 22
+f 38 23 24
+f 37 6 5
+f 5 6 24
+f 5 24 23
+f 38 24 25
+f 37 7 6
+f 6 7 25
+f 6 25 24
+f 38 25 26
+f 37 8 7
+f 7 8 26
+f 7 26 25
+f 38 26 27
+f 37 9 8
+f 8 9 27
+f 8 27 26
+f 38 27 28
+f 37 10 9
+f 9 10 28
+f 9 28 27
+f 38 28 29
+f 37 11 10
+f 10 11 29
+f 10 29 28
+f 38 29 30
+f 37 12 11
+f 11 12 30
+f 11 30 29
+f 38 30 31
+f 37 13 12
+f 12 13 31
+f 12 31 30
+f 38 31 32
+f 37 14 13
+f 13 14 32
+f 13 32 31
+f 38 32 33
+f 37 15 14
+f 14 15 33
+f 14 33 32
+f 38 33 34
+f 37 16 15
+f 15 16 34
+f 15 34 33
+f 38 34 35
+f 37 17 16
+f 16 17 35
+f 16 35 34
+f 38 35 36
+f 37 18 17
+f 17 18 36
+f 17 36 35
+f 38 36 19
+f 37 1 18
+f 18 1 19
+f 18 19 36
+
+`;
+
+/* ============================================================================================
+   OPAL PRODUCT SPECIFICATIONS — EDIT DIMENSIONS HERE
+   All values in inches unless noted. This object drives BOTH the 3D geometry and the
+   displayed dimensions in each info panel — change a number here and both update together.
+   ============================================================================================ */
+const OPAL_SPECS = {
+  obj001:{
+    id:"001", name:"M/U Desktop Organizer", func:"Sculptural desktop organizer derived from an OPAL graphic form. The left “M” creates elevated surfaces for small objects; the right “U” forms a trough for folders, papers, envelopes, and notebooks.",
+    W:15.00, D:4.00, H:8.50, thickness:0.060, thicknessNote:"16ga cold rolled steel (nominal 0.0598″)",
+    bendRadius:0.85,
+    defaultMaterial:"blackPowder",
+    fabrication:{material:"Cold rolled steel, 16ga", process1:"Laser cut flat pattern", process2:"Brake / press-brake forming", finish:"Deburr, powder coat", components:"1 primary formed sheet", questions:["Can this be laser cut and brake-formed as a single continuous piece, or does it require multiple welded sections?","What minimum inside bend radius is achievable in 16ga on your brake?","Would you recommend a heavier gauge for rigidity across the 15″ span?","What finishing is available in-house vs. outsourced for powder coat?"]}
+  },
+  obj002:{
+    id:"002", name:"One-Inch Incense Cube", func:"An extremely simple object: a one-inch cube with a single centered incense hole. No tray, drawer, magnets, feet, or ornament.",
+    W:1.000, D:1.000, H:1.000, holeD:0.156, holeDepth:0.750, holeChamfer:0.02, edgeRadius:0.03,
+    wall:0.060, defaultMaterial:"brushedBrass",
+    fabrication:{material:"Brushed brass (solid or hollow-fabricated)", process1:"Solid: machined from bar stock. Hollow: laser/waterjet cut + folded or soldered shell", process2:"Drilled incense hole, 0.156″ dia x 0.750″ deep", finish:"Brushed, light deburr / edge break", components:"1 (solid) or ~5 (hollow shell)", questions:["Is solid bar stock or a hollow fabricated shell more cost-effective at volume?","What is the smallest reliable drilled hole diameter you can hold (0.156″ target)?","For the hollow version, can the shell be soldered/brazed cleanly at this scale?","What wall thickness is realistic for a hollow 1″ cube (0.060″ target)?"]}
+  },
+  obj003:{
+    id:"003", name:"Record Storage + Now Playing Stand", func:"Stores a small collection of vinyl records while displaying the album currently playing, almost fully exposed, separate from stored inventory.",
+    W:13.50, D:11.00, H:8.50, thickness:0.060, thicknessNote:"16ga cold rolled steel",
+    lipH:0.875, ledgeD:1.25, leanDeg:10, storageDepth:6.5, capacity:"15–20 LPs",
+    defaultMaterial:"blackPowder",
+    fabrication:{material:"Cold rolled steel, 16ga", process1:"Laser cut flat pattern(s)", process2:"Brake bend into a single folded shell where possible", finish:"Deburr, powder coat", components:"Target: 1–2 formed shells + base", questions:["Can the storage body and display ledge be formed from one continuous folded shell?","What is the minimum practical weld length if a seam is unavoidable?","Would a 10° lean angle need adjustment for stability with a full record + jacket?","What stock sheet sizes keep this as a single blank without seaming?"]}
+  },
+  obj004:{
+    id:"004", name:"Chicago Brick Six-Pen Holder", func:"A desktop pen holder referencing the proportion, mass, and material of a common Chicago brick — no applied graphics or labeling, proportion only.",
+    W:8.00, D:3.75, H:2.25, holeD:0.625, holeDepth:1.625, edgeRadius:0.08,
+    hollowWall:0.120, defaultMaterial:"rawAluminum",
+    fabrication:{material:"Hollow: welded steel plate. Solid: machined aluminum block", process1:"Hollow: laser cut plate + weld / Solid: CNC mill + drill", process2:"6x drilled/sleeved holes, 0.625″ dia x 1.625″ deep", finish:"Raw / brushed, deburr", components:"Hollow: 6 plates + 6 sleeves. Solid: 1 block", questions:["Is a welded hollow steel shell or a solid machined aluminum block more efficient for you?","What wall thickness keeps the hollow version rigid without excess weight (0.120″ target)?","Can sleeve tubes be inserted and welded cleanly at this diameter?","What tolerance should we expect on hole spacing across a 2×3 grid?"]}
+  },
+  obj005:{
+    id:"005", name:"Spill Paperweight", func:"A small composed puddle of frozen metal, unique to every piece — a material study intended to use scrap and remnant offcuts from other fabrication runs.",
+    Wmin:3.5, Wmax:5.0, Dmin:2.5, Dmax:4.25, Hmin:0.25, Hmax:0.50, edgeRadius:0.06,
+    nominal:{W:4.5,D:3.25,H:0.375}, defaultMaterial:"rawSteel",
+    fabrication:{material:"Scrap / remnant plate (steel, stainless, aluminum, or brass)", process1:"Waterjet or laser cut from offcut stock", process2:"Edge grinding / radiusing", finish:"As-cut, ground edge, light polish optional", components:"1 (uses remnant material)", questions:["What offcut sizes are typically available from other jobs?","Can silhouettes be nested efficiently across irregular remnant shapes?","What edge finish is practical for a 0.04–0.08″ ground radius at this scale?","Is waterjet or laser more appropriate for this thickness range (0.25–0.50″)?"]}
+  }
+};
+
+const MATERIALS = {
+  rawSteel:      {label:"Raw Cold Rolled Steel", color:0x8f8d88, metalness:0.85, roughness:0.62},
+  brushedSteel:  {label:"Brushed Stainless Steel", color:0xb7bbbc, metalness:0.92, roughness:0.34},
+  polishedSteel: {label:"Polished Stainless Steel", color:0xd2d5d6, metalness:0.97, roughness:0.06},
+  rawAluminum:   {label:"Raw Aluminum", color:0xacadb0, metalness:0.65, roughness:0.52},
+  brushedAluminum:{label:"Brushed Aluminum", color:0xc7c9cb, metalness:0.78, roughness:0.28},
+  brushedBrass:  {label:"Brushed Brass", color:0xac8547, metalness:0.92, roughness:0.30},
+  blackPowder:   {label:"Black Powder Coat", color:0x1b1b1b, metalness:0.12, roughness:0.48},
+  whitePowder:   {label:"White Powder Coat", color:0xebe9e3, metalness:0.08, roughness:0.46}
+};
+function makeMaterial(key){
+  const m = MATERIALS[key] || MATERIALS.rawSteel;
+  return new THREE.MeshStandardMaterial({ color:m.color, metalness:m.metalness, roughness:m.roughness, envMapIntensity:1.15 });
+}
+
+const ENVIRONMENTS = {
+  studio:   {key:2.2, fill:0.55, amb:0.45, bg:0xececea, keyColor:0xffffff, fillColor:0xffffff},
+  soft:     {key:1.15,fill:1.0, amb:0.85, bg:0xf1f1ee, keyColor:0xfff3e6, fillColor:0xe6f0ff},
+  dramatic: {key:3.1, fill:0.10,amb:0.12, bg:0x131311, keyColor:0xffffff, fillColor:0x88aaff},
+  flat:     {key:1.0, fill:1.0, amb:1.2,  bg:0xf6f6f3, keyColor:0xffffff, fillColor:0xffffff}
+};
+
+/* ---------------------------------------------------------------- utility: rounded polyline ---------------------------------------------------------------- */
+function roundCorners(pts, radius, segs=8){
+  const out=[];
+  for(let i=0;i<pts.length;i++){
+    if(i===0 || i===pts.length-1){ out.push(pts[i]); continue; }
+    const p0=pts[i-1], p1=pts[i], p2=pts[i+1];
+    const v1x=p0[0]-p1[0], v1y=p0[1]-p1[1];
+    const v2x=p2[0]-p1[0], v2y=p2[1]-p1[1];
+    const l1=Math.hypot(v1x,v1y), l2=Math.hypot(v2x,v2y);
+    const t=Math.min(radius, l1*0.48, l2*0.48);
+    const a=[p1[0]+v1x/l1*t, p1[1]+v1y/l1*t];
+    const b=[p1[0]+v2x/l2*t, p1[1]+v2y/l2*t];
+    for(let s=0;s<=segs;s++){
+      const u=s/segs;
+      const x=(1-u)*(1-u)*a[0]+2*(1-u)*u*p1[0]+u*u*b[0];
+      const y=(1-u)*(1-u)*a[1]+2*(1-u)*u*p1[1]+u*u*b[1];
+      out.push([x,y]);
+    }
+  }
+  return out;
+}
+function ribbonShape(centerline, thickness){
+  const n=centerline.length; const left=[], right=[];
+  for(let i=0;i<n;i++){
+    const p=centerline[i];
+    const prev=centerline[Math.max(0,i-1)], next=centerline[Math.min(n-1,i+1)];
+    let dx=next[0]-prev[0], dy=next[1]-prev[1];
+    const len=Math.hypot(dx,dy)||1; dx/=len; dy/=len;
+    const nx=-dy, ny=dx;
+    left.push([p[0]+nx*thickness/2, p[1]+ny*thickness/2]);
+    right.push([p[0]-nx*thickness/2, p[1]-ny*thickness/2]);
+  }
+  const shape=new THREE.Shape();
+  shape.moveTo(left[0][0], left[0][1]);
+  for(let i=1;i<left.length;i++) shape.lineTo(left[i][0], left[i][1]);
+  for(let i=right.length-1;i>=0;i--) shape.lineTo(right[i][0], right[i][1]);
+  shape.closePath();
+  return shape;
+}
+
+/* ---------------------------------------------------------------- source-mesh loader (Two J's / OPAL concept OBJ exports) ---------------------------------------------------------------- */
+const objLoader = new OBJLoader();
+const objCache = {};
+function parseOBJ(text, cacheKey){
+  if(cacheKey && objCache[cacheKey]) return objCache[cacheKey].clone(true);
+  const root = objLoader.parse(text);
+  // source files are Z-up, inches, matching W(x) x D(y) x H(z); convert to three.js Y-up
+  root.rotation.x = -Math.PI/2;
+  root.traverse(o=>{
+    if(o.isMesh){
+      o.geometry.computeVertexNormals();
+      o.material = new THREE.MeshStandardMaterial({color:0x9a9a96, metalness:0.7, roughness:0.5, flatShading:true});
+    }
+  });
+  root.updateMatrixWorld(true);
+  if(cacheKey) objCache[cacheKey]=root;
+  return root.clone(true);
+}
+function meshesNamed(root, name){
+  const out=[];
+  root.traverse(o=>{
+    if(o.isMesh && (o.name===name || (o.parent && o.parent.name===name))) out.push(o);
+  });
+  return out;
+}
+function localBox(root, names){
+  const box=new THREE.Box3();
+  (Array.isArray(names)?names:[names]).forEach(n=>{
+    meshesNamed(root,n).forEach(m=> box.expandByObject(m));
+  });
+  return box.isEmpty()? null : box;
+}
+function setMeshesVisible(root, names, visible){
+  (Array.isArray(names)?names:[names]).forEach(n=>{
+    meshesNamed(root,n).forEach(m=> m.visible = visible);
+  });
+}
+
+/* ---------------------------------------------------------------- dimension label sprites ---------------------------------------------------------------- */
+function makeLabelSprite(text){
+  const canvas=document.createElement('canvas'); const scale=6;
+  const font=`${16*scale}px 'IBM Plex Mono', monospace`;
+  const ctx=canvas.getContext('2d'); ctx.font=font;
+  const w=Math.ceil(ctx.measureText(text).width)+24*scale; const h=30*scale;
+  canvas.width=w; canvas.height=h;
+  const ctx2=canvas.getContext('2d'); ctx2.font=font;
+  ctx2.fillStyle="rgba(255,255,255,0.94)"; ctx2.fillRect(0,0,w,h);
+  ctx2.fillStyle="#FF94C9"; ctx2.fillRect(0,0,4*scale,h);
+  ctx2.fillStyle="#393939"; ctx2.textBaseline="middle";
+  ctx2.fillText(text, 14*scale, h/2+1);
+  const tex=new THREE.CanvasTexture(canvas);
+  tex.minFilter=THREE.LinearFilter;
+  const mat=new THREE.SpriteMaterial({map:tex, depthTest:false, transparent:true});
+  const sprite=new THREE.Sprite(mat);
+  const aspect=w/h; const H=0.34; sprite.scale.set(H*aspect, H, 1);
+  sprite.renderOrder=999;
+  return sprite;
+}
+function addDimLine(group, p1, p2, label, tickLen=0.15){
+  const mat=new THREE.LineBasicMaterial({color:0xFF94C9, depthTest:false});
+  const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...p1), new THREE.Vector3(...p2)]);
+  const line=new THREE.Line(geo, mat); line.renderOrder=998; group.add(line);
+  // ticks
+  const dir=new THREE.Vector3(...p2).sub(new THREE.Vector3(...p1)).normalize();
+  let perp=new THREE.Vector3(0,1,0).cross(dir); if(perp.lengthSq()<0.001) perp=new THREE.Vector3(1,0,0).cross(dir);
+  perp.normalize().multiplyScalar(tickLen);
+  [p1,p2].forEach(p=>{
+    const c=new THREE.Vector3(...p);
+    const a=c.clone().sub(perp), b=c.clone().add(perp);
+    const tgeo=new THREE.BufferGeometry().setFromPoints([a,b]);
+    group.add(new THREE.Line(tgeo, mat));
+  });
+  const mid=new THREE.Vector3(...p1).add(new THREE.Vector3(...p2)).multiplyScalar(0.5);
+  mid.add(perp.clone().normalize().multiplyScalar(0.28));
+  const sprite=makeLabelSprite(label);
+  sprite.position.copy(mid);
+  group.add(sprite);
+}
+
+/* ---------------------------------------------------------------- scale reference builders ---------------------------------------------------------------- */
+function scaleRefBuilders(){
+  return {
+    hand:()=>{
+      const g=new THREE.Group();
+      const shape=new THREE.Shape();
+      // rough palm+fingers silhouette, ~7in long, flat on desk
+      const pts=[[0,0],[1.8,0.2],[2.6,3.2],[2.35,3.5],[1.9,3.55],[1.75,3.1],[1.55,3.6],[1.15,3.65],[1.0,3.15],[0.85,3.62],[0.45,3.6],[0.4,3.05],[0.15,2.6],[-0.3,0.6]];
+      shape.moveTo(pts[0][0],pts[0][1]);
+      pts.slice(1).forEach(p=>shape.lineTo(p[0],p[1]));
+      shape.closePath();
+      const geo=new THREE.ExtrudeGeometry(shape,{depth:0.05, bevelEnabled:false});
+      geo.rotateX(-Math.PI/2);
+      const mesh=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:0xd8b898, roughness:0.9, transparent:true, opacity:0.55}));
+      g.add(mesh); return g;
+    },
+    pencil:()=>{
+      const g=new THREE.Group();
+      const body=new THREE.Mesh(new THREE.CylinderGeometry(0.135,0.135,7.5,6), new THREE.MeshStandardMaterial({color:0xE8B84B, roughness:0.6}));
+      body.rotation.z=Math.PI/2; body.position.y=0.135;
+      g.add(body); return g;
+    },
+    paper:()=>{
+      const g=new THREE.Group();
+      const geo=new THREE.BoxGeometry(11,0.03,8.5);
+      const mesh=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.95}));
+      mesh.position.y=0.015; g.add(mesh); return g;
+    },
+    record:()=>{
+      const g=new THREE.Group();
+      const geo=new THREE.CylinderGeometry(6,6,0.04,64);
+      const mesh=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:0x111111, roughness:0.4, metalness:0.1}));
+      mesh.position.y=0.02; g.add(mesh); return g;
+    }
+  };
+}
+
+/* ============================================================================================
+   GENERIC VIEWER CLASS — reused by all six scenes
+   ============================================================================================ */
+let sharedEnvTex=null;
+class Viewer{
+  constructor(container, opts={}){
+    this.container=container;
+    this.dims={}; // populated by object builder for dimension overlay
+    this.scaleRefKinds=opts.scaleRefKinds||[];
+    this.scene=new THREE.Scene();
+    this.scene.background=new THREE.Color(ENVIRONMENTS.studio.bg);
+
+    const w=container.clientWidth, h=container.clientHeight;
+    this.persp=new THREE.PerspectiveCamera(38, w/h, 0.05, 500);
+    const orthoSize=opts.orthoSize||10;
+    this.ortho=new THREE.OrthographicCamera(-orthoSize, orthoSize, orthoSize*h/w, -orthoSize*h/w, 0.05, 500);
+    this.camera=this.persp;
+    this.usingOrtho=false;
+
+    this.renderer=new THREE.WebGLRenderer({antialias:true, alpha:false});
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.75));
+    this.renderer.setSize(w,h);
+    this.renderer.shadowMap.enabled=false;
+    container.appendChild(this.renderer.domElement);
+
+    if(!sharedEnvTex){
+      const pmrem=new THREE.PMREMGenerator(this.renderer);
+      sharedEnvTex=pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    }
+    this.scene.environment=sharedEnvTex;
+
+    this.controls=new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping=true; this.controls.dampingFactor=0.08;
+    this.controls.minDistance=opts.minDistance||1;
+    this.controls.maxDistance=opts.maxDistance||120;
+    this.controls.target.set(...(opts.target||[0,0,0]));
+
+    // lights
+    this.hemi=new THREE.HemisphereLight(0xffffff,0x555555,0.5); this.scene.add(this.hemi);
+    this.key=new THREE.DirectionalLight(0xffffff,2.2); this.scene.add(this.key);
+    this.fill=new THREE.DirectionalLight(0xffffff,0.5); this.scene.add(this.fill);
+    this.amb=new THREE.AmbientLight(0xffffff,0.4); this.scene.add(this.amb);
+    this.keyAngleH=45; this.keyAngleV=45; this.keyDist=opts.keyDist||16;
+    this.setEnvironment('studio');
+    this._positionKeyLight();
+    this.fill.position.set(-8,4,-6);
+
+    // grid
+    const gridSize=opts.gridSize||24;
+    this.grid=new THREE.GridHelper(gridSize, gridSize, 0xbbbbbb, 0xdcdcd8);
+    this.grid.position.y=opts.groundY!==undefined?opts.groundY:0;
+    this.grid.visible=false; this.scene.add(this.grid);
+
+    // ground plane (subtle) always present for shadow/context feel (no real shadows to keep light)
+    const groundGeo=new THREE.PlaneGeometry(gridSize,gridSize);
+    const groundMat=new THREE.MeshStandardMaterial({color:0xf1f0ec, roughness:1, metalness:0});
+    this.ground=new THREE.Mesh(groundGeo, groundMat);
+    this.ground.rotation.x=-Math.PI/2; this.ground.position.y=(opts.groundY!==undefined?opts.groundY:0)-0.001;
+    this.scene.add(this.ground);
+
+    this.objectGroup=new THREE.Group(); this.scene.add(this.objectGroup);
+    this.dimGroup=new THREE.Group(); this.dimGroup.visible=false; this.scene.add(this.dimGroup);
+    this.scaleRefGroup=new THREE.Group(); this.scaleRefGroup.visible=false; this.scene.add(this.scaleRefGroup);
+
+    this.defaultCamState=opts.defaultCam||{pos:[10,8,14], target:[0,3,0]};
+    this._applyCamState(this.defaultCamState, true);
+
+    this._resizeObs=new ResizeObserver(()=>this.onResize());
+    this._resizeObs.observe(container);
+
+    this._visible=true;
+    this._io=new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{ this._visible=e.isIntersecting; });
+    },{threshold:0.02});
+    this._io.observe(container.closest('.object-section, .collection-section') || container);
+
+    this._animating=false;
+    this._clock=new THREE.Clock();
+    this._tick();
+  }
+  _positionKeyLight(){
+    const h=THREE.MathUtils.degToRad(this.keyAngleH), v=THREE.MathUtils.degToRad(this.keyAngleV);
+    const d=this.keyDist;
+    const x=d*Math.cos(v)*Math.sin(h);
+    const y=d*Math.sin(v);
+    const z=d*Math.cos(v)*Math.cos(h);
+    this.key.position.set(x,Math.max(y,1),z);
+  }
+  setKeyAngleH(deg){ this.keyAngleH=deg; this._positionKeyLight(); }
+  setKeyAngleV(deg){ this.keyAngleV=Math.max(5,Math.min(85,deg)); this._positionKeyLight(); }
+  setEnvironment(name){
+    const e=ENVIRONMENTS[name]; if(!e) return;
+    this.env=name;
+    this.key.intensity=e.key; this.key.color.setHex(e.keyColor);
+    this.fill.intensity=e.fill; this.fill.color.setHex(e.fillColor);
+    this.amb.intensity=e.amb;
+    this.scene.background=new THREE.Color(e.bg);
+    this._baseKey=e.key; this._baseFill=e.fill; this._baseAmb=e.amb;
+    this.keyMul=1; this.fillMul=1; this.ambMul=1;
+  }
+  setKeyIntensity(mul){ this.keyMul=mul; this.key.intensity=this._baseKey*mul; }
+  setFillIntensity(mul){ this.fillMul=mul; this.fill.intensity=this._baseFill*mul; }
+  setAmbIntensity(mul){ this.ambMul=mul; this.amb.intensity=this._baseAmb*mul; }
+  setMaterial(key){
+    this.currentMaterial=key;
+    const mat=makeMaterial(key);
+    this.objectGroup.traverse(o=>{ if(o.isMesh && o.userData.paintable!==false) o.material=mat; });
+  }
+  toggleGrid(force){ this.grid.visible = force!==undefined?force:!this.grid.visible; return this.grid.visible; }
+  toggleDimensions(force){ this.dimGroup.visible = force!==undefined?force:!this.dimGroup.visible; return this.dimGroup.visible; }
+  toggleAutoRotate(force){ this.controls.autoRotate = force!==undefined?force:!this.controls.autoRotate; this.controls.autoRotateSpeed=1.6; return this.controls.autoRotate; }
+  setScaleRef(kind){
+    this.scaleRefGroup.clear();
+    if(!kind || kind==='none'){ this.scaleRefGroup.visible=false; return; }
+    const builders=scaleRefBuilders();
+    if(builders[kind]){ this.scaleRefGroup.add(builders[kind]()); this.scaleRefGroup.visible=true; }
+  }
+  setPerspective(usePersp){
+    const target=this.controls.target.clone();
+    const fromCam=this.camera; const toCam= usePersp? this.persp : this.ortho;
+    if(fromCam===toCam) return;
+    const pos=fromCam.position.clone();
+    toCam.position.copy(pos);
+    toCam.lookAt(target);
+    this.camera=toCam; this.usingOrtho=!usePersp;
+    this.controls.object=this.camera;
+    this.controls.update();
+    this.onResize();
+  }
+  _applyCamState(state, instant){
+    if(instant){
+      this.camera.position.set(...state.pos);
+      this.controls.target.set(...state.target);
+      this.controls.update();
+      return;
+    }
+    this._animCam = {
+      fromPos:this.camera.position.clone(), toPos:new THREE.Vector3(...state.pos),
+      fromTarget:this.controls.target.clone(), toTarget:new THREE.Vector3(...state.target),
+      t:0, dur:0.65
+    };
+  }
+  cameraPreset(name){
+    const d=this.frameDistance||16;
+    const presets={
+      front:{pos:[0,this.frameCenterY||3, d], target:[0,this.frameCenterY||3,0]},
+      side:{pos:[d,this.frameCenterY||3,0], target:[0,this.frameCenterY||3,0]},
+      top:{pos:[0.001,d*1.3,0.001], target:[0,this.frameCenterY||3,0]},
+      perspective:this.defaultCamState
+    };
+    const s=presets[name]; if(s) this._applyCamState(s,false);
+  }
+  resetView(){ this._applyCamState(this.defaultCamState, false); }
+  onResize(){
+    const w=this.container.clientWidth, h=Math.max(this.container.clientHeight,1);
+    this.renderer.setSize(w,h);
+    this.persp.aspect=w/h; this.persp.updateProjectionMatrix();
+    const s=this.ortho.top; this.ortho.left=-s*w/h; this.ortho.right=s*w/h; this.ortho.updateProjectionMatrix();
+  }
+  _tick(){
+    requestAnimationFrame(()=>this._tick());
+    if(!this._visible) return;
+    const dt=this._clock.getDelta();
+    if(this._animCam){
+      this._animCam.t=Math.min(1,this._animCam.t+dt/this._animCam.dur);
+      const e=1-Math.pow(1-this._animCam.t,3); // ease out cubic
+      this.camera.position.lerpVectors(this._animCam.fromPos, this._animCam.toPos, e);
+      this.controls.target.lerpVectors(this._animCam.fromTarget, this._animCam.toTarget, e);
+      if(this._animCam.t>=1) this._animCam=null;
+    }
+    this.controls.update();
+    this.renderer.render(this.scene, this.camera);
+  }
+}
+
+/* ============================================================================================
+   OBJECT BUILDERS
+   ============================================================================================ */
+function buildOrganizer(spec, group){
+  group.clear();
+  try{
+    const mesh=parseOBJ(OBJ001_TEXT, 'obj001');
+    mesh.position.x = -spec.W/2; // source file spans X:0->W; center it like the rest of the scene
+    group.add(mesh);
+  }catch(err){
+    console.warn('OBJ001 parse failed, using procedural fallback', err);
+    buildOrganizerProcedural(spec, group);
+  }
+  return { frameCenterY: spec.H/2.4, frameDistance: 22 };
+}
+// procedural fallback (used only if the source mesh fails to parse)
+function buildOrganizerProcedural(spec, group){
+  const T=spec.thickness;
+  const raw=[
+    [0.35,0],[0.35,8.4],[1.55,2.7],[3.2,8.4],[4.55,3.9],
+    [5.5,1.25],[6.0,1.15],[13.2,1.15],[14.15,1.15],[14.65,6.0]
+  ];
+  const rounded=roundCorners(raw, spec.bendRadius, 10);
+  const shape=ribbonShape(rounded, T);
+  const geo=new THREE.ExtrudeGeometry(shape, {depth:spec.D, bevelEnabled:false, curveSegments:1});
+  geo.translate(0,0,-spec.D/2);
+  const mesh=new THREE.Mesh(geo, makeMaterial(spec.defaultMaterial));
+  mesh.position.x=-spec.W/2;
+  group.add(mesh);
+}
+
+function buildCube(spec, group, state){
+  group.clear();
+  const hollow = !state || state.hollow!==false;
+  if(hollow){
+    // real hollow-shell concept mesh — walls + solid bottom + 4-piece top ring around the incense hole
+    const mesh=parseOBJ(OBJ002_TEXT, 'obj002');
+    group.add(mesh);
+    setMeshesVisible(mesh, ['top_left','top_right','top_front','top_back'], !(state && state.cutaway));
+  } else {
+    // solid version: machined from bar stock — no source mesh provided, use a solid block + blind hole
+    const S=spec.W;
+    const shell=new THREE.Mesh(new THREE.BoxGeometry(S,S,S), makeMaterial(spec.defaultMaterial));
+    shell.position.y = S/2;
+    group.add(shell);
+    const holeMesh=new THREE.Mesh(
+      new THREE.CylinderGeometry(spec.holeD/2, spec.holeD/2, spec.holeDepth+0.01, 24),
+      new THREE.MeshStandardMaterial({color:0x050505, roughness:0.9, metalness:0.1})
+    );
+    holeMesh.userData.paintable=false;
+    holeMesh.position.y = S - spec.holeDepth/2 + 0.005;
+    group.add(holeMesh);
+  }
+  return { frameCenterY: spec.W/2, frameDistance: 3.2 };
+}
+
+function buildRecordHolder(spec, group, state){
+  group.clear();
+  let mesh;
+  try{
+    mesh=parseOBJ(OBJ003_TEXT, 'obj003');
+    group.add(mesh);
+  }catch(err){
+    console.warn('OBJ003 parse failed, using procedural fallback', err);
+    mesh=null;
+  }
+  const W=spec.W, D=spec.D, H=spec.H, T=spec.thickness;
+  // locate the real front ledge from the source mesh to place the "now playing" record accurately
+  let ledgeZ = -D/2 + spec.storageDepth + spec.ledgeD/2 + T;
+  const ledgeBox = mesh ? localBox(mesh, 'front_ledge') : null;
+  if(ledgeBox) ledgeZ = (ledgeBox.min.z + ledgeBox.max.z)/2;
+
+  // stored records (optional) — procedural, placed in the rear storage bay
+  if(state && state.records){
+    const sleeveMat=new THREE.MeshStandardMaterial({color:0xd6d3ca, roughness:0.85});
+    const count=11;
+    const startZ=-D/2+T+0.15;
+    for(let i=0;i<count;i++){
+      const s=new THREE.Mesh(new THREE.BoxGeometry(W-2*T-0.4, H-T-0.4, 0.09), sleeveMat.clone());
+      s.material.color.offsetHSL(0,0,(Math.random()-0.5)*0.05);
+      s.userData.paintable=false;
+      s.position.set(0, (H-T-0.4)/2+T, startZ + i*0.42);
+      group.add(s);
+    }
+  }
+  // now playing record, leaning against the front ledge/lip
+  const discR=6.0;
+  const disc=new THREE.Group();
+  const vinyl=new THREE.Mesh(new THREE.CylinderGeometry(discR,discR,0.04,64), new THREE.MeshStandardMaterial({color:0x0c0c0c, roughness:0.35, metalness:0.05}));
+  vinyl.userData.paintable=false;
+  vinyl.rotation.x=Math.PI/2;
+  const label=new THREE.Mesh(new THREE.CylinderGeometry(1.9,1.9,0.05,48), new THREE.MeshStandardMaterial({color:0xb23a2e, roughness:0.6}));
+  label.userData.paintable=false; label.rotation.x=Math.PI/2; label.position.z=0.021;
+  disc.add(vinyl, label);
+  disc.rotation.x = -THREE.MathUtils.degToRad(spec.leanDeg);
+  disc.position.set(0, spec.lipH + discR*0.98, ledgeZ - 0.05);
+  group.add(disc);
+
+  return { frameCenterY: H/2.2, frameDistance: 20 };
+}
+
+// procedural hollow six-pen brick — welded-shell concept: walls + bottom + holed top plate + 6 bore sleeves.
+// (named parts match what buildBrick expects: 'top_plate' for cutaway, 'sleeve_ci_ri' for tool placement.)
+function buildBrickHollowMesh(spec){
+  const W=spec.W, H=spec.H, D=spec.D, wall=spec.hollowWall, r=spec.holeD/2, depth=spec.holeDepth;
+  const cols=[-3.0,0,3.0], rows=[-0.725,0.725];
+  const grp=new THREE.Group();
+  const mat=()=> new THREE.MeshStandardMaterial({color:0x9a9a96, metalness:0.7, roughness:0.5, flatShading:true});
+  const shell=new THREE.Group(); shell.name='shell';
+  const addBox=(w,h,d,x,y,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat()); m.position.set(x,y,z); shell.add(m); };
+  addBox(W, wall, D, 0, wall/2, 0);                       // bottom
+  addBox(W, H, wall, 0, H/2, -D/2+wall/2);                // back wall
+  addBox(W, H, wall, 0, H/2,  D/2-wall/2);                // front wall
+  addBox(wall, H, D-2*wall, -W/2+wall/2, H/2, 0);         // left wall
+  addBox(wall, H, D-2*wall,  W/2-wall/2, H/2, 0);         // right wall
+  grp.add(shell);
+  // top plate with six holes
+  const shape=new THREE.Shape();
+  shape.moveTo(-W/2,-D/2); shape.lineTo(W/2,-D/2); shape.lineTo(W/2,D/2); shape.lineTo(-W/2,D/2); shape.closePath();
+  cols.forEach(cx=> rows.forEach(cz=>{ const hole=new THREE.Path(); hole.absarc(cx,cz,r,0,Math.PI*2,true); shape.holes.push(hole); }));
+  const tpGeo=new THREE.ExtrudeGeometry(shape,{depth:wall, bevelEnabled:false, curveSegments:20}); tpGeo.rotateX(-Math.PI/2); tpGeo.translate(0,H,0);
+  const tp=new THREE.Mesh(tpGeo, mat()); tp.name='top_plate'; grp.add(tp);
+  // six bore sleeves lining each hole
+  cols.forEach((cx,ci)=> rows.forEach((cz,ri)=>{
+    const tube=new THREE.Mesh(new THREE.CylinderGeometry(r,r,depth,24,1,true), mat());
+    tube.name=`sleeve_${ci}_${ri}`;
+    tube.position.set(cx, H-depth/2, cz);
+    grp.add(tube);
+  }));
+  grp.updateMatrixWorld(true);
+  return grp;
+}
+
+function buildBrick(spec, group, state){
+  group.clear();
+  const hollow = !state || state.hollow!==false;
+  const cols=[-3.0,0,3.0], rows=[-0.725,0.725];
+  if(hollow){
+    // procedural welded-shell concept — walls + bottom + holed top plate + 6 internal sleeves
+    const mesh=buildBrickHollowMesh(spec);
+    group.add(mesh);
+    setMeshesVisible(mesh, ['top_plate'], !(state && state.cutaway));
+    if(state && state.tools){
+      const toolsSpec=[
+        {r:0.09,len:7.2,color:0xE0C158},{r:0.07,len:5.4,color:0xC7C7C7},{r:0.05,len:5.6,color:0x2255BB},
+        {r:0.13,len:5.6,color:0x222222},{r:0.15,len:5.4,color:0xE8E8E8},{r:0.19,len:5.8,color:0x111111}
+      ];
+      let idx=0;
+      for(let ci=0;ci<3;ci++) for(let ri=0;ri<2;ri++){
+        const sleeveBox=localBox(mesh, `sleeve_${ci}_${ri}`);
+        const t=toolsSpec[idx%toolsSpec.length]; idx++;
+        const cx = sleeveBox ? (sleeveBox.min.x+sleeveBox.max.x)/2 : cols[ci];
+        const cz = sleeveBox ? (sleeveBox.min.z+sleeveBox.max.z)/2 : rows[ri];
+        const topY = sleeveBox ? sleeveBox.max.y : spec.H;
+        const toolMesh=new THREE.Mesh(new THREE.CylinderGeometry(t.r,t.r*0.92,t.len,10), new THREE.MeshStandardMaterial({color:t.color, roughness:0.5}));
+        toolMesh.userData.paintable=false;
+        toolMesh.position.set(cx, topY + t.len/2 - 0.35, cz);
+        group.add(toolMesh);
+      }
+    }
+  } else {
+    // solid aluminum version: no source mesh provided — machined block with 6 drilled fake holes
+    const W=spec.W, D=spec.D, H=spec.H;
+    const body=new THREE.Mesh(new THREE.BoxGeometry(W,H,D), makeMaterial(spec.defaultMaterial));
+    body.position.y = H/2;
+    group.add(body);
+    const holeMat=new THREE.MeshStandardMaterial({color:0x050505, roughness:0.9});
+    cols.forEach(cx=> rows.forEach(cz=>{
+      const h=new THREE.Mesh(new THREE.CylinderGeometry(spec.holeD/2, spec.holeD/2, spec.holeDepth+0.01, 20), holeMat);
+      h.userData.paintable=false;
+      h.position.set(cx, H - spec.holeDepth/2 + 0.005, cz);
+      group.add(h);
+      if(state && state.tools){
+        const toolsSpec=[
+          {r:0.09,len:7.2,color:0xE0C158},{r:0.07,len:5.4,color:0xC7C7C7},{r:0.05,len:5.6,color:0x2255BB},
+          {r:0.13,len:5.6,color:0x222222},{r:0.15,len:5.4,color:0xE8E8E8},{r:0.19,len:5.8,color:0x111111}
+        ];
+        const idx=(cols.indexOf(cx)*2)+(rows.indexOf(cz));
+        const t=toolsSpec[idx%toolsSpec.length];
+        const toolMesh=new THREE.Mesh(new THREE.CylinderGeometry(t.r,t.r*0.92,t.len,10), new THREE.MeshStandardMaterial({color:t.color, roughness:0.5}));
+        toolMesh.userData.paintable=false;
+        toolMesh.position.set(cx, H + t.len/2 - 0.35, cz);
+        group.add(toolMesh);
+      }
+    }));
+  }
+  return { frameCenterY: spec.H/2, frameDistance: 10 };
+}
+
+function seededRandom(seed){
+  let s=seed>>>0;
+  return function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296; };
+}
+function buildSpill(spec, group, seed){
+  group.clear();
+  if(seed===0){
+    // Spill 001 — the actual scrap-offcut concept mesh supplied by Two J's, used as-is
+    try{
+      const mesh=parseOBJ(OBJ005_TEXT, 'obj005');
+      group.add(mesh);
+      const box=new THREE.Box3().setFromObject(mesh);
+      const dims={ W:box.max.x-box.min.x, D:box.max.z-box.min.z, H:box.max.y-box.min.y };
+      return { frameCenterY:0.6, frameDistance:6.5, dims };
+    }catch(err){
+      console.warn('OBJ005 parse failed, using procedural fallback', err);
+    }
+  }
+  return buildSpillProcedural(spec, group, seed||1);
+}
+function buildSpillProcedural(spec, group, seed){
+  const rand=seededRandom(seed);
+  const cx=0, cy=0;
+  const nPts=10+Math.floor(rand()*6); // 10-15
+  const baseR=(spec.Wmax+spec.Wmin)/4.4;
+  const pts=[];
+  const lobeBias=[];
+  const lobeCount=3+Math.floor(rand()*5); // 3-7
+  for(let i=0;i<nPts;i++) lobeBias.push(0);
+  for(let l=0;l<lobeCount;l++){
+    const center=Math.floor(rand()*nPts);
+    const strength=0.35+rand()*0.55;
+    for(let k=-1;k<=1;k++){
+      const idx=(center+k+nPts)%nPts;
+      lobeBias[idx]+=strength*(k===0?1:0.45);
+    }
+  }
+  for(let i=0;i<nPts;i++){
+    const ang=(i/nPts)*Math.PI*2;
+    const jitter=0.72+rand()*0.5;
+    const r=baseR*jitter*(1+lobeBias[i]*0.55);
+    pts.push(new THREE.Vector2(cx+Math.cos(ang)*r, cy+Math.sin(ang)*r));
+  }
+  const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p.x,p.y,0)), true, 'catmullrom', 0.55);
+  const samples=curve.getPoints(96);
+  const shape=new THREE.Shape(samples.map(p=>new THREE.Vector2(p.x,p.y)));
+  const H = spec.nominal.H;
+  const geo=new THREE.ExtrudeGeometry(shape, {depth:H, bevelEnabled:true, bevelThickness:spec.edgeRadius, bevelSize:spec.edgeRadius, bevelSegments:3, curveSegments:2});
+  geo.rotateX(-Math.PI/2);
+  geo.translate(0,H,0);
+  const mesh=new THREE.Mesh(geo, makeMaterial(spec.defaultMaterial));
+  group.add(mesh);
+  // compute rough bounding box for panel display
+  geo.computeBoundingBox();
+  const bb=geo.boundingBox;
+  const dims={W:(bb.max.x-bb.min.x), D:(bb.max.z-bb.min.z), H:H};
+  return { frameCenterY:0.6, frameDistance:6.5, dims };
+}
+
+/* ============================================================================================
+   PAGE ASSEMBLY
+   ============================================================================================ */
+const app=document.getElementById('app');
+
+function commonControlsHTML(id){
+  return `
+  <div class="viewer-hud">
+    <span class="tag">DRAG ROTATE · SCROLL ZOOM · RIGHT-DRAG PAN</span>
+    <span class="tag" data-role="matlabel-${id}">MATERIAL</span>
+  </div>
+  <div class="viewer-controls">
+    <div class="ctrl-group">
+      <button class="btn" data-act="auto" data-id="${id}">Auto Rotate</button>
+      <button class="btn" data-act="reset" data-id="${id}">Reset View</button>
+    </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group">
+      <button class="btn" data-act="front" data-id="${id}">Front</button>
+      <button class="btn" data-act="side" data-id="${id}">Side</button>
+      <button class="btn" data-act="top" data-id="${id}">Top</button>
+      <button class="btn" data-act="perspective" data-id="${id}">Perspective</button>
+    </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group">
+      <button class="btn" data-act="grid" data-id="${id}">Grid</button>
+      <button class="btn" data-act="dims" data-id="${id}">Dimensions</button>
+      <button class="btn" data-act="ortho" data-id="${id}">Orthographic</button>
+    </div>
+  </div>`;
+}
+
+function panelCommonHTML(id, spec){
+  return `
+  <div class="panel-block">
+    <h4>Material / Finish</h4>
+    <select data-role="material" data-id="${id}">
+      ${Object.keys(MATERIALS).map(k=>`<option value="${k}" ${k===spec.defaultMaterial?'selected':''}>${MATERIALS[k].label}</option>`).join('')}
+    </select>
+  </div>
+  <div class="panel-block">
+    <h4>Lighting</h4>
+    <div class="select-row"><label>Environment</label>
+      <select data-role="env" data-id="${id}">
+        <option value="studio">Studio</option><option value="soft">Soft</option>
+        <option value="dramatic">Dramatic</option><option value="flat">Flat</option>
+      </select>
+    </div>
+    <div class="slider-row"><div class="lbl"><span>Key Light Intensity</span></div><input type="range" min="0" max="2.5" step="0.05" value="1" data-role="key" data-id="${id}"></div>
+    <div class="slider-row"><div class="lbl"><span>Fill Light Intensity</span></div><input type="range" min="0" max="2.5" step="0.05" value="1" data-role="fill" data-id="${id}"></div>
+    <div class="slider-row"><div class="lbl"><span>Ambient Light</span></div><input type="range" min="0" max="2.5" step="0.05" value="1" data-role="amb" data-id="${id}"></div>
+    <div class="slider-row"><div class="lbl"><span>Key Light — Horizontal</span></div><input type="range" min="0" max="360" step="1" value="45" data-role="angh" data-id="${id}"></div>
+    <div class="slider-row"><div class="lbl"><span>Key Light — Vertical</span></div><input type="range" min="10" max="80" step="1" value="45" data-role="angv" data-id="${id}"></div>
+  </div>`;
+}
+
+function scaleRefHTML(id, options){
+  return `<div class="panel-block"><h4>Scale Reference</h4>
+    <select data-role="scaleref" data-id="${id}">
+      <option value="none">None</option>
+      ${options.map(o=>`<option value="${o.v}">${o.l}</option>`).join('')}
+    </select>
+  </div>`;
+}
+
+function fabNotesHTML(id, spec){
+  const f=spec.fabrication;
+  return `
+  <div class="panel-block">
+    <details class="fab-notes">
+      <summary>Fabrication Notes</summary>
+      <div class="fab-warn">Dimensions and fabrication details are design-development specifications and must be reviewed by the fabricator before production.</div>
+      <div class="fab-fields">
+        <span class="k">Material</span><span class="v">${f.material}</span>
+        <span class="k">Primary process</span><span class="v">${f.process1}</span>
+        <span class="k">Secondary process</span><span class="v">${f.process2}</span>
+        <span class="k">Finish</span><span class="v">${f.finish}</span>
+        <span class="k">Component count</span><span class="v">${f.components}</span>
+      </div>
+      <h4 style="margin-top:14px;">Questions for Two J's</h4>
+      <ul class="q-list">${f.questions.map(q=>`<li>${q}</li>`).join('')}</ul>
+    </details>
+  </div>`;
+}
+
+function section(spec, extraControls, extraPanel, dimHTML, scaleOpts){
+  const id=`obj${spec.id}`;
+  const el=document.createElement('section');
+  el.className='object-section'; el.id=`obj-${spec.id}`;
+  el.innerHTML=`
+    <div class="obj-header">
+      <div><div class="obj-num">${spec.id} / 005</div><h2 class="obj-title">${spec.name}</h2></div>
+      <div class="obj-sub">${spec.func}</div>
+    </div>
+    <div class="obj-body">
+      <div class="viewer-col">
+        <div class="viewer-canvas-wrap" id="canvas-${id}"></div>
+        ${commonControlsHTML(id)}
+        <div style="position:absolute; bottom:52px; left:14px; display:flex; gap:6px;" id="extra-controls-${id}">${extraControls||''}</div>
+      </div>
+      <div class="panel-col">
+        <div class="panel-block"><span class="status-pill" id="status-${id}">Prototype — Not Yet Fabrication Validated</span></div>
+        <div class="panel-block"><h4>Function</h4><p class="func-text">${spec.func}</p></div>
+        <div class="panel-block"><h4>Dimensions</h4>${dimHTML}</div>
+        ${extraPanel||''}
+        ${panelCommonHTML(id, spec)}
+        ${scaleRefHTML(id, scaleOpts||[])}
+        ${fabNotesHTML(id, spec)}
+      </div>
+    </div>`;
+  app.appendChild(el);
+  return id;
+}
+
+/* ---- OBJECT 001 ---- */
+const id001 = section(OPAL_SPECS.obj001, '', '', `
+  <div class="dim-grid">
+    <span class="k">Width</span><span class="v">${OPAL_SPECS.obj001.W.toFixed(2)}″</span>
+    <span class="k">Height</span><span class="v">${OPAL_SPECS.obj001.H.toFixed(2)}″</span>
+    <span class="k">Depth</span><span class="v">${OPAL_SPECS.obj001.D.toFixed(2)}″</span>
+    <span class="k">Material thickness</span><span class="v">${OPAL_SPECS.obj001.thickness.toFixed(3)}″</span>
+    <span class="k">Bend radius (approx.)</span><span class="v">${OPAL_SPECS.obj001.bendRadius.toFixed(2)}″</span>
+    <span class="k">Gauge</span><span class="v">16ga CRS</span>
+  </div>`, [{v:'paper',l:'US Letter Paper'}]);
+
+/* ---- OBJECT 002 ---- */
+const id002 = section(OPAL_SPECS.obj002,
+  `<button class="btn" data-act="hollow-toggle" data-id="obj002">Solid / Hollow</button>
+   <button class="btn" data-act="cutaway-toggle" data-id="obj002">Cutaway</button>`, '', `
+  <div class="dim-grid">
+    <span class="k">Width</span><span class="v">${OPAL_SPECS.obj002.W.toFixed(3)}″</span>
+    <span class="k">Depth</span><span class="v">${OPAL_SPECS.obj002.D.toFixed(3)}″</span>
+    <span class="k">Height</span><span class="v">${OPAL_SPECS.obj002.H.toFixed(3)}″</span>
+    <span class="k">Hole diameter</span><span class="v">${OPAL_SPECS.obj002.holeD.toFixed(3)}″</span>
+    <span class="k">Hole depth</span><span class="v">${OPAL_SPECS.obj002.holeDepth.toFixed(3)}″</span>
+    <span class="k">Edge radius</span><span class="v">${OPAL_SPECS.obj002.edgeRadius.toFixed(3)}″</span>
+    <span class="k">Wall (hollow ver.)</span><span class="v">${OPAL_SPECS.obj002.wall.toFixed(3)}″</span>
+  </div>`, [{v:'hand',l:'Human Hand Silhouette'}]);
+
+/* ---- OBJECT 003 ---- */
+const id003 = section(OPAL_SPECS.obj003, `<button class="btn" data-act="records-toggle" data-id="obj003">Records On/Off</button>`, '', `
+  <div class="dim-grid">
+    <span class="k">Width</span><span class="v">${OPAL_SPECS.obj003.W.toFixed(2)}″</span>
+    <span class="k">Depth</span><span class="v">${OPAL_SPECS.obj003.D.toFixed(2)}″</span>
+    <span class="k">Height</span><span class="v">${OPAL_SPECS.obj003.H.toFixed(2)}″</span>
+    <span class="k">Material thickness</span><span class="v">${OPAL_SPECS.obj003.thickness.toFixed(3)}″</span>
+    <span class="k">Front lip height</span><span class="v">${OPAL_SPECS.obj003.lipH.toFixed(3)}″</span>
+    <span class="k">Display ledge depth</span><span class="v">${OPAL_SPECS.obj003.ledgeD.toFixed(2)}″</span>
+    <span class="k">Display lean angle</span><span class="v">${OPAL_SPECS.obj003.leanDeg}°</span>
+    <span class="k">Storage capacity</span><span class="v">${OPAL_SPECS.obj003.capacity}</span>
+  </div>`, [{v:'record',l:'12″ Vinyl Record'}]);
+
+/* ---- OBJECT 004 ---- */
+const id004 = section(OPAL_SPECS.obj004,
+  `<button class="btn" data-act="hollow-toggle" data-id="obj004">Hollow Steel / Solid Aluminum</button>
+   <button class="btn" data-act="cutaway-toggle" data-id="obj004">Cutaway</button>
+   <button class="btn" data-act="tools-toggle" data-id="obj004">Tools On/Off</button>`, '', `
+  <div class="dim-grid">
+    <span class="k">Width</span><span class="v">${OPAL_SPECS.obj004.W.toFixed(2)}″</span>
+    <span class="k">Depth</span><span class="v">${OPAL_SPECS.obj004.D.toFixed(2)}″</span>
+    <span class="k">Height</span><span class="v">${OPAL_SPECS.obj004.H.toFixed(2)}″</span>
+    <span class="k">Hole diameter (x6)</span><span class="v">${OPAL_SPECS.obj004.holeD.toFixed(3)}″</span>
+    <span class="k">Hole depth</span><span class="v">${OPAL_SPECS.obj004.holeDepth.toFixed(3)}″</span>
+    <span class="k">Edge radius</span><span class="v">${OPAL_SPECS.obj004.edgeRadius.toFixed(2)}″</span>
+    <span class="k">Wall (hollow ver.)</span><span class="v">${OPAL_SPECS.obj004.hollowWall.toFixed(3)}″</span>
+  </div>`, [{v:'pencil',l:'Pencil'}]);
+
+/* ---- OBJECT 005 ---- */
+const id005 = section(OPAL_SPECS.obj005,
+  `<button class="btn wide" data-act="generate-spill" data-id="obj005">Generate New Spill</button>`,
+  '', `<div class="dim-grid" id="dimgrid-obj005">
+    <span class="k">Width (this piece)</span><span class="v" id="spillW">—</span>
+    <span class="k">Depth (this piece)</span><span class="v" id="spillD">—</span>
+    <span class="k">Thickness</span><span class="v" id="spillH">${OPAL_SPECS.obj005.nominal.H.toFixed(3)}″</span>
+    <span class="k">Edge radius</span><span class="v">${OPAL_SPECS.obj005.edgeRadius.toFixed(2)}″</span>
+  </div>
+  <div class="mini-note">Every Spill is procedurally generated and unique. Bounding box class: ${OPAL_SPECS.obj005.Wmin}–${OPAL_SPECS.obj005.Wmax}″ W × ${OPAL_SPECS.obj005.Dmin}–${OPAL_SPECS.obj005.Dmax}″ D × ${OPAL_SPECS.obj005.Hmin}–${OPAL_SPECS.obj005.Hmax}″ H.</div>
+  <div id="spill-id" class="eyebrow" style="margin-top:8px;">SPILL 001</div>`,
+  [{v:'paper',l:'US Letter Paper'}]);
+
+/* ---- COLLECTION ---- */
+const collSection=document.createElement('section');
+collSection.className='collection-section'; collSection.id='collection';
+collSection.innerHTML=`
+  <div class="obj-header">
+    <div><div class="obj-num">ALL OBJECTS</div><h2 class="obj-title">Collection — Relative Scale</h2></div>
+    <div class="obj-sub">All five objects shown together at true relative scale. The 1″ incense cube is not enlarged — it is genuinely tiny beside the 15″ organizer.</div>
+  </div>
+  <div class="obj-body">
+    <div class="viewer-col">
+      <div class="viewer-canvas-wrap" id="canvas-collection"></div>
+      ${commonControlsHTML('collection')}
+    </div>
+    <div class="panel-col">
+      <div class="panel-block"><h4>Objects</h4>
+        <div class="dim-grid">
+          <span class="k">001 M/U Organizer</span><span class="v">15.00 × 4.00 × 8.50″</span>
+          <span class="k">002 Incense Cube</span><span class="v">1.00 × 1.00 × 1.00″</span>
+          <span class="k">003 Record Holder</span><span class="v">13.50 × 11.00 × 8.50″</span>
+          <span class="k">004 Six-Pen Brick</span><span class="v">8.00 × 3.75 × 2.25″</span>
+          <span class="k">005 Spill Paperweight</span><span class="v">~4.50 × 3.25 × 0.375″</span>
+        </div>
+      </div>
+      ${panelCommonHTML('collection', {defaultMaterial:'blackPowder'})}
+    </div>
+  </div>`;
+app.appendChild(collSection);
+
+/* ---- MATERIAL LAB ---- */
+const matSection=document.createElement('section');
+matSection.className='matlab';
+matSection.innerHTML=`
+  <div class="obj-header">
+    <div><div class="obj-num">REFERENCE</div><h2 class="obj-title">Material Lab</h2></div>
+    <div class="obj-sub">Select a finish to preview it applied across the full collection scene above.</div>
+  </div>
+  <div class="matlab-grid" id="matlabGrid"></div>`;
+app.appendChild(matSection);
+const matlabGrid=matSection.querySelector('#matlabGrid');
+Object.keys(MATERIALS).forEach(k=>{
+  const m=MATERIALS[k];
+  const div=document.createElement('div');
+  div.className='matlab-swatch'; div.dataset.mat=k;
+  const hex='#'+m.color.toString(16).padStart(6,'0');
+  div.innerHTML=`<div class="disc" style="background:radial-gradient(circle at 32% 28%, #fff8, ${hex} 55%, #0006 100%);"></div>
+    <div class="name">${m.label}</div>
+    <div class="spec">METAL ${m.metalness.toFixed(2)} · ROUGH ${m.roughness.toFixed(2)}</div>`;
+  matlabGrid.appendChild(div);
+});
+
+/* ============================================================================================
+   INSTANTIATE VIEWERS
+   ============================================================================================ */
+const viewers={};
+
+function makeViewer(id, opts){
+  const container=document.getElementById(`canvas-${id}`);
+  const v=new Viewer(container, opts);
+  viewers[id]=v;
+  return v;
+}
+
+// OBJECT 001
+{
+  const spec=OPAL_SPECS.obj001;
+  const v=makeViewer('obj001',{ groundY:0, gridSize:30, minDistance:6, maxDistance:70, target:[0,4,0], defaultCam:{pos:[16,10,20], target:[0,4,0]} });
+  const frame=buildOrganizer(spec, v.objectGroup);
+  v.frameCenterY=frame.frameCenterY; v.frameDistance=frame.frameDistance;
+  const g=v.dimGroup;
+  addDimLine(g,[-spec.W/2,-0.6,spec.D/2+0.4],[spec.W/2,-0.6,spec.D/2+0.4], `W ${spec.W.toFixed(2)}″`);
+  addDimLine(g,[-spec.W/2-0.6,0,spec.D/2+0.4],[-spec.W/2-0.6,spec.H,spec.D/2+0.4], `H ${spec.H.toFixed(2)}″`);
+  addDimLine(g,[-spec.W/2,-0.6,-spec.D/2],[-spec.W/2,-0.6,spec.D/2], `D ${spec.D.toFixed(2)}″`);
+  addDimLine(g,[spec.W/2+0.4,0,spec.D/2],[spec.W/2+0.4,spec.thickness*40,spec.D/2], `T ${spec.thickness.toFixed(3)}″ (16ga)`);
+  v.setMaterial(spec.defaultMaterial);
+}
+
+// OBJECT 002
+{
+  const spec=OPAL_SPECS.obj002;
+  const state={hollow:true, cutaway:false};
+  const v=makeViewer('obj002',{ groundY:0, gridSize:8, minDistance:0.6, maxDistance:14, target:[0,0.5,0], defaultCam:{pos:[2.4,2.0,2.6], target:[0,0.5,0]} });
+  const frame=buildCube(spec, v.objectGroup, state);
+  v.frameCenterY=frame.frameCenterY; v.frameDistance=frame.frameDistance;
+  const g=v.dimGroup;
+  addDimLine(g,[-spec.W/2,-0.18,spec.D/2+0.18],[spec.W/2,-0.18,spec.D/2+0.18], `W ${spec.W.toFixed(3)}″`,0.05);
+  addDimLine(g,[-spec.W/2-0.18,0,spec.D/2+0.18],[-spec.W/2-0.18,spec.H,spec.D/2+0.18], `H ${spec.H.toFixed(3)}″`,0.05);
+  addDimLine(g,[spec.W/2+0.18,spec.H/2+0.4,0],[spec.W/2+0.18,spec.H/2+0.4-spec.holeDepth,0], `HOLE DEPTH ${spec.holeDepth.toFixed(3)}″`,0.05);
+  addDimLine(g,[-spec.holeD/2,spec.H/2+0.15,-spec.D/2-0.1],[spec.holeD/2,spec.H/2+0.15,-spec.D/2-0.1], `⌀ ${spec.holeD.toFixed(3)}″`,0.03);
+  v.setMaterial(spec.defaultMaterial);
+  v.userState=state;
+}
+
+// OBJECT 003
+{
+  const spec=OPAL_SPECS.obj003;
+  const state={records:true};
+  const v=makeViewer('obj003',{ groundY:0, gridSize:26, minDistance:5, maxDistance:60, target:[0,4,0], defaultCam:{pos:[15,9,17], target:[0,4,0]} });
+  const frame=buildRecordHolder(spec, v.objectGroup, state);
+  v.frameCenterY=frame.frameCenterY; v.frameDistance=frame.frameDistance;
+  const g=v.dimGroup;
+  addDimLine(g,[-spec.W/2,-0.5,spec.D/2+0.4],[spec.W/2,-0.5,spec.D/2+0.4], `W ${spec.W.toFixed(2)}″`);
+  addDimLine(g,[-spec.W/2-0.5,0,spec.D/2+0.4],[-spec.W/2-0.5,spec.H,spec.D/2+0.4], `H ${spec.H.toFixed(2)}″`);
+  addDimLine(g,[-spec.W/2,-0.5,-spec.D/2],[-spec.W/2,-0.5,spec.D/2], `D ${spec.D.toFixed(2)}″`);
+  addDimLine(g,[spec.W/2+0.3,0,spec.D/2-0.2],[spec.W/2+0.3,spec.lipH,spec.D/2-0.2], `LIP ${spec.lipH.toFixed(3)}″`);
+  v.setMaterial(spec.defaultMaterial);
+  v.userState=state;
+}
+
+// OBJECT 004
+{
+  const spec=OPAL_SPECS.obj004;
+  const state={hollow:true, cutaway:false, tools:false};
+  const v=makeViewer('obj004',{ groundY:0, gridSize:16, minDistance:2, maxDistance:30, target:[0,1.1,0], defaultCam:{pos:[9,6,10], target:[0,1.1,0]} });
+  const frame=buildBrick(spec, v.objectGroup, state);
+  v.frameCenterY=frame.frameCenterY; v.frameDistance=frame.frameDistance;
+  const g=v.dimGroup;
+  addDimLine(g,[-spec.W/2,-0.3,spec.D/2+0.3],[spec.W/2,-0.3,spec.D/2+0.3], `W ${spec.W.toFixed(2)}″`,0.08);
+  addDimLine(g,[-spec.W/2-0.3,0,spec.D/2+0.3],[-spec.W/2-0.3,spec.H,spec.D/2+0.3], `H ${spec.H.toFixed(2)}″`,0.08);
+  addDimLine(g,[-spec.W/2,-0.3,-spec.D/2],[-spec.W/2,-0.3,spec.D/2], `D ${spec.D.toFixed(2)}″`,0.08);
+  addDimLine(g,[-3.0-spec.holeD/2,spec.H+0.2,1.6],[-3.0+spec.holeD/2,spec.H+0.2,1.6], `⌀ ${spec.holeD.toFixed(3)}″`,0.06);
+  addDimLine(g,[-3.0,1.6,spec.D/2+0.2],[0,1.6,spec.D/2+0.2], `2.00″ SPACING`,0.06);
+  v.setMaterial(spec.defaultMaterial);
+  v.userState=state;
+}
+
+// OBJECT 005
+{
+  const spec=OPAL_SPECS.obj005;
+  const v=makeViewer('obj005',{ groundY:0, gridSize:12, minDistance:1.5, maxDistance:24, target:[0,0.3,0], defaultCam:{pos:[5.5,4.2,6.2], target:[0,0.3,0]} });
+  v.spillSeed=0; // 0 = the real Spill 001 concept mesh; >0 = procedurally generated variants
+  const frame=buildSpill(spec, v.objectGroup, v.spillSeed);
+  v.frameCenterY=frame.frameCenterY; v.frameDistance=frame.frameDistance;
+  document.getElementById('spillW').textContent=frame.dims.W.toFixed(2)+'″';
+  document.getElementById('spillD').textContent=frame.dims.D.toFixed(2)+'″';
+  const g=v.dimGroup;
+  function rebuildDims(dims){
+    g.clear();
+    addDimLine(g,[-dims.W/2,0.02,dims.D/2+0.25],[dims.W/2,0.02,dims.D/2+0.25], `W ${dims.W.toFixed(2)}″`,0.05);
+    addDimLine(g,[-dims.W/2-0.25,0,dims.D/2],[-dims.W/2-0.25,dims.H,dims.D/2], `T ${dims.H.toFixed(3)}″`,0.05);
+    addDimLine(g,[-dims.W/2,0.02,-dims.D/2],[-dims.W/2,0.02,dims.D/2], `D ${dims.D.toFixed(2)}″`,0.05);
+  }
+  rebuildDims(frame.dims);
+  v.rebuildDims=rebuildDims;
+  v.setMaterial(spec.defaultMaterial);
+  // scale reference (paper) needs to sit below object
+  v.scaleRefOffsetY=-0.001;
+}
+
+// COLLECTION
+{
+  const v=makeViewer('collection',{ groundY:0, gridSize:44, minDistance:6, maxDistance:100, target:[0,3,0], defaultCam:{pos:[26,20,30], target:[0,3,0]} });
+  v.frameCenterY=3; v.frameDistance=40;
+  const g=v.objectGroup;
+  // lay out true-scale objects along a tabletop with real gaps (inches)
+  const gOrg=new THREE.Group(); buildOrganizer(OPAL_SPECS.obj001, gOrg); gOrg.position.set(-14,0,0); g.add(gOrg);
+  const gCube=new THREE.Group(); buildCube(OPAL_SPECS.obj002, gCube, {hollow:false}); gCube.position.set(-2.5,0.5,4); g.add(gCube);
+  const gRec=new THREE.Group(); buildRecordHolder(OPAL_SPECS.obj003, gRec, {records:true}); gRec.position.set(6,0,-2); g.add(gRec);
+  const gBrick=new THREE.Group(); buildBrick(OPAL_SPECS.obj004, gBrick, {hollow:true}); gBrick.position.set(-4,0,-4); g.add(gBrick);
+  const gSpill=new THREE.Group(); buildSpill(OPAL_SPECS.obj005, gSpill, 7); gSpill.position.set(2,0,5); g.add(gSpill);
+  v.collectionGroups={organizer:gOrg,cube:gCube,record:gRec,brick:gBrick,spill:gSpill};
+  v.setMaterial=function(key){
+    const mat=makeMaterial(key);
+    g.traverse(o=>{ if(o.isMesh && o.userData.paintable!==false) o.material=mat; });
+  };
+  v.setMaterial('blackPowder');
+}
+
+/* ============================================================================================
+   EVENT WIRING
+   ============================================================================================ */
+document.addEventListener('click', (e)=>{
+  const btn=e.target.closest('[data-act]');
+  if(!btn) return;
+  const id=btn.dataset.id; const v=viewers[id]; if(!v) return;
+  const act=btn.dataset.act;
+  if(act==='auto'){ const on=v.toggleAutoRotate(); btn.classList.toggle('active',on); }
+  else if(act==='reset'){ v.resetView(); }
+  else if(act==='front'||act==='side'||act==='top'||act==='perspective'){ v.cameraPreset(act); }
+  else if(act==='grid'){ const on=v.toggleGrid(); btn.classList.toggle('active',on); }
+  else if(act==='dims'){ const on=v.toggleDimensions(); btn.classList.toggle('active',on); }
+  else if(act==='ortho'){ v.usingOrtho=!v.usingOrtho; v.setPerspective(!v.usingOrtho); btn.classList.toggle('active',v.usingOrtho); }
+  else if(act==='hollow-toggle'){
+    v.userState.hollow=!v.userState.hollow;
+    if(id==='obj002') buildCube(OPAL_SPECS.obj002, v.objectGroup, v.userState);
+    if(id==='obj004') buildBrick(OPAL_SPECS.obj004, v.objectGroup, v.userState);
+    v.setMaterial(v.currentMaterial);
+    btn.classList.toggle('active', v.userState.hollow);
+  }
+  else if(act==='cutaway-toggle'){
+    v.userState.cutaway=!v.userState.cutaway;
+    if(id==='obj002') buildCube(OPAL_SPECS.obj002, v.objectGroup, v.userState);
+    if(id==='obj004') buildBrick(OPAL_SPECS.obj004, v.objectGroup, v.userState);
+    v.setMaterial(v.currentMaterial);
+    btn.classList.toggle('active', v.userState.cutaway);
+  }
+  else if(act==='tools-toggle'){
+    v.userState.tools=!v.userState.tools;
+    buildBrick(OPAL_SPECS.obj004, v.objectGroup, v.userState);
+    v.setMaterial(v.currentMaterial);
+    btn.classList.toggle('active', v.userState.tools);
+  }
+  else if(act==='records-toggle'){
+    v.userState.records=!v.userState.records;
+    buildRecordHolder(OPAL_SPECS.obj003, v.objectGroup, v.userState);
+    v.setMaterial(v.currentMaterial);
+    btn.classList.toggle('active', v.userState.records);
+  }
+  else if(act==='generate-spill'){
+    v.spillSeed = (v.spillSeed||1) + Math.floor(1+Math.random()*97);
+    const frame=buildSpill(OPAL_SPECS.obj005, v.objectGroup, v.spillSeed);
+    v.setMaterial(v.currentMaterial);
+    v.rebuildDims(frame.dims);
+    document.getElementById('spillW').textContent=frame.dims.W.toFixed(2)+'″';
+    document.getElementById('spillD').textContent=frame.dims.D.toFixed(2)+'″';
+    document.getElementById('spill-id').textContent='SPILL '+String(v.spillSeed).padStart(3,'0');
+  }
+});
+
+document.addEventListener('change', (e)=>{
+  const el=e.target; const id=el.dataset.id; const role=el.dataset.role;
+  if(!id || !role) return;
+  const v=viewers[id]; if(!v) return;
+  if(role==='material'){
+    v.setMaterial(el.value);
+    const tag=document.querySelector(`[data-role="matlabel-${id}"]`);
+    if(tag) tag.textContent=MATERIALS[el.value].label.toUpperCase();
+  }
+  else if(role==='env'){ v.setEnvironment(el.value); v.setKeyIntensity(v.keyMul); v.setFillIntensity(v.fillMul); v.setAmbIntensity(v.ambMul); }
+  else if(role==='scaleref'){ v.setScaleRef(el.value); }
+});
+document.addEventListener('input', (e)=>{
+  const el=e.target; const id=el.dataset.id; const role=el.dataset.role;
+  if(!id || !role) return;
+  const v=viewers[id]; if(!v) return;
+  const val=parseFloat(el.value);
+  if(role==='key') v.setKeyIntensity(val);
+  else if(role==='fill') v.setFillIntensity(val);
+  else if(role==='amb') v.setAmbIntensity(val);
+  else if(role==='angh') v.setKeyAngleH(val);
+  else if(role==='angv') v.setKeyAngleV(val);
+});
+
+// material lab -> apply to collection
+matlabGrid.addEventListener('click',(e)=>{
+  const sw=e.target.closest('.matlab-swatch'); if(!sw) return;
+  matlabGrid.querySelectorAll('.matlab-swatch').forEach(s=>s.classList.remove('active'));
+  sw.classList.add('active');
+  const key=sw.dataset.mat;
+  viewers['collection'].setMaterial(key);
+  const sel=document.querySelector('select[data-role="material"][data-id="collection"]');
+  if(sel) sel.value=key;
+});
+</script>
+
+<script src="../shared/footer.js"></script>
+</body>
+</html>
