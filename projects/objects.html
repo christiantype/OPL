@@ -1328,6 +1328,33 @@ function buildCube(spec, group, state){
   return { frameCenterY: spec.W/2, frameDistance: 3.2 };
 }
 
+// canvas texture for a black vinyl LP: fine concentric grooves, a coloured centre label, and a spindle hole
+let _vinylTex=null;
+function vinylTexture(){
+  if(_vinylTex) return _vinylTex;
+  const S=1024, c=document.createElement('canvas'); c.width=c.height=S;
+  const x=c.getContext('2d'), cx=S/2, cy=S/2, R=S/2-4;
+  x.fillStyle='#0a0a0b'; x.fillRect(0,0,S,S);
+  const labelR=R*0.30, grooveOuter=R*0.98, grooveInner=labelR+6;
+  // grooves — fine alternating rings for a subtle micro-sheen
+  for(let r=grooveOuter; r>grooveInner; r-=1.6){
+    x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2);
+    x.strokeStyle=`rgba(70,70,76,${0.10+0.10*Math.sin(r*0.5)})`;
+    x.lineWidth=1; x.stroke();
+  }
+  // a couple of brighter band separations (track gaps)
+  x.strokeStyle='rgba(120,120,128,0.22)'; x.lineWidth=2;
+  [0.55,0.72,0.86].forEach(f=>{ x.beginPath(); x.arc(cx,cy,grooveInner+(grooveOuter-grooveInner)*f,0,Math.PI*2); x.stroke(); });
+  // centre label
+  x.beginPath(); x.arc(cx,cy,labelR,0,Math.PI*2); x.fillStyle='#b23a2e'; x.fill();
+  x.beginPath(); x.arc(cx,cy,labelR,0,Math.PI*2); x.strokeStyle='rgba(0,0,0,0.25)'; x.lineWidth=2; x.stroke();
+  x.beginPath(); x.arc(cx,cy,labelR*0.62,0,Math.PI*2); x.strokeStyle='rgba(0,0,0,0.18)'; x.lineWidth=1.5; x.stroke();
+  // spindle hole
+  x.beginPath(); x.arc(cx,cy,labelR*0.10,0,Math.PI*2); x.fillStyle='#e9e7e1'; x.fill();
+  _vinylTex=new THREE.CanvasTexture(c); _vinylTex.anisotropy=8; _vinylTex.colorSpace=THREE.SRGBColorSpace;
+  return _vinylTex;
+}
+
 function buildRecordHolder(spec, group, state){
   group.clear();
   let mesh;
@@ -1357,17 +1384,20 @@ function buildRecordHolder(spec, group, state){
       group.add(s);
     }
   }
-  // now playing record, leaning against the front ledge/lip
-  const discR=6.0;
+  // now playing record — a real 12" LP: fine grooves, centred label, spindle hole, resting on the front lip
+  const discR=6.0;                       // 12" LP
   const disc=new THREE.Group();
-  const vinyl=new THREE.Mesh(new THREE.CylinderGeometry(discR,discR,0.04,64), new THREE.MeshStandardMaterial({color:0x0c0c0c, roughness:0.35, metalness:0.05}));
+  const vinyl=new THREE.Mesh(
+    new THREE.CylinderGeometry(discR,discR,0.05,96),
+    new THREE.MeshStandardMaterial({ map:vinylTexture(), color:0xffffff, roughness:0.42, metalness:0.0 })
+  );
   vinyl.userData.paintable=false;
   vinyl.rotation.x=Math.PI/2;
-  const label=new THREE.Mesh(new THREE.CylinderGeometry(1.9,1.9,0.05,48), new THREE.MeshStandardMaterial({color:0xb23a2e, roughness:0.6}));
-  label.userData.paintable=false; label.rotation.x=Math.PI/2; label.position.z=0.021;
-  disc.add(vinyl, label);
+  disc.add(vinyl);
   disc.rotation.x = -THREE.MathUtils.degToRad(spec.leanDeg);
-  disc.position.set(0, spec.lipH + discR*0.98, ledgeZ - 0.05);
+  // seat the disc so its lower edge rests on the front lip and it leans back into the stand
+  const lean=THREE.MathUtils.degToRad(spec.leanDeg);
+  disc.position.set(0, spec.lipH + discR*Math.cos(lean) - 0.02, ledgeZ + discR*Math.sin(lean) - 0.02);
   group.add(disc);
 
   return { frameCenterY: H/2.2, frameDistance: 20 };
