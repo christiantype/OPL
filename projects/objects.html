@@ -91,10 +91,10 @@ body.objects .label, body.objects .text-mid{ color:var(--mid); }
   min-height:104vh; max-width:90em; margin:0 auto; padding:9vh 10em 8vh; border-top:1px solid var(--line-strong);
   display:flex; flex-direction:column; scroll-margin-top:5em;
 }
-.obj-header{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:5vh; gap:24px; flex-wrap:wrap;}
+.obj-header{ display:flex; flex-direction:column; align-items:flex-start; text-align:left; margin-bottom:5vh; gap:6px; }
 .obj-num{ font-family:var(--mono); font-size:14px; color:var(--signal); letter-spacing:.1em; }
-.obj-title{ font-family:var(--disp); font-size:clamp(30px,5vw,60px); font-weight:700; letter-spacing:-0.02em; margin:6px 0 0; line-height:1; }
-.obj-sub{ font-family:var(--mono); font-size:12px; color:var(--mid); text-align:right; max-width:340px; line-height:1.6; }
+.obj-title{ font-size:16px; font-weight:400; letter-spacing:0; margin:2px 0 0; line-height:1.4; text-align:left; }
+.obj-sub{ font-size:16px; color:var(--mid); text-align:left; max-width:52ch; line-height:1.55; margin:4px 0 0; }
 
 .obj-body{ display:flex; gap:0; flex:1; min-height:640px; border:1px solid var(--line-strong); }
 .viewer-col{ width:var(--viewer-w); position:relative; background:var(--paper-dim); border-right:1px solid var(--line-strong); }
@@ -1818,15 +1818,17 @@ function makeViewer(id, opts){
 
 // COLLECTION
 {
-  const v=makeViewer('collection',{ groundY:0, gridSize:44, minDistance:6, maxDistance:100, target:[0,3,0], defaultCam:{pos:[26,20,30], target:[0,3,0]} });
-  v.frameCenterY=3; v.frameDistance=40;
+  const v=makeViewer('collection',{ groundY:0, gridSize:56, minDistance:8, maxDistance:140, target:[0,4,0], defaultCam:{pos:[34,24,46], target:[0,4,0]} });
+  v.frameCenterY=4; v.frameDistance=56;
   const g=v.objectGroup;
   // lay out true-scale objects along a tabletop with real gaps (inches)
-  const gOrg=new THREE.Group(); buildOrganizer(OPAL_SPECS.obj001, gOrg); gOrg.position.set(-14,0,0); g.add(gOrg);
-  const gCube=new THREE.Group(); buildCube(OPAL_SPECS.obj002, gCube, {hollow:false}); gCube.position.set(-2.5,0.5,4); g.add(gCube);
-  const gRec=new THREE.Group(); buildRecordHolder(OPAL_SPECS.obj003, gRec, {records:true}); gRec.position.set(6,0,-2); g.add(gRec);
-  const gBrick=new THREE.Group(); buildBrick(OPAL_SPECS.obj004, gBrick, {hollow:true}); gBrick.position.set(-4,0,-4); g.add(gBrick);
-  const gSpill=new THREE.Group(); buildSpill(OPAL_SPECS.obj005, gSpill, 7); gSpill.position.set(2,0,5); g.add(gSpill);
+  // footprints (inches): organizer 15×4, brick 8×3.75, cube 1×1, spill ~4.5×3.25, record stand 13.5×11.
+  // laid out on the tabletop with real gaps so nothing intersects.
+  const gOrg=new THREE.Group(); buildOrganizer(OPAL_SPECS.obj001, gOrg); gOrg.position.set(-13,0,0); g.add(gOrg);
+  const gBrick=new THREE.Group(); buildBrick(OPAL_SPECS.obj004, gBrick, {hollow:true}); gBrick.position.set(-0.5,0,-2); g.add(gBrick);
+  const gCube=new THREE.Group(); buildCube(OPAL_SPECS.obj002, gCube, {hollow:false}); gCube.position.set(-1,0,5); g.add(gCube);
+  const gSpill=new THREE.Group(); buildSpill(OPAL_SPECS.obj005, gSpill, 7); gSpill.position.set(4.5,0,5); g.add(gSpill);
+  const gRec=new THREE.Group(); buildRecordHolder(OPAL_SPECS.obj003, gRec, {records:true}); gRec.position.set(14,0,-1); g.add(gRec);
   v.collectionGroups={organizer:gOrg,cube:gCube,record:gRec,brick:gBrick,spill:gSpill};
   v.setMaterial=function(key){
     const mat=makeMaterial(key);
