@@ -11,13 +11,15 @@
 
   /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
      same knobs. What differs is everything below the chrome. */
-  :root{ --liton:#6f9bff; --top:82px; --rail:290px; }
+  :root{ --liton:#6f9bff; --top:120px; --rail:300px; }
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
+  #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
   body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
     --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
     --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
-    font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
+    font-family:var(--font,'IBM Plex Sans',system-ui,sans-serif); overflow:hidden; }
   /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
      wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
   #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
@@ -213,6 +215,15 @@
 <body>
 
 <div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="sizeDock">
+  <span id="dimReadout">1080 × 1350</span>
+  <select id="aspect" title="Canvas size">
+    <option value="1080/1080">Square · 1:1</option>
+    <option value="1080/1350" selected>Portrait · 4:5</option>
+    <option value="1080/1920">Story · 9:16</option>
+    <option value="1920/1080">Landscape · 16:9</option>
+  </select>
+</div>
 <div id="drop"><div class="drop-in"><div class="drop-orb"></div><p>Drop an image<br><span>or Add image in the panel</span></p></div></div>
 <div id="hint"></div>
 <div id="recDot"><i></i><b>REC</b></div>
@@ -221,7 +232,7 @@
 <input id="file" type="file" accept="image/*" hidden />
 <div id="rail" class="rail rail-l open"></div>
 
-<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
+<div id="output" data-export-custom><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
 
 <script src="/lab/shared/opal.js?v=3"></script>
 <script>Opal.mountTopbar({ name:'Kirlian', desc:'Corona-discharge aura from any image', version:'v1', about:'Kirlian photography records the electric corona that leaps off an object under high voltage. Drop an image and its edges grip a glowing aura and crackling filaments — tune the colour, reach and flicker of the field, hide or keep the subject, and record the live discharge at your chosen size. A cut-out subject reads cleanest.' });</script>
@@ -238,22 +249,27 @@ const stage=document.getElementById('stage'), sctx=stage.getContext('2d');
 const comp=document.createElement('canvas'), cctx=comp.getContext('2d');
 
 const P={
-  aspect:'4:5', longEdge:1100, fit:'contain', scale:1.0,
+  aspect:'1080/1350', fit:'contain', scale:1.0,
   subject:'silhouette', subjectDark:0.72,
   edgeThresh:0.16, edgeBoost:1.4,
   glowRadius:1.0, glowSpread:1.0, glowIntensity:1.1, bloom:0.55,
   inner:'#eaffff', mid:'#38d6ff', outer:'#7a44ff',
+  fur:1, furAmount:1.0, furLength:1.0, furJitter:1.0, furFine:0.6,
+  spectrum:0, hueShift:0,
   filaments:1, filDensity:0.5, filLength:1.0, filJitter:1.0,
   flicker:0.45, flickSpeed:1.0,
   bg:'#01030a', play:true,
 };
 let img=null, hasA=false;
 let fittedC=null, silC=null, maskC=null, glowIn=null, glowMid=null, glowOut=null;
-let epts=null;            // Float32Array [x,y,nx,ny] * N
+let epts=null;            // Float32Array [x,y,nx,ny] * N — sparse, for the live crackle
+let fpts=null;            // dense edge points for the baked radial fur
+let cenX=0, cenY=0;       // subject centre — hue-by-angle origin for the spectral corona
 let clock=0, t0=performance.now();
 
 // ---------------- geometry ----------------
-function aspectWH(){ const [a,b]=P.aspect.split(':').map(Number); const L=P.longEdge; return a>=b?[L,Math.round(L*b/a)]:[Math.round(L*a/b),L]; }
+// Canvas size follows the shared #sizeDock select ("W/H"); long edge fixed high for a crisp, high-res corona.
+function aspectWH(){ const p=(P.aspect||'1080/1350').split(/[/:x]/).map(Number), a=p[0]||1, b=p[1]||1, L=1600; return a>=b?[L,Math.round(L*b/a)]:[Math.round(L*a/b),L]; }
 function CW(){ return aspectWH()[0]; } function CH(){ return aspectWH()[1]; }
 function resize(){ const d=Math.min(devicePixelRatio||1,2); stage.width=(innerWidth*d)|0; stage.height=(innerHeight*d)|0; }
 addEventListener('resize',resize);
@@ -265,7 +281,7 @@ function fbm1(x){ const xi=Math.floor(x),xf=x-xi,u=xf*xf*(3-2*xf); return lerp(h
 // ---------------- build corona from image ----------------
 function newC(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
 function tint(mask,hex){ const c=newC(mask.width,mask.height), x=c.getContext('2d'); x.drawImage(mask,0,0); x.globalCompositeOperation='source-in'; x.fillStyle=hex; x.fillRect(0,0,c.width,c.height); return c; }
-function retint(){ if(!maskC) return; glowIn=tint(maskC,P.inner); glowMid=tint(maskC,P.mid); glowOut=tint(maskC,P.outer); buildGlow(); }
+function retint(){ if(!maskC) return; glowIn=tint(maskC,P.inner); glowMid=tint(maskC,P.mid); glowOut=tint(maskC,P.outer); buildGlow(); buildFur(); }
 // The aura layers are static — they only change with the image, its colours, or the reach/
 // spread sliders. Blurring them once into cached canvases (instead of every frame) is what
 // keeps the render at full frame rate, so recordings stay smooth.
@@ -277,6 +293,41 @@ function buildGlow(){ if(!glowIn) return; const unit=comp.width/1000;
   bGlowIn =blurLayer(glowIn,  3.5*unit*P.glowRadius);
   bRim    =blurLayer(glowIn,  1.1*unit);
   bBloom  =blurLayer(glowMid, 40*unit*P.glowSpread); }
+
+// The radial fur — the dense, furry corona of a real Kirlian plate: a fine spike leaps off every
+// point on the edge, out along its normal. Baked once (it's static like the glow) and modulated by
+// the flicker at draw time so the frame rate holds even at high resolution.
+let bFur=null;
+function hsla(h,s,l,a){ return 'hsla('+((((h%360)+360)%360)|0)+','+s+'%,'+l+'%,'+a+')'; }
+function buildFur(){
+  if(!fpts || !fpts.length || !P.fur){ bFur=null; return; }
+  const W=comp.width,H=comp.height, unit=W/1000;
+  const c=newC(W,H), x=c.getContext('2d');
+  x.globalCompositeOperation='lighter'; x.lineCap='round';
+  const inRGB=hexRgb(P.inner), midRGB=hexRgb(P.mid), outRGB=hexRgb(P.outer);
+  const n=fpts.length/4, stride=Math.max(1,Math.ceil(n/16000));   // cap drawn spikes for busy images
+  for(let k=0;k<n;k+=stride){ const o=k*4; const bx=fpts[o],by=fpts[o+1],nx=fpts[o+2],ny=fpts[o+3];
+    const r1=hash1(k*1.13+0.3), r2=hash1(k*2.71+9.1), r3=hash1(k*0.37+3.3), r4=hash1(k*1.87+5.5);
+    if(r4>0.93) continue;                                          // scattered gaps so it isn't a solid wall
+    const len=(15+r1*r1*112)*unit*P.furLength*(0.7+0.5*P.glowRadius);
+    const ang=Math.atan2(ny,nx)+(r2-0.5)*0.6*P.furJitter;
+    const tx=bx+Math.cos(ang)*len, ty=by+Math.sin(ang)*len;
+    const mx=(bx+tx)/2+(r3-0.5)*len*0.22*P.furJitter, my=(by+ty)/2+(r4-0.5)*len*0.22*P.furJitter;
+    const g=x.createLinearGradient(bx,by,tx,ty);
+    if(P.spectrum){ const hue=Math.atan2(by-cenY,bx-cenX)*180/Math.PI + P.hueShift + (r3-0.5)*26;
+      g.addColorStop(0,'rgba(255,255,255,0.95)');
+      g.addColorStop(0.26, hsla(hue,100,66,0.9));
+      g.addColorStop(0.7, hsla(hue,100,54,0.32));
+      g.addColorStop(1, hsla(hue,100,50,0)); }
+    else { g.addColorStop(0, rgba(inRGB,0.92));
+      g.addColorStop(0.35, rgba(midRGB,0.55));
+      g.addColorStop(0.8, rgba(outRGB,0.16));
+      g.addColorStop(1, rgba(outRGB,0)); }
+    x.strokeStyle=g; x.lineWidth=(0.45+r3*1.5)*unit*(1.25-0.7*P.furFine);
+    x.beginPath(); x.moveTo(bx,by); x.quadraticCurveTo(mx,my,tx,ty); x.stroke();
+  }
+  bFur=c;
+}
 
 function buildEdges(){
   if(!img){ return; }
@@ -325,6 +376,17 @@ function buildEdges(){
     let gx=at(xx+1,y)-at(xx-1,y), gy=at(xx,y+1)-at(xx,y-1); const gl=Math.hypot(gx,gy)||1;
     pts.push(xx,y,-gx/gl,-gy/gl); }
   epts=new Float32Array(pts);
+  // dense point set for the baked radial fur — the continuous furry halo of a real Kirlian plate
+  const fp=[]; const fstep=Math.max(1,Math.round(W/900));
+  for(let y=0;y<H;y+=fstep) for(let xx=0;xx<W;xx+=fstep){ const i=y*W+xx; if(edge[i]/mx<thr+0.02) continue;
+    let gx=at(xx+1,y)-at(xx-1,y), gy=at(xx,y+1)-at(xx,y-1); const gl=Math.hypot(gx,gy)||1;
+    fp.push(xx,y,-gx/gl,-gy/gl); }
+  fpts=new Float32Array(fp);
+  // subject centre (hue-by-angle origin) — alpha bbox for a cut-out, else the fitted image rect
+  let mnx=W,mny=H,mxx=0,mxy=0;
+  if(hasA){ for(let y=0;y<H;y++) for(let xx=0;xx<W;xx++){ if(A[y*W+xx]>0.4){ if(xx<mnx)mnx=xx; if(xx>mxx)mxx=xx; if(y<mny)mny=y; if(y>mxy)mxy=y; } } }
+  if(mxx>mnx){ cenX=(mnx+mxx)/2; cenY=(mny+mxy)/2; } else { cenX=(rx0+rx1)/2; cenY=(ry0+ry1)/2; }
+  buildFur();
 }
 
 // ---------------- draw ----------------
@@ -364,6 +426,8 @@ function drawScene(time){
   cctx.globalAlpha=clamp(0.5*gi,0,1);  cctx.drawImage(bGlowOut,0,0);
   cctx.globalAlpha=clamp(0.7*gi,0,1);  cctx.drawImage(bGlowMid,0,0);
   cctx.globalAlpha=clamp(0.95*gi,0,1); cctx.drawImage(bGlowIn,0,0);
+  // radial fur — the dense furry halo (baked), its brightness pulsing with the flicker
+  if(P.fur && bFur){ cctx.globalAlpha=clamp(P.furAmount*0.9*flick,0,1); cctx.drawImage(bFur,0,0); }
   // filaments — the one live, per-frame element
   if(P.filaments && epts){ const n=epts.length/4; const count=Math.round(n*0.12*P.filDensity);
     for(let k=0;k<count;k++){ const idx=(Math.random()*n)|0, o=idx*4;
@@ -376,8 +440,8 @@ function drawScene(time){
 }
 function blitToStage(){
   const sw=stage.width, sh=stage.height; sctx.setTransform(1,0,0,1,0,0);
-  const paper=getComputedStyle(document.body).getPropertyValue('--paper').trim()||'#07080f';
-  sctx.fillStyle=paper; sctx.fillRect(0,0,sw,sh);
+  const mat=getComputedStyle(document.body).getPropertyValue('--mat').trim()||'#cbced4';
+  sctx.fillStyle=mat; sctx.fillRect(0,0,sw,sh);
   if(!comp.width) return;
   const sc=Math.min(sw/comp.width, sh/comp.height)*0.94;
   const dw=comp.width*sc, dh=comp.height*sc, ox=(sw-dw)/2, oy=(sh-dh)/2;
@@ -413,7 +477,7 @@ function buildPanel(){
     r.oninput=()=>{ P[key]=(String(step).indexOf('.')>=0)?parseFloat(r.value):parseInt(r.value); v.textContent=fmt?fmt(P[key]):P[key]; if(rebuild===true) buildEdges(); else if(typeof rebuild==='function') rebuild(); };
     gr.appendChild(lab); gr.appendChild(r); g.appendChild(gr); refs.push({key,r,v,fmt}); return gr; };
   const seg=(g,key,label,opts,rebuild)=>{ const gr=el('div','grp'); if(label) gr.appendChild(el('label',null,label)); const s=el('div','seg');
-    opts.forEach(o=>{ const b=el('button',null,o.t); b.setAttribute('aria-pressed',String(P[key]==o.v)); b.onclick=()=>{ P[key]=o.v; [...s.children].forEach(c=>c.setAttribute('aria-pressed',String(c===b))); if(rebuild) buildEdges(); refreshGate(); }; s.appendChild(b); });
+    opts.forEach(o=>{ const b=el('button',null,o.t); b.setAttribute('aria-pressed',String(P[key]==o.v)); b.onclick=()=>{ P[key]=o.v; [...s.children].forEach(c=>c.setAttribute('aria-pressed',String(c===b))); if(rebuild===true) buildEdges(); else if(typeof rebuild==='function') rebuild(); refreshGate(); }; s.appendChild(b); });
     gr.appendChild(s); g.appendChild(gr); refs.push({key,seg:s,opts,kind:'seg'}); return gr; };
   const select=(g,key,label,opts,rebuild)=>{ const gr=el('div','grp'); if(label) gr.appendChild(el('label',null,label)); const s=el('select','sel');
     opts.forEach(o=>{ const op=el('option',null,o.t); op.value=o.v; s.appendChild(op); }); s.value=P[key]; s.onchange=()=>{ P[key]=s.value; if(rebuild) buildEdges(); refreshGate(); }; gr.appendChild(s); g.appendChild(gr); refs.push({key,sel:s,kind:'sel'}); return gr; };
@@ -440,6 +504,14 @@ function buildPanel(){
   const g1=duo(gG); slider(g1,'glowRadius','Reach',0.3,2.5,0.05,v=>(+v).toFixed(2),buildGlow); slider(g1,'glowSpread','Spread',0.4,2.5,0.05,v=>(+v).toFixed(2),buildGlow);
   const g2=duo(gG); slider(g2,'glowIntensity','Intensity',0.2,2.2,0.05,v=>(+v).toFixed(2)); slider(g2,'bloom','Bloom',0,1.5,0.02,v=>(+v).toFixed(2));
 
+  const gU=grp('Corona fur','The dense, furry discharge — fine spikes leaping the whole edge.');
+  seg(gU,'fur','Fur',[{t:'Off',v:0},{t:'On',v:1}],buildFur);
+  const uWrap=el('div'); when(uWrap,'fur:1'); gU.appendChild(uWrap);
+  seg(uWrap,'spectrum','Colour',[{t:'Corona',v:0},{t:'Spectrum',v:1}],buildFur);
+  const u1=duo(uWrap); slider(u1,'furAmount','Amount',0,1.6,0.02,v=>(+v).toFixed(2)); slider(u1,'furLength','Length',0.3,2.5,0.05,v=>(+v).toFixed(2),buildFur);
+  const u2=duo(uWrap); slider(u2,'furFine','Fineness',0,1,0.02,v=>(+v).toFixed(2),buildFur); slider(u2,'furJitter','Jitter',0.2,2.2,0.05,v=>(+v).toFixed(2),buildFur);
+  when(slider(uWrap,'hueShift','Hue',-180,180,1,v=>(+v).toFixed(0)+'°',buildFur),'spectrum:1');
+
   const gF=grp('Filaments','The crackle — streamers leaping off the edge.');
   seg(gF,'filaments','Filaments',[{t:'Off',v:0},{t:'On',v:1}]);
   const fWrap=el('div'); when(fWrap,'filaments:1'); gF.appendChild(fWrap);
@@ -449,13 +521,12 @@ function buildPanel(){
   const gFl=grp('Flicker','The live, unstable pulse of the field.');
   const fl=duo(gFl); slider(fl,'flicker','Amount',0,1,0.01,v=>(+v).toFixed(2)); slider(fl,'flickSpeed','Speed',0.2,3,0.05,v=>(+v).toFixed(2));
 
-  const gC=grp('Canvas','Output size — what a still or recording is rendered at.');
-  select(gC,'aspect','Aspect',[{t:'Square 1:1',v:'1:1'},{t:'Portrait 4:5',v:'4:5'},{t:'Story 9:16',v:'9:16'},{t:'Landscape 16:9',v:'16:9'}],true);
-  slider(gC,'longEdge','Long edge',720,1500,20,v=>v+' px',true);
+  // Canvas size is the shared top-left size dock (#sizeDock → #aspect); no rail group needed.
+  const asp=document.getElementById('aspect');
+  if(asp) asp.addEventListener('change',()=>{ P.aspect=asp.value; if(img) buildEdges(); else [comp.width,comp.height]=aspectWH(); });
 
-  // Output — Record + Save live in the bottom-right #output panel
+  // Output — Record lives here; Save is wired to the shared export panel via Opal.mountOutput.
   document.getElementById('recBtn').onclick=toggleRec;
-  document.getElementById('saveBtn').onclick=savePNG;
 
   // View — theme, playback and full screen, moved off the floating bar into the rail
   const gV=grp('View','Theme, playback and full screen.');
@@ -515,7 +586,10 @@ function beginRec(){ const mime=pickMime(); if(!mime) return; const FPS=60; cons
   rec.start(); document.getElementById('recDot').querySelector('b').textContent='REC'; }
 
 // ---------------- boot ----------------
-resize(); buildPanel(); wireBar(); requestAnimationFrame(tick);
+resize(); buildPanel(); wireBar();
+[comp.width,comp.height]=aspectWH();                 // size the artwork up front so the export readout is right pre-image
+try{ Opal.mountOutput(comp,'kirlian'); }catch(e){}   // shared export panel (PNG/JPG/PDF · size · DPI) on the real artwork
+requestAnimationFrame(tick);
 addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
   if(e.key===' '){ e.preventDefault(); P.play=!P.play; setPlayIcon(); }
   if(e.key==='s'||e.key==='S'){ savePNG(); } });
