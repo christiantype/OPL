@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Kirlian — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
+<style>
+  /* Pattern shares the family chrome with the other Lab tools. */
+
+  /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
+     same knobs. What differs is everything below the chrome. */
+  :root{ --liton:#6f9bff; --top:82px; --rail:290px; }
+  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
+    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
+    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family: ui-sans-serif,"Helvetica Neue",Inter,Arial,sans-serif; overflow:hidden; }
+  /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
+     wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
+  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
+  #stage{ display:block; width:100%; height:100%; touch-action:none; }
+
+  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
+     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
+     so the shared chrome gets carried into the theme too. The brand link sets its colour
+     inline via mountTopbar, hence !important. */
+  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
+  body.dark .opal-brand{ color:var(--ink) !important; }
+  body.dark .opal-subhead__name{ color:var(--ink); }
+  body.dark .opal-brand .opal-product,
+  body.dark .opal-subhead__desc,
+  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+
+  /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
+  body.fs .rail, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #stagewrap{ top:0; left:0; }
+  #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
+  body.fs #exitFs{ display:flex; }
+  body.fs.hint #exitFs{ opacity:1; }
+
+  @media (max-width:560px){ :root{ --top:74px; } }
+
+  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
+    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+
+  /* the floating control strip is retired — its buttons now live in the rail's View section */
+  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
+    background:var(--cell); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  .icon svg{ display:block; }
+  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
+     fixed right offset kept colliding with it. Stays put in full screen so a recording
+     always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
+    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
+    background:var(--cell); border:1px solid var(--hair);
+    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  #recDot.on{ display:flex; }
+  /* Count-in. Big enough that you are in no doubt what is about to happen. */
+
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  body.fs #recDot{ top:14px; }
+  @keyframes blink{ 50%{opacity:.2;} }
+
+  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
+     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
+     work with. */
+
+  .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
+    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
+    background:var(--cell);
+    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+    display:flex; flex-direction:column; transition:transform .28s ease; }
+  .rail-l{ left:0; border-right:1px solid var(--line); }
+  .rail-r{ right:0; border-left:1px solid var(--line); }
+  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
+    padding:14px 0; border-bottom:1px solid var(--line); }
+  .row:last-of-type{ border-bottom:0; }
+  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
+     past when you only want two of them. */
+  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
+    font-weight:600; opacity:.9; padding-bottom:2px;
+    display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
+    width:100%; background:none; border:0; font-family:inherit; text-align:left; }
+  .rowhead:hover{ opacity:1; }
+  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhead::before{ content:''; width:0; height:0; flex:none;
+    border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
+    transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
+  .row.folded .rowhead::before{ transform:rotate(0deg); }
+  .row.folded > *:not(.rowhead){ display:none; }
+  .row.folded{ padding-bottom:10px; }
+  .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .rail input[type=range]{ width:100%; }
+  .rail select{ width:100%; }
+  .rail .seg{ width:100%; }
+  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
+  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
+     nothing between you and the piece unless you ask for it. */
+  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
+  .rail-l{ transform:translateX(-100%); }
+  .rail-r{ transform:translateX(100%); }
+  .rail.open{ transform:none; }
+
+  /* (chrome-fade rules removed along with the floating bar) */
+
+  /* Mood — the one control that stays reachable. */
+
+  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
+    color:var(--mute); white-space:nowrap; }
+  .rail .grp > label{ white-space:normal; }
+  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
+  .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
+  .seg button:last-child{ border-right:0; }
+  .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
+  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
+  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
+     the control they describe and get out of the way on click. */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
+    background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
+    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
+    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
+     underline is what the lane tabs use for that other meaning, so these fill instead. */
+
+  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
+     it's just visually replaced, so listeners and readouts are untouched. */
+  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
+  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; margin:0; pointer-events:none; }
+  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
+  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
+  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
+    transition:stroke-dasharray .04s linear; }
+  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
+  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+  .knob:focus-visible{ outline:none; }
+  .knob:focus-visible .k-hub{ stroke:var(--ink); }
+  .knob.drag .k-vl{ stroke-width:3.6; }
+  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
+  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
+    color:var(--mute); text-align:center; white-space:nowrap; }
+  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
+    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    padding:8px 12px; cursor:pointer; border-radius:2px; }
+  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  input[type=text]::placeholder{ color:var(--mute); }
+
+  /* step editor — a row of cells for the active lane; click one to set its note */
+
+  #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
+  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
+  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%;
+    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
+    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  @media (max-width:560px){ input[type=range]{ width:82px; } }
+
+  /* Kirlian — its own bits */
+  #stage{ background:transparent; }
+  #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:10px; letter-spacing:.05em; color:var(--mute); }
+  #hint b{ color:var(--ink); font-weight:600; }
+  body.fs #hint{ display:none; }
+  #drop{ position:fixed; inset:var(--top) 0 0 0; z-index:4; display:flex; align-items:center; justify-content:center;
+    pointer-events:none; text-align:center; }
+  #drop.hide{ display:none; }
+  .drop-in{ display:flex; flex-direction:column; align-items:center; gap:22px; opacity:.9; }
+  .drop-orb{ width:72px; height:72px; border-radius:50%;
+    background:radial-gradient(circle at 44% 38%, rgba(230,255,255,.95), rgba(70,190,255,.5) 44%, transparent 72%);
+    filter:blur(2px); animation:pulse 5s ease-in-out infinite; }
+  #drop p{ margin:0; font-size:12px; line-height:1.8; letter-spacing:.06em; color:var(--mute); }
+  #drop p span{ font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.7; }
+  body.drag-over #drop{ pointer-events:auto; }
+  body.drag-over #stagewrap::after{ content:''; position:fixed; inset:calc(var(--top) + 14px) 14px 14px 14px; z-index:8;
+    border:1px dashed var(--line); border-radius:12px; pointer-events:none; }
+  select.sel{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
+    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
+  .cin{ display:flex; align-items:center; gap:8px; }
+  .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
+  .cin label{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); }
+  .swatches{ display:flex; gap:8px; } .swatches .cin{ flex:1; }
+  .rowhint{ opacity:.74; }
+</style>
+  <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
+</head>
+<body>
+
+<div id="stagewrap"><canvas id="stage"></canvas></div>
+<div id="drop"><div class="drop-in"><div class="drop-orb"></div><p>Drop an image<br><span>or Add image in the panel</span></p></div></div>
+<div id="hint"></div>
+<div id="recDot"><i></i><b>REC</b></div>
+<!-- control bar retired: theme / reform / play / full screen now live in the rail's View section -->
+<button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
+<input id="file" type="file" accept="image/*" hidden />
+<div id="rail" class="rail rail-l open"></div>
+
+<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
+
+<script src="/lab/shared/opal.js?v=3"></script>
+<script>Opal.mountTopbar({ name:'Kirlian', desc:'Corona-discharge aura from any image', version:'v1', about:'Kirlian photography records the electric corona that leaps off an object under high voltage. Drop an image and its edges grip a glowing aura and crackling filaments — tune the colour, reach and flicker of the field, hide or keep the subject, and record the live discharge at your chosen size. A cut-out subject reads cleanest.' });</script>
+<script>
+'use strict';
+(function(){
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const hexRgb=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+const mixHex=(h1,h2,t)=>{ const a=hexRgb(h1),b=hexRgb(h2); return [lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t)]; };
+const rgba=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+a+')';
+
+const stage=document.getElementById('stage'), sctx=stage.getContext('2d');
+const comp=document.createElement('canvas'), cctx=comp.getContext('2d');
+
+const P={
+  aspect:'4:5', longEdge:1100, fit:'contain', scale:1.0,
+  subject:'silhouette', subjectDark:0.72,
+  edgeThresh:0.16, edgeBoost:1.4,
+  glowRadius:1.0, glowSpread:1.0, glowIntensity:1.1, bloom:0.55,
+  inner:'#eaffff', mid:'#38d6ff', outer:'#7a44ff',
+  filaments:1, filDensity:0.5, filLength:1.0, filJitter:1.0,
+  flicker:0.45, flickSpeed:1.0,
+  bg:'#01030a', play:true,
+};
+let img=null, hasA=false;
+let fittedC=null, silC=null, maskC=null, glowIn=null, glowMid=null, glowOut=null;
+let epts=null;            // Float32Array [x,y,nx,ny] * N
+let clock=0, t0=performance.now();
+
+// ---------------- geometry ----------------
+function aspectWH(){ const [a,b]=P.aspect.split(':').map(Number); const L=P.longEdge; return a>=b?[L,Math.round(L*b/a)]:[Math.round(L*a/b),L]; }
+function CW(){ return aspectWH()[0]; } function CH(){ return aspectWH()[1]; }
+function resize(){ const d=Math.min(devicePixelRatio||1,2); stage.width=(innerWidth*d)|0; stage.height=(innerHeight*d)|0; }
+addEventListener('resize',resize);
+
+// noise for flicker
+function hash1(x){ const n=Math.sin(x*127.1)*43758.5453; return n-Math.floor(n); }
+function fbm1(x){ const xi=Math.floor(x),xf=x-xi,u=xf*xf*(3-2*xf); return lerp(hash1(xi),hash1(xi+1),u); }
+
+// ---------------- build corona from image ----------------
+function newC(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function tint(mask,hex){ const c=newC(mask.width,mask.height), x=c.getContext('2d'); x.drawImage(mask,0,0); x.globalCompositeOperation='source-in'; x.fillStyle=hex; x.fillRect(0,0,c.width,c.height); return c; }
+function retint(){ if(!maskC) return; glowIn=tint(maskC,P.inner); glowMid=tint(maskC,P.mid); glowOut=tint(maskC,P.outer); buildGlow(); }
+// The aura layers are static — they only change with the image, its colours, or the reach/
+// spread sliders. Blurring them once into cached canvases (instead of every frame) is what
+// keeps the render at full frame rate, so recordings stay smooth.
+let bGlowIn=null, bGlowMid=null, bGlowOut=null, bRim=null, bBloom=null;
+function blurLayer(src,px){ const c=newC(src.width,src.height), x=c.getContext('2d'); x.filter='blur('+Math.max(0,px).toFixed(2)+'px)'; x.drawImage(src,0,0); x.filter='none'; return c; }
+function buildGlow(){ if(!glowIn) return; const unit=comp.width/1000;
+  bGlowOut=blurLayer(glowOut, 22*unit*P.glowRadius*P.glowSpread);
+  bGlowMid=blurLayer(glowMid, 10*unit*P.glowRadius*P.glowSpread);
+  bGlowIn =blurLayer(glowIn,  3.5*unit*P.glowRadius);
+  bRim    =blurLayer(glowIn,  1.1*unit);
+  bBloom  =blurLayer(glowMid, 40*unit*P.glowSpread); }
+
+function buildEdges(){
+  if(!img){ return; }
+  const W=CW(),H=CH(); comp.width=W; comp.height=H;
+  const s=(P.fit==='cover'?Math.max(W/img.width,H/img.height):Math.min(W/img.width,H/img.height))*P.scale;
+  const dw=img.width*s, dh=img.height*s, ox=(W-dw)/2, oy=(H-dh)/2;
+  const rx0=clamp(Math.round(ox),0,W-1), ry0=clamp(Math.round(oy),0,H-1),
+        rx1=clamp(Math.round(ox+dw)-1,0,W-1), ry1=clamp(Math.round(oy+dh)-1,0,H-1);
+  fittedC=newC(W,H); { const x=fittedC.getContext('2d'); x.drawImage(img,ox,oy,dw,dh); }
+  const sc=newC(W,H); const x=sc.getContext('2d',{willReadFrequently:true}); x.clearRect(0,0,W,H); x.drawImage(img,ox,oy,dw,dh);
+  const id=x.getImageData(0,0,W,H), d=id.data;
+  const N=W*H, L=new Float32Array(N), A=new Float32Array(N);
+  for(let i=0;i<N;i++){ const o=i*4; L[i]=(0.2126*d[o]+0.7152*d[o+1]+0.0722*d[o+2])/255; A[i]=d[o+3]/255; }
+  // Is the SUBJECT itself a cut-out? Check transparency only INSIDE the image rect (inset to
+  // skip anti-aliased edges) — otherwise the empty plate around a scaled-down image reads as
+  // "transparent" and the rectangle border becomes a false silhouette.
+  hasA=false; const insX0=rx0+2, insX1=rx1-2, insY0=ry0+2, insY1=ry1-2;
+  for(let y=insY0;y<=insY1 && !hasA;y++) for(let xx=insX0;xx<=insX1;xx++){ if(d[(y*W+xx)*4+3]<230){ hasA=true; break; } }
+  const F = hasA ? A : L;                                     // coverage field: silhouette if we have alpha, else luminance
+  const edge=new Float32Array(N); let mx=1e-6;
+  // For an opaque photo the drawn rectangle reads as a hard edge, so the corona grips that
+  // box — worst when you scale the image down. Clamp sampling to the image rect so its outer
+  // border carries no gradient; the aura then comes from the picture's internal contours.
+  // A cut-out (alpha) keeps full-canvas sampling, so its silhouette stays the edge, as intended.
+  const cX = hasA ? (v)=>clamp(v,0,W-1) : (v)=>clamp(v,rx0,rx1);
+  const cY = hasA ? (v)=>clamp(v,0,H-1) : (v)=>clamp(v,ry0,ry1);
+  const at=(xx,yy)=>F[cY(yy)*W+cX(xx)];
+  const md=new ImageData(W,H); const mdd=md.data;
+  for(let y=0;y<H;y++) for(let xx=0;xx<W;xx++){ const i=y*W+xx;
+    const gx=at(xx+1,y)-at(xx-1,y), gy=at(xx,y+1)-at(xx,y-1); const g=Math.hypot(gx,gy);
+    edge[i]=g; if(g>mx)mx=g; }
+  const thr=P.edgeThresh, boost=P.edgeBoost;
+  for(let i=0;i<N;i++){ const e=clamp((edge[i]/mx-thr)*boost/Math.max(1-thr,1e-3),0,1); const o=i*4;
+    mdd[o]=255; mdd[o+1]=255; mdd[o+2]=255; mdd[o+3]=(e*255)|0; }
+  maskC=newC(W,H); maskC.getContext('2d').putImageData(md,0,0);
+  retint();
+  // silhouette fill (subject void) — alpha coverage, or a soft box for opaque photos
+  silC=newC(W,H); { const sx=silC.getContext('2d'); const sid=sx.createImageData(W,H), sd=sid.data;
+    for(let y=0;y<H;y++) for(let xx=0;xx<W;xx++){ const i=y*W+xx, o=i*4;
+      const cov = hasA ? A[i] : ((xx>=rx0&&xx<=rx1&&y>=ry0&&y<=ry1)?1:0);   // opaque subject = the image rect
+      sd[o]=0; sd[o+1]=0; sd[o+2]=0; sd[o+3]=(cov*255)|0; }
+    sx.putImageData(sid,0,0); }
+  // edge point set for filaments (subsample), normal points outward (down the coverage gradient)
+  const pts=[]; const step=Math.max(2,Math.round(W/420));
+  for(let y=0;y<H;y+=step) for(let xx=0;xx<W;xx+=step){ const i=y*W+xx; if(edge[i]/mx<thr+0.04) continue;
+    let gx=at(xx+1,y)-at(xx-1,y), gy=at(xx,y+1)-at(xx,y-1); const gl=Math.hypot(gx,gy)||1;
+    pts.push(xx,y,-gx/gl,-gy/gl); }
+  epts=new Float32Array(pts);
+}
+
+// ---------------- draw ----------------
+function drawSubject(){
+  if(P.subject==='hidden'||!fittedC) return;
+  if(P.subject==='original'){ cctx.globalAlpha=clamp(1-P.subjectDark*0.9,0.05,1); cctx.drawImage(fittedC,0,0); cctx.globalAlpha=1;
+    cctx.fillStyle=P.bg; cctx.globalAlpha=P.subjectDark*0.55; cctx.fillRect(0,0,comp.width,comp.height); cctx.globalAlpha=1; }
+  else { // silhouette void — a touch darker than the plate
+    cctx.globalAlpha=P.subjectDark; cctx.globalCompositeOperation='source-over';
+    const t=tint(silC,'#00000a'); cctx.drawImage(t,0,0); cctx.globalAlpha=1; }
+}
+function streamer(x,y,nx,ny,len,jit,flick){
+  let cx=x, cy=y, ang=Math.atan2(ny,nx); const segs=6;
+  for(let s=0;s<segs;s++){ const t=s/segs;
+    ang += (Math.random()-0.5)*jit*0.95;
+    const step=len/segs*(0.6+Math.random()*0.7);
+    const px=cx+Math.cos(ang)*step, py=cy+Math.sin(ang)*step;
+    const col=mixHex(P.inner,P.outer,t);
+    cctx.strokeStyle=rgba(col,(1-t)*0.9*flick); cctx.lineWidth=(1-t)*2.0+0.5;
+    cctx.beginPath(); cctx.moveTo(cx,cy); cctx.lineTo(px,py); cctx.stroke();
+    if(Math.random()<0.16){ const ba=ang+(Math.random()-0.5)*1.6, bl=step*(0.5+Math.random());
+      cctx.lineWidth=(1-t)*1.1+0.3; cctx.beginPath(); cctx.moveTo(cx,cy); cctx.lineTo(cx+Math.cos(ba)*bl,cy+Math.sin(ba)*bl); cctx.stroke(); }
+    cx=px; cy=py;
+  }
+}
+function drawScene(time){
+  const W=comp.width,H=comp.height;
+  cctx.setTransform(1,0,0,1,0,0); cctx.globalCompositeOperation='source-over'; cctx.globalAlpha=1;
+  cctx.fillStyle=P.bg; cctx.fillRect(0,0,W,H);
+  if(!maskC || !bGlowIn) return;
+  drawSubject();
+  const unit=W/1000;
+  const flick=clamp(1 + (fbm1(time*4*P.flickSpeed)-0.5)*P.flicker*1.6 + (Math.random()-0.5)*P.flicker*0.4, 0.15, 1.9);
+  const gi=P.glowIntensity*flick;
+  cctx.globalCompositeOperation='lighter'; cctx.lineCap='round';
+  // aura — pre-blurred layers, outer to inner (no per-frame blur, so the frame rate holds)
+  cctx.globalAlpha=clamp(0.5*gi,0,1);  cctx.drawImage(bGlowOut,0,0);
+  cctx.globalAlpha=clamp(0.7*gi,0,1);  cctx.drawImage(bGlowMid,0,0);
+  cctx.globalAlpha=clamp(0.95*gi,0,1); cctx.drawImage(bGlowIn,0,0);
+  // filaments — the one live, per-frame element
+  if(P.filaments && epts){ const n=epts.length/4; const count=Math.round(n*0.12*P.filDensity);
+    for(let k=0;k<count;k++){ const idx=(Math.random()*n)|0, o=idx*4;
+      const ff=0.5+Math.random()*0.9; streamer(epts[o],epts[o+1],epts[o+2],epts[o+3], (34+Math.random()*60)*unit*P.filLength, P.filJitter, ff*flick); } }
+  // crisp rim
+  cctx.globalAlpha=clamp(0.9*flick,0,1); cctx.drawImage(bRim,0,0);
+  // bloom halo
+  if(P.bloom>0){ cctx.globalAlpha=clamp(P.bloom*0.6*flick,0,1); cctx.drawImage(bBloom,0,0); }
+  cctx.globalAlpha=1; cctx.globalCompositeOperation='source-over';
+}
+function blitToStage(){
+  const sw=stage.width, sh=stage.height; sctx.setTransform(1,0,0,1,0,0);
+  const paper=getComputedStyle(document.body).getPropertyValue('--paper').trim()||'#07080f';
+  sctx.fillStyle=paper; sctx.fillRect(0,0,sw,sh);
+  if(!comp.width) return;
+  const sc=Math.min(sw/comp.width, sh/comp.height)*0.94;
+  const dw=comp.width*sc, dh=comp.height*sc, ox=(sw-dw)/2, oy=(sh-dh)/2;
+  sctx.drawImage(comp,ox,oy,dw,dh);
+  sctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--edge').trim(); sctx.lineWidth=1; sctx.strokeRect(ox+.5,oy+.5,dw-1,dh-1);
+}
+let fps=0,fa=0,fn=0;
+function tick(){ const now=performance.now(), dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play) clock+=dt;
+  if(img) drawScene(clock); blitToStage();
+  fa+=dt; fn++; if(fa>=0.5){ fps=fn/fa; fa=0; fn=0; const h=document.getElementById('hint'); h.innerHTML= maskC?`<b>${(epts?epts.length/4:0)|0}</b> discharge pts &#183; <b>${fps.toFixed(0)}</b> fps &#183; ${comp.width}&#215;${comp.height}`:''; }
+  requestAnimationFrame(tick); }
+
+// ---------------- image load ----------------
+function loadURL(src){ const im=new Image(); im.onload=()=>{ img=im; buildEdges(); document.getElementById('drop').classList.add('hide'); }; im.src=src; }
+function loadFile(f){ if(!f||!/^image\//.test(f.type)) return; const r=new FileReader(); r.onload=e=>loadURL(e.target.result); r.readAsDataURL(f); }
+window.kirlianLoad=loadURL;
+document.getElementById('file').addEventListener('change',e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); });
+addEventListener('dragover',e=>{ e.preventDefault(); document.body.classList.add('drag-over'); });
+addEventListener('dragleave',e=>{ if(e.relatedTarget===null) document.body.classList.remove('drag-over'); });
+addEventListener('drop',e=>{ e.preventDefault(); document.body.classList.remove('drag-over'); const f=e.dataTransfer.files[0]; if(f) loadFile(f); });
+
+// ---------------- panel ----------------
+function el(t,c,h){ const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; }
+let refs=[];
+const PRESETS={ Classic:['#eaffff','#38d6ff','#7a44ff'], Ion:['#f0fff4','#57f2b0','#1f9be0'], Solar:['#fff4e0','#ffbf4d','#ff5a2a'], Magenta:['#ffffff','#ff5ad2','#7a2cff'] };
+function buildPanel(){
+  const host=document.getElementById('rail'); host.innerHTML=''; refs=[];
+  const grp=(title,hint)=>{ const g=el('div','row'); const h=el('button','rowhead',title); h.type='button'; h.setAttribute('aria-expanded','true'); g.appendChild(h); if(hint) g.appendChild(el('p','rowhint',hint)); host.appendChild(g); return g; };
+  const duo=g=>{ const d=el('div','duo'); g.appendChild(d); return d; };
+  const when=(node,expr)=>{ node.dataset.when=expr; return node; };
+  const slider=(g,key,label,min,max,step,fmt,rebuild)=>{ const gr=el('div','grp'); const v=el('b',null,(fmt?fmt(P[key]):P[key])); const lab=el('label',null,label+' '); lab.appendChild(v);
+    const r=el('input'); r.type='range'; r.min=min; r.max=max; r.step=step; r.value=P[key];
+    r.oninput=()=>{ P[key]=(String(step).indexOf('.')>=0)?parseFloat(r.value):parseInt(r.value); v.textContent=fmt?fmt(P[key]):P[key]; if(rebuild===true) buildEdges(); else if(typeof rebuild==='function') rebuild(); };
+    gr.appendChild(lab); gr.appendChild(r); g.appendChild(gr); refs.push({key,r,v,fmt}); return gr; };
+  const seg=(g,key,label,opts,rebuild)=>{ const gr=el('div','grp'); if(label) gr.appendChild(el('label',null,label)); const s=el('div','seg');
+    opts.forEach(o=>{ const b=el('button',null,o.t); b.setAttribute('aria-pressed',String(P[key]==o.v)); b.onclick=()=>{ P[key]=o.v; [...s.children].forEach(c=>c.setAttribute('aria-pressed',String(c===b))); if(rebuild) buildEdges(); refreshGate(); }; s.appendChild(b); });
+    gr.appendChild(s); g.appendChild(gr); refs.push({key,seg:s,opts,kind:'seg'}); return gr; };
+  const select=(g,key,label,opts,rebuild)=>{ const gr=el('div','grp'); if(label) gr.appendChild(el('label',null,label)); const s=el('select','sel');
+    opts.forEach(o=>{ const op=el('option',null,o.t); op.value=o.v; s.appendChild(op); }); s.value=P[key]; s.onchange=()=>{ P[key]=s.value; if(rebuild) buildEdges(); refreshGate(); }; gr.appendChild(s); g.appendChild(gr); refs.push({key,sel:s,kind:'sel'}); return gr; };
+  const color=(key,label)=>{ const cin=el('div','cin'); const inp=el('input'); inp.type='color'; inp.value=P[key]; inp.oninput=()=>{ P[key]=inp.value; retint(); }; cin.appendChild(inp); cin.appendChild(el('label',null,label)); refs.push({key,inp,kind:'color'}); return cin; };
+  const button=(g,label,fn,id)=>{ const b=el('button','btn',label); b.style.width='100%'; if(id)b.id=id; b.onclick=fn; g.appendChild(b); return b; };
+
+  const gI=grp('Image','Drop a file anywhere, or add one here. A cut-out (transparent) subject gives the cleanest corona.');
+  button(gI,'Add image',()=>document.getElementById('file').click());
+  slider(gI,'scale','Scale',0.15,3,0.01,v=>(+v).toFixed(2)+'×',true);
+  seg(gI,'fit','Base fit',[{t:'Fit inside',v:'contain'},{t:'Fill frame',v:'cover'}],true);
+  gI.appendChild((()=>{ const r=el('div','swatches'); r.appendChild(color('bg','Plate')); return r; })());
+
+  const gS=grp('Subject','How the object itself reads under the discharge.');
+  seg(gS,'subject','Show',[{t:'Silhouette',v:'silhouette'},{t:'Photo',v:'original'},{t:'Aura only',v:'hidden'}]);
+  when(slider(gS,'subjectDark','Darkness',0,1,0.01,v=>(+v).toFixed(2)),'subject:silhouette,original');
+
+  const gE=grp('Edge','Where the discharge grips the form.');
+  const e1=duo(gE); slider(e1,'edgeThresh','Threshold',0.03,0.6,0.005,v=>(+v).toFixed(2),true); slider(e1,'edgeBoost','Contrast',0.4,3,0.05,v=>(+v).toFixed(2),true);
+
+  const gG=grp('Corona','The aura — its colour, reach and heat.');
+  const pr=el('div',null,''); pr.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:6px';
+  Object.keys(PRESETS).forEach(n=>{ const b=el('button','btn',n); b.onclick=()=>{ const c=PRESETS[n]; P.inner=c[0];P.mid=c[1];P.outer=c[2]; retint(); syncPanel(); }; pr.appendChild(b); }); gG.appendChild(pr);
+  const cr=el('div','swatches'); cr.appendChild(color('inner','Inner')); cr.appendChild(color('mid','Mid')); cr.appendChild(color('outer','Outer')); gG.appendChild(cr);
+  const g1=duo(gG); slider(g1,'glowRadius','Reach',0.3,2.5,0.05,v=>(+v).toFixed(2),buildGlow); slider(g1,'glowSpread','Spread',0.4,2.5,0.05,v=>(+v).toFixed(2),buildGlow);
+  const g2=duo(gG); slider(g2,'glowIntensity','Intensity',0.2,2.2,0.05,v=>(+v).toFixed(2)); slider(g2,'bloom','Bloom',0,1.5,0.02,v=>(+v).toFixed(2));
+
+  const gF=grp('Filaments','The crackle — streamers leaping off the edge.');
+  seg(gF,'filaments','Filaments',[{t:'Off',v:0},{t:'On',v:1}]);
+  const fWrap=el('div'); when(fWrap,'filaments:1'); gF.appendChild(fWrap);
+  const f1=duo(fWrap); slider(f1,'filDensity','Density',0.05,1.5,0.05,v=>(+v).toFixed(2)); slider(f1,'filLength','Length',0.3,2.5,0.05,v=>(+v).toFixed(2));
+  slider(fWrap,'filJitter','Jitter',0.2,2.2,0.05,v=>(+v).toFixed(2));
+
+  const gFl=grp('Flicker','The live, unstable pulse of the field.');
+  const fl=duo(gFl); slider(fl,'flicker','Amount',0,1,0.01,v=>(+v).toFixed(2)); slider(fl,'flickSpeed','Speed',0.2,3,0.05,v=>(+v).toFixed(2));
+
+  const gC=grp('Canvas','Output size — what a still or recording is rendered at.');
+  select(gC,'aspect','Aspect',[{t:'Square 1:1',v:'1:1'},{t:'Portrait 4:5',v:'4:5'},{t:'Story 9:16',v:'9:16'},{t:'Landscape 16:9',v:'16:9'}],true);
+  slider(gC,'longEdge','Long edge',720,1500,20,v=>v+' px',true);
+
+  // Output — Record + Save live in the bottom-right #output panel
+  document.getElementById('recBtn').onclick=toggleRec;
+  document.getElementById('saveBtn').onclick=savePNG;
+
+  // View — theme, playback and full screen, moved off the floating bar into the rail
+  const gV=grp('View','Theme, playback and full screen.');
+  const vbtn=(id,label)=>{ const b=el('button','btn',label); b.id=id; b.style.width='100%'; gV.appendChild(b); return b; };
+  vbtn('themeBtn','Theme');
+  vbtn('playBtn','Pause');
+  vbtn('restartBtn','Reform');
+  vbtn('fsBtn','Full screen');
+
+  document.querySelectorAll('.rail input[type=range]').forEach(makeKnob);
+  setupFolds(); setupTooltips(); refreshGate();
+}
+function refreshGate(){ document.querySelectorAll('#rail [data-when]').forEach(node=>{ const [k,vals]=node.dataset.when.split(':'); node.style.display=vals.split(',').includes(String(P[k]))?'':'none'; }); }
+function syncPanel(){ refs.forEach(o=>{ if(o.r){ o.r.value=P[o.key]; o.v.textContent=o.fmt?o.fmt(P[o.key]):P[o.key]; if(o.r.repaintKnob)o.r.repaintKnob(); }
+  else if(o.kind==='color'){ o.inp.value=P[o.key]; } else if(o.kind==='seg'){ [...o.seg.children].forEach((c,i)=>c.setAttribute('aria-pressed',String(o.opts[i].v==P[o.key]))); }
+  else if(o.kind==='sel'){ o.sel.value=P[o.key]; } }); refreshGate(); setPlayIcon(); }
+
+// ---------------- shared shell scaffolding ----------------
+function makeKnob(inp){ /* Flat sliders across the Lab — the rotary dial is retired; slider() already builds the flat control, so there is nothing to wrap. */ }
+function paintKnob(k){ const inp=k.inp,mn=+inp.min,mx=+inp.max,v=+inp.value,f=(v-mn)/(mx-mn||1); const path=k.el.querySelector('.k-vl'),len=path.getTotalLength();
+  path.style.strokeDasharray=len; path.style.strokeDashoffset=len*(1-f); const a=(-135+270*f)*Math.PI/180,pt=k.el.querySelector('.k-pt'); pt.setAttribute('x2',(22+Math.sin(a)*8).toFixed(2)); pt.setAttribute('y2',(22-Math.cos(a)*8).toFixed(2)); }
+function setupFolds(){ const KEY='kirlian-folded'; const saved=new Set((()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}})());
+  document.querySelectorAll('.rail .rowhead').forEach(h=>{ const row=h.closest('.row'); const name=h.textContent.trim();
+    if(saved.has(name)){ row.classList.add('folded'); h.setAttribute('aria-expanded','false'); }
+    h.addEventListener('click',()=>{ const f=row.classList.toggle('folded'); h.setAttribute('aria-expanded',String(!f));
+      const cur=new Set((()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}})()); f?cur.add(name):cur.delete(name); try{localStorage.setItem(KEY,JSON.stringify([...cur]))}catch(e){} }); }); }
+let tipEl=null,tipT=null,tipFor=null;
+function setupTooltips(){ addEventListener('pointerover',e=>{ const h=e.target.closest&&e.target.closest('[data-tip]'); if(h===tipFor) return; clearTimeout(tipT); if(!h){ hideTip(); return; } tipFor=h; tipT=setTimeout(()=>showTip(h),240); });
+  addEventListener('pointerdown',hideTip); addEventListener('scroll',hideTip,true); }
+function hideTip(){ clearTimeout(tipT); tipFor=null; if(tipEl){ tipEl.style.opacity='0'; tipEl.style.display='none'; } }
+function showTip(host){ const text=host.getAttribute('data-tip'); if(!text) return; if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl); }
+  tipEl.textContent=text; tipEl.style.display='block'; tipEl.style.opacity='0'; const r=host.getBoundingClientRect(),t=tipEl.getBoundingClientRect();
+  let top=r.top-t.height-8; if(top<8) top=Math.min(innerHeight-t.height-8,r.bottom+8); tipEl.style.left=Math.max(8,Math.min(r.left,innerWidth-t.width-8))+'px'; tipEl.style.top=top+'px'; tipEl.style.opacity='1'; }
+function setPlayIcon(){ const b=document.getElementById('playBtn'); if(!b) return; b.setAttribute('aria-pressed',String(P.play)); b.textContent=P.play?'Pause':'Play'; }
+function setFs(on){ document.body.classList.toggle('fs',on); if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{}); else if(!on&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{}); }
+function wireBar(){ document.getElementById('playBtn').onclick=()=>{ P.play=!P.play; setPlayIcon(); };
+  document.getElementById('restartBtn').onclick=()=>{ buildEdges(); };   // reform: re-derive the corona from scratch (previously unwired)
+  document.getElementById('themeBtn').onclick=()=>{ document.body.classList.toggle('dark'); };
+  document.getElementById('fsBtn').onclick=()=>setFs(!document.body.classList.contains('fs'));
+  document.getElementById('exitFs').onclick=()=>setFs(false);
+  // (the rail is always open now — the show/hide toggle was removed with the floating bar)
+  document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement&&document.body.classList.contains('fs')) setFs(false); });
+  setPlayIcon(); }
+
+// ---------------- export ----------------
+function savePNG(){ if(!img) return; const a=document.createElement('a'); comp.toBlob(b=>{ a.href=URL.createObjectURL(b); a.download='kirlian_'+comp.width+'x'+comp.height+'_'+Math.round(clock*1000)+'.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); },'image/png'); }
+let rec=null, recChunks=[], countIv=null;
+function pickMime(){ return ['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m)); }
+function setRecBtn(on){ const b=document.getElementById('recBtn'); if(!b)return; b.textContent=on?'Stop':'Record'; b.style.borderColor=on?'#ff4d5e':''; b.style.color=on?'#ff4d5e':''; }
+function toggleRec(){ if(rec){ rec.stop(); return; } if(countIv){ clearInterval(countIv); countIv=null; document.getElementById('recDot').classList.remove('on'); setRecBtn(false); return; }
+  if(!img) return; const dot=document.getElementById('recDot'), b=dot.querySelector('b'); dot.classList.add('on'); setRecBtn(true);
+  let c=3; b.textContent=c; countIv=setInterval(()=>{ c--; if(c>0){ b.textContent=c; } else { clearInterval(countIv); countIv=null; beginRec(); } },1000); }
+function beginRec(){ const mime=pickMime(); if(!mime) return; const FPS=60; const stream=comp.captureStream(FPS);
+  rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(comp.width*comp.height*FPS*0.25)))}); recChunks=[];
+  rec.ondataavailable=e=>{ if(e.data.size) recChunks.push(e.data); };
+  rec.onstop=()=>{ const blob=new Blob(recChunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kirlian_'+comp.width+'x'+comp.height+'.'+(mime.indexOf('mp4')>=0?'mp4':'webm'); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); rec=null; document.getElementById('recDot').classList.remove('on'); setRecBtn(false); };
+  rec.start(); document.getElementById('recDot').querySelector('b').textContent='REC'; }
+
+// ---------------- boot ----------------
+resize(); buildPanel(); wireBar(); requestAnimationFrame(tick);
+addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+  if(e.key===' '){ e.preventDefault(); P.play=!P.play; setPlayIcon(); }
+  if(e.key==='s'||e.key==='S'){ savePNG(); } });
+})();
+
+</script>
+</body>
+</html>
