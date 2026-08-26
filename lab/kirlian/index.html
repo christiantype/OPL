@@ -22,7 +22,7 @@
     font-family:var(--font,'IBM Plex Sans',system-ui,sans-serif); overflow:hidden; }
   /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
      wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
-  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
+  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; }
   #stage{ display:block; width:100%; height:100%; touch-action:none; }
 
   /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
@@ -40,6 +40,7 @@
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
   body.fs .rail, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
   body.fs #stagewrap{ top:0; left:0; }
+  body.fs #drop{ inset:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
   body.fs.hint #exitFs{ opacity:1; }
@@ -122,13 +123,8 @@
     color:var(--mute); white-space:nowrap; }
   .rail .grp > label{ white-space:normal; }
   .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
-  .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
-  .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
-  .seg button:last-child{ border-right:0; }
-  .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
-  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
-  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  /* Segmented controls are owned entirely by OPALAB (neumorphic raised pills that press IN) —
+     the tool must not restyle them, or its border/overflow clips the buttons' soft shadows. */
   /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
      the control they describe and get out of the way on click. */
   .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
@@ -190,7 +186,7 @@
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:10px; letter-spacing:.05em; color:var(--mute); }
   #hint b{ color:var(--ink); font-weight:600; }
   body.fs #hint{ display:none; }
-  #drop{ position:fixed; inset:var(--top) 0 0 0; z-index:4; display:flex; align-items:center; justify-content:center;
+  #drop{ position:fixed; inset:var(--top) 0 0 var(--rail); z-index:4; display:flex; align-items:center; justify-content:center;
     pointer-events:none; text-align:center; }
   #drop.hide{ display:none; }
   .drop-in{ display:flex; flex-direction:column; align-items:center; gap:22px; opacity:.9; }
@@ -271,8 +267,11 @@ let clock=0, t0=performance.now();
 // Canvas size follows the shared #sizeDock select ("W/H"); long edge fixed high for a crisp, high-res corona.
 function aspectWH(){ const p=(P.aspect||'1080/1350').split(/[/:x]/).map(Number), a=p[0]||1, b=p[1]||1, L=1600; return a>=b?[L,Math.round(L*b/a)]:[Math.round(L*a/b),L]; }
 function CW(){ return aspectWH()[0]; } function CH(){ return aspectWH()[1]; }
-function resize(){ const d=Math.min(devicePixelRatio||1,2); stage.width=(innerWidth*d)|0; stage.height=(innerHeight*d)|0; }
+// Size the backing store to the stage's own box (rail-inset, so it changes with layout / full screen),
+// not the whole window — otherwise the artwork blits centred on the window and sits off to one side.
+function resize(){ const d=Math.min(devicePixelRatio||1,2); const w=stage.clientWidth||innerWidth, h=stage.clientHeight||innerHeight; stage.width=(w*d)|0; stage.height=(h*d)|0; }
 addEventListener('resize',resize);
+new ResizeObserver(resize).observe(document.getElementById('stagewrap'));
 
 // noise for flicker
 function hash1(x){ const n=Math.sin(x*127.1)*43758.5453; return n-Math.floor(n); }
@@ -528,10 +527,9 @@ function buildPanel(){
   // Output — Record lives here; Save is wired to the shared export panel via Opal.mountOutput.
   document.getElementById('recBtn').onclick=toggleRec;
 
-  // View — theme, playback and full screen, moved off the floating bar into the rail
-  const gV=grp('View','Theme, playback and full screen.');
+  // View — playback and full screen
+  const gV=grp('View','Playback and full screen.');
   const vbtn=(id,label)=>{ const b=el('button','btn',label); b.id=id; b.style.width='100%'; gV.appendChild(b); return b; };
-  vbtn('themeBtn','Theme');
   vbtn('playBtn','Pause');
   vbtn('restartBtn','Reform');
   vbtn('fsBtn','Full screen');
@@ -564,7 +562,6 @@ function setPlayIcon(){ const b=document.getElementById('playBtn'); if(!b) retur
 function setFs(on){ document.body.classList.toggle('fs',on); if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{}); else if(!on&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{}); }
 function wireBar(){ document.getElementById('playBtn').onclick=()=>{ P.play=!P.play; setPlayIcon(); };
   document.getElementById('restartBtn').onclick=()=>{ buildEdges(); };   // reform: re-derive the corona from scratch (previously unwired)
-  document.getElementById('themeBtn').onclick=()=>{ document.body.classList.toggle('dark'); };
   document.getElementById('fsBtn').onclick=()=>setFs(!document.body.classList.contains('fs'));
   document.getElementById('exitFs').onclick=()=>setFs(false);
   // (the rail is always open now — the show/hide toggle was removed with the floating bar)
