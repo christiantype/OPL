@@ -139,9 +139,9 @@
       const prev=g.globalCompositeOperation; g.globalCompositeOperation='lighter';
       // core radiance — bright centre → colour body → long soft falloff, no edge
       let grd=g.createRadialGradient(cx,cy,0, cx,cy,R*1.75);
-      grd.addColorStop(0,'rgba(255,255,255,0.80)'); grd.addColorStop(0.08,RGBA(hot,0.66));
-      grd.addColorStop(0.22,RGBA(lit,0.48)); grd.addColorStop(0.44,RGBA(col,0.32));
-      grd.addColorStop(0.7,RGBA(col,0.11)); grd.addColorStop(1,RGBA(col,0));
+      grd.addColorStop(0,'rgba(255,255,255,0.5)'); grd.addColorStop(0.11,RGBA(hot,0.5));
+      grd.addColorStop(0.26,RGBA(lit,0.42)); grd.addColorStop(0.48,RGBA(col,0.3));
+      grd.addColorStop(0.72,RGBA(col,0.1)); grd.addColorStop(1,RGBA(col,0));
       g.fillStyle=grd; g.fillRect(0,0,W,H);
       // wide soft halo for depth
       let halo=g.createRadialGradient(cx,cy,R*0.3, cx,cy,R*2.8);
@@ -160,8 +160,8 @@
     { const gx=grainC.getContext('2d'), id=gx.createImageData(220,220), d=id.data;
       for(let i=0;i<d.length;i+=4){ const v=(Math.random()*255)|0; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; } gx.putImageData(id,0,0); }
     function drawGrain(){ if(P.grain<=0) return;
-      g.save(); g.globalCompositeOperation='overlay'; g.globalAlpha=(P.grain/100)*0.5;
       const ox=(Math.random()*220)|0, oy=(Math.random()*220)|0;
+      g.save(); g.globalCompositeOperation='overlay'; g.globalAlpha=(P.grain/100)*0.8;   // dithers the smooth radial + adds texture
       for(let y=-oy;y<H;y+=220) for(let x=-ox;x<W;x+=220) g.drawImage(grainC,x,y);
       g.restore(); }
 
@@ -195,7 +195,6 @@
       let fs=P.wordSize; g.font=fs+'px '+FAM;
       const ww=g.measureText(up).width; if(ww>W*0.9){ fs=Math.floor(fs*W*0.9/ww); g.font=fs+'px '+FAM; }   // shrink to fit
       g.textAlign='center'; g.textBaseline='middle';
-      if(P.bg!=='sky'){ g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=fs*0.16; }   // legibility over the orb
       g.fillStyle=hexA(VIB[wi%VIB.length], a);
       g.fillText(up, W/2, H*P.posY);
       g.shadowBlur=0; g.letterSpacing='0px';
@@ -212,7 +211,7 @@
       const fin=Math.min(1,lt/0.5), fout=Math.min(1,(CARD_DUR-lt)/0.55), a=Math.max(0,Math.min(fin,fout));   // gentle fade in/out, held
       if(word==='OP/AL' && logo.complete && logo.naturalWidth){        // draw the real wordmark instead of text
         const markH=P.inviteSize*0.72, ih=markH/LOGO_MARK_HFRAC, iw=ih*LOGO_ASPECT;
-        if(P.bg==='orb'){ g.filter='brightness(0) invert(1)'; } if(P.bg!=='sky'){ g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=markH*0.14; }  // white mark on the dark orb
+        if(P.bg==='orb'){ g.filter='brightness(0) invert(1)'; }  // white mark on the dark orb
         g.globalAlpha=a; g.drawImage(logo, W/2-iw/2, H*P.posY-ih/2, iw, ih); g.globalAlpha=1; g.filter='none'; g.shadowBlur=0;
         return;
       }
@@ -220,7 +219,6 @@
       g.letterSpacing=P.inviteLS+'px';
       let fs=P.inviteSize; g.font=fs+'px '+FAM;
       const ww=g.measureText(word).width; if(ww>W*0.92){ fs=Math.floor(fs*W*0.92/ww); g.font=fs+'px '+FAM; }
-      if(P.bg!=='sky'){ g.shadowColor='rgba(0,0,0,.55)'; g.shadowBlur=fs*0.16; }
       g.fillStyle=hexA(P.bg==='orb'?'#ffffff':'#15171c', a);   // white ink on the dark orb, dark otherwise
       g.fillText(word, W/2, H*P.posY);
       g.shadowBlur=0; g.letterSpacing='0px';
