@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>OPEN Slots — OP/AL</title>
+<link rel="stylesheet" href="/shared/styles.css" />
+<style>
+  html,body{ height:100vh; height:100dvh; margin:0; overflow:hidden; background:#000;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  #frame{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    height:min(100vh, 100vw*16/9); aspect-ratio:9/16; max-width:100vw; overflow:hidden;
+    box-shadow:0 0 0 1px rgba(255,255,255,.06); }
+  #c{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #output #recTime{ margin-top:8px; font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; font-size:13px; opacity:0; transition:opacity .2s; }
+  #output #recTime.on{ opacity:1; }
+</style>
+  <link rel="stylesheet" href="/lab/shared/OPALAB.css" />
+</head>
+<body>
+  <script src="/lab/shared/opal.js"></script>
+  <script>Opal.mountTopbar({ name:'OPEN Slots', desc:'A reel of passing feeling — one word at a time', version:'v1' });</script>
+  <div id="sizeDock" title="Fixed reel format"><span id="dimReadout">1080 × 1920 · 9:16</span></div>
+  <div id="frame"><canvas id="c" width="1080" height="1920"></canvas></div>
+  <div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div><div id="recTime">0:00</div></div>
+  <script>
+  (function(){
+    const c=document.getElementById('c'), g=c.getContext('2d'); const W=1080,H=1920;
+    const EMOTIONS=['calm','restless','tender','grateful','wonder','awe','joy','grief','hope','doubt','ease',
+      'ache','longing','content','curious','weary','alive','still','present','open','raw','quiet','patience',
+      'delight','sorrow','gratitude','boredom','clarity','confusion','peace','warmth','fear','courage','softness',
+      'gladness','melancholy','serenity','wistful','unease','comfort','tenderness','yearning','stillness','elation',
+      'sadness','nervous','hopeful','gentle','heavy','light','bright','tired','rested','held','seen','alone',
+      'together','loved','lonely','afraid','brave','soft','tense','easeful','aching','glowing','wandering','settled',
+      'unsettled','curiosity','reverence','humility','luminous','spacious','grounded','adrift','bittersweet',
+      'nostalgia','relief','surrender','acceptance','resistance','restlessness','wonderment','peaceful','patient',
+      'openness',
+      'anguished','anticipation','apprehension','bereft','bliss','centered','cherished','compassion','connected',
+      'cozy','cradled','craving','crestfallen','dazed','desolate','despair','despondent','devotion','disquiet',
+      'dread','eager','ecstasy','emptiness','enchanted','equanimity','expansive','exposed','faith','flow','forlorn',
+      'fragile','fulfilled','giddy','grace','grieving','guarded','heartache','heartbroken','hollow','homesick',
+      'immersed','inspired','irritable','jubilant','lightness','listless','lulled','meditative','mindful','mournful',
+      'nurtured','overwhelmed','placid','playful','reflective','regretful','relaxed','released','renewed','restful',
+      'rooted','rueful','sacred','safe','searching','secure','sensitive','sheltered','soothed','sorrowful','spent',
+      'steady','stirred','suspended','sweet','tearful','thankful','thoughtful','tranquil','trust','unburdened',
+      'unhurried','unmoored','untethered','vast','vulnerable','welcoming','whole','willing','yielding',
+      // the whole spectrum — bright and dark held together
+      'abundant','wholesome','flourishing','thriving','vibrant','exuberant','triumphant','blessed','boundless',
+      'overjoyed','ecstatic','generous','free',
+      'broken','shattered','ashamed','hopeless','helpless','terrified','bitter','resentful','defeated','abandoned',
+      'betrayed','anxious','furious','lost','trapped','exhausted','gutted','jealous',
+      'conflicted','ambivalent','torn','indifferent',
+      // states + sensations
+      'pensive','alert','watchful','attentive','absorbed','rapt','entranced','keen','dreamy','hazy','drowsy',
+      'sleepy','languid','mellow','buoyant','weightless','tingling','buzzing','humming','prickling','breathless',
+      'shivery','feverish','tremulous','quivering','jittery','antsy','wired','restive','sharp','numb','electric',
+      'floaty','aglow','hushed','brimming','radiant','tingly','simmering','porous','melting','awake'];
+    const VIB=['#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
+      '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c','#0e5c5b','#4a2c4d'];
+    const FAM='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
+    const logo=new Image(); logo.src='/lab/shared/opal-logo.svg';        // the real OP/AL wordmark
+    const LOGO_ASPECT=1584/612, LOGO_MARK_HFRAC=201.5/612;               // mark's height within the SVG viewBox
+    const hexA=(h,a)=>{ const n=parseInt(h.slice(1),16); a=a<0?0:a>1?1:a; return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a.toFixed(3)+')'; };
+    const easeOutCubic=x=>1-Math.pow(1-x,3);
+    function shuffled(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+    let REEL=shuffled(EMOTIONS);
+    const clouds=[]; for(let i=0;i<7;i++) clouds.push({x:Math.random(),y:0.06+Math.random()*0.52,s:0.8+Math.random()*1.5,spd:0.2+Math.random()*0.5,seed:Math.random()*10});
+
+    // ── timeline (seconds): each emotion snaps into focus, holds a beat, then the next → invite cards → loop ──
+    // emotions flicker fast in place, decelerate to a stop, then the invite lines calm-fade and hold
+    const TICKER_END=9.0, ENDING_START=9.3, CARD_DUR=1.85, TICKS=130;
+    const ENDING=['OPEN','FRIDAYS','6AM','MEDITATION & COMMUNITY','OP/AL','MORE THAN DESIGN'];
+    const TOTAL=ENDING_START + ENDING.length*CARD_DUR + 1.5;
+    let start=null, INVITE_SIZE=110;   // one uniform size for every invite line (longest still fits one line)
+
+    function drawSky(now){
+      const grd=g.createLinearGradient(0,0,0,H);
+      grd.addColorStop(0,'#5b9ce1'); grd.addColorStop(0.55,'#9cc2e9'); grd.addColorStop(1,'#cbe4fb');
+      g.fillStyle=grd; g.fillRect(0,0,W,H);
+      for(const p of clouds){ p.x+=p.spd*0.00006; if(p.x>1.25)p.x-=1.5;
+        const cx=p.x*W, cy=p.y*H, base=W*0.17*p.s;
+        for(let b=0;b<4;b++){ const off=b-1.5, ox=cx+off*base*0.6+Math.sin(now*0.3+p.seed+b)*base*0.12,
+          oy=cy+Math.cos(b*1.6+p.seed)*base*0.26, r=base*(1-Math.abs(off)*0.16);
+          const rg=g.createRadialGradient(ox,oy,0,ox,oy,r); rg.addColorStop(0,'rgba(255,255,255,0.5)'); rg.addColorStop(1,'rgba(255,255,255,0)');
+          g.fillStyle=rg; g.beginPath(); g.arc(ox,oy,r,0,6.2832); g.fill(); } }
+    }
+    function drawSlot(t){
+      // instant swaps in place; easeOutCubic front-loads the changes so it flickers fast then slows to a stop
+      const idx=Math.floor(easeOutCubic(Math.min(1,t/TICKER_END))*TICKS);
+      const wi=idx%REEL.length, up=REEL[wi].toUpperCase();
+      let a=1; if(t>TICKER_END-0.5) a=Math.max(0,1-(t-(TICKER_END-0.5))/0.5);   // settle + fade out into the invite
+      if(a<=0) return;
+      let fs=62; g.font=fs+'px '+FAM;                              // scaled down 25%
+      const ww=g.measureText(up).width; if(ww>W*0.86){ fs=Math.floor(fs*W*0.86/ww); g.font=fs+'px '+FAM; }
+      g.textAlign='center'; g.textBaseline='middle';
+      g.fillStyle=hexA(VIB[wi%VIB.length], a);
+      g.fillText(up, W/2, H*0.5);
+    }
+    // the invite words appear in the SAME slot style — each snaps into focus, holds, then the next —
+    // all on one line at one uniform size (INVITE_SIZE), in solid ink
+    function computeInviteSize(){ const BASE=150; g.font=BASE+'px '+FAM; let widest=0;
+      for(const w of ENDING){ const ww=g.measureText(w).width; if(ww>widest) widest=ww; }
+      INVITE_SIZE = Math.floor((widest>W*0.9 ? BASE*W*0.9/widest : BASE) * 0.75); }   // scaled down 25%
+    function drawEnding(t){
+      const local=t-ENDING_START, ci=Math.floor(local/CARD_DUR); if(ci<0||ci>=ENDING.length) return;
+      const word=ENDING[ci], lt=local-ci*CARD_DUR;
+      const fin=Math.min(1,lt/0.5), fout=Math.min(1,(CARD_DUR-lt)/0.55), a=Math.max(0,Math.min(fin,fout));   // gentle fade in/out, held
+      if(word==='OP/AL' && logo.complete && logo.naturalWidth){        // draw the real wordmark instead of text
+        const markH=INVITE_SIZE*0.72, ih=markH/LOGO_MARK_HFRAC, iw=ih*LOGO_ASPECT;
+        g.globalAlpha=a; g.drawImage(logo, W/2-iw/2, H*0.5-ih/2, iw, ih); g.globalAlpha=1;
+        return;
+      }
+      g.textAlign='center'; g.textBaseline='middle';
+      g.font=INVITE_SIZE+'px '+FAM; g.fillStyle=hexA('#15171c', a);
+      g.fillText(word, W/2, H*0.5);
+    }
+    function frame(now){ now/=1000; if(start==null){ start=now; }
+      let t=now-start;
+      if(t>=TOTAL){ start=now; t=0; REEL=shuffled(EMOTIONS); }   // loop
+      drawSky(now);
+      if(t<TICKER_END) drawSlot(t);
+      if(t>=ENDING_START) drawEnding(t);
+      requestAnimationFrame(frame);
+    }
+    computeInviteSize();
+    if(document.fonts && document.fonts.load){ document.fonts.load('40px "Sidepiece-HoneyPie"').then(computeInviteSize).catch(()=>{}); }
+    requestAnimationFrame(frame);
+
+    /* record the canvas (native 1080×1920) → H.264 MP4 */
+    const btn=document.getElementById('recBtn'), tEl=document.getElementById('recTime'), saveBtn=document.getElementById('saveBtn');
+    let rec=null,chunks=[],timer=0,t0=0;
+    const fmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+    btn.addEventListener('click',()=>{ if(rec&&rec.state==='recording'){ rec.stop(); return; }
+      const stream=c.captureStream(30);
+      const mime=['video/mp4;codecs=avc1.640029','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
+      const ext=mime.indexOf('mp4')>=0?'mp4':'webm';
+      rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:40000000}); chunks=[];
+      rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+      rec.onstop=()=>{ clearInterval(timer); const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob); a.download='open-slots.'+ext; a.click(); btn.classList.remove('on'); btn.textContent='Record'; tEl.classList.remove('on'); };
+      rec.start(); t0=performance.now(); tEl.textContent='0:00'; tEl.classList.add('on'); btn.classList.add('on'); btn.textContent='Stop';
+      timer=setInterval(()=>{ tEl.textContent=fmt(performance.now()-t0); },250);
+    });
+    /* Save — grab the current reel frame as a PNG */
+    if(saveBtn) saveBtn.addEventListener('click', ()=>{
+      const a=document.createElement('a'); a.download='open-slots.png'; a.href=c.toDataURL('image/png'); a.click(); });
+  })();
+  </script>
+</body>
+</html>
