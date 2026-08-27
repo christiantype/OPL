@@ -49,7 +49,7 @@
     <div class="group">
       <div class="group__t">Background</div>
       <div class="knob"><label>Scene</label><div class="seg" id="bgSeg"><button data-v="sky">Sky</button><button aria-pressed="true" data-v="orb">Orb</button><button data-v="both">Both</button></div></div>
-      <div class="knob"><label>Orb size <b id="osV">340</b></label><input type="range" id="os" min="140" max="560" value="340"></div>
+      <div class="knob"><label>Orb size <b id="osV">460</b></label><input type="range" id="os" min="160" max="820" value="460"></div>
       <div class="knob"><label>Breath <b id="obV">8</b></label><input type="range" id="ob" min="0" max="20" value="8"></div>
       <div class="knob"><label>Colour flow <b id="cfV">24</b></label><input type="range" id="cf" min="0" max="60" value="24"></div>
       <div class="knob"><label>Grain <b id="grV">16</b></label><input type="range" id="gr" min="0" max="60" value="16"></div>
@@ -110,7 +110,7 @@
     let start=null, INVITE_SIZE=110;   // one uniform size for every invite line (longest still fits one line)
 
     // ── adjustable params (rail controls) ──
-    const P={ wordSize:62, wordLS:0, posY:0.5, wordCase:'upper', inviteSize:100, inviteLS:0, bg:'orb', orbSize:340, orbBreath:0.08, colFlow:0.12, grain:16 };
+    const P={ wordSize:62, wordLS:0, posY:0.5, wordCase:'upper', inviteSize:100, inviteLS:0, bg:'orb', orbSize:460, orbBreath:0.08, colFlow:0.12, grain:16 };
     const CASE=s=> P.wordCase==='upper'?s.toUpperCase() : P.wordCase==='lower'?s.toLowerCase() : s;
     const RGB=h=>{ const n=parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; };
     const RGBA=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+(a<0?0:a>1?1:a).toFixed(3)+')';
@@ -138,13 +138,13 @@
       const col=palAt(t).accent, lit=MIX(col,[255,255,255],0.72), hot=MIX(col,[255,255,255],0.92);
       const prev=g.globalCompositeOperation; g.globalCompositeOperation='lighter';
       // core radiance — bright centre → colour body → long soft falloff, no edge
-      let grd=g.createRadialGradient(cx,cy,0, cx,cy,R*1.75);
-      grd.addColorStop(0,'rgba(255,255,255,0.5)'); grd.addColorStop(0.11,RGBA(hot,0.5));
-      grd.addColorStop(0.26,RGBA(lit,0.42)); grd.addColorStop(0.48,RGBA(col,0.3));
-      grd.addColorStop(0.72,RGBA(col,0.1)); grd.addColorStop(1,RGBA(col,0));
+      let grd=g.createRadialGradient(cx,cy,0, cx,cy,R*2.3);
+      grd.addColorStop(0,'rgba(255,255,255,0.5)'); grd.addColorStop(0.09,RGBA(hot,0.5));
+      grd.addColorStop(0.22,RGBA(lit,0.42)); grd.addColorStop(0.42,RGBA(col,0.32));
+      grd.addColorStop(0.66,RGBA(col,0.14)); grd.addColorStop(0.86,RGBA(col,0.05)); grd.addColorStop(1,RGBA(col,0));
       g.fillStyle=grd; g.fillRect(0,0,W,H);
       // wide soft halo for depth
-      let halo=g.createRadialGradient(cx,cy,R*0.3, cx,cy,R*2.8);
+      let halo=g.createRadialGradient(cx,cy,R*0.3, cx,cy,R*3.4);
       halo.addColorStop(0,RGBA(col,0.10)); halo.addColorStop(1,RGBA(col,0));
       g.fillStyle=halo; g.fillRect(0,0,W,H);
       // gentle internal drift — a couple of soft blooms that breathe (keeps it alive, stays soft)
