@@ -16,7 +16,11 @@
     display:flex; align-items:center; justify-content:center; padding:18px; }
   #frame{ position:relative; height:min(100%, (100vw - var(--rail) - 36px)*16/9); aspect-ratio:9/16; overflow:hidden; }
   #c{ position:absolute; inset:0; width:100%; height:100%; display:block; }
-  #dock .cap{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); margin:2px 0 7px; display:block; }
+  /* standard rail layout helpers — same as every other tool (OPALAB skins the controls; the tool lays them out) */
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   #output #recTime{ margin-top:8px; font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; font-size:13px; opacity:0; transition:opacity .2s; }
   #output #recTime.on{ opacity:1; }
 </style>
@@ -31,8 +35,7 @@
       <div class="group__t">Word</div>
       <div class="knob"><label>Size <b id="wsV">62</b></label><input type="range" id="ws" min="24" max="200" value="62"></div>
       <div class="knob"><label>Letter spacing <b id="lsV">0</b></label><input type="range" id="ls" min="-12" max="80" value="0"></div>
-      <span class="cap">Case</span>
-      <div class="seg" id="caseSeg"><button aria-pressed="true" data-v="upper">UPPER</button><button data-v="lower">lower</button><button data-v="asis">As&nbsp;is</button></div>
+      <div class="knob"><label>Case</label><div class="seg" id="caseSeg"><button aria-pressed="true" data-v="upper">UPPER</button><button data-v="lower">lower</button><button data-v="asis">As&nbsp;is</button></div></div>
     </div>
     <div class="group">
       <div class="group__t">Placement</div>
@@ -47,8 +50,7 @@
       <div class="group__t">Background</div>
       <div class="grid2"><button class="btn" id="vidBtn">Add video</button><button class="btn" id="vidClr">Sky</button></div>
       <input id="vidFile" type="file" accept="video/*" hidden>
-      <span class="cap">Video fit</span>
-      <div class="seg" id="fitSeg"><button aria-pressed="true" data-v="cover">Cover</button><button data-v="contain">Contain</button></div>
+      <div class="knob"><label>Video fit</label><div class="seg" id="fitSeg"><button aria-pressed="true" data-v="cover">Cover</button><button data-v="contain">Contain</button></div></div>
       <div class="knob"><label>Dim for text <b id="dimV">0</b></label><input type="range" id="dim" min="0" max="85" value="0"></div>
     </div>
   </div>
