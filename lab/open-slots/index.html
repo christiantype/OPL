@@ -147,11 +147,10 @@
       let halo=g.createRadialGradient(cx,cy,R*0.3, cx,cy,R*3.4);
       halo.addColorStop(0,RGBA(col,0.10)); halo.addColorStop(1,RGBA(col,0));
       g.fillStyle=halo; g.fillRect(0,0,W,H);
-      // gentle internal drift — a couple of soft blooms that breathe (keeps it alive, stays soft)
-      for(let i=0;i<3;i++){ const a=t*(0.1+i*0.045)+i*2.1;
-        const px=cx+Math.cos(a)*R*0.2, py=cy+Math.sin(a*1.2)*R*0.17, wr=R*(0.55+0.12*Math.sin(t*0.5+i));
-        let wg=g.createRadialGradient(px,py,0,px,py,wr); wg.addColorStop(0,RGBA(lit,0.09)); wg.addColorStop(1,RGBA(lit,0));
-        g.fillStyle=wg; g.fillRect(0,0,W,H); }
+      // a soft centred pulse for gentle life — stays perfectly centred (no offset drift)
+      const pr=R*(0.5+0.08*Math.sin(t*0.5));
+      let pg=g.createRadialGradient(cx,cy,0,cx,cy,pr); pg.addColorStop(0,RGBA(lit,0.08)); pg.addColorStop(1,RGBA(lit,0));
+      g.fillStyle=pg; g.fillRect(0,0,W,H);
       g.globalCompositeOperation=prev;
     }
 
