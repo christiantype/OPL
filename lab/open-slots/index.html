@@ -48,10 +48,11 @@
     </div>
     <div class="group">
       <div class="group__t">Background</div>
-      <div class="grid2"><button class="btn" id="vidBtn">Add video</button><button class="btn" id="vidClr">Sky</button></div>
-      <input id="vidFile" type="file" accept="video/*" hidden>
-      <div class="knob"><label>Video fit</label><div class="seg" id="fitSeg"><button aria-pressed="true" data-v="cover">Cover</button><button data-v="contain">Contain</button></div></div>
-      <div class="knob"><label>Dim for text <b id="dimV">0</b></label><input type="range" id="dim" min="0" max="85" value="0"></div>
+      <div class="knob"><label>Scene</label><div class="seg" id="bgSeg"><button data-v="sky">Sky</button><button aria-pressed="true" data-v="orb">Orb</button><button data-v="both">Both</button></div></div>
+      <div class="knob"><label>Orb size <b id="osV">340</b></label><input type="range" id="os" min="140" max="560" value="340"></div>
+      <div class="knob"><label>Breath <b id="obV">8</b></label><input type="range" id="ob" min="0" max="20" value="8"></div>
+      <div class="knob"><label>Colour flow <b id="cfV">24</b></label><input type="range" id="cf" min="0" max="60" value="24"></div>
+      <div class="knob"><label>Grain <b id="grV">16</b></label><input type="range" id="gr" min="0" max="60" value="16"></div>
     </div>
   </div>
   <div id="stagewrap"><div id="frame"><canvas id="c" width="1080" height="1920"></canvas></div></div>
@@ -90,6 +91,8 @@
       'floaty','aglow','hushed','brimming','radiant','tingly','simmering','porous','melting','awake'];
     const VIB=['#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
       '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c','#0e5c5b','#4a2c4d'];
+    // OP/AL screensaver palette — [deep ground, luminous accent] pairs; the orb drifts through them
+    const PALETTES=[['#1e3a34','#e8846b'],['#14315b','#e6b422'],['#0e5c5b','#d96e3f'],['#5c1a1b','#a9c7d9'],['#e6b422','#14315b'],['#4a2c4d','#9cb48f'],['#c05b25','#16514e'],['#1f3a2e','#f0b49e'],['#46618e','#d9a441'],['#6e1e2a','#a8d8c0'],['#2b2c6b','#f2a81d'],['#5e6033','#c9a7d4'],['#a8442a','#9fc9cc'],['#2e2e2e','#ebe45b'],['#3e2140','#b7c74a'],['#14395e','#e8917b'],['#8c3a2b','#f0e5d0'],['#234b3f','#e8a268'],['#24409a','#e3b23c'],['#5b1f33','#afc9b0'],['#0f4c5c','#f4a261'],['#d9773f','#2a3d45'],['#e5ddc8','#7a3b2e'],['#3d405b','#e07a5f']];
     const FAM='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
     const logo=new Image(); logo.src='/lab/shared/opal-logo.svg';        // the real OP/AL wordmark
     const LOGO_ASPECT=1584/612, LOGO_MARK_HFRAC=201.5/612;               // mark's height within the SVG viewBox
@@ -107,34 +110,69 @@
     let start=null, INVITE_SIZE=110;   // one uniform size for every invite line (longest still fits one line)
 
     // ── adjustable params (rail controls) ──
-    const P={ wordSize:62, wordLS:0, posY:0.5, wordCase:'upper', inviteSize:100, inviteLS:0, bg:'sky', fit:'cover', dim:0 };
+    const P={ wordSize:62, wordLS:0, posY:0.5, wordCase:'upper', inviteSize:100, inviteLS:0, bg:'orb', orbSize:340, orbBreath:0.08, colFlow:0.12, grain:16 };
     const CASE=s=> P.wordCase==='upper'?s.toUpperCase() : P.wordCase==='lower'?s.toLowerCase() : s;
+    const RGB=h=>{ const n=parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; };
+    const RGBA=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+(a<0?0:a>1?1:a).toFixed(3)+')';
+    const MIX=(a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
 
-    // ── optional background video (drawn into the canvas, so it records into the reel) ──
-    const bgVid=document.createElement('video'); bgVid.muted=true; bgVid.loop=true; bgVid.playsInline=true; bgVid.setAttribute('playsinline','');
     function drawBackground(now){
-      if(P.bg==='video' && bgVid.readyState>=2 && bgVid.videoWidth){
-        const vw=bgVid.videoWidth, vh=bgVid.videoHeight;
-        const s=P.fit==='cover'?Math.max(W/vw,H/vh):Math.min(W/vw,H/vh);
-        const dw=vw*s, dh=vh*s;
-        g.fillStyle='#000'; g.fillRect(0,0,W,H);
-        g.drawImage(bgVid,(W-dw)/2,(H-dh)/2,dw,dh);
-        if(P.dim>0){ g.fillStyle='rgba(0,0,0,'+(P.dim/100).toFixed(2)+')'; g.fillRect(0,0,W,H); }
-        return;
-      }
-      drawSky(now);
+      if(P.bg==='both') drawSky(now);
+      else if(P.bg==='orb'){
+        const gc=palAt(now).ground;
+        const grd=g.createRadialGradient(W/2,H*P.posY,0, W/2,H*P.posY,H*0.82);
+        grd.addColorStop(0, RGBA(MIX(gc,[0,0,0],0.28),1)); grd.addColorStop(0.62, RGBA(MIX(gc,[0,0,0],0.66),1)); grd.addColorStop(1, RGBA(MIX(gc,[0,0,0],0.86),1));
+        g.fillStyle=grd; g.fillRect(0,0,W,H);
+      } else { drawSky(now); return; }
+      drawOrb(now);
     }
+
+    // colour drifts slowly through the screensaver palette (ground + accent lerp between pairs)
+    function palAt(t){ const n=PALETTES.length; let f=((t*P.colFlow)%n+n)%n; const i=Math.floor(f), k=f-i;
+      return { ground:MIX(RGB(PALETTES[i][0]),RGB(PALETTES[(i+1)%n][0]),k), accent:MIX(RGB(PALETTES[i][1]),RGB(PALETTES[(i+1)%n][1]),k) }; }
+
+    // ── a soft breathing radiance — a warm luminous orb (a Sacred-Heart glow), pure radial gradient, no hard edge ──
+    function drawOrb(now){
+      const cx=W/2, cy=H*P.posY, t=now;
+      const R=P.orbSize*(1+Math.sin(t*0.7)*P.orbBreath);              // expand / contract — the breath
+      const col=palAt(t).accent, lit=MIX(col,[255,255,255],0.72), hot=MIX(col,[255,255,255],0.92);
+      const prev=g.globalCompositeOperation; g.globalCompositeOperation='lighter';
+      // core radiance — bright centre → colour body → long soft falloff, no edge
+      let grd=g.createRadialGradient(cx,cy,0, cx,cy,R*1.75);
+      grd.addColorStop(0,'rgba(255,255,255,0.80)'); grd.addColorStop(0.08,RGBA(hot,0.66));
+      grd.addColorStop(0.22,RGBA(lit,0.48)); grd.addColorStop(0.44,RGBA(col,0.32));
+      grd.addColorStop(0.7,RGBA(col,0.11)); grd.addColorStop(1,RGBA(col,0));
+      g.fillStyle=grd; g.fillRect(0,0,W,H);
+      // wide soft halo for depth
+      let halo=g.createRadialGradient(cx,cy,R*0.3, cx,cy,R*2.8);
+      halo.addColorStop(0,RGBA(col,0.10)); halo.addColorStop(1,RGBA(col,0));
+      g.fillStyle=halo; g.fillRect(0,0,W,H);
+      // gentle internal drift — a couple of soft blooms that breathe (keeps it alive, stays soft)
+      for(let i=0;i<3;i++){ const a=t*(0.1+i*0.045)+i*2.1;
+        const px=cx+Math.cos(a)*R*0.2, py=cy+Math.sin(a*1.2)*R*0.17, wr=R*(0.55+0.12*Math.sin(t*0.5+i));
+        let wg=g.createRadialGradient(px,py,0,px,py,wr); wg.addColorStop(0,RGBA(lit,0.09)); wg.addColorStop(1,RGBA(lit,0));
+        g.fillStyle=wg; g.fillRect(0,0,W,H); }
+      g.globalCompositeOperation=prev;
+    }
+
+    // ── film grain — painterly texture over the whole frame ──
+    const grainC=document.createElement('canvas'); grainC.width=grainC.height=220;
+    { const gx=grainC.getContext('2d'), id=gx.createImageData(220,220), d=id.data;
+      for(let i=0;i<d.length;i+=4){ const v=(Math.random()*255)|0; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; } gx.putImageData(id,0,0); }
+    function drawGrain(){ if(P.grain<=0) return;
+      g.save(); g.globalCompositeOperation='overlay'; g.globalAlpha=(P.grain/100)*0.5;
+      const ox=(Math.random()*220)|0, oy=(Math.random()*220)|0;
+      for(let y=-oy;y<H;y+=220) for(let x=-ox;x<W;x+=220) g.drawImage(grainC,x,y);
+      g.restore(); }
 
     // ── wire the rail ──
     const $=id=>document.getElementById(id);
-    const wire=(id,vId,key)=>{ const r=$(id),v=$(vId); if(!r)return; r.oninput=()=>{ r.dataset.touched='1'; P[key]=+r.value; if(v)v.textContent=r.value; }; };
-    wire('ws','wsV','wordSize'); wire('ls','lsV','wordLS'); wire('is','isV','inviteSize'); wire('ils','ilsV','inviteLS'); wire('dim','dimV','dim');
+    const wire=(id,vId,key,fn)=>{ const r=$(id),v=$(vId); if(!r)return; r.oninput=()=>{ r.dataset.touched='1'; P[key]=fn?fn(+r.value):+r.value; if(v)v.textContent=r.value; }; };
+    wire('ws','wsV','wordSize'); wire('ls','lsV','wordLS'); wire('is','isV','inviteSize'); wire('ils','ilsV','inviteLS');
+    wire('os','osV','orbSize'); wire('ob','obV','orbBreath',v=>v/100); wire('cf','cfV','colFlow',v=>v/200); wire('gr','grV','grain');
     $('vy').oninput=e=>{ P.posY=e.target.value/100; $('vyV').textContent=e.target.value; };
     const segwire=(id,key)=>{ const s=$(id); if(!s)return; s.querySelectorAll('button').forEach(b=>b.onclick=()=>{ P[key]=b.dataset.v; [...s.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b))); }); };
-    segwire('caseSeg','wordCase'); segwire('fitSeg','fit');
-    $('vidBtn').onclick=()=>$('vidFile').click();
-    $('vidFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; bgVid.src=URL.createObjectURL(f); bgVid.play().catch(()=>{}); P.bg='video'; };
-    $('vidClr').onclick=()=>{ P.bg='sky'; bgVid.pause(); };
+    segwire('caseSeg','wordCase'); segwire('bgSeg','bg');
 
     function drawSky(now){
       const grd=g.createLinearGradient(0,0,0,H);
@@ -157,7 +195,7 @@
       let fs=P.wordSize; g.font=fs+'px '+FAM;
       const ww=g.measureText(up).width; if(ww>W*0.9){ fs=Math.floor(fs*W*0.9/ww); g.font=fs+'px '+FAM; }   // shrink to fit
       g.textAlign='center'; g.textBaseline='middle';
-      if(P.bg==='video'){ g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=fs*0.16; }   // legibility over video
+      if(P.bg!=='sky'){ g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=fs*0.16; }   // legibility over the orb
       g.fillStyle=hexA(VIB[wi%VIB.length], a);
       g.fillText(up, W/2, H*P.posY);
       g.shadowBlur=0; g.letterSpacing='0px';
@@ -174,7 +212,7 @@
       const fin=Math.min(1,lt/0.5), fout=Math.min(1,(CARD_DUR-lt)/0.55), a=Math.max(0,Math.min(fin,fout));   // gentle fade in/out, held
       if(word==='OP/AL' && logo.complete && logo.naturalWidth){        // draw the real wordmark instead of text
         const markH=P.inviteSize*0.72, ih=markH/LOGO_MARK_HFRAC, iw=ih*LOGO_ASPECT;
-        if(P.bg==='video'){ g.filter='brightness(0) invert(1)'; g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=markH*0.14; }  // white mark on video
+        if(P.bg==='orb'){ g.filter='brightness(0) invert(1)'; } if(P.bg!=='sky'){ g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=markH*0.14; }  // white mark on the dark orb
         g.globalAlpha=a; g.drawImage(logo, W/2-iw/2, H*P.posY-ih/2, iw, ih); g.globalAlpha=1; g.filter='none'; g.shadowBlur=0;
         return;
       }
@@ -182,8 +220,8 @@
       g.letterSpacing=P.inviteLS+'px';
       let fs=P.inviteSize; g.font=fs+'px '+FAM;
       const ww=g.measureText(word).width; if(ww>W*0.92){ fs=Math.floor(fs*W*0.92/ww); g.font=fs+'px '+FAM; }
-      if(P.bg==='video'){ g.shadowColor='rgba(0,0,0,.55)'; g.shadowBlur=fs*0.16; }
-      g.fillStyle=hexA(P.bg==='video'?'#ffffff':'#15171c', a);   // white ink on video, dark on sky
+      if(P.bg!=='sky'){ g.shadowColor='rgba(0,0,0,.55)'; g.shadowBlur=fs*0.16; }
+      g.fillStyle=hexA(P.bg==='orb'?'#ffffff':'#15171c', a);   // white ink on the dark orb, dark otherwise
       g.fillText(word, W/2, H*P.posY);
       g.shadowBlur=0; g.letterSpacing='0px';
     }
@@ -193,6 +231,7 @@
       drawBackground(now);
       if(t<TICKER_END) drawSlot(t);
       if(t>=ENDING_START) drawEnding(t);
+      drawGrain();
       requestAnimationFrame(frame);
     }
     computeInviteSize();
