@@ -126,6 +126,8 @@
 <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
 <!-- live token overrides written by the editor (wins over OPALAB's :root) -->
 <style id="tokenLive"></style>
+<!-- live per-component overrides written by the element inspector -->
+<style id="elemLive"></style>
 </head>
 <body class="dark">
 
@@ -490,6 +492,18 @@
   body.tok-editing #tokEditor{ transform:none; }
   body.tok-editing #wrap{ right:344px; }
   body.tok-editing #tokToggle{ right:360px; }
+  .te-tabs{ display:flex; gap:6px; margin-bottom:16px; }
+  .te-tabs .btn{ flex:1; }
+  #elemPane{ display:none; }
+  body.tab-elems #elemPane{ display:block; }
+  body.tab-elems #tokPane{ display:none; }
+  .el-empty{ font-size:12.5px; color:var(--mute); line-height:1.65; padding:8px 0; }
+  .el-sel{ font-size:14px; color:var(--ink); font-weight:600; margin:6px 0 2px; }
+  .el-selc{ font-family:var(--mono); font-size:11px; color:var(--accent); margin:0 0 16px; word-break:break-all; }
+  #inspOverlay{ position:fixed; z-index:38; pointer-events:none; border:1.5px solid var(--accent);
+    background:rgba(43,0,255,.05); border-radius:3px; display:none; }
+  #inspMarker{ position:fixed; z-index:38; pointer-events:none; border:1.5px dashed var(--accent); border-radius:3px; display:none; }
+  body.inspecting #wrap{ cursor:crosshair; }
   #tokEditor .te-h{ font-size:15px; font-weight:600; color:var(--ink); margin:0 0 4px; }
   #tokEditor .te-sub{ font-size:12px; color:var(--mute); line-height:1.55; margin:0 0 4px; }
   #tokEditor .te-grp{ font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
@@ -498,6 +512,7 @@
   .te-row > label{ flex:1; font-size:12.5px; color:var(--ink); }
   .te-row input[type=color]{ width:34px; height:26px; border:1px solid var(--hair); border-radius:6px; background:none; padding:0; cursor:pointer; flex:none; }
   .te-row input[type=range]{ flex:1.3; min-width:60px; }
+  .te-row select{ flex:1.3; }
   .te-row .te-v{ font-family:var(--mono); font-size:11px; color:var(--mute); min-width:40px; text-align:right; }
   .te-actions{ display:flex; gap:8px; margin-top:26px; }
   .te-actions .btn{ flex:1; }
@@ -521,7 +536,35 @@
 </div></div>
 <script>
 (function(){
-  const root=document.documentElement, live=document.getElementById('tokenLive');
+  const root=document.documentElement, live=document.getElementById('tokenLive'), elemLive=document.getElementById('elemLive');
+  const panel=document.getElementById('tokEditor');
+  const el=(t,c,h)=>{ const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; };
+  const rd=v=>getComputedStyle(root).getPropertyValue(v).trim();
+  const toHex=c=>{ c=(c||'').trim();
+    if(c[0]==='#'){ return c.length===4 ? '#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3] : c.slice(0,7); }
+    const m=c.match(/rgba?\(([^)]+)\)/); if(m){ const p=m[1].split(',').map(parseFloat); return '#'+p.slice(0,3).map(n=>('0'+Math.round(n).toString(16)).slice(-2)).join(''); }
+    return '#000000'; };
+  const alphaOf=c=>{ const m=(c||'').match(/rgba?\(([^)]+)\)/); if(m){ const p=m[1].split(','); return p[3]!==undefined?parseFloat(p[3]):1; } return 1; };
+  const hexToRgb=h=>{ h=h.replace('#',''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; };
+  const pxNum=v=>parseFloat(v)||0;
+
+  /* ---- panel scaffold: tabs + panes + actions ---- */
+  panel.innerHTML='';
+  const tabs=el('div','te-tabs');
+  const tTok=el('button','btn primary','Tokens'); tTok.setAttribute('aria-pressed','true');
+  const tEl=el('button','btn','Elements');
+  tabs.append(tTok,tEl); panel.appendChild(tabs);
+  const tokPane=el('div'); tokPane.id='tokPane'; panel.appendChild(tokPane);
+  const elemPane=el('div'); elemPane.id='elemPane'; panel.appendChild(elemPane);
+  const act=el('div','te-actions','<button class="btn" id="tokExport">Export CSS</button><button class="btn" id="tokReset">Reset all</button>');
+  panel.appendChild(act);
+  function setTab(t){ const isEl=t==='elems'; document.body.classList.toggle('tab-elems',isEl);
+    tTok.classList.toggle('primary',!isEl); tEl.classList.toggle('primary',isEl);
+    tTok.setAttribute('aria-pressed',String(!isEl)); tEl.setAttribute('aria-pressed',String(isEl));
+    document.body.classList.toggle('inspecting', isEl && document.body.classList.contains('tok-editing')); }
+  tTok.onclick=()=>setTab('tokens'); tEl.onclick=()=>setTab('elems');
+
+  /* ================= TOKENS ================= */
   const CONFIG=[
     {g:'Surface & ink', items:[
       {v:'--paper', label:'Surface', type:'color', also:['--cell']},
@@ -552,75 +595,106 @@
       {v:'--nm-hi', label:'Dark shadow', type:'rgba'},
     ]},
   ];
-  const rd=v=>getComputedStyle(root).getPropertyValue(v).trim();
-  const toHex=c=>{ c=(c||'').trim();
-    if(c[0]==='#'){ return c.length===4 ? '#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3] : c.slice(0,7); }
-    const m=c.match(/rgba?\(([^)]+)\)/); if(m){ const p=m[1].split(',').map(parseFloat); return '#'+p.slice(0,3).map(n=>('0'+Math.round(n).toString(16)).slice(-2)).join(''); }
-    return '#000000'; };
-  const alphaOf=c=>{ const m=(c||'').match(/rgba?\(([^)]+)\)/); if(m){ const p=m[1].split(','); return p[3]!==undefined?parseFloat(p[3]):1; } return 1; };
-  const hexToRgb=h=>{ h=h.replace('#',''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; };
-  const pxNum=v=>parseFloat(v)||0;
-
-  const DEF={}, CUR={};
+  const DEF={}, CUR={}, resets=[];
   CONFIG.forEach(g=>g.items.forEach(it=>{ DEF[it.v]=rd(it.v); }));
   let saved={}; try{ saved=JSON.parse(localStorage.getItem('opal-tokens-edit')||'{}'); }catch(e){}
   CONFIG.forEach(g=>g.items.forEach(it=>{ CUR[it.v]=(saved[it.v]!==undefined?saved[it.v]:DEF[it.v]); }));
+  function applyTokens(){ let css=':root{'; CONFIG.forEach(g=>g.items.forEach(it=>{ css+=it.v+':'+CUR[it.v]+';'; (it.also||[]).forEach(a=>{ css+=a+':'+CUR[it.v]+';'; }); })); live.textContent=css+'}'; try{ localStorage.setItem('opal-tokens-edit',JSON.stringify(CUR)); }catch(e){} }
+  tokPane.appendChild(el('div','te-sub','Tweak a value — every component on the page updates.'));
+  CONFIG.forEach(g=>{ tokPane.appendChild(el('div','te-grp',g.g));
+    g.items.forEach(it=>{ const row=el('div','te-row'); row.appendChild(el('label',null,it.label));
+      if(it.type==='color'){ const ci=el('input'); ci.type='color'; ci.value=toHex(CUR[it.v]); ci.oninput=()=>{ CUR[it.v]=ci.value; applyTokens(); }; row.appendChild(ci); resets.push(()=>ci.value=toHex(DEF[it.v])); }
+      else if(it.type==='rgba'){ const ci=el('input'); ci.type='color'; ci.value=toHex(CUR[it.v]); const al=el('input'); al.type='range'; al.min=0; al.max=1; al.step=0.01; al.value=alphaOf(CUR[it.v]); const vv=el('span','te-v',(+al.value).toFixed(2));
+        const upd=()=>{ const [r,gg,b]=hexToRgb(ci.value); CUR[it.v]='rgba('+r+','+gg+','+b+','+(+al.value)+')'; vv.textContent=(+al.value).toFixed(2); applyTokens(); }; ci.oninput=upd; al.oninput=upd; row.append(ci,al,vv); resets.push(()=>{ ci.value=toHex(DEF[it.v]); al.value=alphaOf(DEF[it.v]); vv.textContent=(+al.value).toFixed(2); }); }
+      else if(it.type==='px'){ const rg=el('input'); rg.type='range'; rg.min=it.min; rg.max=it.max; rg.step=1; rg.value=pxNum(CUR[it.v]); const vv=el('span','te-v',pxNum(CUR[it.v])+'px'); rg.oninput=()=>{ CUR[it.v]=rg.value+'px'; vv.textContent=rg.value+'px'; applyTokens(); }; row.append(rg,vv); resets.push(()=>{ rg.value=pxNum(DEF[it.v]); vv.textContent=pxNum(DEF[it.v])+'px'; }); }
+      tokPane.appendChild(row);
+    }); });
 
-  function apply(){
-    let css=':root{';
-    CONFIG.forEach(g=>g.items.forEach(it=>{ css+=it.v+':'+CUR[it.v]+';'; (it.also||[]).forEach(a=>{ css+=a+':'+CUR[it.v]+';'; }); }));
-    live.textContent=css+'}';
-    try{ localStorage.setItem('opal-tokens-edit', JSON.stringify(CUR)); }catch(e){}
-  }
+  /* ================= ELEMENT INSPECTOR ================= */
+  const PROPS={
+    bg:{label:'Background', prop:'background-color', type:'color'},
+    fg:{label:'Text colour', prop:'color', type:'color'},
+    radius:{label:'Corner', prop:'border-radius', type:'px', min:0, max:40},
+    pad:{label:'Padding', prop:'padding', type:'px', min:0, max:44},
+    fs:{label:'Text size', prop:'font-size', type:'px', min:8, max:44},
+    fw:{label:'Weight', prop:'font-weight', type:'select', options:['400','500','600','700']},
+    ls:{label:'Letter spacing', prop:'letter-spacing', type:'px', min:-2, max:8, step:0.1},
+    bw:{label:'Border width', prop:'border-width', type:'px', min:0, max:6},
+    bc:{label:'Border colour', prop:'border-color', type:'color'},
+  };
+  // most-specific first — first match on click wins
+  const COMP=[
+    {sel:'.seg button', label:'Segment button', props:['fg','fs','fw','pad','ls']},
+    {sel:'.group__t', label:'Group heading', props:['fg','fs','ls']},
+    {sel:'.sw', label:'Swatch', props:['radius','bw','bc']},
+    {sel:'.crow', label:'Colour row', props:['fg','fs','pad']},
+    {sel:'.btn', label:'Button', props:['bg','fg','radius','pad','fs','fw','ls']},
+    {sel:'.seg', label:'Segment group', props:['radius','bg']},
+    {sel:'.opal-subhead', label:'Sub-header', props:['bg','fg','fs']},
+    {sel:'.opal-topbar', label:'Top bar', props:['bg']},
+    {sel:'.group', label:'Island / group', props:['bg','radius','pad']},
+  ];
+  const RULES={}; try{ Object.assign(RULES, JSON.parse(localStorage.getItem('opal-elem-edit')||'{}')); }catch(e){}
+  function applyElems(){ let css=''; for(const s in RULES){ const d=RULES[s]; const decls=Object.keys(d).map(p=>p+':'+d[p]+' !important').join(';'); if(decls) css+=s+'{'+decls+'}\n'; } elemLive.textContent=css; try{ localStorage.setItem('opal-elem-edit',JSON.stringify(RULES)); }catch(e){} }
 
-  const panel=document.getElementById('tokEditor'), resets=[];
-  panel.innerHTML='<div class="te-h">Design tokens</div><div class="te-sub">Tweak live — every component on the page updates. Export the CSS and hand it to Claude to bake into OPALAB.css.</div>';
-  CONFIG.forEach(g=>{
-    const gt=document.createElement('div'); gt.className='te-grp'; gt.textContent=g.g; panel.appendChild(gt);
-    g.items.forEach(it=>{
-      const row=document.createElement('div'); row.className='te-row';
-      const lab=document.createElement('label'); lab.textContent=it.label; row.appendChild(lab);
-      if(it.type==='color'){
-        const ci=document.createElement('input'); ci.type='color'; ci.value=toHex(CUR[it.v]);
-        ci.oninput=()=>{ CUR[it.v]=ci.value; apply(); };
-        row.appendChild(ci); resets.push(()=>{ ci.value=toHex(DEF[it.v]); });
-      } else if(it.type==='rgba'){
-        const ci=document.createElement('input'); ci.type='color'; ci.value=toHex(CUR[it.v]);
-        const al=document.createElement('input'); al.type='range'; al.min=0; al.max=1; al.step=0.01; al.value=alphaOf(CUR[it.v]);
-        const vv=document.createElement('span'); vv.className='te-v'; vv.textContent=(+al.value).toFixed(2);
-        const upd=()=>{ const [r,gg,b]=hexToRgb(ci.value); CUR[it.v]='rgba('+r+','+gg+','+b+','+(+al.value)+')'; vv.textContent=(+al.value).toFixed(2); apply(); };
-        ci.oninput=upd; al.oninput=upd;
-        row.appendChild(ci); row.appendChild(al); row.appendChild(vv);
-        resets.push(()=>{ ci.value=toHex(DEF[it.v]); al.value=alphaOf(DEF[it.v]); vv.textContent=(+al.value).toFixed(2); });
-      } else if(it.type==='px'){
-        const rg=document.createElement('input'); rg.type='range'; rg.min=it.min; rg.max=it.max; rg.step=1; rg.value=pxNum(CUR[it.v]);
-        const vv=document.createElement('span'); vv.className='te-v'; vv.textContent=pxNum(CUR[it.v])+'px';
-        rg.oninput=()=>{ CUR[it.v]=rg.value+'px'; vv.textContent=rg.value+'px'; apply(); };
-        row.appendChild(rg); row.appendChild(vv);
-        resets.push(()=>{ rg.value=pxNum(DEF[it.v]); vv.textContent=pxNum(DEF[it.v])+'px'; });
-      }
-      panel.appendChild(row);
+  const overlay=el('div'); overlay.id='inspOverlay'; document.body.appendChild(overlay);
+  const marker=el('div'); marker.id='inspMarker'; document.body.appendChild(marker);
+  let selComp=null, selEl=null;
+  function findComp(node){ if(!node||!node.closest) return null; if(panel.contains(node)||node.closest('#tokModal,#tokToggle,#inspOverlay,#inspMarker')) return null;
+    for(const c of COMP){ const m=node.closest(c.sel); if(m) return {comp:c, elem:m}; } return null; }
+  function box(elm,b){ const r=elm.getBoundingClientRect(); b.style.display='block'; b.style.left=r.left+'px'; b.style.top=r.top+'px'; b.style.width=r.width+'px'; b.style.height=r.height+'px'; }
+  function readProp(elm,prop){ const cs=getComputedStyle(elm);
+    if(prop==='border-radius') return cs.borderTopLeftRadius;
+    if(prop==='padding') return cs.paddingTop;
+    if(prop==='border-width') return cs.borderTopWidth;
+    if(prop==='border-color') return cs.borderTopColor;
+    return cs.getPropertyValue(prop); }
+
+  document.addEventListener('mousemove', e=>{ if(!document.body.classList.contains('inspecting')){ overlay.style.display='none'; return; }
+    const hit=findComp(e.target); if(hit) box(hit.elem,overlay); else overlay.style.display='none'; });
+  document.addEventListener('click', e=>{ if(!document.body.classList.contains('inspecting')) return; const hit=findComp(e.target); if(!hit) return; e.preventDefault(); e.stopPropagation(); selComp=hit.comp; selEl=hit.elem; box(hit.elem,marker); buildElemPane(); }, true);
+  addEventListener('scroll',()=>{ if(selEl&&marker.style.display==='block') box(selEl,marker); }, true);
+  addEventListener('resize',()=>{ if(selEl&&marker.style.display==='block') box(selEl,marker); });
+
+  function buildElemPane(){ elemPane.innerHTML='';
+    if(!selComp){ elemPane.appendChild(el('div','el-empty','Click any component on the page — a button, a segment, an island, a heading, a swatch — to edit that component directly. Changes apply to every instance and export as CSS.')); return; }
+    elemPane.appendChild(el('div','el-sel',selComp.label));
+    elemPane.appendChild(el('div','el-selc',selComp.sel));
+    const sel=selComp.sel; RULES[sel]=RULES[sel]||{};
+    selComp.props.forEach(pk=>{ const pd=PROPS[pk]; const row=el('div','te-row'); row.appendChild(el('label',null,pd.label));
+      const cur = RULES[sel][pd.prop]!==undefined ? RULES[sel][pd.prop] : readProp(selEl,pd.prop);
+      if(pd.type==='color'){ const ci=el('input'); ci.type='color'; ci.value=toHex(cur); ci.oninput=()=>{ RULES[sel][pd.prop]=ci.value; applyElems(); }; row.appendChild(ci); }
+      else if(pd.type==='px'){ const rg=el('input'); rg.type='range'; rg.min=pd.min; rg.max=pd.max; rg.step=pd.step||1; rg.value=pxNum(cur); const vv=el('span','te-v',(Math.round(pxNum(cur)*10)/10)+'px'); rg.oninput=()=>{ RULES[sel][pd.prop]=rg.value+'px'; vv.textContent=rg.value+'px'; applyElems(); }; row.append(rg,vv); }
+      else if(pd.type==='select'){ const s=el('select'); pd.options.forEach(o=>{ const op=el('option',null,o); op.value=o; s.appendChild(op); }); const cw=(''+cur).match(/\d+/); s.value=cw?cw[0]:pd.options[0]; s.onchange=()=>{ RULES[sel][pd.prop]=s.value; applyElems(); }; row.appendChild(s); }
+      elemPane.appendChild(row);
     });
-  });
-  const act=document.createElement('div'); act.className='te-actions';
-  act.innerHTML='<button class="btn" id="tokExport">Export CSS</button><button class="btn" id="tokReset">Reset</button>';
-  panel.appendChild(act);
+    const clr=el('button','btn','Clear this component'); clr.style.cssText='width:100%;margin-top:16px'; clr.onclick=()=>{ delete RULES[sel]; applyElems(); selComp=null; selEl=null; marker.style.display='none'; buildElemPane(); }; elemPane.appendChild(clr);
+  }
+  buildElemPane();
 
+  /* ================= toggle · export · reset ================= */
   const tog=document.getElementById('tokToggle');
-  tog.onclick=()=>{ const on=document.body.classList.toggle('tok-editing'); tog.setAttribute('aria-pressed',String(on)); tog.textContent=on?'Done':'Edit tokens'; };
+  tog.onclick=()=>{ const on=document.body.classList.toggle('tok-editing'); tog.setAttribute('aria-pressed',String(on)); tog.textContent=on?'Done':'Edit tokens';
+    if(on){ document.body.classList.toggle('inspecting', document.body.classList.contains('tab-elems')); }
+    else { document.body.classList.remove('inspecting'); overlay.style.display='none'; } };
 
   const modal=document.getElementById('tokModal'), out=document.getElementById('tokOut');
   document.getElementById('tokExport').onclick=()=>{
+    let txt='';
     const ch=[]; CONFIG.forEach(g=>g.items.forEach(it=>{ if(CUR[it.v]!==DEF[it.v]){ ch.push('  '+it.v+': '+CUR[it.v]+';'); (it.also||[]).forEach(a=>ch.push('  '+a+': '+CUR[it.v]+';')); } }));
-    out.value = ch.length ? ':root{\n'+ch.join('\n')+'\n}' : '/* no changes yet — tweak a token first */';
+    if(ch.length) txt+=':root{\n'+ch.join('\n')+'\n}\n\n';
+    for(const s in RULES){ const keys=Object.keys(RULES[s]); if(!keys.length) continue; txt+=s+'{\n'+keys.map(p=>'  '+p+': '+RULES[s][p]+';').join('\n')+'\n}\n\n'; }
+    out.value = txt.trim() || '/* no changes yet — tweak a token or click a component to edit it */';
     modal.classList.add('on');
   };
   document.getElementById('tokCopy').onclick=()=>{ out.select(); try{ navigator.clipboard.writeText(out.value); }catch(e){ document.execCommand('copy'); } const b=document.getElementById('tokCopy'); b.textContent='Copied'; setTimeout(()=>b.textContent='Copy',1200); };
   document.getElementById('tokClose').onclick=()=>modal.classList.remove('on');
   modal.onclick=e=>{ if(e.target===modal) modal.classList.remove('on'); };
-  document.getElementById('tokReset').onclick=()=>{ CONFIG.forEach(g=>g.items.forEach(it=>{ CUR[it.v]=DEF[it.v]; })); localStorage.removeItem('opal-tokens-edit'); resets.forEach(fn=>fn()); apply(); };
+  document.getElementById('tokReset').onclick=()=>{ CONFIG.forEach(g=>g.items.forEach(it=>{ CUR[it.v]=DEF[it.v]; })); for(const k in RULES) delete RULES[k];
+    localStorage.removeItem('opal-tokens-edit'); localStorage.removeItem('opal-elem-edit'); resets.forEach(fn=>fn()); applyTokens(); applyElems(); selComp=null; selEl=null; marker.style.display='none'; buildElemPane(); };
 
-  apply();
+  setTab('tokens');
+  applyTokens(); applyElems();
 })();
 </script>
 <!-- ========================== /LIVE TOKEN EDITOR ============================ -->
