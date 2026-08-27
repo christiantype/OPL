@@ -96,6 +96,8 @@
     const FAM='"Sidepiece-HoneyPie", ui-sans-serif, system-ui, sans-serif';
     const logo=new Image(); logo.src='/lab/shared/opal-logo.svg';        // the real OP/AL wordmark
     const LOGO_ASPECT=1584/612, LOGO_MARK_HFRAC=201.5/612;               // mark's height within the SVG viewBox
+    const opmark=new Image(); opmark.src='/lab/shared/op-mark.svg';      // the footer wordmark — Original Practice / Applied Learning
+    const OPMARK_ASPECT=1137.52/29.84;
     const hexA=(h,a)=>{ const n=parseInt(h.slice(1),16); a=a<0?0:a>1?1:a; return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a.toFixed(3)+')'; };
     const easeOutCubic=x=>1-Math.pow(1-x,3);
     function shuffled(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
@@ -207,6 +209,12 @@
       const local=t-ENDING_START, ci=Math.floor(local/CARD_DUR); if(ci<0||ci>=ENDING.length) return;
       const word=ENDING[ci], lt=local-ci*CARD_DUR;
       const fin=Math.min(1,lt/0.5), fout=Math.min(1,(CARD_DUR-lt)/0.55), a=Math.max(0,Math.min(fin,fout));   // gentle fade in/out, held
+      if(word==='MORE THAN DESIGN' && opmark.complete && opmark.naturalWidth){   // the footer wordmark instead of the text
+        const iw=W*0.86, ih=iw/OPMARK_ASPECT;
+        if(P.bg==='orb'){ g.filter='brightness(0) invert(1)'; }   // white on the dark orb
+        g.globalAlpha=a; g.drawImage(opmark, W/2-iw/2, H*P.posY-ih/2, iw, ih); g.globalAlpha=1; g.filter='none';
+        return;
+      }
       if(word==='OP/AL' && logo.complete && logo.naturalWidth){        // draw the real wordmark instead of text
         const markH=P.inviteSize*0.72, ih=markH/LOGO_MARK_HFRAC, iw=ih*LOGO_ASPECT;
         if(P.bg==='orb'){ g.filter='brightness(0) invert(1)'; }  // white mark on the dark orb
