@@ -7,12 +7,16 @@
 <title>OPEN Slots — OP/AL</title>
 <link rel="stylesheet" href="/shared/styles.css" />
 <style>
-  html,body{ height:100vh; height:100dvh; margin:0; overflow:hidden; background:#000;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
-  #frame{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    height:min(100vh, 100vw*16/9); aspect-ratio:9/16; max-width:100vw; overflow:hidden;
-    box-shadow:0 0 0 1px rgba(255,255,255,.06); }
+  :root{ --rail:300px; --top:120px; }
+  @media (max-width:560px){ :root{ --rail:0px; } }
+  html,body{ height:100vh; height:100dvh; margin:0; overflow:hidden; background:var(--paper);
+    font-family:var(--font, 'IBM Plex Sans', system-ui, sans-serif); }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; background:var(--mat);
+    display:flex; align-items:center; justify-content:center; padding:18px; }
+  #frame{ position:relative; height:min(100%, (100vw - var(--rail) - 36px)*16/9); aspect-ratio:9/16; overflow:hidden; }
   #c{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #dock .cap{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); margin:2px 0 7px; display:block; }
   #output #recTime{ margin-top:8px; font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; font-size:13px; opacity:0; transition:opacity .2s; }
   #output #recTime.on{ opacity:1; }
 </style>
@@ -22,7 +26,33 @@
   <script src="/lab/shared/opal.js"></script>
   <script>Opal.mountTopbar({ name:'OPEN Slots', desc:'A reel of passing feeling — one word at a time', version:'v1' });</script>
   <div id="sizeDock" title="Fixed reel format"><span id="dimReadout">1080 × 1920 · 9:16</span></div>
-  <div id="frame"><canvas id="c" width="1080" height="1920"></canvas></div>
+  <div id="dock">
+    <div class="group">
+      <div class="group__t">Word</div>
+      <div class="knob"><label>Size <b id="wsV">62</b></label><input type="range" id="ws" min="24" max="200" value="62"></div>
+      <div class="knob"><label>Letter spacing <b id="lsV">0</b></label><input type="range" id="ls" min="-12" max="80" value="0"></div>
+      <span class="cap">Case</span>
+      <div class="seg" id="caseSeg"><button aria-pressed="true" data-v="upper">UPPER</button><button data-v="lower">lower</button><button data-v="asis">As&nbsp;is</button></div>
+    </div>
+    <div class="group">
+      <div class="group__t">Placement</div>
+      <div class="knob"><label>Vertical <b id="vyV">50</b></label><input type="range" id="vy" min="18" max="82" value="50"></div>
+    </div>
+    <div class="group">
+      <div class="group__t">Invite lines</div>
+      <div class="knob"><label>Size <b id="isV">100</b></label><input type="range" id="is" min="40" max="220" value="100"></div>
+      <div class="knob"><label>Letter spacing <b id="ilsV">0</b></label><input type="range" id="ils" min="-12" max="80" value="0"></div>
+    </div>
+    <div class="group">
+      <div class="group__t">Background</div>
+      <div class="grid2"><button class="btn" id="vidBtn">Add video</button><button class="btn" id="vidClr">Sky</button></div>
+      <input id="vidFile" type="file" accept="video/*" hidden>
+      <span class="cap">Video fit</span>
+      <div class="seg" id="fitSeg"><button aria-pressed="true" data-v="cover">Cover</button><button data-v="contain">Contain</button></div>
+      <div class="knob"><label>Dim for text <b id="dimV">0</b></label><input type="range" id="dim" min="0" max="85" value="0"></div>
+    </div>
+  </div>
+  <div id="stagewrap"><div id="frame"><canvas id="c" width="1080" height="1920"></canvas></div></div>
   <div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div><div id="recTime">0:00</div></div>
   <script>
   (function(){
@@ -74,6 +104,36 @@
     const TOTAL=ENDING_START + ENDING.length*CARD_DUR + 1.5;
     let start=null, INVITE_SIZE=110;   // one uniform size for every invite line (longest still fits one line)
 
+    // ── adjustable params (rail controls) ──
+    const P={ wordSize:62, wordLS:0, posY:0.5, wordCase:'upper', inviteSize:100, inviteLS:0, bg:'sky', fit:'cover', dim:0 };
+    const CASE=s=> P.wordCase==='upper'?s.toUpperCase() : P.wordCase==='lower'?s.toLowerCase() : s;
+
+    // ── optional background video (drawn into the canvas, so it records into the reel) ──
+    const bgVid=document.createElement('video'); bgVid.muted=true; bgVid.loop=true; bgVid.playsInline=true; bgVid.setAttribute('playsinline','');
+    function drawBackground(now){
+      if(P.bg==='video' && bgVid.readyState>=2 && bgVid.videoWidth){
+        const vw=bgVid.videoWidth, vh=bgVid.videoHeight;
+        const s=P.fit==='cover'?Math.max(W/vw,H/vh):Math.min(W/vw,H/vh);
+        const dw=vw*s, dh=vh*s;
+        g.fillStyle='#000'; g.fillRect(0,0,W,H);
+        g.drawImage(bgVid,(W-dw)/2,(H-dh)/2,dw,dh);
+        if(P.dim>0){ g.fillStyle='rgba(0,0,0,'+(P.dim/100).toFixed(2)+')'; g.fillRect(0,0,W,H); }
+        return;
+      }
+      drawSky(now);
+    }
+
+    // ── wire the rail ──
+    const $=id=>document.getElementById(id);
+    const wire=(id,vId,key)=>{ const r=$(id),v=$(vId); if(!r)return; r.oninput=()=>{ r.dataset.touched='1'; P[key]=+r.value; if(v)v.textContent=r.value; }; };
+    wire('ws','wsV','wordSize'); wire('ls','lsV','wordLS'); wire('is','isV','inviteSize'); wire('ils','ilsV','inviteLS'); wire('dim','dimV','dim');
+    $('vy').oninput=e=>{ P.posY=e.target.value/100; $('vyV').textContent=e.target.value; };
+    const segwire=(id,key)=>{ const s=$(id); if(!s)return; s.querySelectorAll('button').forEach(b=>b.onclick=()=>{ P[key]=b.dataset.v; [...s.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b))); }); };
+    segwire('caseSeg','wordCase'); segwire('fitSeg','fit');
+    $('vidBtn').onclick=()=>$('vidFile').click();
+    $('vidFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; bgVid.src=URL.createObjectURL(f); bgVid.play().catch(()=>{}); P.bg='video'; };
+    $('vidClr').onclick=()=>{ P.bg='sky'; bgVid.pause(); };
+
     function drawSky(now){
       const grd=g.createLinearGradient(0,0,0,H);
       grd.addColorStop(0,'#5b9ce1'); grd.addColorStop(0.55,'#9cc2e9'); grd.addColorStop(1,'#cbe4fb');
@@ -88,37 +148,47 @@
     function drawSlot(t){
       // instant swaps in place; easeOutCubic front-loads the changes so it flickers fast then slows to a stop
       const idx=Math.floor(easeOutCubic(Math.min(1,t/TICKER_END))*TICKS);
-      const wi=idx%REEL.length, up=REEL[wi].toUpperCase();
+      const wi=idx%REEL.length, up=CASE(REEL[wi]);
       let a=1; if(t>TICKER_END-0.5) a=Math.max(0,1-(t-(TICKER_END-0.5))/0.5);   // settle + fade out into the invite
       if(a<=0) return;
-      let fs=62; g.font=fs+'px '+FAM;                              // scaled down 25%
-      const ww=g.measureText(up).width; if(ww>W*0.86){ fs=Math.floor(fs*W*0.86/ww); g.font=fs+'px '+FAM; }
+      g.letterSpacing=P.wordLS+'px';
+      let fs=P.wordSize; g.font=fs+'px '+FAM;
+      const ww=g.measureText(up).width; if(ww>W*0.9){ fs=Math.floor(fs*W*0.9/ww); g.font=fs+'px '+FAM; }   // shrink to fit
       g.textAlign='center'; g.textBaseline='middle';
+      if(P.bg==='video'){ g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=fs*0.16; }   // legibility over video
       g.fillStyle=hexA(VIB[wi%VIB.length], a);
-      g.fillText(up, W/2, H*0.5);
+      g.fillText(up, W/2, H*P.posY);
+      g.shadowBlur=0; g.letterSpacing='0px';
     }
     // the invite words appear in the SAME slot style — each snaps into focus, holds, then the next —
     // all on one line at one uniform size (INVITE_SIZE), in solid ink
-    function computeInviteSize(){ const BASE=150; g.font=BASE+'px '+FAM; let widest=0;
+    function computeInviteSize(){ const BASE=150; g.letterSpacing='0px'; g.font=BASE+'px '+FAM; let widest=0;
       for(const w of ENDING){ const ww=g.measureText(w).width; if(ww>widest) widest=ww; }
-      INVITE_SIZE = Math.floor((widest>W*0.9 ? BASE*W*0.9/widest : BASE) * 0.75); }   // scaled down 25%
+      INVITE_SIZE = Math.floor((widest>W*0.9 ? BASE*W*0.9/widest : BASE) * 0.75);   // scaled down 25%
+      P.inviteSize=INVITE_SIZE; const s=document.getElementById('is'); if(s && !s.dataset.touched){ s.value=INVITE_SIZE; const v=document.getElementById('isV'); if(v) v.textContent=INVITE_SIZE; } }
     function drawEnding(t){
       const local=t-ENDING_START, ci=Math.floor(local/CARD_DUR); if(ci<0||ci>=ENDING.length) return;
       const word=ENDING[ci], lt=local-ci*CARD_DUR;
       const fin=Math.min(1,lt/0.5), fout=Math.min(1,(CARD_DUR-lt)/0.55), a=Math.max(0,Math.min(fin,fout));   // gentle fade in/out, held
       if(word==='OP/AL' && logo.complete && logo.naturalWidth){        // draw the real wordmark instead of text
-        const markH=INVITE_SIZE*0.72, ih=markH/LOGO_MARK_HFRAC, iw=ih*LOGO_ASPECT;
-        g.globalAlpha=a; g.drawImage(logo, W/2-iw/2, H*0.5-ih/2, iw, ih); g.globalAlpha=1;
+        const markH=P.inviteSize*0.72, ih=markH/LOGO_MARK_HFRAC, iw=ih*LOGO_ASPECT;
+        if(P.bg==='video'){ g.filter='brightness(0) invert(1)'; g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=markH*0.14; }  // white mark on video
+        g.globalAlpha=a; g.drawImage(logo, W/2-iw/2, H*P.posY-ih/2, iw, ih); g.globalAlpha=1; g.filter='none'; g.shadowBlur=0;
         return;
       }
       g.textAlign='center'; g.textBaseline='middle';
-      g.font=INVITE_SIZE+'px '+FAM; g.fillStyle=hexA('#15171c', a);
-      g.fillText(word, W/2, H*0.5);
+      g.letterSpacing=P.inviteLS+'px';
+      let fs=P.inviteSize; g.font=fs+'px '+FAM;
+      const ww=g.measureText(word).width; if(ww>W*0.92){ fs=Math.floor(fs*W*0.92/ww); g.font=fs+'px '+FAM; }
+      if(P.bg==='video'){ g.shadowColor='rgba(0,0,0,.55)'; g.shadowBlur=fs*0.16; }
+      g.fillStyle=hexA(P.bg==='video'?'#ffffff':'#15171c', a);   // white ink on video, dark on sky
+      g.fillText(word, W/2, H*P.posY);
+      g.shadowBlur=0; g.letterSpacing='0px';
     }
     function frame(now){ now/=1000; if(start==null){ start=now; }
       let t=now-start;
       if(t>=TOTAL){ start=now; t=0; REEL=shuffled(EMOTIONS); }   // loop
-      drawSky(now);
+      drawBackground(now);
       if(t<TICKER_END) drawSlot(t);
       if(t>=ENDING_START) drawEnding(t);
       requestAnimationFrame(frame);
