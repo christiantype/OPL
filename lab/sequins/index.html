@@ -119,7 +119,7 @@
     </div>
 
     <!-- output -->
-    <div class="group out">
+    <div class="group out" data-export-custom>
       <div class="group__t">Output</div>
       <div class="grid2">
         <button class="btn" id="recBtn" aria-pressed="false" data-tip="Record the shimmer to a video file.">Record</button>
@@ -254,7 +254,7 @@
     recTimer=setInterval(()=>{ $('recDot').querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250);
     $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
 
-  $('saveBtn').addEventListener('click', ()=>{ const a=document.createElement('a'); a.download='sequins.png'; a.href=cv.toDataURL('image/png'); a.click(); });
+  try{ Opal.mountOutput(cv,'sequins'); }catch(e){}   // shared export panel (PNG/JPG/PDF · size · DPI) on the artwork canvas
 
   setTimeout(()=>{ $('hint').style.opacity=0; }, 3600);
 

@@ -131,7 +131,7 @@
     </div>
 
     <!-- output -->
-    <div class="group out">
+    <div class="group out" data-export-custom>
       <div class="group__t">Output</div>
       <div class="grid2">
         <button class="btn" id="recBtn" aria-pressed="false">Record</button>
@@ -320,7 +320,7 @@
     recStart=performance.now(); $('recDot').classList.add('on'); $('recDot').querySelector('b').textContent='0:00';
     recTimer=setInterval(()=>{ $('recDot').querySelector('b').textContent=recFmt(performance.now()-recStart); }, 250);
     $('recBtn').textContent='Stop'; $('recBtn').setAttribute('aria-pressed','true'); });
-  $('saveBtn').addEventListener('click',()=>{ const a2=document.createElement('a'); a2.download='visual-poetry.png'; a2.href=cv.toDataURL('image/png'); a2.click(); });
+  try{ Opal.mountOutput(cv,'visual-poetry'); }catch(e){}   // shared export panel (PNG/JPG/PDF · size · DPI) on the artwork canvas
 
   addEventListener('resize',()=>{ fit(); });
   setTimeout(()=>{ $('hint').style.opacity=0.9; }, 100);

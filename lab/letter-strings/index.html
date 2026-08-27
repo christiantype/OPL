@@ -120,11 +120,7 @@
     color:var(--mute); white-space:nowrap; }
   .rail .grp > label{ white-space:normal; }
   .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
-  .seg{ display:flex; border:1px solid var(--hair); border-radius:2px; overflow:hidden; }
-  .seg button{ appearance:none; border:0; background:transparent; color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 10px; cursor:pointer; border-right:1px solid var(--hair); white-space:nowrap; }
-  .seg button:last-child{ border-right:0; }
-  .seg button[aria-pressed="true"]{ color:var(--paper); background:var(--ink); }
+  /* seg base is owned by OPALAB.css (no border/overflow:hidden — it clipped the raised pills) */
   .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
   .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
   /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
@@ -201,7 +197,7 @@
 <!-- control bar retired: theme / play / full screen now live in the rail's View section -->
 <button class="icon" id="exitFs" title="Exit (Esc)">&#10005;</button>
 <div id="rail" class="rail rail-l open"></div>
-<div id="output"><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
+<div id="output" data-export-custom><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
 
 <script src="/lab/shared/opal.js?v=3"></script>
 <script>Opal.mountTopbar({ name:'Letter Strings', desc:'Strings of characters, blown by a wind you control', version:'v1', about:'Lines of text become little ropes of characters. Blow them with a wind that swings back and forth, wrap them onto a cylinder, sphere or 3D box, or switch to Clock mode where hands fling the letters. Colour individual words, upload your own font, drag to push. Export a still or the motion.' });</script>
@@ -478,7 +474,7 @@ function buildPanel(){
   slider(gCv,'longEdge','Long edge',720,1600,20,v=>v+' px',true);
 
   // Output — Record + Save live in the bottom-right #output panel
-  document.getElementById('recBtn').onclick=toggleRec; document.getElementById('saveBtn').onclick=savePNG;
+  document.getElementById('recBtn').onclick=toggleRec;   // Save is wired to the shared export panel via Opal.mountOutput
   const gE=grp('Motion','Re-settle the letters from scratch.');
   const rr=el('div',null,''); rr.style.cssText='display:flex;gap:6px'; const bReset=el('button','btn','Re-settle'); bReset.style.flex='1'; bReset.onclick=build; rr.appendChild(bReset); gE.appendChild(rr);
 
@@ -551,7 +547,9 @@ function loadFontFile(f){ if(!f) return; const rd=new FileReader(); rd.onload=e=
 // ---------------- boot ----------------
 const fontInp=document.createElement('input'); fontInp.type='file'; fontInp.id='fontFile'; fontInp.accept='.ttf,.otf,.woff,.woff2'; fontInp.hidden=true; document.body.appendChild(fontInp);
 fontInp.addEventListener('change',e=>{ if(e.target.files[0]) loadFontFile(e.target.files[0]); });
-resize(); build(); buildPanel(); wireBar(); requestAnimationFrame(tick);
+resize(); build(); buildPanel(); wireBar();
+try{ Opal.mountOutput(comp,'letter-strings'); }catch(e){}   // shared export panel (PNG/JPG/PDF · size · DPI) on the real artwork
+requestAnimationFrame(tick);
 document.getElementById('aspect').addEventListener('change', e=>{ P.aspect=e.target.value; build(); });
 addEventListener('keydown',e=>{ if(/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return; if(e.key===' '){ e.preventDefault(); P.play=!P.play; setPlayIcon(); } if(e.key==='s'||e.key==='S'){ savePNG(); } });
 })();
