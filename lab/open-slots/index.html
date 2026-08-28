@@ -64,12 +64,13 @@
     // buildReel() shuffles WITHIN each band each cycle, keeping the negative->positive arc but varying the order.
     const TIERS=[
       /* neg */ ['grief','sorrow','anguished','bereft','crestfallen','desolate','despair','despondent','dread','emptiness','forlorn','grieving','heartache','heartbroken','hollow','mournful','sorrowful','tearful','broken','shattered','ashamed','hopeless','helpless','terrified','defeated','abandoned','betrayed','lost','trapped','exhausted','gutted','numb'],
-      /* low */ ['restless','doubt','ache','longing','weary','raw','boredom','confusion','fear','melancholy','wistful','unease','yearning','sadness','nervous','heavy','tired','alone','lonely','afraid','tense','aching','wandering','unsettled','adrift','bittersweet','nostalgia','resistance','restlessness','apprehension','craving','disquiet','exposed','fragile','guarded','homesick','irritable','listless','overwhelmed','regretful','rueful','searching','spent','unmoored','untethered','vulnerable','bitter','resentful','anxious','furious','jealous','conflicted','ambivalent','torn','indifferent','jittery','antsy','wired','restive','sharp'],
-      /* neutral */ ['tender','curious','softness','tenderness','soft','curiosity','anticipation','dazed','eager','immersed','meditative','mindful','reflective','sensitive','stirred','suspended','sweet','thoughtful','pensive','alert','watchful','attentive','absorbed','rapt','entranced','keen','dreamy','hazy','drowsy','sleepy','languid','mellow','weightless','tingling','buzzing','humming','prickling','breathless','shivery','feverish','tremulous','quivering','electric','floaty','hushed','tingly','simmering','porous','melting'],
+      /* low */ ['restless','doubt','ache','longing','weary','raw','boredom','confusion','fear','melancholy','wistful','unease','yearning','sadness','nervous','heavy','tired','alone','lonely','afraid','tense','aching','wandering','unsettled','adrift','bittersweet','nostalgia','resistance','restlessness','apprehension','craving','disquiet','exposed','fragile','guarded','homesick','irritable','listless','overwhelmed','regretful','rueful','searching','spent','unmoored','untethered','vulnerable','bitter','resentful','anxious','furious','jealous','conflicted','ambivalent','torn','indifferent','jittery','antsy','wired','restive'],
+      /* neutral */ ['tender','curious','softness','tenderness','soft','curiosity','anticipation','dazed','eager','immersed','meditative','mindful','reflective','sensitive','stirred','suspended','sweet','thoughtful','pensive','alert','watchful','attentive','absorbed','rapt','entranced','dreamy','hazy','drowsy','sleepy','languid','mellow','weightless','tingling','buzzing','humming','prickling','breathless','shivery','feverish','tremulous','quivering','electric','floaty','hushed','tingly','simmering','porous','melting'],
       /* warm */ ['calm','hope','ease','content','still','present','open','quiet','patience','clarity','warmth','comfort','stillness','gentle','light','rested','held','seen','loved','easeful','glowing','settled','reverence','humility','spacious','grounded','relief','surrender','acceptance','patient','openness','centered','cherished','compassion','connected','cozy','cradled','devotion','equanimity','expansive','faith','flow','grace','lightness','lulled','nurtured','placid','relaxed','released','restful','rooted','sacred','safe','secure','sheltered','soothed','steady','trust','unburdened','unhurried','vast','willing','yielding','buoyant','aglow'],
       /* joy */ ['grateful','wonder','awe','joy','alive','delight','gratitude','peace','courage','gladness','serenity','elation','hopeful','bright','together','brave','luminous','wonderment','peaceful','bliss','ecstasy','enchanted','fulfilled','giddy','inspired','jubilant','playful','renewed','thankful','tranquil','welcoming','whole','abundant','wholesome','flourishing','thriving','vibrant','exuberant','triumphant','blessed','boundless','overjoyed','ecstatic','generous','free','brimming','radiant','awake'],
     ];
-    const EMOTIONS=TIERS.flat();
+    const CLOSER=['keen','joyful','sharp'];              // the reel always closes on this vivid triad
+    const EMOTIONS=TIERS.flat().concat(CLOSER);
     const VIB=['#e8846b','#e6b422','#d96e3f','#a9c7d9','#e07a5f','#d9a441','#f2a81d','#c9a7d4','#9fc9cc',
       '#b7c74a','#a8d8c0','#14315b','#5c1a1b','#2b2c6b','#e8917b','#e3b23c','#0e5c5b','#4a2c4d'];
     // OP/AL screensaver palette — [deep ground, luminous accent] pairs; the orb drifts through them
@@ -82,14 +83,14 @@
     const hexA=(h,a)=>{ const n=parseInt(h.slice(1),16); a=a<0?0:a>1?1:a; return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a.toFixed(3)+')'; };
     const easeOutCubic=x=>1-Math.pow(1-x,3);
     function shuffled(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
-    function buildReel(){ return TIERS.reduce((a,t)=>a.concat(shuffled(t)),[]); }
+    function buildReel(){ return TIERS.reduce((a,t)=>a.concat(shuffled(t)),[]).concat(CLOSER); }
     let REEL=buildReel();
     let endBase=Math.floor(Math.random()*PALETTES.length);   // ending colour-pair start (varies per cycle)
     const clouds=[]; for(let i=0;i<7;i++) clouds.push({x:Math.random(),y:0.06+Math.random()*0.52,s:0.8+Math.random()*1.5,spd:0.2+Math.random()*0.5,seed:Math.random()*10});
 
     // ── timeline (seconds): each emotion snaps into focus, holds a beat, then the next → invite cards → loop ──
     // emotions flicker fast in place, decelerate to a stop, then the invite lines calm-fade and hold
-    const TICKER_END=9.0, ENDING_START=9.3, CARD_DUR=1.85, TICKS=EMOTIONS.length-1;
+    const TICKER_END=9.0, ENDING_START=9.3, CARD_DUR=1.85, TICKS=EMOTIONS.length;   // reaches + holds the final word (sharp)
     const ENDING=['OPEN','FRIDAYS','6AM','MEDITATION & COMMUNITY','OP/AL','MORE THAN DESIGN'];
     const TOTAL=ENDING_START + ENDING.length*CARD_DUR + 1.5;
     let start=null, INVITE_SIZE=110;   // one uniform size for every invite line (longest still fits one line)
@@ -171,7 +172,7 @@
     function drawSlot(t){
       // instant swaps in place; easeOutCubic front-loads the changes so it flickers fast then slows to a stop
       const idx=Math.floor(easeOutCubic(Math.min(1,t/TICKER_END))*TICKS);
-      const wi=idx%REEL.length, up=CASE(REEL[wi]);
+      const wi=Math.min(idx,REEL.length-1), up=CASE(REEL[wi]);   // clamp so it holds on the last word, not wrap
       let a=1; if(t>TICKER_END-0.5) a=Math.max(0,1-(t-(TICKER_END-0.5))/0.5);   // settle + fade out into the invite
       if(a<=0) return;
       g.letterSpacing=P.wordLS+'px';
