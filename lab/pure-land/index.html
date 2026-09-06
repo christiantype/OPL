@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Pure Land — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
+<style>
+  :root{ --rail:300px; --top:120px; }
+  @media (max-width:560px){ :root{ --top:112px; } }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100vh; height:100dvh; overflow:hidden; background:var(--paper); font-family:var(--font, 'IBM Plex Sans', system-ui, sans-serif); }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; background:var(--mat);
+    display:flex; align-items:center; justify-content:center; padding:22px; }
+  #art{ max-width:100%; max-height:100%; display:block; box-shadow:none; }
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
+  #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11; display:none; align-items:center; gap:7px;
+    padding:6px 12px; border-radius:999px; background:var(--rec); color:#fff; font:600 12px/1 var(--mono); letter-spacing:.06em; }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:8px; height:8px; border-radius:50%; background:#fff; animation:rp 1s ease-in-out infinite; }
+  @keyframes rp{ 50%{ opacity:.25; } }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
+</style>
+  <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
+</head>
+<body>
+  <script src="/lab/shared/opal.js"></script>
+  <script>Opal.mountTopbar({ name:'Pure Land', desc:'Motion gradients, given form by a shape',
+    about:'A gradient obeys a shape. Choose a form — circle, square, ring, capsule, triangle, arch, or an uploaded SVG — and a mode: Bloom (a glow masked inside the form), Rim (an iridescent gradient travelling the outline), Sweep (a rotating fill), or Echo (the form repeated into a receding tunnel). Colour it with an oil-slick spectrum or a named ramp, drift the hue, and set it in motion — pulse, flow, rotate, zoom. Any shape × any mode × any palette × any motion. Upload an SVG for any form at all. Export a still, or record the drift.' });</script>
+  <div id="sizeDock">
+    <span id="dimReadout">1080 × 1920</span>
+    <select id="aspect" title="Canvas size">
+      <option value="1080/1920" selected>Story · 9:16</option>
+      <option value="1280/1600">Portrait · 4:5</option>
+      <option value="1400/1400">Square · 1:1</option>
+      <option value="1600/900">Landscape · 16:9</option>
+    </select>
+  </div>
+  <div id="recDot"><i></i><b>REC</b></div>
+
+  <div id="dock">
+    <div class="group">
+      <div class="group__t">Form</div>
+      <select class="opal-input" id="shape">
+        <option value="circle" selected>Circle</option>
+        <option value="ring">Ring</option>
+        <option value="square">Square</option>
+        <option value="capsule">Capsule</option>
+        <option value="triangle">Triangle</option>
+        <option value="arch">Arch</option>
+        <option value="svg">Uploaded SVG</option>
+      </select>
+      <label class="btn filebtn" style="width:100%">Upload SVG<input id="svgFile" type="file" accept=".svg,image/svg+xml" hidden></label>
+      <div class="duo">
+        <div class="knob"><label>Scale <b id="scaleR">0.62</b></label><input id="scale" type="range" min="15" max="120" value="62"></div>
+        <div class="knob"><label>Rotate <b id="rotR">0</b></label><input id="rot" type="range" min="0" max="360" value="0"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Mode</div>
+      <select class="opal-input" id="mode">
+        <option value="bloom" selected>Bloom · glow masked inside</option>
+        <option value="rim">Rim · gradient along the edge</option>
+        <option value="sweep">Sweep · rotating fill</option>
+        <option value="echo">Echo · tunnel of copies</option>
+      </select>
+      <div class="duo">
+        <div class="knob"><label>Reach <b id="reachR">70</b></label><input id="reach" type="range" min="10" max="140" value="70"></div>
+        <div class="knob"><label>Softness <b id="softR">40</b></label><input id="soft" type="range" min="0" max="100" value="40"></div>
+      </div>
+      <div class="knob" id="echoRow" hidden><label>Echoes <b id="echoesR">14</b></label><input id="echoes" type="range" min="2" max="40" value="14"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Colour</div>
+      <select class="opal-input" id="palette">
+        <option value="iris" selected>Iridescent (oil-slick)</option>
+        <option value="aurora">Aurora</option>
+        <option value="ember">Ember</option>
+        <option value="ice">Ice</option>
+        <option value="dusk">Dusk</option>
+        <option value="custom">Custom</option>
+      </select>
+      <div class="grid2" id="customRow" hidden>
+        <div class="crow"><label>A</label><input type="color" class="sw" id="ca" value="#ff5ea8"></div>
+        <div class="crow"><label>B</label><input type="color" class="sw" id="cb" value="#5ec8ff"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Hue drift <b id="hueR">0</b></label><input id="hue" type="range" min="-180" max="180" value="0"></div>
+        <div class="knob"><label>Bright <b id="brightR">100</b></label><input id="bright" type="range" min="30" max="150" value="100"></div>
+      </div>
+      <div class="crow"><label>Ground</label><input type="color" class="sw" id="ground" value="#0a0a12"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Motion</div>
+      <div class="grid2"><button class="btn" id="reroll">Re-seed</button><button class="btn" id="playBtn" aria-pressed="true">Pause</button></div>
+      <div class="duo">
+        <div class="knob"><label>Flow <b id="flowR">50</b></label><input id="flow" type="range" min="0" max="150" value="50"></div>
+        <div class="knob"><label>Pulse <b id="pulseR">40</b></label><input id="pulse" type="range" min="0" max="120" value="40"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="40" value="10"></div>
+        <div class="knob"><label>Grain <b id="grainR">10</b></label><input id="grain" type="range" min="0" max="70" value="10"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="wrap"><canvas id="art" width="1080" height="1920"></canvas></div>
+
+  <div class="group out" id="output" data-export-custom>
+    <div class="group__t">Output</div>
+    <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
+  </div>
+
+  <script>
+  (function(){
+    const art=document.getElementById('art'), ctx=art.getContext('2d');
+    const $=id=>document.getElementById(id);
+    const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+
+    const P={ aspect:'1080/1920', seed:3, shape:'circle', scale:0.62, rot:0,
+      mode:'bloom', reach:70, soft:40, echoes:14,
+      palette:'iris', ca:'#ff5ea8', cb:'#5ec8ff', hue:0, bright:1.0, ground:'#0a0a12',
+      flow:50, pulse:40, spd:1.0, grain:10, play:true };
+
+    // ---- palettes: functions hue(0..1, phase) -> [r,g,b] ----
+    function hsl(h,s,l){ h=((h%1)+1)%1; const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q; const f=t=>{ t=((t%1)+1)%1;
+      return t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p; }; return [f(h+1/3)*255,f(h)*255,f(h-1/3)*255]; }
+    const RGBA=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+clamp(a,0,1).toFixed(3)+')';
+    const HEX=h=>{ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; };
+    const MIX=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+    const RAMPS={
+      aurora:[[80,220,180],[60,120,220],[150,80,210],[240,200,120]],
+      ember:[[30,10,40],[150,30,60],[240,110,40],[250,214,90]],
+      ice:[[10,30,70],[40,120,200],[120,220,240],[240,252,255]],
+      dusk:[[30,20,60],[120,60,150],[230,110,140],[250,200,150]],
+    };
+    function pal(u, ph){ u=((u+ph)%1+1)%1; const b=P.bright;
+      if(P.palette==='iris'){ const c=hsl(u, 0.85, 0.6); return [c[0]*b,c[1]*b,c[2]*b]; }
+      if(P.palette==='custom'){ const a=HEX(P.ca), c=HEX(P.cb), t=0.5-0.5*Math.cos(u*TAU); return MIX(a,c,t).map(v=>v*b); }
+      const r=RAMPS[P.palette]||RAMPS.aurora, n=r.length, f=u*n, i=Math.floor(f)%n, k=f-Math.floor(f);
+      return MIX(r[i], r[(i+1)%n], k).map(v=>clamp(v*b,0,255)); }
+    function hueShift(){ return P.hue/360; }
+
+    // ---- the form → a Path2D centred on (cx,cy) with radius R ----
+    let svgPath=null, svgBox=null;
+    function shapePath(cx,cy,R,rotDeg){
+      const p=new Path2D(); const rot=rotDeg*Math.PI/180;
+      const M=(x,y)=>{ const dx=x-cx,dy=y-cy, c=Math.cos(rot),s=Math.sin(rot); return [cx+dx*c-dy*s, cy+dx*s+dy*c]; };
+      const sh=P.shape;
+      if(sh==='circle'){ p.arc(cx,cy,R,0,TAU); }
+      else if(sh==='ring'){ p.arc(cx,cy,R,0,TAU); p.arc(cx,cy,R*0.62,0,TAU); } // even-odd donut
+      else if(sh==='square'){ const pts=[[-R,-R],[R,-R],[R,R],[-R,R]].map(q=>M(cx+q[0],cy+q[1]));
+        pts.forEach((q,i)=>i?p.lineTo(q[0],q[1]):p.moveTo(q[0],q[1])); p.closePath(); }
+      else if(sh==='capsule'){ const w=R*0.6,h=R; const rr=w; // rounded vertical
+        const box=(x,y)=>M(cx+x,cy+y);
+        let a=box(-w,-(h-rr)); p.moveTo(a[0],a[1]);
+        // approximate rounded rect via arcs in local space then transform is hard; use ellipse-ish
+        p.ellipse(cx,cy,w,h,rot,0,TAU); }
+      else if(sh==='triangle'){ const pts=[[0,-R],[R*0.92,R*0.72],[-R*0.92,R*0.72]].map(q=>M(cx+q[0],cy+q[1]));
+        pts.forEach((q,i)=>i?p.lineTo(q[0],q[1]):p.moveTo(q[0],q[1])); p.closePath(); }
+      else if(sh==='arch'){ p.arc(cx,cy,R,Math.PI+rot,rot,false); p.closePath(); }
+      else if(sh==='svg' && svgPath && svgBox){
+        // fit the svg path into radius R box, centred, rotated
+        const s=(R*2)/Math.max(svgBox.w, svgBox.h);
+        const mm=new DOMMatrix().translateSelf(cx,cy).rotateSelf(rotDeg).scaleSelf(s).translateSelf(-(svgBox.x+svgBox.w/2), -(svgBox.y+svgBox.h/2));
+        p.addPath(svgPath, mm);
+      } else { p.arc(cx,cy,R,0,TAU); }
+      return p;
+    }
+
+    // ---- grain ----
+    let grainCv=null, grW=0, grH=0;
+    function ensureGrain(W,H){ if(grainCv&&grW===W&&grH===H) return; grainCv=document.createElement('canvas'); grainCv.width=W; grainCv.height=H;
+      const gx=grainCv.getContext('2d'), id=gx.createImageData(W,H), d=id.data;
+      for(let i=0;i<d.length;i+=4){ const v=200+Math.random()*55|0; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; } gx.putImageData(id,0,0); grW=W; grH=H; }
+    function drawGrain(g,W,H){ if(P.grain<=0) return; ensureGrain(W,H);
+      g.save(); g.globalAlpha=(P.grain/100)*0.45; g.globalCompositeOperation='overlay'; g.drawImage(grainCv,0,0); g.restore(); }
+
+    // ---- render ----
+    function render(g, W, H, tm){
+      const ph=hueShift() + tm*(P.flow/100)*0.06, cx=W/2, cy=H/2, R=Math.min(W,H)*0.5*P.scale;
+      // ground — a soft gradient of the palette over the chosen ground colour
+      const gd=HEX(P.ground);
+      const bg=g.createRadialGradient(cx,cy*0.9,0, cx,cy, Math.max(W,H)*0.75);
+      bg.addColorStop(0, RGBA(MIX(gd, pal(0.15, ph), 0.35), 1));
+      bg.addColorStop(1, RGBA(gd,1));
+      g.fillStyle=bg; g.fillRect(0,0,W,H);
+
+      const pulse = 1 + (P.pulse/100)*Math.sin(tm*0.9)*0.16;
+      const reach = R*(P.reach/100)*pulse;
+      const soft = P.soft/100;
+
+      if(P.mode==='bloom'){
+        const path=shapePath(cx,cy,R,P.rot);
+        g.save(); g.clip(path, P.shape==='ring'?'evenodd':'nonzero');
+        // layered radial blooms in palette colours, additive for luminosity
+        g.globalCompositeOperation='lighter';
+        const layers=5;
+        for(let i=layers;i>=1;i--){ const t=i/layers;
+          const col=pal(0.1+t*0.6, ph);
+          const rg=g.createRadialGradient(cx,cy,0, cx,cy, reach*(0.4+t));
+          rg.addColorStop(0, RGBA(MIX(col,[255,255,255],0.5), 0.5*(1-soft*0.4)));
+          rg.addColorStop(0.5, RGBA(col, 0.35));
+          rg.addColorStop(1, RGBA(col, 0));
+          g.fillStyle=rg; g.fillRect(0,0,W,H);
+        }
+        g.restore();
+        // faint edge to define the form
+        g.strokeStyle=RGBA(pal(0.5,ph),0.25); g.lineWidth=Math.max(1,R*0.004); g.stroke(path);
+      }
+      else if(P.mode==='rim'){
+        const path=shapePath(cx,cy,R,P.rot);
+        // wide soft glow behind the edge
+        g.save(); g.filter='blur('+(R*0.04*(0.4+soft))+'px)';
+        for(let s=0;s<24;s++){ const u=s/24; g.strokeStyle=RGBA(pal(u,ph),0.5); g.lineWidth=R*0.06;
+          // draw arcs of the conic edge — approximate by stroking whole path per hue slice is coarse; use lineDash offset
+        }
+        g.restore();
+        // iridescent edge via conic gradient, stroked
+        const cg=g.createConicGradient? g.createConicGradient(tm*(P.flow/100), cx, cy) : null;
+        if(cg){ for(let s=0;s<=12;s++){ const u=s/12; const c=pal(u,ph); cg.addColorStop(u, RGBA(c,1)); }
+          g.save(); g.filter='blur('+(R*0.03*(0.3+soft))+'px)'; g.strokeStyle=cg; g.lineWidth=R*0.05*(0.5+P.reach/100); g.stroke(path); g.restore();
+          g.strokeStyle=cg; g.lineWidth=Math.max(1.5,R*0.012); g.stroke(path);
+        } else { g.strokeStyle=RGBA(pal(0.3,ph),0.9); g.lineWidth=R*0.02; g.stroke(path); }
+      }
+      else if(P.mode==='sweep'){
+        const path=shapePath(cx,cy,R,P.rot);
+        g.save(); g.clip(path, P.shape==='ring'?'evenodd':'nonzero');
+        const cg=g.createConicGradient? g.createConicGradient(tm*(P.flow/100)*1.2 + P.rot*Math.PI/180, cx, cy) : g.createLinearGradient(cx-R,cy,cx+R,cy);
+        for(let s=0;s<=16;s++){ const u=s/16; cg.addColorStop(u, RGBA(pal(u,ph),1)); }
+        g.fillStyle=cg; g.fillRect(0,0,W,H);
+        // soft radial vignette inside for depth
+        const vg=g.createRadialGradient(cx,cy,0, cx,cy,R*1.1); vg.addColorStop(0,'rgba(255,255,255,'+(0.25*(1-soft))+')'); vg.addColorStop(1,'rgba(0,0,0,0)');
+        g.globalCompositeOperation='lighter'; g.fillStyle=vg; g.fillRect(0,0,W,H);
+        g.restore();
+      }
+      else if(P.mode==='echo'){
+        const N=P.echoes|0, zoom=(tm*(P.flow/100)*0.25)%1;
+        g.save();
+        for(let i=N;i>=1;i--){ const t=(i - zoom)/N; if(t<=0.02) continue;
+          const rr=R*t*(1.15); const path=shapePath(cx,cy,rr,P.rot + t*40*(P.pulse/100));
+          const c=pal(t*1.2, ph);
+          g.strokeStyle=RGBA(c, 0.9*(1-soft*0.3)); g.lineWidth=Math.max(1, R*0.02*(0.5+t)); g.stroke(path);
+        }
+        g.restore();
+      }
+
+      drawGrain(g,W,H);
+    }
+
+    // ---- sizing + loop ----
+    let W=1080, H=1920, clock=0;
+    function aspectWH(){ const p=(P.aspect||'1080/1920').split(/[/:x]/).map(Number), a=p[0]||9, b=p[1]||16, long=1600;
+      return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
+    function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; drawNow(); }
+    function drawNow(){ render(ctx, W, H, clock); }
+    let t0=performance.now();
+    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ clock += dt*(P.spd/10); render(ctx,W,H,clock); } requestAnimationFrame(frame); }
+    requestAnimationFrame(frame);
+
+    // ---- wire ----
+    function bind(id, rid, set, fmt){ const r=$(id), v=$(rid); if(!r) return;
+      r.oninput=()=>{ set(+r.value); if(v) v.textContent=fmt?fmt(+r.value):r.value; if(!P.play) drawNow(); }; }
+    bind('scale','scaleR',v=>P.scale=v/100, v=>(v/100).toFixed(2));
+    bind('rot','rotR',v=>P.rot=v);
+    bind('reach','reachR',v=>P.reach=v);
+    bind('soft','softR',v=>P.soft=v);
+    bind('echoes','echoesR',v=>P.echoes=v);
+    bind('hue','hueR',v=>P.hue=v);
+    bind('bright','brightR',v=>P.bright=v/100, v=>(v/100).toFixed(2));
+    bind('flow','flowR',v=>P.flow=v);
+    bind('pulse','pulseR',v=>P.pulse=v);
+    bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
+    bind('grain','grainR',v=>P.grain=v);
+    $('shape').addEventListener('change',e=>{ P.shape=e.target.value; drawNow(); });
+    $('mode').addEventListener('change',e=>{ P.mode=e.target.value; $('echoRow').hidden=(P.mode!=='echo'); drawNow(); });
+    $('palette').addEventListener('change',e=>{ P.palette=e.target.value; $('customRow').hidden=(P.palette!=='custom'); drawNow(); });
+    ['ca','cb','ground'].forEach(id=>$(id).addEventListener('input',e=>{ P[id]=e.target.value; if(!P.play) drawNow(); }));
+    $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
+    $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999); P.hue=(Math.random()*360-180)|0; $('hue').value=P.hue; $('hueR').textContent=P.hue; drawNow(); });
+    $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play)); $('playBtn').textContent=P.play?'Pause':'Play'; if(!P.play) drawNow(); });
+
+    // SVG upload → parse paths into one Path2D + bbox
+    $('svgFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+      r.onload=ev=>{ try{ const doc=new DOMParser().parseFromString(ev.target.result,'image/svg+xml');
+        const paths=[...doc.querySelectorAll('path')]; if(!paths.length){ alert('No <path> found in the SVG.'); return; }
+        const P2=new Path2D(); let dstr=''; paths.forEach(pp=>{ const d=pp.getAttribute('d'); if(d){ dstr+=d+' '; } });
+        P2.addPath(new Path2D(dstr));
+        // bbox via an offscreen measurement using the path on a temp canvas is unreliable; parse rough bbox from viewBox
+        const vb=(doc.querySelector('svg').getAttribute('viewBox')||'').split(/[ ,]+/).map(Number);
+        svgBox = vb.length===4 ? {x:vb[0],y:vb[1],w:vb[2],h:vb[3]} : {x:0,y:0,w:100,h:100};
+        svgPath=new Path2D(dstr); P.shape='svg'; $('shape').value='svg'; drawNow();
+      }catch(err){ alert('Could not read that SVG.'); } };
+      r.readAsText(f); });
+
+    // Story default after opal canonicalises the dock
+    function forceStory(){ const sel=$('aspect'); if(!sel) return; const opt=[...sel.options].find(o=>/9\s*[:\/x]\s*16|story|1080\s*[\/x]\s*1920/i.test(o.value+' '+o.textContent));
+      if(opt){ if(sel.value!==opt.value){ sel.value=opt.value; P.aspect=opt.value; fit(); } const dr=$('dimReadout'); if(dr) dr.textContent='1080 × 1920'; } }
+    setTimeout(forceStory,260); setTimeout(forceStory,700);
+
+    // ---- output ----
+    Opal.mountOutput(art,'pure-land',{ render:(long)=>{ const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
+      const c=document.createElement('canvas'); c.width=Math.round(aw*s); c.height=Math.round(ah*s);
+      render(c.getContext('2d'), c.width, c.height, clock); return c; } });
+    let rec=null, chunks=[];
+    $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
+      if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
+      const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+      rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:24000000}:undefined); chunks=[];
+      rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+      rec.onstop=()=>{ const ext=mime.indexOf('mp4')>=0?'mp4':'webm'; const blob=new Blob(chunks,{type:mime||'video/webm'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pure-land.'+ext; a.click();
+        $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
+      rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; });
+
+    fit();
+  })();
+  </script>
+</body>
+</html>
