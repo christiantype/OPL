@@ -15,7 +15,6 @@
   #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; background:var(--mat);
     display:flex; align-items:center; justify-content:center; padding:22px; }
   #art{ max-width:100%; max-height:100%; display:block; box-shadow:none; }
-  #wrap.drop{ outline:2px dashed var(--accent); outline-offset:-14px; }
   #sizeDock{ display:flex; align-items:center; gap:10px; }
   #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
   #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11; display:none; align-items:center; gap:7px;
@@ -23,7 +22,6 @@
   #recDot.on{ display:flex; }
   #recDot i{ width:8px; height:8px; border-radius:50%; background:#fff; animation:rp 1s ease-in-out infinite; }
   @keyframes rp{ 50%{ opacity:.25; } }
-  /* standard rail layout helpers (OPALAB skins the controls; the tool only lays them out) */
   .group{ display:flex; flex-direction:column; gap:9px; }
   .knob{ display:flex; flex-direction:column; gap:2px; }
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
@@ -34,8 +32,8 @@
 </head>
 <body>
   <script src="/lab/shared/opal.js"></script>
-  <script>Opal.mountTopbar({ name:'Frond', desc:'Translucent scalloped fans — gradient, striation, mist',
-    about:'Organic radial fans in the vein of a scallop shell or a mushroom gill — a focus point throws a broad, softly-scalloped cap, filled with a light-to-deep gradient and a spray of fine striations, then fades to mist at the rim. Layer a few, tune the scallop, the rays, the softness and the grain, shift the whole field off blue with Hue, and re-roll the composition. Seeded, so a still and a recording match. Export a still, or record the slow breathing drift.' });</script>
+  <script>Opal.mountTopbar({ name:'Frond', desc:'Overlapping translucent circles, rimmed in gold',
+    about:'Soft translucent circles laid over one another like stained glass — each a light-to-indigo gradient that deepens where they cross, a few turned warm, every edge traced by a fine luminous gold accent, on a cream field with a golden halo. Tune the number of circles, their size and spread, how many are warm or left as bare rings, the gold accent and its glow, the four colours (or shift the whole field with Hue), the softness and grain. Re-roll the arrangement. Seeded — a still and a recording match. Export a still, or record the slow drift.' });</script>
   <div id="sizeDock">
     <span id="dimReadout">1280 × 1600</span>
     <select id="aspect" title="Canvas size">
@@ -50,54 +48,54 @@
 
   <div id="dock">
     <div class="group">
-      <div class="group__t">Composition</div>
-      <p class="rowhint">Layered translucent fans on a soft field. Re-roll for a new arrangement.</p>
+      <div class="group__t">Circles</div>
+      <p class="rowhint">Translucent circles, overlaid like stained glass. Re-roll for a new arrangement.</p>
       <div class="grid2"><button class="btn" id="reroll">Re-roll</button><button class="btn" id="playBtn" aria-pressed="true">Pause</button></div>
-      <div class="knob"><label>Fans <b id="fansR">5</b></label><input id="fans" type="range" min="1" max="9" value="5"></div>
+      <div class="knob"><label>Count <b id="countR">9</b></label><input id="count" type="range" min="3" max="14" value="9"></div>
       <div class="duo">
-        <div class="knob"><label>Scale <b id="scaleR">1.00</b></label><input id="scale" type="range" min="50" max="170" value="100"></div>
-        <div class="knob"><label>Scatter <b id="scatterR">1.00</b></label><input id="scatter" type="range" min="0" max="150" value="100"></div>
+        <div class="knob"><label>Scale <b id="scaleR">1.00</b></label><input id="scale" type="range" min="60" max="150" value="100"></div>
+        <div class="knob"><label>Spread <b id="spreadR">58</b></label><input id="spread" type="range" min="0" max="100" value="58"></div>
       </div>
     </div>
 
     <div class="group">
       <div class="group__t">Form</div>
       <div class="duo">
-        <div class="knob"><label>Spread <b id="spanR">290</b></label><input id="span" type="range" min="140" max="330" value="290"></div>
-        <div class="knob"><label>Scallops <b id="scallR">22</b></label><input id="scall" type="range" min="0" max="60" value="22"></div>
+        <div class="knob"><label>Min size <b id="minR">40</b></label><input id="min" type="range" min="15" max="70" value="40"></div>
+        <div class="knob"><label>Squash <b id="squashR">14</b></label><input id="squash" type="range" min="0" max="50" value="14"></div>
       </div>
-      <div class="duo">
-        <div class="knob"><label>Wave <b id="waveR">24</b></label><input id="wave" type="range" min="0" max="60" value="24"></div>
-        <div class="knob"><label>Wander <b id="wanderR">40</b></label><input id="wander" type="range" min="0" max="100" value="40"></div>
-      </div>
+      <div class="knob"><label>Wobble <b id="wobbleR">10</b></label><input id="wobble" type="range" min="0" max="50" value="10"></div>
     </div>
 
     <div class="group">
-      <div class="group__t">Rays</div>
-      <p class="rowhint">The fine striations fanning from each focus.</p>
+      <div class="group__t">Accent</div>
+      <p class="rowhint">The luminous gold line on every circle edge.</p>
       <div class="duo">
-        <div class="knob"><label>Density <b id="raysR">240</b></label><input id="rays" type="range" min="0" max="420" value="240"></div>
-        <div class="knob"><label>Reach <b id="reachR">1.00</b></label><input id="reach" type="range" min="40" max="120" value="100"></div>
+        <div class="knob"><label>Gold <b id="goldwR">80</b></label><input id="goldw" type="range" min="0" max="100" value="80"></div>
+        <div class="knob"><label>Glow <b id="glowR">50</b></label><input id="glow" type="range" min="0" max="100" value="50"></div>
       </div>
-      <div class="knob"><label>Strength <b id="striR">55</b></label><input id="stri" type="range" min="0" max="100" value="55"></div>
+      <div class="duo">
+        <div class="knob"><label>Warm <b id="warmR">22</b></label><input id="warm" type="range" min="0" max="100" value="22"></div>
+        <div class="knob"><label>Bare rings <b id="ringR">22</b></label><input id="ring" type="range" min="0" max="100" value="22"></div>
+      </div>
     </div>
 
     <div class="group">
       <div class="group__t">Colour</div>
-      <div class="crow"><label>Core</label><input type="color" class="sw" id="core" value="#f4f8fe"></div>
-      <div class="crow"><label>Rim</label><input type="color" class="sw" id="rim" value="#6d95d4"></div>
-      <div class="crow"><label>Sky</label><input type="color" class="sw" id="gtop" value="#e7f0fa"></div>
-      <div class="crow"><label>Deep</label><input type="color" class="sw" id="gbot" value="#5f88c6"></div>
+      <div class="crow"><label>Light</label><input type="color" class="sw" id="light" value="#e6ecf5"></div>
+      <div class="crow"><label>Deep</label><input type="color" class="sw" id="deep" value="#3a4878"></div>
+      <div class="crow"><label>Gold</label><input type="color" class="sw" id="gold" value="#d59a48"></div>
+      <div class="crow"><label>Ground</label><input type="color" class="sw" id="ground" value="#e7e3d7"></div>
       <div class="knob"><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="-180" max="180" value="0"></div>
     </div>
 
     <div class="group">
       <div class="group__t">Texture</div>
       <div class="duo">
-        <div class="knob"><label>Softness <b id="softR">55</b></label><input id="soft" type="range" min="0" max="100" value="55"></div>
-        <div class="knob"><label>Grain <b id="grainR">26</b></label><input id="grain" type="range" min="0" max="80" value="26"></div>
+        <div class="knob"><label>Softness <b id="softR">22</b></label><input id="soft" type="range" min="0" max="100" value="22"></div>
+        <div class="knob"><label>Grain <b id="grainR">14</b></label><input id="grain" type="range" min="0" max="80" value="14"></div>
       </div>
-      <div class="knob"><label>Sediment <b id="sedR">40</b></label><input id="sed" type="range" min="0" max="100" value="40"></div>
+      <div class="knob"><label>Halo <b id="haloR">45</b></label><input id="halo" type="range" min="0" max="100" value="45"></div>
     </div>
 
     <div class="group">
@@ -122,12 +120,12 @@
     const $=id=>document.getElementById(id);
     const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
 
-    const P={ aspect:'1280/1600', fans:5, seed:7, scale:1.0, scatter:1.0,
-      span:290, scallops:22, wave:24, wander:40, rays:240, reach:1.0, stri:55,
-      core:'#f4f8fe', rim:'#6d95d4', gtop:'#e7f0fa', gbot:'#5f88c6', hue:0,
-      soft:55, grain:26, sed:40, drift:40, spd:1.0, play:true };
+    const P={ aspect:'1280/1600', seed:7, count:9, scale:1.0, spread:58,
+      min:40, squash:14, wobble:10, goldw:85, glow:55, warm:22, ring:22,
+      light:'#e6ecf5', deep:'#3a4878', gold:'#d59a48', ground:'#e7e3d7', hue:0,
+      soft:22, grain:14, halo:45, drift:40, spd:1.0, play:true };
 
-    // ---- colour helpers (hue-rotatable) ----
+    // ---- colour helpers ----
     const HEX=h=>{ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; };
     const MIX=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
     const RGBA=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+clamp(a,0,1).toFixed(3)+')';
@@ -138,137 +136,107 @@
       return t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p; }; return [f(h+1/3)*255,f(h)*255,f(h-1/3)*255]; }
     function rot(c){ if(!P.hue) return c; const hsl=rgb2hsl(c); return hsl2rgb(hsl[0]+P.hue/360, hsl[1], hsl[2]); }
     const COL={};
-    function resolve(){ COL.core=rot(HEX(P.core)); COL.rim=rot(HEX(P.rim)); COL.gtop=rot(HEX(P.gtop)); COL.gbot=rot(HEX(P.gbot));
-      COL.edge=MIX(COL.rim,[30,48,96],0.45); }
+    function resolve(){ COL.light=rot(HEX(P.light)); COL.deep=rot(HEX(P.deep)); COL.gold=rot(HEX(P.gold)); COL.ground=rot(HEX(P.ground));
+      COL.goldHi=MIX(COL.gold,[255,255,255],0.45);
+      COL.warmLo=MIX(COL.gold,[255,252,244],0.72); COL.warmHi=MIX(COL.gold,[255,255,255],0.30); }
 
-    // ---- seeded rng + smooth organic wobble ----
     function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
       t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 
-    // ---- one fan spec ----
-    function makeFan(rng, i, n){
-      const depth=rng();                                   // 0 back … 1 front
-      const size=lerp(0.72,1.34, rng())*(0.74+0.40*depth);
-      const cx=0.5 + (rng()*2-1)*0.5*P.scatter;
-      const cy=0.08 + rng()*0.90;
-      const dir=-Math.PI/2 + (rng()*2-1)*1.5;              // open upward-ish, so the notch tucks below
-      const span=(P.span*Math.PI/180)*(0.82+0.34*rng());
-      const ph=rng()*TAU;
-      const w=[rng()*TAU, rng()*TAU, rng()*TAU, 1+(rng()*3|0), 2+(rng()*3|0), 3+(rng()*4|0)];
-      const brPh=rng()*TAU, driftPh=rng()*TAU;
-      return { depth, size, cx, cy, dir, span, ph, w, brPh, driftPh };
-    }
-
-    // radius of the closed scalloped blob at angle th (integer frequencies keep it seamless at the seam)
-    function blobRadius(f, th, R, lobes){
-      const wob = 0.5*Math.sin(th*f.w[3]+f.w[0]) + 0.3*Math.sin(th*f.w[4]+f.w[1]) + 0.2*Math.sin(th*f.w[5]+f.w[2]);
-      const scal = lobes>0 ? Math.sin(th*lobes + f.ph) : 0;
-      return R * (1 + (P.wave/100)*0.20*scal + (P.wander/100)*0.13*wob);
-    }
-
-    function drawFan(g, W, H, f, tm){
-      const R = f.size * Math.min(W,H) * 0.42 * P.scale;
-      const breath = 1 + Math.sin(tm*0.5 + f.brPh) * (P.drift/100)*0.04;
-      const dx = Math.sin(tm*0.32 + f.driftPh) * (P.drift/100)*0.012*W;
-      const dy = Math.cos(tm*0.27 + f.brPh) * (P.drift/100)*0.010*H;
-      const cx = f.cx*W + dx, cy = f.cy*H + dy;
-      const RR = R*breath;
-      const lobes = Math.max(0, Math.round(P.scallops));
-      const alpha = lerp(0.55, 0.92, f.depth);
-      const N = 300;
-      // focus for the striation spray + the light — offset toward the 'hinge' (−dir), so the fan reads like a shell
-      const fx = cx - Math.cos(f.dir)*RR*0.40, fy = cy - Math.sin(f.dir)*RR*0.40;
-
-      // closed scalloped blob — no wedge, no hard notch
-      const path=new Path2D();
-      for(let i=0;i<=N;i++){ const th=TAU*i/N, r=blobRadius(f,th,RR,lobes);
-        const x=cx+Math.cos(th)*r, y=cy+Math.sin(th)*r; i?path.lineTo(x,y):path.moveTo(x,y); }
-      path.closePath();
-
-      g.save(); g.clip(path);
-      // light-to-deep gradient radiating from the offset focus
-      const gr=g.createRadialGradient(fx,fy,RR*0.02, fx,fy,RR*1.9);
-      gr.addColorStop(0,    RGBA(COL.core, 0.95*alpha));
-      gr.addColorStop(0.40, RGBA(MIX(COL.core,COL.rim,0.5), 0.85*alpha));
-      gr.addColorStop(1,    RGBA(COL.rim, 0.55*alpha));
-      g.fillStyle=gr; g.fillRect(0,0,W,H);
-
-      // striations — a full spray from the focus; the clip cuts each ray at the scalloped edge
-      const rayN=P.rays|0;
-      if(rayN>0 && P.stri>0){
-        g.lineCap='round';
-        const rr2=mulberry32((f.ph*99991|0) ^ (P.seed*40503));
-        for(let k=0;k<rayN;k++){ const th=TAU*((k+rr2()*0.6)/rayN);
-          const op=(P.stri/100)*0.50*alpha*(0.4+0.6*rr2());
-          g.strokeStyle=RGBA(MIX(COL.rim,COL.core,0.15), op);
-          g.lineWidth=Math.max(0.7, RR*0.0018*(0.6+rr2()));
-          const rin=RR*(0.11+rr2()*0.06);
-          g.beginPath(); g.moveTo(fx+Math.cos(th)*rin, fy+Math.sin(th)*rin);
-          g.lineTo(fx+Math.cos(th)*RR*2*P.reach, fy+Math.sin(th)*RR*2*P.reach); g.stroke();
-        }
+    // ---- circle set ----
+    function makeCircles(rng){
+      const N=P.count, arr=[], sp=P.spread/100;
+      for(let i=0;i<N;i++){
+        const cx=0.5 + (rng()*2-1)*0.42*sp;
+        const cy=0.5 + (rng()*2-1)*0.46*sp;
+        const R = lerp(P.min/100, 0.62, Math.pow(rng(),0.8));
+        const ell = 1 + (rng()*2-1)*(P.squash/100);
+        const rotA = rng()*TAU;
+        const warm = rng() < P.warm/100;
+        const bare = !warm && rng() < P.ring/100;
+        const w=[rng()*TAU, rng()*TAU, 2+(rng()*2|0), 3+(rng()*2|0)];
+        arr.push({ cx, cy, R, ell, rotA, warm, bare, w, brPh:rng()*TAU, driftPh:rng()*TAU, gs:0.6+rng()*0.4, depth:rng() });
       }
-      g.restore();
-
-      // the scalloped rim, a faint deeper line for definition
-      g.strokeStyle=RGBA(COL.edge, 0.28*alpha); g.lineWidth=Math.max(1, RR*0.0020);
-      g.stroke(path);
+      return arr;
     }
 
-    // ---- sediment: a darker, grainier base band ----
-    function drawSediment(g, W, H){
-      if(P.sed<=0) return; const amt=P.sed/100;
-      const bandTop = H*(1-0.36*amt);
-      const gr=g.createLinearGradient(0,bandTop,0,H);
-      gr.addColorStop(0, RGBA(MIX(COL.gbot,[20,34,74],0.2), 0));
-      gr.addColorStop(1, RGBA(MIX(COL.gbot,[16,28,64],0.5), 0.55*amt));
-      g.fillStyle=gr; g.fillRect(0,bandTop,W,H-bandTop);
+    function circlePath(c, W, H, clusterR, tm){
+      const breath=1+Math.sin(tm*0.4+c.brPh)*(P.drift/100)*0.02;
+      const dx=Math.sin(tm*0.28+c.driftPh)*(P.drift/100)*0.016*W;
+      const dy=Math.cos(tm*0.24+c.brPh)*(P.drift/100)*0.014*H;
+      const cx=c.cx*W+dx, cy=c.cy*H+dy, R=c.R*clusterR*breath;
+      const co=Math.cos(c.rotA), si=Math.sin(c.rotA);
+      const path=new Path2D(); const N=180;
+      for(let i=0;i<=N;i++){ const th=TAU*i/N;
+        const wob=0.5*Math.sin(th*c.w[2]+c.w[0])+0.5*Math.sin(th*c.w[3]+c.w[1]);
+        const rr=R*(1+(P.wobble/100)*0.08*wob);
+        let ex=Math.cos(th)*rr*c.ell, ey=Math.sin(th)*rr/c.ell;   // ellipse
+        const x=cx+ex*co-ey*si, y=cy+ex*si+ey*co; i?path.lineTo(x,y):path.moveTo(x,y); }
+      path.closePath();
+      return { path, cx, cy, R };
     }
 
-    // ---- grain (one seamless full-frame noise, rebaked only on size change) ----
+    function drawCircle(g, W, H, clusterR, c, tm){
+      const { path, cx, cy, R } = circlePath(c, W, H, clusterR, tm);
+      // fill (skip for bare rings) — translucent, multiplying into indigo where circles cross
+      if(!c.bare){
+        const lx=cx - Math.cos(c.rotA)*R*0.34, ly=cy - Math.sin(c.rotA)*R*0.34;   // light offset
+        const rg=g.createRadialGradient(lx,ly,0, cx,cy,R*1.06);
+        if(c.warm){ rg.addColorStop(0,RGBA(COL.warmHi,1)); rg.addColorStop(0.6,RGBA(COL.warmLo,1)); rg.addColorStop(1,RGBA(MIX(COL.warmLo,COL.gold,0.5),1)); }
+        else{ rg.addColorStop(0,RGBA(COL.light,1)); rg.addColorStop(0.58,RGBA(MIX(COL.light,COL.deep,0.42),1)); rg.addColorStop(1,RGBA(MIX(COL.light,COL.deep,0.72),1)); }
+        g.save(); g.globalCompositeOperation='multiply'; g.globalAlpha=c.warm?0.42:0.5; g.fillStyle=rg; g.fill(path); g.restore();
+      }
+      // gold accent — soft glow, then a crisp luminous line
+      if(P.goldw>0){
+        const gw=P.goldw/100;
+        if(P.glow>0){ g.save(); g.globalCompositeOperation='lighter'; g.filter='blur('+(R*0.022+3).toFixed(1)+'px)';
+          g.strokeStyle=RGBA(COL.gold, 0.5*gw*(P.glow/100)*c.gs); g.lineWidth=R*0.03; g.stroke(path); g.stroke(path); g.restore(); }
+        g.strokeStyle=RGBA(MIX(COL.gold,COL.deep,0.55), 0.4*gw*c.gs); g.lineWidth=Math.max(1, R*0.010); g.stroke(path);   // soft dark backing
+        g.strokeStyle=RGBA(COL.goldHi, gw*c.gs); g.lineWidth=Math.max(1.3, R*0.006); g.stroke(path);                      // the luminous line
+        g.strokeStyle=RGBA(MIX(COL.goldHi,[255,255,255],0.5), 0.6*gw*c.gs); g.lineWidth=Math.max(0.6, R*0.0022); g.stroke(path); // hot core
+      }
+    }
+
+    // ---- grain ----
     let grainCv=null, grW=0, grH=0;
-    function ensureGrain(W,H){ if(grainCv&&grW===W&&grH===H) return;
-      grainCv=document.createElement('canvas'); grainCv.width=W; grainCv.height=H;
+    function ensureGrain(W,H){ if(grainCv&&grW===W&&grH===H) return; grainCv=document.createElement('canvas'); grainCv.width=W; grainCv.height=H;
       const gx=grainCv.getContext('2d'), id=gx.createImageData(W,H), d=id.data;
       for(let i=0;i<d.length;i+=4){ const v=200+Math.random()*55|0; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; } gx.putImageData(id,0,0); grW=W; grH=H; }
     function drawGrain(g, W, H){ if(P.grain<=0) return; ensureGrain(W,H);
-      g.save(); g.globalAlpha=(P.grain/100)*0.42; g.globalCompositeOperation='overlay'; g.drawImage(grainCv,0,0); g.restore(); }
+      g.save(); g.globalAlpha=(P.grain/100)*0.4; g.globalCompositeOperation='overlay'; g.drawImage(grainCv,0,0); g.restore(); }
 
-    // ---- compose the whole frame (fans drawn to a buffer, then soft-focused onto the target) ----
+    // ---- compose ----
     const buf=document.createElement('canvas'); const bx=buf.getContext('2d');
     function render(g, W, H, tm){
       resolve();
       if(buf.width!==W||buf.height!==H){ buf.width=W; buf.height=H; }
       bx.setTransform(1,0,0,1,0,0); bx.globalAlpha=1; bx.globalCompositeOperation='source-over'; bx.filter='none';
-      // soft field ground (top → deep) with a gentle light lift toward upper-centre
       const bg=bx.createLinearGradient(0,0,0,H);
-      bg.addColorStop(0, RGBA(COL.gtop,1)); bg.addColorStop(1, RGBA(COL.gbot,1));
+      bg.addColorStop(0, RGBA(MIX(COL.ground,[255,255,255],0.28),1)); bg.addColorStop(1, RGBA(MIX(COL.ground,COL.gold,0.05),1));
       bx.fillStyle=bg; bx.fillRect(0,0,W,H);
-      const glow=bx.createRadialGradient(W*0.42,H*0.30,0, W*0.42,H*0.30, Math.max(W,H)*0.7);
-      glow.addColorStop(0, RGBA(MIX(COL.gtop,[255,255,255],0.5),0.55)); glow.addColorStop(1, RGBA(COL.gtop,0));
-      bx.fillStyle=glow; bx.fillRect(0,0,W,H);
+
+      const C={x:W*0.5,y:H*0.5}, clusterR=Math.min(W,H)*0.5*P.scale;
+      if(P.halo>0){ const hg=bx.createRadialGradient(C.x,C.y,clusterR*0.4, C.x,C.y,clusterR*1.25);
+        hg.addColorStop(0, RGBA(MIX(COL.gold,[255,255,255],0.4), 0.34*(P.halo/100))); hg.addColorStop(1, RGBA(COL.gold,0));
+        bx.fillStyle=hg; bx.fillRect(0,0,W,H); }
 
       const rng=mulberry32((P.seed*2654435761)>>>0);
-      const specs=[]; for(let i=0;i<P.fans;i++) specs.push(makeFan(rng,i,P.fans));
-      specs.sort((a,b)=>a.depth-b.depth);
-      for(const s of specs) drawFan(bx, W, H, s, tm);
-      drawSediment(bx, W, H);
+      const circles=makeCircles(rng); circles.sort((a,b)=>a.depth-b.depth);
+      for(const c of circles) drawCircle(bx, W, H, clusterR, c, tm);
 
-      // a gentle atmospheric soft-focus — enough to feel misty without dissolving the striations (Softness)
-      const blur=(P.soft/100)*Math.min(W,H)*0.004;
+      const blur=(P.soft/100)*Math.min(W,H)*0.006;
       g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.globalCompositeOperation='source-over';
       g.filter = blur>0.3 ? 'blur('+blur.toFixed(1)+'px)' : 'none'; g.drawImage(buf,0,0); g.filter='none';
       drawGrain(g, W, H);
     }
 
-    // ---- sizing ----
+    // ---- sizing + loop ----
     let W=1280, H=1600, clock=0;
     function aspectWH(){ const p=(P.aspect||'1280/1600').split(/[/:x]/).map(Number), a=p[0]||4, b=p[1]||5, long=1600;
       return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
     function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H;
       const dr=$('dimReadout'); if(dr){ const p=(P.aspect||'').split(/[/:x]/).map(Number); dr.textContent=(p[0]||W)+' × '+(p[1]||H); } drawNow(); }
     function drawNow(){ render(ctx, W, H, clock); }
-
-    // ---- animation loop ----
     let t0=performance.now();
     function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ clock += dt*(P.spd/10); render(ctx,W,H,clock); } requestAnimationFrame(frame); }
     requestAnimationFrame(frame);
@@ -276,28 +244,28 @@
     // ---- wire the rail ----
     function bind(id, rid, set, fmt){ const r=$(id), v=$(rid); if(!r) return;
       r.oninput=()=>{ set(+r.value); if(v) v.textContent=fmt?fmt(+r.value):r.value; if(!P.play) drawNow(); }; }
-    bind('fans','fansR',v=>P.fans=v|0);
+    bind('count','countR',v=>P.count=v|0);
     bind('scale','scaleR',v=>P.scale=v/100, v=>(v/100).toFixed(2));
-    bind('scatter','scatterR',v=>P.scatter=v/100, v=>(v/100).toFixed(2));
-    bind('span','spanR',v=>P.span=v);
-    bind('scall','scallR',v=>P.scallops=v|0);
-    bind('wave','waveR',v=>P.wave=v);
-    bind('wander','wanderR',v=>P.wander=v);
-    bind('rays','raysR',v=>P.rays=v|0);
-    bind('reach','reachR',v=>P.reach=v/100, v=>(v/100).toFixed(2));
-    bind('stri','striR',v=>P.stri=v);
+    bind('spread','spreadR',v=>P.spread=v);
+    bind('min','minR',v=>P.min=v);
+    bind('squash','squashR',v=>P.squash=v);
+    bind('wobble','wobbleR',v=>P.wobble=v);
+    bind('goldw','goldwR',v=>P.goldw=v);
+    bind('glow','glowR',v=>P.glow=v);
+    bind('warm','warmR',v=>P.warm=v);
+    bind('ring','ringR',v=>P.ring=v);
     bind('hue','hueR',v=>P.hue=v);
     bind('soft','softR',v=>P.soft=v);
     bind('grain','grainR',v=>P.grain=v);
-    bind('sed','sedR',v=>P.sed=v);
+    bind('halo','haloR',v=>P.halo=v);
     bind('drift','driftR',v=>P.drift=v);
     bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
-    ['core','rim','gtop','gbot'].forEach(id=>$(id).addEventListener('input',e=>{ P[id]=e.target.value; if(!P.play) drawNow(); }));
+    ['light','deep','gold','ground'].forEach(id=>$(id).addEventListener('input',e=>{ P[id]=e.target.value; if(!P.play) drawNow(); }));
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
     $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999); drawNow(); });
     $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play)); $('playBtn').textContent=P.play?'Pause':'Play'; if(!P.play) drawNow(); });
 
-    // ---- output: shared export panel + record ----
+    // ---- output ----
     Opal.mountOutput(art,'frond',{ render:(long)=>{ const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
       const c=document.createElement('canvas'); c.width=Math.round(aw*s); c.height=Math.round(ah*s);
       render(c.getContext('2d'), c.width, c.height, clock); return c; } });
@@ -312,7 +280,6 @@
         $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
       rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; });
 
-    // ---- drag & drop not needed; boot ----
     fit();
   })();
   </script>
