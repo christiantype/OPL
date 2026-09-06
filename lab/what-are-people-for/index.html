@@ -7,7 +7,6 @@
 <title>What Are People For — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
 <style>
-  @font-face{ font-family:'UniversNextMed'; src:url('/shared/fonts/UniversNextPro-Medium.ttf') format('truetype'); font-weight:400; font-style:normal; font-display:swap; }
   :root{ --rail:300px; --top:120px; }
   @media (max-width:560px){ :root{ --top:112px; } }
   *{ box-sizing:border-box; }
@@ -34,12 +33,12 @@
 <body>
   <script src="/lab/shared/opal.js"></script>
   <script>Opal.mountTopbar({ name:'What Are People For', desc:'A question, drawn as a constellation',
-    about:'A single character — a question mark, set in Univers Next Pro Medium — sampled into a field of points and wired into a network: every pair of points closer than the link distance is joined, so the glyph reads as a living constellation. Raise the point density, disperse the field into a drifting cloud, tighten or loosen the links, and it breathes and re-forms. Type any character, recolour ink and paper, re-seed the scatter. Seeded — a still and a recording match. Export a still, or record the drift.' });</script>
+    about:'A single character — a question mark, set in Univers Next Pro Medium — sampled along its outline into a field of points and wired into a network: every pair closer than the link distance is joined. The points disperse through a drifting noise field, so the glyph breathes and re-forms as a living constellation (the flux Network / constellation engine). Type any character, raise the density, disperse the field, tighten or loosen the links, recolour fill and background, re-seed. Seeded — a still and a recording match. Export a still, or record the drift.' });</script>
   <div id="sizeDock">
-    <span id="dimReadout">1280 × 1600</span>
+    <span id="dimReadout">1080 × 1920</span>
     <select id="aspect" title="Canvas size">
-      <option value="1280/1600" selected>Portrait · 4:5</option>
-      <option value="1080/1920">Story · 9:16</option>
+      <option value="1080/1920" selected>Story · 9:16</option>
+      <option value="1280/1600">Portrait · 4:5</option>
       <option value="1400/1400">Square · 1:1</option>
       <option value="1600/1200">Landscape · 4:3</option>
       <option value="1600/900">Landscape · 16:9</option>
@@ -49,137 +48,124 @@
 
   <div id="dock">
     <div class="group">
-      <div class="group__t">Engine</div>
-      <select class="opal-input" id="engine">
-        <option value="network" selected>Network / constellation</option>
-      </select>
-    </div>
-
-    <div class="group">
       <div class="group__t">Character</div>
       <input class="opal-input" id="charIn" type="text" value="?" maxlength="4" spellcheck="false" autocomplete="off" style="text-align:center; font-size:16px;">
       <div class="rowhint">Univers Next Pro · Medium</div>
-      <div class="knob"><label>Size <b id="sizeR">76</b></label><input id="size" type="range" min="20" max="98" value="76"></div>
+      <div class="knob"><label>Size <b id="sizeR">80</b></label><input id="size" type="range" min="20" max="98" value="80"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Engine</div>
+      <select class="opal-input" id="engine"><option value="network" selected>Network / constellation</option></select>
     </div>
 
     <div class="group">
       <div class="group__t">Settings</div>
-      <div class="knob"><label>Point density <b id="densR">58</b></label><input id="dens" type="range" min="20" max="100" value="58"></div>
-      <div class="knob"><label>Dispersion <b id="dispR">90</b></label><input id="disp" type="range" min="0" max="320" value="90"></div>
-      <div class="knob"><label>Link distance <b id="linkR">98</b></label><input id="link" type="range" min="10" max="180" value="98"></div>
+      <div class="knob"><label>point density <b id="densR">100</b></label><input id="dens" type="range" min="20" max="100" value="100"></div>
+      <div class="knob"><label>dispersion <b id="dispR">320</b></label><input id="disp" type="range" min="0" max="320" value="320"></div>
+      <div class="knob"><label>link distance <b id="linkR">98</b></label><input id="link" type="range" min="10" max="180" value="98"></div>
     </div>
 
     <div class="group">
       <div class="group__t">Style</div>
-      <div class="duo">
-        <div class="knob"><label>Node <b id="nodeR">1.8</b></label><input id="node" type="range" min="0" max="80" value="18"></div>
-        <div class="knob"><label>Line <b id="lineR">1.2</b></label><input id="line" type="range" min="2" max="40" value="12"></div>
-      </div>
-      <div class="knob"><label>Link opacity <b id="lopR">52</b></label><input id="lop" type="range" min="8" max="100" value="52"></div>
-      <div class="crow"><label>Ink</label><input type="color" class="sw" id="ink" value="#141414"></div>
-      <div class="crow"><label>Paper</label><input type="color" class="sw" id="paper" value="#f4f2ea"></div>
+      <div class="knob"><label>stroke w <b id="swR">0.6</b></label><input id="sw" type="range" min="1" max="60" value="6"></div>
+      <div class="knob"><label>link opacity <b id="lopR">50</b></label><input id="lop" type="range" min="8" max="100" value="50"></div>
+      <div class="crow"><label>Fill</label><input type="color" class="sw" id="fill" value="#ffffff"></div>
+      <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#000000"></div>
     </div>
 
     <div class="group">
       <div class="group__t">Motion</div>
       <div class="grid2"><button class="btn" id="reroll">Re-seed</button><button class="btn" id="playBtn" aria-pressed="true">Pause</button></div>
-      <div class="duo">
-        <div class="knob"><label>Pulse <b id="pulseR">45</b></label><input id="pulse" type="range" min="0" max="120" value="45"></div>
-        <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="40" value="10"></div>
-      </div>
+      <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="40" value="10"></div>
     </div>
   </div>
 
-  <div id="wrap"><canvas id="art" width="1280" height="1600"></canvas></div>
+  <div id="wrap"><canvas id="art" width="1080" height="1920"></canvas></div>
 
   <div class="group out" id="output" data-export-custom>
     <div class="group__t">Output</div>
     <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
   <script>
   (function(){
     const art=document.getElementById('art'), ctx=art.getContext('2d');
     const $=id=>document.getElementById(id);
     const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
 
-    const P={ aspect:'1280/1600', seed:7, char:'?', size:76,
-      dens:58, disp:90, link:98, node:1.8, line:1.2, lop:52,
-      ink:'#141414', paper:'#f4f2ea', pulse:45, spd:1.0, play:true };
+    const P={ aspect:'1080/1920', seed:1, char:'?', size:80,
+      dens:100, disp:320, link:98, sw:0.6, lop:50,
+      fill:'#ffffff', bg:'#000000', spd:1.0, play:true };
 
-    function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
-      t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+    // ---- flux's exact helpers ----
+    const smooth=t=>t*t*(3-2*t);
+    function hash(x,y){ let n=Math.sin(x*127.1+y*311.7)*43758.5453; return n-Math.floor(n); }
+    function vnoise(x,y,t){ x+=t*0.6; const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi;
+      const u=smooth(xf),v=smooth(yf);
+      return lerp(lerp(hash(xi,yi),hash(xi+1,yi),u), lerp(hash(xi,yi+1),hash(xi+1,yi+1),u), v); }
+    function grand(i,salt){ let n=Math.sin((i+1)*(salt*97.3+12.9))*43758.5453; return n-Math.floor(n); }
+    function qpt(p0,p1,p2,t){ const u=1-t; return [u*u*p0[0]+2*u*t*p1[0]+t*t*p2[0], u*u*p0[1]+2*u*t*p1[1]+t*t*p2[1]]; }
+    function cpt(p0,p1,p2,p3,t){ const u=1-t; return [
+      u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],
+      u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]]; }
 
-    // ---- sample the glyph into a field of points ----
-    const gc=document.createElement('canvas'), gx=gc.getContext('2d', {willReadFrequently:true});
-    let pts=[], fontReady=false;
+    // ---- sample the glyph OUTLINE into points (flux sampleGlyph, recentred) ----
+    let font=null, pts=[];
     function buildPoints(){
-      const W=art.width, H=art.height; if(!W) return;
-      gc.width=W; gc.height=H; gx.clearRect(0,0,W,H);
-      gx.fillStyle='#fff'; gx.textAlign='center'; gx.textBaseline='middle';
-      gx.font=(H*(P.size/100))+'px UniversNextMed';
-      gx.fillText(P.char||'?', W/2, H*0.5);
-      const id=gx.getImageData(0,0,W,H).data;
-      const step=Math.max(6, Math.round(lerp(40,13, P.dens/100)));
-      const rng=mulberry32((P.seed*2654435761)>>>0);
-      const out=[]; const jit=step*0.42;
-      for(let y=step*0.5;y<H;y+=step) for(let x=step*0.5;x<W;x+=step){
-        if(id[((y|0)*W+(x|0))*4+3] > 128){
-          out.push({ bx:x+(rng()*2-1)*jit, by:y+(rng()*2-1)*jit,
-            dir:rng()*TAU, ph:rng()*TAU, mag:0.35+rng()*0.65, tw:rng() });
-        }
+      if(!font){ pts=[]; return; }
+      const W=art.width, H=art.height, size=H*(P.size/100);
+      let path; try{ path=font.getPath(P.char||'?', 0, size, size); }catch(e){ pts=[]; return; }
+      const spacing=lerp(20,3, P.dens/100), raw=[]; let cur=[0,0];
+      const emit=(x,y)=>raw.push([x,y]);
+      const seg=(a,b)=>{ const len=Math.hypot(b[0]-a[0],b[1]-a[1]), n=Math.max(1,Math.round(len/spacing));
+        for(let i=1;i<=n;i++) emit(lerp(a[0],b[0],i/n), lerp(a[1],b[1],i/n)); };
+      for(const c of path.commands){
+        if(c.type==='M'){ cur=[c.x,c.y]; emit(c.x,c.y); }
+        else if(c.type==='L'){ seg(cur,[c.x,c.y]); cur=[c.x,c.y]; }
+        else if(c.type==='Q'){ let p=cur; for(let i=1;i<=10;i++){ const q=qpt(cur,[c.x1,c.y1],[c.x,c.y],i/10); seg(p,q); p=q; } cur=[c.x,c.y]; }
+        else if(c.type==='C'){ let p=cur; for(let i=1;i<=12;i++){ const q=cpt(cur,[c.x1,c.y1],[c.x2,c.y2],[c.x,c.y],i/12); seg(p,q); p=q; } cur=[c.x,c.y]; }
       }
-      pts=out;
+      if(!raw.length){ pts=[]; return; }
+      let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+      for(const p of raw){ if(p[0]<minx)minx=p[0]; if(p[1]<miny)miny=p[1]; if(p[0]>maxx)maxx=p[0]; if(p[1]>maxy)maxy=p[1]; }
+      const ox=W/2-(minx+maxx)/2, oy=H/2-(miny+maxy)/2;
+      pts=raw.map(p=>[p[0]+ox, p[1]+oy]);
     }
 
-    // ---- render one frame ----
-    function render(g, W, H, tm){
-      const ink=P.ink, paper=P.paper;
-      g.setTransform(1,0,0,1,0,0); g.fillStyle=paper; g.fillRect(0,0,W,H);
+    // ---- render (flux drawNetwork: noise-dispersed points, links, nodes) ----
+    function render(g, W, H, phase){
+      g.setTransform(1,0,0,1,0,0); g.fillStyle=P.bg; g.fillRect(0,0,W,H);
       if(!pts.length) return;
-      const disp=P.disp*(W/1280), link=P.link*(W/1280), l2=link*link;
-      const pulseAmt=P.pulse/100, spd=P.spd/10;
+      const spread=P.disp*(W/1080), link=P.link*(W/1080), l2=link*link, sO=P.seed*997;
+      const D=pts.map((p,k)=>{ let x=p[0],y=p[1];
+        if(spread){ const a=grand(k+sO,2.2)*TAU, m=grand(k+sO,5.5)*vnoise(x*0.01,y*0.01,phase);
+          x+=Math.cos(a)*m*spread; y+=Math.sin(a)*m*spread; } return [x,y]; });
 
-      // displaced positions (the pulse + drift)
-      for(const p of pts){
-        const pul = 1 + pulseAmt*Math.sin(tm*spd + p.ph)*0.9;
-        const ang = p.dir + Math.sin(tm*0.3 + p.ph)*0.5;
-        p.x = p.bx + Math.cos(ang)*p.mag*disp*pul;
-        p.y = p.by + Math.sin(ang)*p.mag*disp*pul;
-      }
-
-      // spatial grid for fast neighbour links
-      const cell=Math.max(8, link), gw=Math.ceil(W/cell)+1, cells=new Map();
-      const key=(cx,cy)=>cx*100000+cy;
-      for(let i=0;i<pts.length;i++){ const cx=(pts[i].x/cell)|0, cy=(pts[i].y/cell)|0, k=key(cx,cy);
+      // spatial grid for fast links
+      const cell=Math.max(8,link), cells=new Map(), key=(cx,cy)=>cx*100000+cy;
+      for(let i=0;i<D.length;i++){ const cx=(D[i][0]/cell)|0, cy=(D[i][1]/cell)|0, k=key(cx,cy);
         let a=cells.get(k); if(!a){ a=[]; cells.set(k,a); } a.push(i); }
-
-      // links — one batched path at a set opacity (fast, even on a dense field)
-      g.strokeStyle=ink; g.lineWidth=Math.max(0.4, P.line/10*(W/1280)); g.globalAlpha=P.lop/100; g.beginPath();
-      for(let i=0;i<pts.length;i++){ const pi=pts[i], cx=(pi.x/cell)|0, cy=(pi.y/cell)|0;
+      g.strokeStyle=P.fill; g.lineWidth=P.sw*(W/1080); g.globalAlpha=P.lop/100; g.beginPath();
+      for(let i=0;i<D.length;i++){ const pi=D[i], cx=(pi[0]/cell)|0, cy=(pi[1]/cell)|0;
         for(let ox=-1;ox<=1;ox++) for(let oy=-1;oy<=1;oy++){ const a=cells.get(key(cx+ox,cy+oy)); if(!a) continue;
-          for(const j of a){ if(j<=i) continue; const pj=pts[j], dx=pi.x-pj.x, dy=pi.y-pj.y;
-            if(dx*dx+dy*dy<l2){ g.moveTo(pi.x,pi.y); g.lineTo(pj.x,pj.y); } } } }
+          for(const j of a){ if(j<=i) continue; const pj=D[j], dx=pi[0]-pj[0], dy=pi[1]-pj[1];
+            if(dx*dx+dy*dy<l2){ g.moveTo(pi[0],pi[1]); g.lineTo(pj[0],pj[1]); } } } }
       g.stroke(); g.globalAlpha=1;
-
-      // nodes
-      const nr=Math.max(0.4, P.node/10*(W/1280));
-      g.fillStyle=ink;
-      for(const p of pts){ g.beginPath(); g.arc(p.x,p.y,nr,0,TAU); g.fill(); }
+      const nr=Math.max(1, P.sw*1.6)*(W/1080); g.fillStyle=P.fill;
+      for(const p of D){ g.beginPath(); g.arc(p[0],p[1],nr,0,TAU); g.fill(); }
     }
 
     // ---- sizing + loop ----
-    let W=1280, H=1600, clock=0;
-    function aspectWH(){ const p=(P.aspect||'1280/1600').split(/[/:x]/).map(Number), a=p[0]||4, b=p[1]||5, long=1600;
+    let W=1080, H=1920, phase=0;
+    function aspectWH(){ const p=(P.aspect||'1080/1920').split(/[/:x]/).map(Number), a=p[0]||9, b=p[1]||16, long=1600;
       return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
-    function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H;
-      const dr=$('dimReadout'); if(dr){ const p=(P.aspect||'').split(/[/:x]/).map(Number); dr.textContent=(p[0]||W)+' × '+(p[1]||H); }
-      buildPoints(); drawNow(); }
-    function drawNow(){ render(ctx, W, H, clock); }
+    function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; buildPoints(); drawNow(); }  // opal.js owns #dimReadout
+    function drawNow(){ render(ctx, W, H, phase); }
     let t0=performance.now();
-    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ clock += dt; render(ctx,W,H,clock); } requestAnimationFrame(frame); }
+    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ phase += dt*(P.spd/10)*1.2; render(ctx,W,H,phase); } requestAnimationFrame(frame); }
     requestAnimationFrame(frame);
-    if(document.fonts && document.fonts.load){ document.fonts.load('80px UniversNextMed').then(()=>{ fontReady=true; buildPoints(); drawNow(); }).catch(()=>{}); }
 
     // ---- wire the rail ----
     function bind(id, rid, set, fmt, rebuild){ const r=$(id), v=$(rid); if(!r) return;
@@ -188,22 +174,26 @@
     bind('dens','densR',v=>P.dens=v, null, true);
     bind('disp','dispR',v=>P.disp=v);
     bind('link','linkR',v=>P.link=v);
-    bind('node','nodeR',v=>P.node=v/10, v=>(v/10).toFixed(1));
-    bind('line','lineR',v=>P.line=v, v=>(v/10).toFixed(1));
+    bind('sw','swR',v=>P.sw=v/10, v=>(v/10).toFixed(1));
     bind('lop','lopR',v=>P.lop=v);
-    bind('pulse','pulseR',v=>P.pulse=v);
     bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
     $('charIn').addEventListener('input',e=>{ P.char=e.target.value||'?'; buildPoints(); if(!P.play) drawNow(); });
-    ['ink','paper'].forEach(id=>$(id).addEventListener('input',e=>{ P[id]=e.target.value; if(!P.play) drawNow(); }));
+    ['fill','bg'].forEach(id=>$(id).addEventListener('input',e=>{ P[id]=e.target.value; if(!P.play) drawNow(); }));
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
-    $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999); buildPoints(); drawNow(); });
+    $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999); drawNow(); });
     $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play)); $('playBtn').textContent=P.play?'Pause':'Play'; if(!P.play) drawNow(); });
+
+    // keep Story 9:16 as the default even after opal.js canonicalises the size dock
+    function forceStory(){ const sel=$('aspect'); if(!sel) return;
+      const opt=[...sel.options].find(o=>/1080\s*[\/x]\s*1920|9\s*[:\/x]\s*16|story/i.test(o.value+' '+o.textContent));
+      if(opt && sel.value!==opt.value){ sel.value=opt.value; P.aspect=opt.value; fit(); } }
+    setTimeout(forceStory, 260); setTimeout(forceStory, 700);
 
     // ---- output ----
     Opal.mountOutput(art,'what-are-people-for',{ render:(long)=>{ const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
       const c=document.createElement('canvas'); c.width=Math.round(aw*s); c.height=Math.round(ah*s);
-      const savedW=art.width, savedH=art.height; art.width=c.width; art.height=c.height; buildPoints();
-      render(c.getContext('2d'), c.width, c.height, clock); art.width=savedW; art.height=savedH; buildPoints(); return c; } });
+      const sw=art.width, sh=art.height; art.width=c.width; art.height=c.height; buildPoints();
+      render(c.getContext('2d'), c.width, c.height, phase); art.width=sw; art.height=sh; buildPoints(); return c; } });
     let rec=null, chunks=[];
     $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
       if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
@@ -215,7 +205,11 @@
         $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
       rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; });
 
+    // ---- boot: load Univers Medium via opentype, then sample ----
     fit();
+    function loadFont(){ if(!window.opentype){ setTimeout(loadFont,120); return; }
+      opentype.load('/shared/fonts/UniversNextPro-Medium.ttf', (err,f)=>{ if(err){ console.warn('font load failed', err); return; } font=f; buildPoints(); drawNow(); }); }
+    loadFont();
   })();
   </script>
 </body>
