@@ -26,10 +26,9 @@ const Opal = (() => {
           background:none; color:inherit; opacity:.5; font:italic 600 9px/1 ui-serif,Georgia,serif;
           cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; flex:none; }
         .opal-info:hover, .opal-info[aria-expanded="true"]{ opacity:1; }
-        .opal-about{ position:fixed; z-index:60; max-width:328px; padding:12px 14px; border-radius:10px;
-          font-size:12px; line-height:1.55; letter-spacing:.01em; background:rgba(18,20,26,.97); color:#eef0f4;
-          border:1px solid rgba(255,255,255,.14); box-shadow:0 14px 44px -14px rgba(0,0,0,.65);
-          -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+        .opal-about{ position:fixed; z-index:60; max-width:328px; padding:12px 14px; border-radius:var(--r-island,6px);
+          font-size:12px; line-height:1.55; letter-spacing:.01em; background:#161616; color:#eef0f4;
+          border:1px solid #161616; }
         /* Sessions — saved states, top-right of every tool */
         .opal-sessions-btn{ display:inline-flex; align-items:center; gap:7px; padding:7px 13px; cursor:pointer;
           background:var(--paper,#fff); border:1px solid var(--line,rgba(0,0,0,.16)); border-radius:var(--r-control,8px);
@@ -38,7 +37,7 @@ const Opal = (() => {
         .opal-sessions-btn svg{ flex:none; }
         .opal-sessions-pop{ position:fixed; z-index:70; width:300px; max-width:calc(100vw - 24px);
           background:var(--island,#fff); border:1px solid var(--line,rgba(0,0,0,.16)); border-radius:var(--r-island,12px);
-          box-shadow:var(--shadow-float,0 8px 24px rgba(0,0,0,.16)); padding:14px; }
+          box-shadow:none; padding:14px; }
         .oss__save{ display:flex; gap:8px; margin-bottom:10px; }
         .oss__save input{ flex:1; min-width:0; padding:7px 9px; border:1px solid var(--line); border-radius:var(--r-input,6px); font:inherit; font-size:13px; background:#fff; color:var(--ink); }
         .oss__savebtn{ flex:none; padding:7px 12px; background:var(--accent,#0f62fe); color:#fff; border:1px solid var(--accent,#0f62fe); border-radius:var(--r-control,8px); cursor:pointer; font:inherit; font-size:12px; }
