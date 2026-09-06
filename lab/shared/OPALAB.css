@@ -320,7 +320,11 @@ input[type=color]::-moz-color-swatch{ border:none; border-radius:50%; }
 }
 @media (max-width:560px){ #sizeDock{ left:50% !important; } }
 #recDot{ background:#ffffff; border-color:var(--line); color:var(--rec); border-radius:var(--r-control); }
-.btn.is-recording{ background:var(--rec) !important; border-color:var(--rec) !important; color:#fff !important;
+/* recording wins over hover/active/selected — it must never read as a plain button */
+:where(#dock,#rail,#panel,#output,#sizeDock) button.is-recording,
+:where(#dock,#rail,#panel,#output,#sizeDock) button.is-recording:hover,
+.btn.is-recording, .btn.is-recording:hover, .btn.is-recording[aria-pressed="true"]{
+  background:var(--rec) !important; border-color:var(--rec) !important; color:#fff !important;
   font-variant-numeric:tabular-nums; }
 
 /* Save dialog */

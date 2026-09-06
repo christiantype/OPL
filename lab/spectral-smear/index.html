@@ -9,81 +9,49 @@
 <style>
   /* Spectral Smear shares the family shell (Attractor reference): a left #dock rail of
      labelled slider groups, a centred canvas in #wrap, and the top-right #sizeDock. */
-  :root{ --ink:#141414; --dim:rgba(0,0,0,.55); --line:rgba(0,0,0,.14); --panel:rgba(252,252,253,.9);
-    --cell:rgba(255,255,255,.75); --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
-    --hintbg:rgba(255,255,255,.72); --rail:300px; --top:120px; }
+  :root{ --rail:300px; --top:120px; }
   @media (max-width:560px){ :root{ --top:112px; } }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
-    font-family:var(--font, 'IBM Plex Sans', system-ui, -apple-system, sans-serif); overflow:hidden; overscroll-behavior:none; }
-
-  /* header — carried into the dark theme so the tool name stays legible on the bar */
-  body.dark .opal-brand{ color:var(--ink) !important; }
-  body.dark .opal-subhead__name{ color:var(--ink); }
-  body.dark .opal-brand .opal-product, body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
-  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+  html,body{ height:100%; overflow:hidden; overscroll-behavior:none; }
 
   /* canvas area — the board sits centred on a light-grey mat (#stagewrap), 24px margin, no shadow.
      A canvas is a replaced element, so fit() sizes #stage directly (letterboxed to aspect) and
      its rect is the single source of truth for the working canvas backing size. */
   #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; }
   #stagewrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; }
-  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; border-radius:2px; }
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; }
 
-  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
-    font-size:13px; color:var(--dim); background:var(--hintbg); padding:6px 14px; border-radius:999px;
-    pointer-events:none; transition:opacity .4s; z-index:7; }
-  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none; font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+  #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none; color:var(--mute); display:none; }
 
-  /* canvas-size dock — pinned top-right on every tool */
-  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
-  #sizeDock select{ appearance:none; -webkit-appearance:none; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:2px;
-    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
-    -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  /* canvas-size dock — position + face owned by OPALAB */
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
 
   /* recording indicator — pinned beside the rail while a capture runs */
-  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
-    padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
-    background:var(--panel); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
   #recDot.on{ display:flex; }
-  #recDot i{ width:7px; height:7px; border-radius:50%; background:#ff5468; animation:recblink 1s infinite; }
-  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
-  @keyframes recblink{ 50%{ opacity:.25; } }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
 
   /* left rail — all controls live here, top to bottom */
   #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
-    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden; background:var(--panel);
-    -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
+    overflow-y:auto; overflow-x:hidden; }
 
   .knob{ display:flex; flex-direction:column; gap:2px; }
-  .knob label{ display:flex; justify-content:space-between; gap:8px; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); }
-  .knob b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
-  /* slider is owned by OPALAB.css */
+  .knob label{ display:flex; justify-content:space-between; gap:8px; }
+  .knob b{ font-weight:600; font-variant-numeric:tabular-nums; }
 
-  .btn{ appearance:none; border:1px solid var(--line); background:var(--cell); color:var(--ink);
-    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
-    display:inline-flex; align-items:center; justify-content:center;
-    padding:8px 12px; border-radius:2px; cursor:pointer; transition:.15s; white-space:nowrap; }
-  .btn:hover{ background:rgba(127,127,140,.16); }
-  .btn[aria-pressed="true"], .btn.primary{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   .btn:disabled{ opacity:.35; cursor:not-allowed; }
   .btn.full{ width:100%; }
 
-  /* grouped sections — a clean, labelled stack with dividers */
+  /* grouped sections — a clean, labelled stack */
   .group{ display:flex; flex-direction:column; gap:9px; }
-  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--line); }
-  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .grid2 .btn{ width:100%; }
 
-  /* tooltips — follow the control they describe, get out of the way on click */
-  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:9px 11px; border-radius:8px;
-    background:var(--panel); border:1px solid var(--line); color:var(--ink);
-    -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
-    box-shadow:0 16px 40px -20px rgba(0,0,0,.6);
-    font-size:11px; line-height:1.5; letter-spacing:.005em; text-transform:none;
-    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  /* tooltips — geometry only; the flat dark face comes from OPALAB */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:9px 11px;
+    line-height:1.5; pointer-events:none; opacity:0; transition:opacity .14s ease; }
 
   /* full screen — canvas only; everything chrome-like steps out of the way */
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; }
@@ -97,10 +65,7 @@
     align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
   #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
   #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
-  #veil .orb{ width:88px; height:88px; border-radius:50%;
-    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
-    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
-  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  #veil .orb{ width:88px; height:88px; border-radius:50%; background:var(--ink); }
 </style>
 <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
 </head>
@@ -128,7 +93,6 @@
   <div class="group">
     <button class="btn primary full" id="playBtn" aria-pressed="true" data-tip="Play or pause the drifting flow field (space).">Pause</button>
     <div class="grid2">
-      <button class="btn" id="themeBtn" aria-pressed="true" data-tip="Switch the panel between dark and light.">Theme</button>
       <button class="btn" id="fsBtn" data-tip="Fill the screen with the canvas only (F). Esc to exit.">Full screen</button>
     </div>
   </div>
@@ -319,7 +283,6 @@
     $('recBtn').addEventListener('click',toggleRecord);
     $('playBtn').addEventListener('click',()=>{ state.playing=!state.playing; last=null; const on=state.playing;
       $('playBtn').textContent=on?'Pause':'Play'; $('playBtn').setAttribute('aria-pressed',String(on)); });
-    $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark')); });
     $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
     $('exitFs').addEventListener('click',()=>setFs(false));
     $('aspect').addEventListener('change',e=>{ const [x,y]=e.target.value.split('/').map(Number); ASPECT=x/y; fit(); syncRes(); syncHint(); });
@@ -358,6 +321,10 @@
   // Output island: one consistent export panel (format · pixels · print size · DPI · quality),
   // with a true-resolution FBO re-render of the shader.
   Opal.mountOutput(cv, 'spectral-smear', { render: renderExport });
+  // the live canvas is only ~960px on the long edge, so the panel would default the export to 960.
+  // renderExport re-renders the shader at the true target, so default it print-grade instead.
+  setTimeout(()=>{ const sc=document.querySelector('.opal-export .opal-ex-scale');
+    if(sc && !sc.dataset.touched && +sc.value < 2560){ sc.value='2560'; sc.dispatchEvent(new Event('input',{bubbles:true})); } }, 700);
   window.spectral={ state, params, exportDims, get ready(){return !!prog;} };
 })();
 </script>

@@ -7,37 +7,24 @@
   <script src="/lab/shared/gate.js"></script>
   <link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
   <style>
-    body { background: var(--opal-bg); color: var(--opal-ink); font-family: var(--opal-font-sans); }
     .oc-wrap { padding: calc(var(--top, 120px) + 22px) 32px 48px; }
-    .oc-note { font-size: 12px; color: var(--opal-muted); margin-bottom: 22px; line-height: 1.6; }
-    .oc-note code { background: var(--opal-panel); border: 1px solid var(--opal-line); padding: 1px 6px; color: var(--opal-ink); font-family: var(--opal-font-mono); font-size: 11px; }
-    #status { font-size: 12px; color: var(--opal-muted); margin-bottom: 12px; min-height: 18px; font-family: var(--opal-font-mono); }
-    #rec-all {
-      margin-bottom: 26px;
-      background: var(--opal-accent); border: 1px solid var(--opal-accent); color: #fff;
-      padding: 10px 20px; font-size: 11px; letter-spacing: .12em;
-      text-transform: uppercase; cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s;
-    }
-    #rec-all:hover { background: var(--opal-accent-soft); border-color: var(--opal-accent-soft); }
+    .oc-note { color: var(--mute); margin-bottom: 22px; line-height: 1.6; }
+    .oc-note code { background: var(--cell); border: 1px solid var(--hair); padding: 1px 6px; color: var(--ink); }
+    #status { color: var(--mute); margin-bottom: 12px; min-height: 18px; font-family: var(--mono); }
+    #rec-all { margin-bottom: 26px; padding: 10px 20px; }
     #rec-all:disabled { opacity: .35; cursor: default; }
     .grid { display: flex; gap: 20px; flex-wrap: wrap; }
     .panel {
       display: flex; flex-direction: column; gap: 8px;
-      background: #fff; border: 1px solid rgba(0,0,0,.16);
-      box-shadow: 0 10px 30px -16px rgba(0,0,0,.22); padding: 14px;
+      background: var(--island); border: 1px solid var(--hair); border-radius: var(--r-island); padding: 14px;
     }
-    .panel-label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--opal-mid); }
+    .panel-label { color: var(--mute); }
     /* Canvas renders at 1080×1920 internally, displays at 270×480 via CSS */
-    .panel canvas { display: block; width: 270px; height: 480px; background: #fff; border: 1px solid var(--opal-line); box-shadow: 0 12px 40px -18px rgba(0,0,0,.18); }
-    .rec-btn {
-      background: var(--opal-panel); border: 1px solid var(--opal-line); color: var(--opal-ink);
-      padding: 8px 12px; font-size: 11px; letter-spacing: .1em;
-      text-transform: uppercase; cursor: pointer; font-family: inherit; transition: border-color .15s;
-    }
-    .rec-btn:hover { border-color: var(--opal-ink); }
-    .rec-btn.recording { border-color: #e0202a; color: #e0202a; }
-    .rec-btn.done { border-color: #1c8a4a; color: #1c8a4a; }
-    .progress { height: 2px; background: var(--opal-line); overflow: hidden; }
+    .panel canvas { display: block; width: 270px; height: 480px; background: #fff; border: 1px solid var(--line); }
+    .rec-btn { padding: 8px 12px; }
+    .rec-btn.recording { border-color: var(--rec) !important; color: var(--rec) !important; }
+    .rec-btn.done { border-color: #1c8a4a !important; color: #1c8a4a !important; }
+    .progress { height: 2px; background: var(--line); overflow: hidden; }
     .progress-bar { height: 100%; background: #e0202a; width: 0%; }
     /* mobile: canvases scale to fit, panels stack */
     @media (max-width: 600px) {
@@ -55,7 +42,7 @@
 <div class="oc-wrap">
   <p class="oc-note">15 sec · 30 fps · exports as MP4. Use Chrome on macOS for native MP4 output.</p>
   <div id="status">Ready.</div>
-  <button id="rec-all">Record All 4 Clips</button>
+  <button class="btn primary" id="rec-all">Record All 4 Clips</button>
   <div class="grid" id="grid"></div>
 </div>
 
@@ -95,7 +82,7 @@
       drawFns.push(s.mk(cv, ctx, s.bg));
 
       var btn = document.createElement('button');
-      btn.className = 'rec-btn';
+      btn.className = 'btn rec-btn';
       btn.textContent = 'Record 15s';
       btn.onclick = (function(idx){ return function(){ recordOne(idx); }; })(i);
       buttons.push(btn);
@@ -143,15 +130,15 @@
           a.href = url; a.download = 'open-session-' + (idx + 1) + '.' + ext;
           document.body.appendChild(a); a.click(); document.body.removeChild(a);
           URL.revokeObjectURL(url);
-          btn.textContent = 'Done ✓'; btn.className = 'rec-btn done';
+          btn.textContent = 'Done ✓'; btn.className = 'btn rec-btn done';
           bar.style.width = '100%';
           setTimeout(function () {
-            btn.textContent = 'Record 15s'; btn.className = 'rec-btn'; bar.style.width = '0%';
+            btn.textContent = 'Record 15s'; btn.className = 'btn rec-btn'; bar.style.width = '0%';
           }, 3000);
           resolve();
         };
 
-        btn.textContent = 'Recording…'; btn.className = 'rec-btn recording';
+        btn.textContent = 'Recording…'; btn.className = 'btn rec-btn recording';
         bar.style.width = '0%';
         recorder.start(200);
 

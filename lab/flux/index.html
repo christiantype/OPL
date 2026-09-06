@@ -9,138 +9,82 @@
   @font-face{font-family:'Untitled Sans';src:url('/shared/fonts/UntitledSans-Regular.otf') format('opentype');font-weight:400;font-style:normal;font-display:swap}
   @font-face{font-family:'Untitled Sans';src:url('/shared/fonts/UntitledSans-Bold.otf') format('opentype');font-weight:700;font-style:normal;font-display:swap}
 
-  /* Light editorial chrome — matches the OP/AL "Lake Opeka" tool. Color lives
-     only inside the canvas; the rails and topbar stay monochrome. */
-  :root{ --cobalt:#1c39bb; --pink:#ff94c9; }
+  /* Light editorial chrome. Colour lives only inside the canvas; the rail and topbar
+     stay monochrome. OPALAB.css loads last and owns every control — this block is layout. */
+  :root{ --cobalt:#1c39bb; --pink:#ff94c9; --top:120px; --rail:300px; }
+  @media (max-width:560px){ :root{ --top:112px; } }
   *{box-sizing:border-box}html,body{margin:0;height:100%}
-  body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;
-    -webkit-font-smoothing:antialiased;display:grid;grid-template-rows:56px 44px 1fr;height:100vh;overflow:hidden;position:relative}
-  button,input,select,textarea{font-family:inherit;color:inherit}
+  body{display:grid;grid-template-rows:56px 44px 1fr;height:100vh;overflow:hidden;position:relative}
 
-  /* Shared shell bars (rows 1 & 2). The canvas fills the whole area below;
-     the controls float over it as an island — Figma-style. */
+  /* Shared shell bars (rows 1 & 2). The canvas fills the whole area below. */
   .opal-topbar{grid-row:1}
   .opal-subhead{grid-row:2}
 
-  /* one left rail holding every control group as an island (no tabs, no icon rail) */
-  :root{ --top:120px; --rail:300px; }
-  @media (max-width:560px){ :root{ --top:112px; } }
+  /* one left rail holding every control group as an island */
   #panel{position:fixed;top:var(--top);left:0;bottom:0;width:var(--rail);z-index:6;
-    background:var(--rail-bg);border-right:1px solid var(--line);
     display:flex;flex-direction:column;overflow:hidden}
   body.panel-closed #panel{display:none}
-  /* Input section — its own light-gray zone with white controls */
-  #pTop{padding:16px 16px 16px;background:#f0f0ee;border-bottom:1px solid var(--line)}
-  #pTop textarea,#pTop select,#pTop input[type=number],#pTop .filebtn{background:#fff}
-  /* Labeled sub-sections (Font · Engine) with consistent field spacing */
+  /* Labelled sub-sections (Typeface · Settings) with consistent field spacing */
   .oc-sec{margin-top:14px}
-  .oc-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+  .oc-lbl{color:var(--mute);margin-bottom:6px}
   .oc-sec select,.oc-sec .filebtn{margin-top:0}
   .oc-sec select + .filebtn,.oc-sec .filebtn + select{margin-top:6px}
-  /* Engine settings — always-visible block below the input zone */
+  /* Engine settings — always-visible island below the engine picker */
   .eng-params{background:var(--island);border:1px solid var(--line);border-radius:var(--r-island);
-    padding:14px;margin:0 0 12px;box-shadow:var(--shadow)}
+    padding:14px;margin:0 0 12px}
   .eng-params .oc-lbl{margin-bottom:12px}
-  #pScroll{flex:1;overflow-y:auto;padding:14px 18px 18px}
-  #pScroll::-webkit-scrollbar{width:9px}#pScroll::-webkit-scrollbar-thumb{background:#d9d9d9}
-  #pScroll::-webkit-scrollbar-thumb:hover{background:#c4c4c4}
+  #pScroll{flex:1;overflow-y:auto;padding:16px}
 
-  /* Brand lockup — OP/AL wordmark + product label, echoing the Lake Opeka topbar */
-  .brand{display:flex;align-items:center;gap:11px;margin-bottom:6px}
-  .brand svg{display:block;height:15px;width:auto;color:var(--ink)}
-  h1{font-family:var(--font);font-size:11px;letter-spacing:.14em;margin:0;text-transform:uppercase;font-weight:400;color:var(--mute)}
-  .sub{color:var(--mute);font-size:10px;letter-spacing:.16em;margin-bottom:16px;text-transform:uppercase}
-
-  textarea{width:100%;background:var(--cell);border:1px solid var(--line);color:var(--ink);
-    padding:8px 9px;font-family:var(--font);font-size:13px;resize:vertical;min-height:38px;line-height:1.3;border-radius:0}
-  textarea:focus,select:focus,input:focus{outline:none;border-color:var(--accent)}
+  textarea{width:100%;padding:8px 9px;resize:vertical;min-height:38px;line-height:1.3}
   .mini{margin-top:7px}.mini select,.mini .filebtn{margin-top:6px}
 
-  /* Morflax-style underline tabs */
-  #tabs{display:flex;gap:0;margin:14px 0 4px;border-bottom:1px solid var(--line)}
-  #tabs button{flex:1;background:none;border:none;border-bottom:1.5px solid transparent;color:var(--mute);font-family:var(--font);
-    font-size:11px;letter-spacing:.08em;padding:9px 4px;cursor:pointer;text-transform:uppercase;margin-bottom:-1px;transition:color .15s ease,border-color .15s ease}
-  #tabs button:hover:not(.active){color:var(--ink)}
-  #tabs button.active{color:var(--ink);border-bottom-color:var(--ink)}
   .pane{display:block}   /* all groups stacked in the single rail */
   body.dim-mode .pane:not([data-pane="engine"]){display:none}   /* Dimensional owns its own text UI */
   /* transport actions, moved off the old timeline bar into the rail */
   .railact{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .railact button{background:var(--cell);border:1px solid var(--line);color:var(--ink);padding:9px 10px;font-family:var(--font);
-    font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:var(--r-control)}
-  .railact button:hover{border-color:var(--ink)}
-  .railact button.primary,.railact button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .railact button{padding:9px 10px}
   /* size dock popover (custom px + print) */
-  #sizeDock #szMore{appearance:none;width:30px;height:30px;flex:none;border:1px solid var(--line);background:#fff;color:var(--ink);
-    border-radius:var(--r-control);cursor:pointer;font-size:14px;line-height:1;padding:0}
-  #sizeDock #szMore:hover{border-color:var(--ink)}
-  #szPop{position:absolute;top:calc(100% + 10px);left:0;width:250px;background:var(--island);border:none;
-    border-radius:var(--r-island);box-shadow:var(--shadow-float);padding:14px;z-index:12}
+  #sizeDock #szMore{width:30px;height:30px;flex:none;padding:0;line-height:1}
+  #szPop{position:absolute;top:calc(100% + 10px);left:0;width:250px;background:var(--island);
+    border:1px solid var(--hair);border-radius:var(--r-island);padding:14px;z-index:12}
   #szPop[hidden]{display:none}
 
-  /* parameter groups as individual islands (matches every other tool) — click the heading to fold */
+  /* parameter groups as individual islands — click the heading to fold */
   .grp{background:var(--island);border:1px solid var(--line);border-radius:var(--r-island);
-    padding:14px;margin:0 0 12px;box-shadow:var(--shadow)}
+    padding:14px;margin:0 0 12px}
   .grp:first-child{margin-top:0}
-  .grp h3{cursor:pointer;user-select:none}
-  /* Morflax-style quiet section headers: sentence case, light, value chip + chevron */
-  .grp h3{font-family:var(--font);font-size:12px;letter-spacing:0;color:var(--ink);text-transform:none;margin:0 0 10px;
+  /* quiet section headers: sentence case, light, value chip + chevron */
+  .grp h3{font-family:var(--font);color:var(--ink);margin:0 0 10px;
     display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-weight:400}
-  .grp h3 .grp-val{margin-left:auto;color:var(--mute);font-size:11px;font-family:var(--mono);text-transform:none;letter-spacing:0;
+  .grp h3 .grp-val{margin-left:auto;color:var(--mute);font-family:var(--mono);
     max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .grp h3 .tw{color:var(--mute);font-size:9px;flex:none}
+  .grp h3 .tw{color:var(--mute);flex:none}
   .grp.closed h3{margin-bottom:0}
   .grp.closed .gbody{display:none}
-  .renderNote{color:var(--mute);font-size:11px;line-height:1.55;padding:2px 0}
+  .renderNote{color:var(--mute);line-height:1.55;padding:2px 0}
 
   .ctrl{margin-bottom:7px}
-  .ctrl .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:1px}
-  .ctrl label{color:var(--ink);font-size:12px;letter-spacing:0;text-transform:capitalize}
+  .ctrl .row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:1px}
+  .ctrl label{color:var(--ink)}
   /* Editable value readout — click to type a number */
-  .ctrl .val{color:var(--ink);font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;
+  .ctrl .val{color:var(--ink);font-family:var(--mono);font-variant-numeric:tabular-nums;
     -webkit-appearance:none;appearance:none;background:transparent;border:none;text-align:right;width:76px;padding:2px 4px;
-    outline:1px solid transparent;outline-offset:-1px;border-radius:3px;cursor:text;transition:background .12s,outline-color .12s}
+    outline:1px solid transparent;outline-offset:-1px;border-radius:var(--r-input);cursor:text;transition:background .12s,outline-color .12s}
   .ctrl .val:hover{background:rgba(0,0,0,.05);outline-color:var(--line)}
   .ctrl .val:focus{background:rgba(0,0,0,.08);outline-color:var(--ink)}
-  /* Pill sliders: light-gray rounded track + tall rounded white handle */
-  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;cursor:pointer;padding:0;margin:0}
-  input[type=range]::-webkit-slider-runnable-track{background:rgba(0,0,0,.28);height:2px;border-radius:0}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;
-    background:#161616;border:0;box-shadow:none;margin-top:-6px;cursor:pointer}
-  input[type=range]::-moz-range-track{background:rgba(0,0,0,.28);height:2px;border-radius:0}
-  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#161616;border:0;box-shadow:none;cursor:pointer}
 
-  /* Unified dropdown — custom chevron, no native arrow (shared with Lake Opeka) */
-  select{-webkit-appearance:none;appearance:none;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c7c84' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:right 11px center;padding-right:28px}
-  select,input[type=number]{width:100%;background-color:var(--cell);border:1px solid var(--line);color:var(--ink);
-    padding:8px 11px;font-family:var(--font);font-size:12px;cursor:pointer;border-radius:0}
-  select:hover,input[type=number]:hover{border-color:var(--mute)}
-  /* Unified segmented control — rounded, uppercase (shared language with Lake Opeka .seg) */
+  select,input[type=number]{width:100%}
   .three{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-  .chip{background:var(--cell);border:1px solid var(--line);color:var(--mute);padding:8px 5px;border-radius:0;
-    text-align:center;cursor:pointer;letter-spacing:.1em;text-transform:uppercase;user-select:none;transition:.12s;font-size:10px}
-  .chip:hover{border-color:var(--mute);color:var(--ink)}
-  .chip.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-  .filebtn{display:block;background:var(--cell);border:1px dashed var(--line);padding:8px;border-radius:0;
-    text-align:center;color:var(--mute);cursor:pointer;font-size:12px;transition:border-color .15s ease,color .15s ease}
-  .filebtn:hover{border-color:var(--accent);color:var(--ink)}
-  input[type=color]{width:100%;height:32px;background:var(--cell);border:1px solid var(--line);padding:2px;cursor:pointer;border-radius:0}
+  .filebtn{display:block;text-align:center;cursor:pointer}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .two label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
-  .toggle{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--mute);margin-top:8px;font-size:12px}
-  .toggle input{accent-color:var(--accent);width:16px;height:16px}
+  .two label{color:var(--mute)}
+  .toggle{display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px}
   .hidden{display:none}
-  /* Size · Leading · Kerning share one row */
-  #g-type{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  #g-type .ctrl{margin-bottom:0;min-width:0}
-  #g-type .ctrl .row{gap:2px;min-width:0}
-  #g-type .ctrl label{font-size:10px;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-  #g-type .ctrl .val{font-size:10px;width:auto;flex:none;max-width:46px;padding:1px 2px}
+  /* Size · Leading · Kerning read in full — one full-width row each, like every other group */
+  #g-type .ctrl{margin-bottom:7px}
 
-  #stage{grid-row:3;position:relative;overflow:hidden;background:#f5f5f5}
-  /* Canvas sits between the left icon rail, the right controls island and the bottom bar. */
+  #stage{grid-row:3;position:relative;overflow:hidden}
+  /* Canvas sits to the right of the rail, inset from the stage edges. */
   #canvasArea{position:absolute;top:0;left:calc(var(--rail) + 16px);right:16px;bottom:16px;
     display:flex;align-items:center;justify-content:center;padding:28px;transition:left .2s ease}
   body.panel-closed #canvasArea{left:16px}
@@ -148,60 +92,20 @@
   #dimFrame{position:absolute;inset:0;width:100%;height:100%;border:none;background:#fff;display:none}
   body.dim-mode #canvasWrap{display:none}
   body.dim-mode #dimFrame{display:block}
-  body.dim-mode #tbar{display:none}
   body.dim-mode #canvasArea{bottom:16px}
-  /* Dimensional owns its own text/typeface UI — hide Flux's redundant panes, keep Engine */
-  body.dim-mode #railL button[data-tab="font"],
-  body.dim-mode #railL button[data-tab="shape"],
-  body.dim-mode #railL button[data-tab="behavior"],
-  body.dim-mode #railL button[data-tab="output"]{display:none}
 
   #canvasWrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
-  #view{box-shadow:0 12px 40px -10px rgba(0,0,0,.15)}
-
-  /* Left icon rail — Morflax-style section switcher */
-  #railL{position:absolute;top:16px;left:16px;bottom:80px;width:48px;z-index:6;
-    display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;
-    background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
-    border:1px solid var(--line);border-radius:0;box-shadow:0 10px 30px -16px rgba(0,0,0,.22)}
-  #railL button{width:34px;height:34px;border:none;background:none;border-radius:0;color:var(--mute);cursor:pointer;
-    display:flex;align-items:center;justify-content:center;transition:color .15s,background .15s}
-  #railL button:hover{color:var(--ink);background:var(--cell)}
-  #railL button.active{color:var(--on-accent);background:var(--accent)}
-  #railL svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-  #railL button.rail-bottom{margin-top:auto}   /* Output pinned to the bottom */
-
-  /* Bottom timeline bar — play / transport / export */
-  #tbar{position:absolute;left:0;right:0;bottom:0;height:56px;z-index:6;display:flex;align-items:center;gap:14px;padding:0 18px;
-    border-top:1px solid var(--line);background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
-  #tbar .tbar-grp{display:flex;align-items:center;gap:8px}
-  #tbar .tbar-line{flex:1;height:2px;background:var(--line);border-radius:2px;position:relative}
-  #tbar .tbar-line .tbar-prog{position:absolute;left:0;top:0;bottom:0;width:32%;background:var(--ink);border-radius:2px}
-  #tbar .sep{width:1px;height:20px;background:var(--line)}
-  #tbar button{background:var(--cell);border:1px solid var(--line);color:var(--ink);padding:8px 14px;font-family:var(--font);border-radius:0;
-    font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
-  #tbar button:hover{border-color:var(--ink)}
-  #tbar button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-  #tbar button.rec{color:#e0202a}
-  #tbar button.rec:hover{border-color:#e0202a}
-  #tbar button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
   #view{cursor:grab}#view:active{cursor:grabbing}
   #status{display:none}
   .warn{color:var(--cobalt)}.ok{color:var(--cobalt)}
 
-  /* ── Mobile: icon rail becomes a top bar, the flyout a slide-up bottom sheet ── */
+  /* ── Mobile: the rail becomes a slide-up bottom sheet ── */
   @media (max-width:760px){
-    #railL{top:8px;left:8px;right:8px;bottom:auto;width:auto;height:46px;flex-direction:row;align-items:center;padding:5px 6px;gap:3px}
-    #railL button{width:36px;height:36px}
-    #railL button.rail-bottom{margin-top:0;margin-left:auto}
-    #panel{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:72vh;border-radius:16px 16px 0 0;overflow-y:auto;z-index:14;
-      box-shadow:0 -12px 40px -16px rgba(0,0,0,.24)}
-    #canvasArea{left:8px !important;right:8px;top:62px;bottom:56px}
+    #panel{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:72vh;
+      border-radius:16px 16px 0 0;overflow-y:auto;z-index:14}
+    #canvasArea{left:8px !important;right:8px;top:62px;bottom:16px}
     body.panel-closed #canvasArea{left:8px}
     body.dim-mode #canvasArea{left:8px;top:62px}
-    #tbar{flex-wrap:wrap;height:auto;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));gap:6px;justify-content:center}
-    #tbar button{padding:8px 10px}
-    #tbar .tbar-line{display:none}
   }
 </style>
 <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
@@ -282,7 +186,7 @@
     <div class="oc-lbl">Settings</div>
         <div id="g-render"></div>
         <div id="style-mosaic" class="mini hidden">
-          <div class="row"><label>mosaic glyphs · light → dark</label></div>
+          <div class="row"><label>Mosaic glyphs · light → dark</label></div>
           <input type="text" id="mosaicChars" value=".:-=+*#%@" spellcheck="false" autocapitalize="off"
                  title="Characters to build the mosaic from, lightest first. One character = a single-glyph mosaic shaded by opacity.">
         </div>
@@ -290,12 +194,12 @@
   </div>
     <div class="grp"><h3>Color <span class="tw">▾</span></h3><div class="gbody">
       <div class="two">
-        <div><div class="row"><label>fill</label></div><input type="color" id="fillColor" value="#ffffff"></div>
-        <div><div class="row"><label>background</label></div><input type="color" id="bgColor" value="#000000"></div>
+        <div><div class="row"><label>Fill</label></div><input type="color" id="fillColor" value="#ffffff"></div>
+        <div><div class="row"><label>Background</label></div><input type="color" id="bgColor" value="#000000"></div>
       </div>
       <div id="g-style" style="margin-top:8px">
         <div id="style-colorway" class="mini hidden">
-          <div class="row"><label>colorway</label></div>
+          <div class="row"><label>Colourway</label></div>
           <select id="heatPalette">
             <option value="custom">Custom · your colors</option>
             <option value="turbo">Turbo · astro</option>
@@ -309,14 +213,14 @@
           </select>
         </div>
         <div id="style-accents" class="two hidden">
-          <div><div class="row"><label>accent 1</label></div><input type="color" id="accentColor" value="#ff5ad0"></div>
-          <div><div class="row"><label>accent 2</label></div><input type="color" id="accent2" value="#5ecbff"></div>
+          <div><div class="row"><label>Accent 1</label></div><input type="color" id="accentColor" value="#ff5ad0"></div>
+          <div><div class="row"><label>Accent 2</label></div><input type="color" id="accent2" value="#5ecbff"></div>
         </div>
       </div>
-      <label class="toggle"><input type="checkbox" id="fillOn" checked> fill</label>
-      <label class="toggle"><input type="checkbox" id="strokeOn"> stroke outline</label>
-      <label class="toggle"><input type="checkbox" id="bgTransparent"> transparent bg</label>
-      <label class="toggle"><input type="checkbox" id="clipGlyph"> effect inside letters</label>
+      <label class="toggle"><input type="checkbox" id="fillOn" checked> Fill</label>
+      <label class="toggle"><input type="checkbox" id="strokeOn"> Stroke outline</label>
+      <label class="toggle"><input type="checkbox" id="bgTransparent"> Transparent background</label>
+      <label class="toggle"><input type="checkbox" id="clipGlyph"> Effect inside letters</label>
     </div></div>
   </div>
 
@@ -357,7 +261,8 @@
   <!-- canvas-size dock — bottom-centre of the canvas, like every tool -->
   <div id="sizeDock">
     <span id="dimReadout"></span>
-    <select id="format" title="canvas size">
+    <!-- data-canon-skip: flux keeps its own list — the canon has no print sizes -->
+    <select id="format" title="canvas size" data-canon-skip>
       <optgroup label="Social / Digital">
         <option value="1080x1920">Instagram Story / Reel · 1080×1920</option>
         <option value="1080x1080">Instagram Square · 1080×1080</option>
@@ -399,7 +304,7 @@
 <script src="/lab/shared/opal.js?v=3"></script>
 <script>Opal.mountTopbar({ name: 'Flux', desc: 'Experimental type instrument', version: 'v1' });</script>
 <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
-<div id="output" data-export-custom><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div><button class="btn" id="svgBtn" style="width:100%;margin-top:8px">SVG</button></div>
+<div id="output" data-export-custom><div class="group__t">Output</div><div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
 <script>
 /* ===========================================================================
    Flux — experimental type instrument
@@ -414,96 +319,96 @@ let font=null, phase=0, playing=false, lastSVG='';
 
 const CONTROLS={
   render:[
-    ['chromatic','chromatic offset',0,60,0.5,10],
-    ['heatShift','heat bias',-100,100,1,0],
-    ['pDensity','point density',5,100,1,60],
-    ['pSpread','dispersion',0,320,1,0],
-    ['dotSize','halftone cell',4,44,1,11],
-    ['ringCount','ring count',1,24,1,7],
-    ['ringGap','ring gap %',1,44,1,7],
-    ['linkDist','link distance',5,180,1,46],
-    ['bloom','glow / bloom',2,90,1,28],
-    ['gain','intensity',0.4,3,0.05,1.5],
-    ['breath','breathing',0,1,0.02,0.55],
-    ['fieldDrift','organic drift',0,140,1,34],
-    ['grain','film grain',0,60,1,14],
-    ['cellSize','cell size',10,150,1,64],
-    ['sliceW','slice width',2,240,1,12],
-    ['sliceShift','slice shift',0,440,1,150],
-    ['inflate','inflate letters',0,60,1,0],
-    ['openEdge','open perimeter %',0,100,1,0],
-    ['filmThick','film thickness nm',80,900,5,340],
-    ['bulge','refraction',0,120,1,55],
-    ['glassR','glass size %',30,120,1,96],
-    ['glassShape','edge · round→square',2,8,0.1,4],
-    ['wall','glass wall',0,100,1,55],
-    ['glassDisp','dispersion',0,40,0.5,9],
-    ['sheen','sheen / highlights',0,100,1,50],
-    ['shReflect','reflection',0,160,1,90],
-    ['shRefract','refraction',0,100,1,42],
-    ['shDisp','chromatic split',0,60,1,16],
-    ['shBevel','bevel edge',0,100,1,50],
-    ['shFacet','facet tilt',0,100,1,52],
-    ['shStyle','reflection style',0,3,1,0],
+    ['chromatic','Chromatic offset',0,60,0.5,10],
+    ['heatShift','Heat bias',-100,100,1,0],
+    ['pDensity','Point density',5,100,1,60],
+    ['pSpread','Dispersion',0,320,1,0],
+    ['dotSize','Halftone cell',4,44,1,11],
+    ['ringCount','Ring count',1,24,1,7],
+    ['ringGap','Ring gap %',1,44,1,7],
+    ['linkDist','Link distance',5,180,1,46],
+    ['bloom','Glow / bloom',2,90,1,28],
+    ['gain','Intensity',0.4,3,0.05,1.5],
+    ['breath','Breathing',0,1,0.02,0.55],
+    ['fieldDrift','Organic drift',0,140,1,34],
+    ['grain','Film grain',0,60,1,14],
+    ['cellSize','Cell size',10,150,1,64],
+    ['sliceW','Slice width',2,240,1,12],
+    ['sliceShift','Slice shift',0,440,1,150],
+    ['inflate','Inflate letters',0,60,1,0],
+    ['openEdge','Open perimeter %',0,100,1,0],
+    ['filmThick','Film thickness nm',80,900,5,340],
+    ['bulge','Refraction',0,120,1,55],
+    ['glassR','Glass size %',30,120,1,96],
+    ['glassShape','Edge · round→square',2,8,0.1,4],
+    ['wall','Glass wall',0,100,1,55],
+    ['glassDisp','Dispersion',0,40,0.5,9],
+    ['sheen','Sheen / highlights',0,100,1,50],
+    ['shReflect','Reflection',0,160,1,90],
+    ['shRefract','Refraction',0,100,1,42],
+    ['shDisp','Chromatic split',0,60,1,16],
+    ['shBevel','Bevel edge',0,100,1,50],
+    ['shFacet','Facet tilt',0,100,1,52],
+    ['shStyle','Reflection style',0,3,1,0],
   ],
   warp:[
-    ['flow','flow field',0,220,1,0],
-    ['flowScale','flow scale',0.5,60,0.5,11],
-    ['melt','melt / drip',0,420,1,0],
-    ['distort','distort',0,160,0.5,0],
-    ['distortScale','distort scale',0.5,60,0.5,12],
-    ['waveAmp','wave amp',0,300,1,0],
-    ['waveFreq','wave freq',0.1,8,0.1,1.2],
-    ['pinch','pinch ← / bloat →',-100,100,1,0],
-    ['fisheye','fisheye ± (barrel)',-100,100,1,0],
-    ['twist','twist °',-360,360,1,0],
-    ['glitchSlice','glitch slice',0,140,1,0],
+    ['flow','Flow field',0,220,1,0],
+    ['flowScale','Flow scale',0.5,60,0.5,11],
+    ['melt','Melt / drip',0,420,1,0],
+    ['distort','Distort',0,160,0.5,0],
+    ['distortScale','Distort scale',0.5,60,0.5,12],
+    ['waveAmp','Wave amp',0,300,1,0],
+    ['waveFreq','Wave freq',0.1,8,0.1,1.2],
+    ['pinch','Pinch ← / bloat →',-100,100,1,0],
+    ['fisheye','Fisheye ± (barrel)',-100,100,1,0],
+    ['twist','Twist °',-360,360,1,0],
+    ['glitchSlice','Glitch slice',0,140,1,0],
   ],
   repeat:[
-    ['echo','echo count',0,28,1,0],
-    ['echoX','echo shift x',-140,140,1,0],
-    ['echoY','echo shift y',-140,140,1,0],
-    ['echoRot','echo spin °',-30,30,0.5,0],
-    ['echoScale','echo scale',0.8,1.2,0.005,1],
-    ['echoFade','echo fade',0,1,0.02,0.7],
+    ['echo','Echo count',0,28,1,0],
+    ['echoX','Echo shift x',-140,140,1,0],
+    ['echoY','Echo shift y',-140,140,1,0],
+    ['echoRot','Echo spin °',-30,30,0.5,0],
+    ['echoScale','Echo scale',0.8,1.2,0.005,1],
+    ['echoFade','Echo fade',0,1,0.02,0.7],
   ],
   glyph:[
-    ['explode','explode',0,800,1,0],
-    ['jitter','jitter',0,260,1,0],
-    ['rotate','rotate ±°',0,180,1,0],
-    ['slant','slant °',-45,45,0.5,0],
-    ['scaleVary','size vary',0,100,1,0],
+    ['explode','Explode',0,800,1,0],
+    ['jitter','Jitter',0,260,1,0],
+    ['rotate','Rotate ±°',0,180,1,0],
+    ['slant','Slant °',-45,45,0.5,0],
+    ['scaleVary','Size vary',0,100,1,0],
   ],
   three:[
-    ['rotX','rotate X °',-180,180,1,0],
-    ['rotY','rotate Y °',-180,180,1,0],
-    ['rotZ','roll Z °',-180,180,1,0],
-    ['posZ','depth / dolly',-800,1600,1,0],
-    ['perspective','perspective',200,2500,10,900],
-    ['extrude','extrude depth',0,60,1,0],
+    ['rotX','Rotate X °',-180,180,1,0],
+    ['rotY','Rotate Y °',-180,180,1,0],
+    ['rotZ','Roll Z °',-180,180,1,0],
+    ['posZ','Depth / dolly',-800,1600,1,0],
+    ['perspective','Perspective',200,2500,10,900],
+    ['extrude','Extrude depth',0,60,1,0],
   ],
   animate:[
-    ['spin','spin Y °/t',-200,200,1,0],
-    ['tumble','tumble X °/t',-200,200,1,0],
-    ['roll','roll Z °/t',-200,200,1,0],
-    ['wiggle','wiggle',0,160,1,0],
-    ['float','float / bob',0,260,1,0],
-    ['sway','sway °',0,45,0.5,0],
-    ['pulse','pulse %',0,80,1,0],
-    ['stagger','stagger',0,2,0.02,0],
-    ['trail','motion trail',0,0.95,0.01,0],
-    ['orbit','orbit radius',0,700,1,0],
-    ['reveal','reveal (typewriter)',0,1,0.01,1],
+    ['spin','Spin Y °/t',-200,200,1,0],
+    ['tumble','Tumble X °/t',-200,200,1,0],
+    ['roll','Roll Z °/t',-200,200,1,0],
+    ['wiggle','Wiggle',0,160,1,0],
+    ['float','Float / bob',0,260,1,0],
+    ['sway','Sway °',0,45,0.5,0],
+    ['pulse','Pulse %',0,80,1,0],
+    ['stagger','Stagger',0,2,0.02,0],
+    ['trail','Motion trail',0,0.95,0.01,0],
+    ['orbit','Orbit radius',0,700,1,0],
+    ['reveal','Reveal (typewriter)',0,1,0.01,1],
   ],
   type:[
-    ['size','size',20,2400,1,300],
-    ['lineHeight','leading',0.4,2,0.01,0.95],
-    ['tracking','kerning',-160,280,1,0],
+    ['size','Size',20,2400,1,300],
+    ['lineHeight','Leading',0.4,2,0.01,0.95],
+    ['tracking','Kerning',-160,280,1,0],
   ],
   layout:[
-    ['width','width %',20,240,1,100],
-    ['offsetX','offset x',-700,700,1,0],
-    ['offsetY','offset y',-900,900,1,0],
+    ['width','Width %',20,240,1,100],
+    ['offsetX','Offset x',-700,700,1,0],
+    ['offsetY','Offset y',-900,900,1,0],
   ],
   style:[['strokeW','stroke w',0.2,24,0.1,1.4]],
 };
@@ -2529,16 +2434,35 @@ function downloadBlob(name,blob){const u=URL.createObjectURL(blob);const a=docum
   a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);}
 /* Exports render at true output resolution — slower, but print-ready. */
 function renderHiRes(){hiRes=true;try{render();}finally{hiRes=false;}}
-$('#svgBtn').addEventListener('click',()=>{renderHiRes();
+/* Opal.mountOutput hooks — the shared Output panel drives format · pixels · DPI.
+   render(px) re-renders the document at the true target long edge, so PNG/JPG/PDF are
+   print-crisp instead of upscaled; svg() hands back the vector (or a hi-res PNG wrapper
+   for the raster engines, which have no vector form). */
+function exportRender(px){
+  const wIn=$('#docW'), hIn=$('#docH');
+  const w0=wIn.value, h0=hIn.value;
+  const w=Math.max(50,parseInt(w0)||1400), h=Math.max(50,parseInt(h0)||1980);
+  const s=px/Math.max(w,h);
+  wIn.value=Math.max(50,Math.round(w*s)); hIn.value=Math.max(50,Math.round(h*s));
+  let off=null;
+  try{
+    renderHiRes();
+    off=document.createElement('canvas'); off.width=canvas.width; off.height=canvas.height;
+    off.getContext('2d').drawImage(canvas,0,0);
+  }finally{ wIn.value=w0; hIn.value=h0; render(); }
+  return off;
+}
+function exportSVG(){
+  renderHiRes();
   if(rasterMode){ // thermal field is raster — embed hi-res PNG so the .svg still opens
     const png=canvas.toDataURL('image/png'),W=curW,H=curH;
-    const svg=`<?xml version="1.0" encoding="UTF-8"?>
+    return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <image width="${W}" height="${H}" xlink:href="${png}"/>
-</svg>`;
-    downloadBlob('kinetic-art.svg',new Blob([svg],{type:'image/svg+xml'}));return;}
-  downloadBlob('kinetic-type.svg',new Blob([lastSVG],{type:'image/svg+xml'}));});
-$('#saveBtn').addEventListener('click',()=>{renderHiRes();canvas.toBlob(b=>downloadBlob('kinetic-type.png',b));});
+</svg>`;}
+  return lastSVG;
+}
+try{ Opal.mountOutput(canvas,'flux',{ render:exportRender, svg:exportSVG }); }catch(e){ console.warn(e); }
 
 /* ---- optional sound track for recordings — upload an audio file ---- */
 let recAudioEl=null, recAudioSrc=null, recAudioCtx=null, audioReady=false;
@@ -2585,18 +2509,18 @@ $('#recBtn').addEventListener('click',async()=>{
 
 $('#format').addEventListener('change',e=>{if(e.target.value==='custom'){updateChips();return;}
   const [w,h]=e.target.value.split('x');$('#docW').value=w;$('#docH').value=h;render();updateChips();});
-['text','docW','docH'].forEach(id=>$('#'+id).addEventListener('input',()=>{render();updateChips();}));
+['text','DocW','docH'].forEach(id=>$('#'+id).addEventListener('input',()=>{render();updateChips();}));
 /* Print calculator: inches × dpi → pixels */
 function applyPrint(){const w=parseFloat($('#printW').value)||1,h=parseFloat($('#printH').value)||1,d=parseInt($('#printDpi').value)||300;
   $('#docW').value=Math.round(w*d);$('#docH').value=Math.round(h*d);$('#format').value='custom';render();updateChips();}
 $('#applyPrint').addEventListener('click',applyPrint);
-['printW','printH','printDpi'].forEach(id=>$('#'+id).addEventListener('change',applyPrint));
+['printW','PrintH','printDpi'].forEach(id=>$('#'+id).addEventListener('change',applyPrint));
 /* size-dock popover — custom px + print calculator */
 (function(){ const more=$('#szMore'), pop=$('#szPop'); if(!more||!pop) return;
   more.addEventListener('click',e=>{ e.stopPropagation(); pop.hidden=!pop.hidden; });
   document.addEventListener('click',e=>{ if(!pop.hidden && !pop.contains(e.target) && e.target!==more) pop.hidden=true; });
 })();
-['fillColor','bgColor','fillOn','strokeOn','bgTransparent','accentColor','accent2','clipGlyph'].forEach(id=>$('#'+id).addEventListener('input',render));
+['fillColor','BgColor','fillOn','strokeOn','bgTransparent','accentColor','accent2','clipGlyph'].forEach(id=>$('#'+id).addEventListener('input',render));
 $('#heatPalette').addEventListener('input',()=>{updateEngineUI();render();});
 $('#mosaicChars').addEventListener('input',render);
 window.addEventListener('resize',()=>{if(font)render();});

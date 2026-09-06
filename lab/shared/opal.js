@@ -466,6 +466,9 @@ const Opal = (() => {
   // pre-select the option closest to the tool's original default ratio.
   function applyCanonSizes(sel){
     if(sel.dataset.canon) return;
+    // a tool whose size list carries presets the canon doesn't (flux's print sizes:
+    // A4 · US Letter · Poster · Studio) opts out with data-canon-skip and keeps its own.
+    if(sel.hasAttribute('data-canon-skip')){ sel.dataset.canon = '1'; return; }
     const first = (sel.options[0] && sel.options[0].value) || '';
     if(!/^\d+\s*[x/:]\s*\d+$/i.test(first)) return;   // not a size select we understand — leave it
     sel.dataset.canon = '1'; sel.dataset.sqDefault = '1';   // also suppress the 1:1 override below
