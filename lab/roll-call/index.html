@@ -12,7 +12,7 @@
   *{ box-sizing:border-box; }
   #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
     display:flex; align-items:center; justify-content:center; padding:28px; }
-  #art{ max-width:100%; max-height:100%; box-shadow:0 10px 40px rgba(0,0,0,.28); }
+  #art{ max-width:100%; max-height:100%; }
   #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11;
     display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
   #recDot.on{ display:flex; }
@@ -201,7 +201,7 @@
     // counter
     if(P.showCount){ g.fillStyle=P.fg; g.globalAlpha=.45; g.textBaseline='middle';
       g.font='600 '+Math.round(h*0.016)+'px "IBM Plex Mono",monospace';
-      g.fillText(String(idx+1).padStart(3,'0')+'  ·  '+N, w/2, h*0.62); g.globalAlpha=1; }
+      g.fillText((idx+1)+'  ·  '+N, w/2, h*0.62); g.globalAlpha=1; }
     // footer
     if(P.footer){ g.fillStyle=P.fg; g.globalAlpha=.5; g.textBaseline='alphabetic';
       g.font='600 '+Math.round(h*0.0145)+'px "Helvetica Neue",Arial,sans-serif';
@@ -254,8 +254,8 @@
     render(ctx,W,H,clock); }
   addEventListener('resize',()=>{ const box=$('wrap').getBoundingClientRect(),s=Math.min(box.width/W,box.height/H); art.style.width=(W*s)+'px'; art.style.height=(H*s)+'px'; });
 
-  // ---- save a still frame ----
-  $('saveBtn').addEventListener('click',()=>{ const a=document.createElement('a'); a.download='roll-call.png'; a.href=art.toDataURL('image/png'); a.click(); });
+  // ---- save a still frame → the shared export panel (PNG/JPG/PDF · size · DPI) ----
+  Opal.mountOutput(art,'roll-call');
 
   // ---- record the whole reel, video + click audio → MP4 ----
   let rec=null, chunks=[], rt=0, tk=0;
