@@ -32,8 +32,8 @@
 </head>
 <body>
   <script src="/lab/shared/opal.js"></script>
-  <script>Opal.mountTopbar({ name:'Pure Land', desc:'Motion gradients, given form by a shape',
-    about:'A gradient obeys a shape. Choose a form — circle, square, ring, capsule, triangle, arch, or an uploaded SVG — and a mode: Bloom (a glow masked inside the form), Rim (an iridescent gradient travelling the outline), Sweep (a rotating fill), or Echo (the form repeated into a receding tunnel). Colour it with an oil-slick spectrum or a named ramp, drift the hue, and set it in motion — pulse, flow, rotate, zoom. Any shape × any mode × any palette × any motion. Upload an SVG for any form at all. Export a still, or record the drift.' });</script>
+  <script>Opal.mountTopbar({ name:'Pure Land', desc:'Volumetric motion gradients, shaped by a form',
+    about:'A gradient field obeys a form. A signed-distance shape — circle, ring, square, capsule, triangle, arch — carries a soft, volumetric, oil-slick gradient: Bloom (a luminous iridescent orb masked inside), Rim (a dispersed gradient light along the edge), Sweep (a rotating iridescent fill), or Echo (concentric shells receding into a tunnel). An IQ cosine palette gives the oil-on-water iridescence; chromatic dispersion splits it; a domain-warp breathes it. Drift the hue, warp, disperse, and set it in motion. WebGL, so it stays smooth and deep. Export a still, or record the drift.' });</script>
   <div id="sizeDock">
     <span id="dimReadout">1080 × 1920</span>
     <select id="aspect" title="Canvas size">
@@ -49,17 +49,15 @@
     <div class="group">
       <div class="group__t">Form</div>
       <select class="opal-input" id="shape">
-        <option value="circle" selected>Circle</option>
-        <option value="ring">Ring</option>
-        <option value="square">Square</option>
-        <option value="capsule">Capsule</option>
-        <option value="triangle">Triangle</option>
-        <option value="arch">Arch</option>
-        <option value="svg">Uploaded SVG</option>
+        <option value="0" selected>Circle</option>
+        <option value="1">Ring</option>
+        <option value="2">Square</option>
+        <option value="3">Capsule</option>
+        <option value="4">Triangle</option>
+        <option value="5">Arch</option>
       </select>
-      <label class="btn filebtn" style="width:100%">Upload SVG<input id="svgFile" type="file" accept=".svg,image/svg+xml" hidden></label>
       <div class="duo">
-        <div class="knob"><label>Scale <b id="scaleR">0.62</b></label><input id="scale" type="range" min="15" max="120" value="62"></div>
+        <div class="knob"><label>Scale <b id="scaleR">0.60</b></label><input id="scale" type="range" min="15" max="120" value="60"></div>
         <div class="knob"><label>Rotate <b id="rotR">0</b></label><input id="rot" type="range" min="0" max="360" value="0"></div>
       </div>
     </div>
@@ -67,16 +65,15 @@
     <div class="group">
       <div class="group__t">Mode</div>
       <select class="opal-input" id="mode">
-        <option value="bloom" selected>Bloom · glow masked inside</option>
-        <option value="rim">Rim · gradient along the edge</option>
-        <option value="sweep">Sweep · rotating fill</option>
-        <option value="echo">Echo · tunnel of copies</option>
+        <option value="0" selected>Bloom · luminous orb inside</option>
+        <option value="1">Rim · dispersed edge light</option>
+        <option value="2">Sweep · rotating fill</option>
+        <option value="3">Echo · receding shells</option>
       </select>
       <div class="duo">
-        <div class="knob"><label>Reach <b id="reachR">70</b></label><input id="reach" type="range" min="10" max="140" value="70"></div>
-        <div class="knob"><label>Softness <b id="softR">40</b></label><input id="soft" type="range" min="0" max="100" value="40"></div>
+        <div class="knob"><label>Reach <b id="reachR">70</b></label><input id="reach" type="range" min="12" max="180" value="70"></div>
+        <div class="knob"><label>Bands <b id="bandsR">3.0</b></label><input id="bands" type="range" min="5" max="120" value="30"></div>
       </div>
-      <div class="knob" id="echoRow" hidden><label>Echoes <b id="echoesR">14</b></label><input id="echoes" type="range" min="2" max="40" value="14"></div>
     </div>
 
     <div class="group">
@@ -87,17 +84,17 @@
         <option value="ember">Ember</option>
         <option value="ice">Ice</option>
         <option value="dusk">Dusk</option>
-        <option value="custom">Custom</option>
+        <option value="gold">Gold</option>
       </select>
-      <div class="grid2" id="customRow" hidden>
-        <div class="crow"><label>A</label><input type="color" class="sw" id="ca" value="#ff5ea8"></div>
-        <div class="crow"><label>B</label><input type="color" class="sw" id="cb" value="#5ec8ff"></div>
+      <div class="duo">
+        <div class="knob"><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="-180" max="180" value="0"></div>
+        <div class="knob"><label>Dispersion <b id="dispR">18</b></label><input id="disp" type="range" min="0" max="80" value="18"></div>
       </div>
       <div class="duo">
-        <div class="knob"><label>Hue drift <b id="hueR">0</b></label><input id="hue" type="range" min="-180" max="180" value="0"></div>
-        <div class="knob"><label>Bright <b id="brightR">100</b></label><input id="bright" type="range" min="30" max="150" value="100"></div>
+        <div class="knob"><label>Bright <b id="brightR">1.00</b></label><input id="bright" type="range" min="40" max="180" value="100"></div>
+        <div class="knob"><label>Warp <b id="warpR">22</b></label><input id="warp" type="range" min="0" max="100" value="22"></div>
       </div>
-      <div class="crow"><label>Ground</label><input type="color" class="sw" id="ground" value="#0a0a12"></div>
+      <div class="crow"><label>Ground</label><input type="color" class="sw" id="ground" value="#080810"></div>
     </div>
 
     <div class="group">
@@ -105,7 +102,7 @@
       <div class="grid2"><button class="btn" id="reroll">Re-seed</button><button class="btn" id="playBtn" aria-pressed="true">Pause</button></div>
       <div class="duo">
         <div class="knob"><label>Flow <b id="flowR">50</b></label><input id="flow" type="range" min="0" max="150" value="50"></div>
-        <div class="knob"><label>Pulse <b id="pulseR">40</b></label><input id="pulse" type="range" min="0" max="120" value="40"></div>
+        <div class="knob"><label>Pulse <b id="pulseR">35</b></label><input id="pulse" type="range" min="0" max="120" value="35"></div>
       </div>
       <div class="duo">
         <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="40" value="10"></div>
@@ -121,151 +118,160 @@
     <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
   </div>
 
+  <script id="frag" type="x-shader/x-fragment">
+precision highp float;
+uniform vec2 uRes; uniform float uT;
+uniform float uShape, uMode, uScale, uRot, uReach, uBands, uHue, uDisp, uBright, uWarp, uFlow, uPulse, uGrain, uSeed;
+uniform vec3 uGround, uPA, uPB, uPC, uPD;
+const float TAU=6.2831853;
+
+float hash21(vec2 p){ p=fract(p*vec2(123.34,345.45)); p+=dot(p,p+34.345); return fract(p.x*p.y); }
+float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  float a=hash21(i), b=hash21(i+vec2(1,0)), c=hash21(i+vec2(0,1)), d=hash21(i+vec2(1,1));
+  return mix(mix(a,b,f.x), mix(c,d,f.x), f.y); }
+float fbm(vec2 p){ float s=0.,a=.5; for(int i=0;i<4;i++){ s+=a*vnoise(p); p*=2.03; a*=.5; } return s; }
+
+vec3 pal(float t){ return uPA + uPB*cos(TAU*(uPC*t + uPD + uHue)); }
+
+mat2 rot(float a){ float c=cos(a),s=sin(a); return mat2(c,-s,s,c); }
+float sdCircle(vec2 p,float r){ return length(p)-r; }
+float sdBox(vec2 p,vec2 b){ vec2 d=abs(p)-b; return length(max(d,0.))+min(max(d.x,d.y),0.); }
+float sdRoundBox(vec2 p,vec2 b,float r){ vec2 d=abs(p)-b+r; return length(max(d,0.))+min(max(d.x,d.y),0.)-r; }
+float sdTri(vec2 p,float r){ const float k=1.7320508; p.x=abs(p.x)-r; p.y=p.y+r/k;
+  if(p.x+k*p.y>0.) p=vec2(p.x-k*p.y,-k*p.x-p.y)/2.; p.x-=clamp(p.x,-2.*r,0.); return -length(p)*sign(p.y); }
+
+float sdf(vec2 p){
+  p=rot(uRot)*p;
+  float sh=uShape;
+  if(sh<0.5) return sdCircle(p, uScale);
+  else if(sh<1.5) return abs(sdCircle(p, uScale)) - uScale*0.19;               // ring
+  else if(sh<2.5) return sdBox(p, vec2(uScale*0.9));
+  else if(sh<3.5) return sdRoundBox(p, vec2(uScale*0.55, uScale), uScale*0.55); // capsule
+  else if(sh<4.5) return sdTri(p*1.05, uScale*0.9);
+  else { float c=sdCircle(p,uScale); float cut=p.y - uScale*0.02; return max(c, -cut); } // arch (top half-ish)
+}
+
+vec3 disperse(float t, float amt){ // sample palette per channel for chromatic split
+  return vec3( pal(t-amt).r, pal(t).g, pal(t+amt).b );
+}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy - 0.5*uRes)/min(uRes.x,uRes.y);
+  float ph = uT*uFlow*0.04 + uSeed;
+  float pulse = 1. + uPulse*0.14*sin(uT*0.8);
+  float reach = uReach*0.008*pulse;
+  float disp = uDisp*0.01;
+
+  // domain warp — breathes the field organically
+  vec2 w = uv;
+  if(uWarp>0.001){ float a=uWarp*0.003;
+    w += a*vec2(fbm(uv*2.4 + vec2(0., uT*0.15)), fbm(uv*2.4 + vec2(5.2,-uT*0.13))); }
+
+  float d = sdf(w);
+  vec3 col = uGround;
+  // a soft ground glow of colour
+  col = mix(col, pal(0.08 - ph)*0.22, smoothstep(1.15, 0.0, length(uv))*0.5);
+
+  float m = uMode;
+  if(m<0.5){                    // BLOOM
+    float r = length(w)/max(reach,1e-3);
+    float env = exp(-r*r*1.15);                         // brightness envelope
+    vec3 c = disperse(r*(uBands*0.06) - ph, disp);      // iridescent rings
+    c += pal(0.85-ph)*exp(-r*r*3.5)*0.85;               // luminous colour core (not pure white)
+    float mask = smoothstep(0.03, -0.05, d);            // inside the form (soft)
+    col = mix(col, c*env*uBright, clamp(mask,0.,1.));
+    float glow = exp(-max(d,0.)*9.0)*env;               // spill just past the edge
+    col += pal(0.55-ph)*glow*0.5*uBright;
+  } else if(m<1.5){             // RIM — dispersed edge light
+    float band = exp(-abs(d)/max(uReach*0.0016,1e-4));                 // tight iridescent edge
+    float ang = atan(w.y,w.x)/TAU + 0.5;
+    vec3 c = disperse(ang*(uBands*0.05+0.6) + ph, disp*1.6);
+    col = mix(col, c*uBright, clamp(band,0.,1.2));
+    col += disperse(ang*1.5+ph, disp)*exp(-abs(d)/max(uReach*0.006,1e-3))*0.30*uBright;   // soft outward bleed
+  } else if(m<2.5){            // SWEEP — rotating iridescent fill
+    float inside = smoothstep(0.02,-0.03,d);
+    float ang = atan(w.y,w.x)/TAU + 0.5;
+    float rr = length(w)/max(uScale,1e-3);
+    vec3 c = disperse(ang + rr*0.4 + ph, disp);
+    c *= mix(0.7,1.25, exp(-rr*rr*0.8));                 // luminous centre
+    col = mix(col, c*uBright, inside);
+  } else {                     // ECHO — concentric shells receding
+    float sp = 1.0/(uBands*0.06+1.0);
+    float dd = d - uT*uFlow*0.02;
+    float shell = abs(fract(dd/sp)-0.5)*2.0;             // 0 at shell line
+    float line = smoothstep(0.28, 0.0, shell);
+    vec3 c = disperse(dd*3.0 + ph, disp);
+    float fade = exp(-max(-d,0.)*1.4);                   // dim toward the far centre
+    col = mix(col, c*uBright, line*fade);
+    col += c*exp(-abs(shell-0.0)*3.0)*0.06*uBright*fade; // soft glow between
+  }
+
+  // filmic-ish tone map — bright rolls into colour, never clips to a flat white
+  col = vec3(1.0) - exp(-max(col,0.0)*1.35);
+  // fine grain
+  col += (hash21(gl_FragCoord.xy + uT*60.0) - 0.5) * (uGrain*0.055);
+  col = clamp(col, 0.0, 1.0);
+  gl_FragColor = vec4(col, 1.0);
+}
+  </script>
+
   <script>
   (function(){
-    const art=document.getElementById('art'), ctx=art.getContext('2d');
+    const art=document.getElementById('art');
+    const gl=art.getContext('webgl',{preserveDrawingBuffer:true, antialias:true, premultipliedAlpha:false});
     const $=id=>document.getElementById(id);
-    const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+    if(!gl){ const c=art.getContext('2d'); c.fillStyle='#111'; c.fillRect(0,0,art.width,art.height); c.fillStyle='#fff'; c.font='24px sans-serif'; c.fillText('WebGL unavailable',40,60); return; }
 
-    const P={ aspect:'1080/1920', seed:3, shape:'circle', scale:0.62, rot:0,
-      mode:'bloom', reach:70, soft:40, echoes:14,
-      palette:'iris', ca:'#ff5ea8', cb:'#5ec8ff', hue:0, bright:1.0, ground:'#0a0a12',
-      flow:50, pulse:40, spd:1.0, grain:10, play:true };
+    const P={ aspect:'1080/1920', seed:3, shape:0, scale:0.60, rot:0, mode:0, reach:70, bands:30,
+      palette:'iris', hue:0, disp:18, bright:1.0, warp:22, ground:'#080810',
+      flow:50, pulse:35, spd:1.0, grain:10, play:true };
 
-    // ---- palettes: functions hue(0..1, phase) -> [r,g,b] ----
-    function hsl(h,s,l){ h=((h%1)+1)%1; const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q; const f=t=>{ t=((t%1)+1)%1;
-      return t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p; }; return [f(h+1/3)*255,f(h)*255,f(h-1/3)*255]; }
-    const RGBA=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+clamp(a,0,1).toFixed(3)+')';
-    const HEX=h=>{ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; };
-    const MIX=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
-    const RAMPS={
-      aurora:[[80,220,180],[60,120,220],[150,80,210],[240,200,120]],
-      ember:[[30,10,40],[150,30,60],[240,110,40],[250,214,90]],
-      ice:[[10,30,70],[40,120,200],[120,220,240],[240,252,255]],
-      dusk:[[30,20,60],[120,60,150],[230,110,140],[250,200,150]],
+    // IQ cosine palette coefficients per preset: {A,B,C,D}
+    const PALS={
+      iris:  {A:[0.5,0.5,0.5], B:[0.5,0.5,0.5], C:[1,1,1],    D:[0.0,0.33,0.67]},
+      aurora:{A:[0.32,0.5,0.45],B:[0.35,0.35,0.3],C:[1,1,1],  D:[0.55,0.62,0.78]},
+      ember: {A:[0.6,0.35,0.28],B:[0.45,0.35,0.3],C:[1,1,0.9],D:[0.0,0.12,0.2]},
+      ice:   {A:[0.42,0.55,0.62],B:[0.35,0.35,0.3],C:[1,1,1], D:[0.62,0.68,0.75]},
+      dusk:  {A:[0.5,0.4,0.55], B:[0.45,0.35,0.4],C:[1,1,1],  D:[0.35,0.5,0.68]},
+      gold:  {A:[0.6,0.45,0.28],B:[0.4,0.35,0.25],C:[1,1,0.8],D:[0.08,0.14,0.22]},
     };
-    function pal(u, ph){ u=((u+ph)%1+1)%1; const b=P.bright;
-      if(P.palette==='iris'){ const c=hsl(u, 0.85, 0.6); return [c[0]*b,c[1]*b,c[2]*b]; }
-      if(P.palette==='custom'){ const a=HEX(P.ca), c=HEX(P.cb), t=0.5-0.5*Math.cos(u*TAU); return MIX(a,c,t).map(v=>v*b); }
-      const r=RAMPS[P.palette]||RAMPS.aurora, n=r.length, f=u*n, i=Math.floor(f)%n, k=f-Math.floor(f);
-      return MIX(r[i], r[(i+1)%n], k).map(v=>clamp(v*b,0,255)); }
-    function hueShift(){ return P.hue/360; }
+    const HEX=h=>{ const n=parseInt(h.slice(1),16); return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]; };
 
-    // ---- the form → a Path2D centred on (cx,cy) with radius R ----
-    let svgPath=null, svgBox=null;
-    function shapePath(cx,cy,R,rotDeg){
-      const p=new Path2D(); const rot=rotDeg*Math.PI/180;
-      const M=(x,y)=>{ const dx=x-cx,dy=y-cy, c=Math.cos(rot),s=Math.sin(rot); return [cx+dx*c-dy*s, cy+dx*s+dy*c]; };
-      const sh=P.shape;
-      if(sh==='circle'){ p.arc(cx,cy,R,0,TAU); }
-      else if(sh==='ring'){ p.arc(cx,cy,R,0,TAU); p.arc(cx,cy,R*0.62,0,TAU); } // even-odd donut
-      else if(sh==='square'){ const pts=[[-R,-R],[R,-R],[R,R],[-R,R]].map(q=>M(cx+q[0],cy+q[1]));
-        pts.forEach((q,i)=>i?p.lineTo(q[0],q[1]):p.moveTo(q[0],q[1])); p.closePath(); }
-      else if(sh==='capsule'){ const w=R*0.6,h=R; const rr=w; // rounded vertical
-        const box=(x,y)=>M(cx+x,cy+y);
-        let a=box(-w,-(h-rr)); p.moveTo(a[0],a[1]);
-        // approximate rounded rect via arcs in local space then transform is hard; use ellipse-ish
-        p.ellipse(cx,cy,w,h,rot,0,TAU); }
-      else if(sh==='triangle'){ const pts=[[0,-R],[R*0.92,R*0.72],[-R*0.92,R*0.72]].map(q=>M(cx+q[0],cy+q[1]));
-        pts.forEach((q,i)=>i?p.lineTo(q[0],q[1]):p.moveTo(q[0],q[1])); p.closePath(); }
-      else if(sh==='arch'){ p.arc(cx,cy,R,Math.PI+rot,rot,false); p.closePath(); }
-      else if(sh==='svg' && svgPath && svgBox){
-        // fit the svg path into radius R box, centred, rotated
-        const s=(R*2)/Math.max(svgBox.w, svgBox.h);
-        const mm=new DOMMatrix().translateSelf(cx,cy).rotateSelf(rotDeg).scaleSelf(s).translateSelf(-(svgBox.x+svgBox.w/2), -(svgBox.y+svgBox.h/2));
-        p.addPath(svgPath, mm);
-      } else { p.arc(cx,cy,R,0,TAU); }
-      return p;
+    // ---- compile ----
+    function sh(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s);
+      if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) console.warn(gl.getShaderInfoLog(s)); return s; }
+    const vs=sh(gl.VERTEX_SHADER, 'attribute vec2 p; void main(){ gl_Position=vec4(p,0.,1.); }');
+    const fs=sh(gl.FRAGMENT_SHADER, document.getElementById('frag').textContent);
+    const prog=gl.createProgram(); gl.attachShader(prog,vs); gl.attachShader(prog,fs); gl.linkProgram(prog);
+    if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) console.warn(gl.getProgramInfoLog(prog));
+    gl.useProgram(prog);
+    const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, -1,1, 1,1]),gl.STATIC_DRAW);
+    const ploc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(ploc); gl.vertexAttribPointer(ploc,2,gl.FLOAT,false,0,0);
+    const U={}; ['uRes','uT','uShape','uMode','uScale','uRot','uReach','uBands','uHue','uDisp','uBright','uWarp','uFlow','uPulse','uGrain','uSeed','uGround','uPA','uPB','uPC','uPD'].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+
+    let W=1080,H=1920,clock=0;
+    function draw(w,h,tm){
+      const pl=PALS[P.palette]||PALS.iris;
+      gl.viewport(0,0,w,h);
+      gl.uniform2f(U.uRes,w,h); gl.uniform1f(U.uT,tm);
+      gl.uniform1f(U.uShape,P.shape); gl.uniform1f(U.uMode,P.mode);
+      gl.uniform1f(U.uScale,P.scale); gl.uniform1f(U.uRot,P.rot*Math.PI/180);
+      gl.uniform1f(U.uReach,P.reach); gl.uniform1f(U.uBands,P.bands);
+      gl.uniform1f(U.uHue,P.hue/360); gl.uniform1f(U.uDisp,P.disp); gl.uniform1f(U.uBright,P.bright);
+      gl.uniform1f(U.uWarp,P.warp); gl.uniform1f(U.uFlow,P.flow); gl.uniform1f(U.uPulse,P.pulse);
+      gl.uniform1f(U.uGrain,P.grain/100); gl.uniform1f(U.uSeed,P.seed*0.137);
+      gl.uniform3fv(U.uGround,HEX(P.ground));
+      gl.uniform3fv(U.uPA,pl.A); gl.uniform3fv(U.uPB,pl.B); gl.uniform3fv(U.uPC,pl.C); gl.uniform3fv(U.uPD,pl.D);
+      gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     }
+    function drawNow(){ draw(W,H,clock); }
 
-    // ---- grain ----
-    let grainCv=null, grW=0, grH=0;
-    function ensureGrain(W,H){ if(grainCv&&grW===W&&grH===H) return; grainCv=document.createElement('canvas'); grainCv.width=W; grainCv.height=H;
-      const gx=grainCv.getContext('2d'), id=gx.createImageData(W,H), d=id.data;
-      for(let i=0;i<d.length;i+=4){ const v=200+Math.random()*55|0; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; } gx.putImageData(id,0,0); grW=W; grH=H; }
-    function drawGrain(g,W,H){ if(P.grain<=0) return; ensureGrain(W,H);
-      g.save(); g.globalAlpha=(P.grain/100)*0.45; g.globalCompositeOperation='overlay'; g.drawImage(grainCv,0,0); g.restore(); }
-
-    // ---- render ----
-    function render(g, W, H, tm){
-      const ph=hueShift() + tm*(P.flow/100)*0.06, cx=W/2, cy=H/2, R=Math.min(W,H)*0.5*P.scale;
-      // ground — a soft gradient of the palette over the chosen ground colour
-      const gd=HEX(P.ground);
-      const bg=g.createRadialGradient(cx,cy*0.9,0, cx,cy, Math.max(W,H)*0.75);
-      bg.addColorStop(0, RGBA(MIX(gd, pal(0.15, ph), 0.35), 1));
-      bg.addColorStop(1, RGBA(gd,1));
-      g.fillStyle=bg; g.fillRect(0,0,W,H);
-
-      const pulse = 1 + (P.pulse/100)*Math.sin(tm*0.9)*0.16;
-      const reach = R*(P.reach/100)*pulse;
-      const soft = P.soft/100;
-
-      if(P.mode==='bloom'){
-        const path=shapePath(cx,cy,R,P.rot);
-        g.save(); g.clip(path, P.shape==='ring'?'evenodd':'nonzero');
-        // layered radial blooms in palette colours, additive for luminosity
-        g.globalCompositeOperation='lighter';
-        const layers=5;
-        for(let i=layers;i>=1;i--){ const t=i/layers;
-          const col=pal(0.1+t*0.6, ph);
-          const rg=g.createRadialGradient(cx,cy,0, cx,cy, reach*(0.4+t));
-          rg.addColorStop(0, RGBA(MIX(col,[255,255,255],0.5), 0.5*(1-soft*0.4)));
-          rg.addColorStop(0.5, RGBA(col, 0.35));
-          rg.addColorStop(1, RGBA(col, 0));
-          g.fillStyle=rg; g.fillRect(0,0,W,H);
-        }
-        g.restore();
-        // faint edge to define the form
-        g.strokeStyle=RGBA(pal(0.5,ph),0.25); g.lineWidth=Math.max(1,R*0.004); g.stroke(path);
-      }
-      else if(P.mode==='rim'){
-        const path=shapePath(cx,cy,R,P.rot);
-        // wide soft glow behind the edge
-        g.save(); g.filter='blur('+(R*0.04*(0.4+soft))+'px)';
-        for(let s=0;s<24;s++){ const u=s/24; g.strokeStyle=RGBA(pal(u,ph),0.5); g.lineWidth=R*0.06;
-          // draw arcs of the conic edge — approximate by stroking whole path per hue slice is coarse; use lineDash offset
-        }
-        g.restore();
-        // iridescent edge via conic gradient, stroked
-        const cg=g.createConicGradient? g.createConicGradient(tm*(P.flow/100), cx, cy) : null;
-        if(cg){ for(let s=0;s<=12;s++){ const u=s/12; const c=pal(u,ph); cg.addColorStop(u, RGBA(c,1)); }
-          g.save(); g.filter='blur('+(R*0.03*(0.3+soft))+'px)'; g.strokeStyle=cg; g.lineWidth=R*0.05*(0.5+P.reach/100); g.stroke(path); g.restore();
-          g.strokeStyle=cg; g.lineWidth=Math.max(1.5,R*0.012); g.stroke(path);
-        } else { g.strokeStyle=RGBA(pal(0.3,ph),0.9); g.lineWidth=R*0.02; g.stroke(path); }
-      }
-      else if(P.mode==='sweep'){
-        const path=shapePath(cx,cy,R,P.rot);
-        g.save(); g.clip(path, P.shape==='ring'?'evenodd':'nonzero');
-        const cg=g.createConicGradient? g.createConicGradient(tm*(P.flow/100)*1.2 + P.rot*Math.PI/180, cx, cy) : g.createLinearGradient(cx-R,cy,cx+R,cy);
-        for(let s=0;s<=16;s++){ const u=s/16; cg.addColorStop(u, RGBA(pal(u,ph),1)); }
-        g.fillStyle=cg; g.fillRect(0,0,W,H);
-        // soft radial vignette inside for depth
-        const vg=g.createRadialGradient(cx,cy,0, cx,cy,R*1.1); vg.addColorStop(0,'rgba(255,255,255,'+(0.25*(1-soft))+')'); vg.addColorStop(1,'rgba(0,0,0,0)');
-        g.globalCompositeOperation='lighter'; g.fillStyle=vg; g.fillRect(0,0,W,H);
-        g.restore();
-      }
-      else if(P.mode==='echo'){
-        const N=P.echoes|0, zoom=(tm*(P.flow/100)*0.25)%1;
-        g.save();
-        for(let i=N;i>=1;i--){ const t=(i - zoom)/N; if(t<=0.02) continue;
-          const rr=R*t*(1.15); const path=shapePath(cx,cy,rr,P.rot + t*40*(P.pulse/100));
-          const c=pal(t*1.2, ph);
-          g.strokeStyle=RGBA(c, 0.9*(1-soft*0.3)); g.lineWidth=Math.max(1, R*0.02*(0.5+t)); g.stroke(path);
-        }
-        g.restore();
-      }
-
-      drawGrain(g,W,H);
-    }
-
-    // ---- sizing + loop ----
-    let W=1080, H=1920, clock=0;
     function aspectWH(){ const p=(P.aspect||'1080/1920').split(/[/:x]/).map(Number), a=p[0]||9, b=p[1]||16, long=1600;
       return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
     function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; drawNow(); }
-    function drawNow(){ render(ctx, W, H, clock); }
     let t0=performance.now();
-    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ clock += dt*(P.spd/10); render(ctx,W,H,clock); } requestAnimationFrame(frame); }
+    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ clock += dt*(P.spd/10); drawNow(); } requestAnimationFrame(frame); }
     requestAnimationFrame(frame);
 
     // ---- wire ----
@@ -274,44 +280,33 @@
     bind('scale','scaleR',v=>P.scale=v/100, v=>(v/100).toFixed(2));
     bind('rot','rotR',v=>P.rot=v);
     bind('reach','reachR',v=>P.reach=v);
-    bind('soft','softR',v=>P.soft=v);
-    bind('echoes','echoesR',v=>P.echoes=v);
+    bind('bands','bandsR',v=>P.bands=v, v=>(v/10).toFixed(1));
     bind('hue','hueR',v=>P.hue=v);
+    bind('disp','dispR',v=>P.disp=v);
     bind('bright','brightR',v=>P.bright=v/100, v=>(v/100).toFixed(2));
+    bind('warp','warpR',v=>P.warp=v);
     bind('flow','flowR',v=>P.flow=v);
     bind('pulse','pulseR',v=>P.pulse=v);
     bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
     bind('grain','grainR',v=>P.grain=v);
-    $('shape').addEventListener('change',e=>{ P.shape=e.target.value; drawNow(); });
-    $('mode').addEventListener('change',e=>{ P.mode=e.target.value; $('echoRow').hidden=(P.mode!=='echo'); drawNow(); });
-    $('palette').addEventListener('change',e=>{ P.palette=e.target.value; $('customRow').hidden=(P.palette!=='custom'); drawNow(); });
-    ['ca','cb','ground'].forEach(id=>$(id).addEventListener('input',e=>{ P[id]=e.target.value; if(!P.play) drawNow(); }));
+    $('shape').addEventListener('change',e=>{ P.shape=+e.target.value; drawNow(); });
+    $('mode').addEventListener('change',e=>{ P.mode=+e.target.value; drawNow(); });
+    $('palette').addEventListener('change',e=>{ P.palette=e.target.value; drawNow(); });
+    $('ground').addEventListener('input',e=>{ P.ground=e.target.value; if(!P.play) drawNow(); });
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
-    $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999); P.hue=(Math.random()*360-180)|0; $('hue').value=P.hue; $('hueR').textContent=P.hue; drawNow(); });
+    $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*9999); P.hue=(Math.random()*360-180)|0; $('hue').value=P.hue; $('hueR').textContent=P.hue; drawNow(); });
     $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play)); $('playBtn').textContent=P.play?'Pause':'Play'; if(!P.play) drawNow(); });
 
-    // SVG upload → parse paths into one Path2D + bbox
-    $('svgFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader();
-      r.onload=ev=>{ try{ const doc=new DOMParser().parseFromString(ev.target.result,'image/svg+xml');
-        const paths=[...doc.querySelectorAll('path')]; if(!paths.length){ alert('No <path> found in the SVG.'); return; }
-        const P2=new Path2D(); let dstr=''; paths.forEach(pp=>{ const d=pp.getAttribute('d'); if(d){ dstr+=d+' '; } });
-        P2.addPath(new Path2D(dstr));
-        // bbox via an offscreen measurement using the path on a temp canvas is unreliable; parse rough bbox from viewBox
-        const vb=(doc.querySelector('svg').getAttribute('viewBox')||'').split(/[ ,]+/).map(Number);
-        svgBox = vb.length===4 ? {x:vb[0],y:vb[1],w:vb[2],h:vb[3]} : {x:0,y:0,w:100,h:100};
-        svgPath=new Path2D(dstr); P.shape='svg'; $('shape').value='svg'; drawNow();
-      }catch(err){ alert('Could not read that SVG.'); } };
-      r.readAsText(f); });
-
-    // Story default after opal canonicalises the dock
     function forceStory(){ const sel=$('aspect'); if(!sel) return; const opt=[...sel.options].find(o=>/9\s*[:\/x]\s*16|story|1080\s*[\/x]\s*1920/i.test(o.value+' '+o.textContent));
       if(opt){ if(sel.value!==opt.value){ sel.value=opt.value; P.aspect=opt.value; fit(); } const dr=$('dimReadout'); if(dr) dr.textContent='1080 × 1920'; } }
     setTimeout(forceStory,260); setTimeout(forceStory,700);
 
     // ---- output ----
     Opal.mountOutput(art,'pure-land',{ render:(long)=>{ const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
-      const c=document.createElement('canvas'); c.width=Math.round(aw*s); c.height=Math.round(ah*s);
-      render(c.getContext('2d'), c.width, c.height, clock); return c; } });
+      const tw=Math.round(aw*s), th=Math.round(ah*s), ow=art.width, oh=art.height;
+      art.width=tw; art.height=th; draw(tw,th,clock);
+      const c=document.createElement('canvas'); c.width=tw; c.height=th; c.getContext('2d').drawImage(art,0,0);
+      art.width=ow; art.height=oh; draw(ow,oh,clock); return c; } });
     let rec=null, chunks=[];
     $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
       if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
