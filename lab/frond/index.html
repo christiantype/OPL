@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Frond — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
+<style>
+  :root{ --rail:300px; --top:120px; }
+  @media (max-width:560px){ :root{ --top:112px; } }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100vh; height:100dvh; overflow:hidden; background:var(--paper); font-family:var(--font, 'IBM Plex Sans', system-ui, sans-serif); }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; background:var(--mat);
+    display:flex; align-items:center; justify-content:center; padding:22px; }
+  #art{ max-width:100%; max-height:100%; display:block; box-shadow:none; }
+  #wrap.drop{ outline:2px dashed var(--accent); outline-offset:-14px; }
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
+  #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11; display:none; align-items:center; gap:7px;
+    padding:6px 12px; border-radius:999px; background:var(--rec); color:#fff; font:600 12px/1 var(--mono); letter-spacing:.06em; }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:8px; height:8px; border-radius:50%; background:#fff; animation:rp 1s ease-in-out infinite; }
+  @keyframes rp{ 50%{ opacity:.25; } }
+  /* standard rail layout helpers (OPALAB skins the controls; the tool only lays them out) */
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
+</style>
+  <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
+</head>
+<body>
+  <script src="/lab/shared/opal.js"></script>
+  <script>Opal.mountTopbar({ name:'Frond', desc:'Translucent scalloped fans — gradient, striation, mist',
+    about:'Organic radial fans in the vein of a scallop shell or a mushroom gill — a focus point throws a broad, softly-scalloped cap, filled with a light-to-deep gradient and a spray of fine striations, then fades to mist at the rim. Layer a few, tune the scallop, the rays, the softness and the grain, shift the whole field off blue with Hue, and re-roll the composition. Seeded, so a still and a recording match. Export a still, or record the slow breathing drift.' });</script>
+  <div id="sizeDock">
+    <span id="dimReadout">1280 × 1600</span>
+    <select id="aspect" title="Canvas size">
+      <option value="1280/1600" selected>Portrait · 4:5</option>
+      <option value="1080/1920">Story · 9:16</option>
+      <option value="1400/1400">Square · 1:1</option>
+      <option value="1600/1200">Landscape · 4:3</option>
+      <option value="1600/900">Landscape · 16:9</option>
+    </select>
+  </div>
+  <div id="recDot"><i></i><b>REC</b></div>
+
+  <div id="dock">
+    <div class="group">
+      <div class="group__t">Composition</div>
+      <p class="rowhint">Layered translucent fans on a soft field. Re-roll for a new arrangement.</p>
+      <div class="grid2"><button class="btn" id="reroll">Re-roll</button><button class="btn" id="playBtn" aria-pressed="true">Pause</button></div>
+      <div class="knob"><label>Fans <b id="fansR">5</b></label><input id="fans" type="range" min="1" max="9" value="5"></div>
+      <div class="duo">
+        <div class="knob"><label>Scale <b id="scaleR">1.00</b></label><input id="scale" type="range" min="50" max="170" value="100"></div>
+        <div class="knob"><label>Scatter <b id="scatterR">1.00</b></label><input id="scatter" type="range" min="0" max="150" value="100"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Form</div>
+      <div class="duo">
+        <div class="knob"><label>Spread <b id="spanR">290</b></label><input id="span" type="range" min="140" max="330" value="290"></div>
+        <div class="knob"><label>Scallops <b id="scallR">22</b></label><input id="scall" type="range" min="0" max="60" value="22"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Wave <b id="waveR">24</b></label><input id="wave" type="range" min="0" max="60" value="24"></div>
+        <div class="knob"><label>Wander <b id="wanderR">40</b></label><input id="wander" type="range" min="0" max="100" value="40"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Rays</div>
+      <p class="rowhint">The fine striations fanning from each focus.</p>
+      <div class="duo">
+        <div class="knob"><label>Density <b id="raysR">240</b></label><input id="rays" type="range" min="0" max="420" value="240"></div>
+        <div class="knob"><label>Reach <b id="reachR">1.00</b></label><input id="reach" type="range" min="40" max="120" value="100"></div>
+      </div>
+      <div class="knob"><label>Strength <b id="striR">55</b></label><input id="stri" type="range" min="0" max="100" value="55"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Colour</div>
+      <div class="crow"><label>Core</label><input type="color" class="sw" id="core" value="#f4f8fe"></div>
+      <div class="crow"><label>Rim</label><input type="color" class="sw" id="rim" value="#6d95d4"></div>
+      <div class="crow"><label>Sky</label><input type="color" class="sw" id="gtop" value="#e7f0fa"></div>
+      <div class="crow"><label>Deep</label><input type="color" class="sw" id="gbot" value="#5f88c6"></div>
+      <div class="knob"><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="-180" max="180" value="0"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Texture</div>
+      <div class="duo">
+        <div class="knob"><label>Softness <b id="softR">55</b></label><input id="soft" type="range" min="0" max="100" value="55"></div>
+        <div class="knob"><label>Grain <b id="grainR">26</b></label><input id="grain" type="range" min="0" max="80" value="26"></div>
+      </div>
+      <div class="knob"><label>Sediment <b id="sedR">40</b></label><input id="sed" type="range" min="0" max="100" value="40"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Motion</div>
+      <div class="duo">
+        <div class="knob"><label>Drift <b id="driftR">40</b></label><input id="drift" type="range" min="0" max="120" value="40"></div>
+        <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="40" value="10"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="wrap"><canvas id="art" width="1280" height="1600"></canvas></div>
+
+  <div class="group out" id="output" data-export-custom>
+    <div class="group__t">Output</div>
+    <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
+  </div>
+
+  <script>
+  (function(){
+    const art=document.getElementById('art'), ctx=art.getContext('2d');
+    const $=id=>document.getElementById(id);
+    const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+
+    const P={ aspect:'1280/1600', fans:5, seed:7, scale:1.0, scatter:1.0,
+      span:290, scallops:22, wave:24, wander:40, rays:240, reach:1.0, stri:55,
+      core:'#f4f8fe', rim:'#6d95d4', gtop:'#e7f0fa', gbot:'#5f88c6', hue:0,
+      soft:55, grain:26, sed:40, drift:40, spd:1.0, play:true };
+
+    // ---- colour helpers (hue-rotatable) ----
+    const HEX=h=>{ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; };
+    const MIX=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+    const RGBA=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+clamp(a,0,1).toFixed(3)+')';
+    function rgb2hsl(c){ let r=c[0]/255,g=c[1]/255,b=c[2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),h,s,l=(mx+mn)/2;
+      if(mx===mn){h=s=0;} else{ const d=mx-mn; s=l>0.5?d/(2-mx-mn):d/(mx+mn);
+        h=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4; h/=6;} return [h,s,l]; }
+    function hsl2rgb(h,s,l){ const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q; const f=t=>{ t=(t%1+1)%1;
+      return t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p; }; return [f(h+1/3)*255,f(h)*255,f(h-1/3)*255]; }
+    function rot(c){ if(!P.hue) return c; const hsl=rgb2hsl(c); return hsl2rgb(hsl[0]+P.hue/360, hsl[1], hsl[2]); }
+    const COL={};
+    function resolve(){ COL.core=rot(HEX(P.core)); COL.rim=rot(HEX(P.rim)); COL.gtop=rot(HEX(P.gtop)); COL.gbot=rot(HEX(P.gbot));
+      COL.edge=MIX(COL.rim,[30,48,96],0.45); }
+
+    // ---- seeded rng + smooth organic wobble ----
+    function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
+      t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+    // ---- one fan spec ----
+    function makeFan(rng, i, n){
+      const depth=rng();                                   // 0 back … 1 front
+      const size=lerp(0.72,1.34, rng())*(0.74+0.40*depth);
+      const cx=0.5 + (rng()*2-1)*0.5*P.scatter;
+      const cy=0.08 + rng()*0.90;
+      const dir=-Math.PI/2 + (rng()*2-1)*1.5;              // open upward-ish, so the notch tucks below
+      const span=(P.span*Math.PI/180)*(0.82+0.34*rng());
+      const ph=rng()*TAU;
+      const w=[rng()*TAU, rng()*TAU, rng()*TAU, 1+(rng()*3|0), 2+(rng()*3|0), 3+(rng()*4|0)];
+      const brPh=rng()*TAU, driftPh=rng()*TAU;
+      return { depth, size, cx, cy, dir, span, ph, w, brPh, driftPh };
+    }
+
+    // radius of the closed scalloped blob at angle th (integer frequencies keep it seamless at the seam)
+    function blobRadius(f, th, R, lobes){
+      const wob = 0.5*Math.sin(th*f.w[3]+f.w[0]) + 0.3*Math.sin(th*f.w[4]+f.w[1]) + 0.2*Math.sin(th*f.w[5]+f.w[2]);
+      const scal = lobes>0 ? Math.sin(th*lobes + f.ph) : 0;
+      return R * (1 + (P.wave/100)*0.20*scal + (P.wander/100)*0.13*wob);
+    }
+
+    function drawFan(g, W, H, f, tm){
+      const R = f.size * Math.min(W,H) * 0.42 * P.scale;
+      const breath = 1 + Math.sin(tm*0.5 + f.brPh) * (P.drift/100)*0.04;
+      const dx = Math.sin(tm*0.32 + f.driftPh) * (P.drift/100)*0.012*W;
+      const dy = Math.cos(tm*0.27 + f.brPh) * (P.drift/100)*0.010*H;
+      const cx = f.cx*W + dx, cy = f.cy*H + dy;
+      const RR = R*breath;
+      const lobes = Math.max(0, Math.round(P.scallops));
+      const alpha = lerp(0.55, 0.92, f.depth);
+      const N = 300;
+      // focus for the striation spray + the light — offset toward the 'hinge' (−dir), so the fan reads like a shell
+      const fx = cx - Math.cos(f.dir)*RR*0.40, fy = cy - Math.sin(f.dir)*RR*0.40;
+
+      // closed scalloped blob — no wedge, no hard notch
+      const path=new Path2D();
+      for(let i=0;i<=N;i++){ const th=TAU*i/N, r=blobRadius(f,th,RR,lobes);
+        const x=cx+Math.cos(th)*r, y=cy+Math.sin(th)*r; i?path.lineTo(x,y):path.moveTo(x,y); }
+      path.closePath();
+
+      g.save(); g.clip(path);
+      // light-to-deep gradient radiating from the offset focus
+      const gr=g.createRadialGradient(fx,fy,RR*0.02, fx,fy,RR*1.9);
+      gr.addColorStop(0,    RGBA(COL.core, 0.95*alpha));
+      gr.addColorStop(0.40, RGBA(MIX(COL.core,COL.rim,0.5), 0.85*alpha));
+      gr.addColorStop(1,    RGBA(COL.rim, 0.55*alpha));
+      g.fillStyle=gr; g.fillRect(0,0,W,H);
+
+      // striations — a full spray from the focus; the clip cuts each ray at the scalloped edge
+      const rayN=P.rays|0;
+      if(rayN>0 && P.stri>0){
+        g.lineCap='round';
+        const rr2=mulberry32((f.ph*99991|0) ^ (P.seed*40503));
+        for(let k=0;k<rayN;k++){ const th=TAU*((k+rr2()*0.6)/rayN);
+          const op=(P.stri/100)*0.50*alpha*(0.4+0.6*rr2());
+          g.strokeStyle=RGBA(MIX(COL.rim,COL.core,0.15), op);
+          g.lineWidth=Math.max(0.7, RR*0.0018*(0.6+rr2()));
+          const rin=RR*(0.11+rr2()*0.06);
+          g.beginPath(); g.moveTo(fx+Math.cos(th)*rin, fy+Math.sin(th)*rin);
+          g.lineTo(fx+Math.cos(th)*RR*2*P.reach, fy+Math.sin(th)*RR*2*P.reach); g.stroke();
+        }
+      }
+      g.restore();
+
+      // the scalloped rim, a faint deeper line for definition
+      g.strokeStyle=RGBA(COL.edge, 0.28*alpha); g.lineWidth=Math.max(1, RR*0.0020);
+      g.stroke(path);
+    }
+
+    // ---- sediment: a darker, grainier base band ----
+    function drawSediment(g, W, H){
+      if(P.sed<=0) return; const amt=P.sed/100;
+      const bandTop = H*(1-0.36*amt);
+      const gr=g.createLinearGradient(0,bandTop,0,H);
+      gr.addColorStop(0, RGBA(MIX(COL.gbot,[20,34,74],0.2), 0));
+      gr.addColorStop(1, RGBA(MIX(COL.gbot,[16,28,64],0.5), 0.55*amt));
+      g.fillStyle=gr; g.fillRect(0,bandTop,W,H-bandTop);
+    }
+
+    // ---- grain (one seamless full-frame noise, rebaked only on size change) ----
+    let grainCv=null, grW=0, grH=0;
+    function ensureGrain(W,H){ if(grainCv&&grW===W&&grH===H) return;
+      grainCv=document.createElement('canvas'); grainCv.width=W; grainCv.height=H;
+      const gx=grainCv.getContext('2d'), id=gx.createImageData(W,H), d=id.data;
+      for(let i=0;i<d.length;i+=4){ const v=200+Math.random()*55|0; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; } gx.putImageData(id,0,0); grW=W; grH=H; }
+    function drawGrain(g, W, H){ if(P.grain<=0) return; ensureGrain(W,H);
+      g.save(); g.globalAlpha=(P.grain/100)*0.42; g.globalCompositeOperation='overlay'; g.drawImage(grainCv,0,0); g.restore(); }
+
+    // ---- compose the whole frame (fans drawn to a buffer, then soft-focused onto the target) ----
+    const buf=document.createElement('canvas'); const bx=buf.getContext('2d');
+    function render(g, W, H, tm){
+      resolve();
+      if(buf.width!==W||buf.height!==H){ buf.width=W; buf.height=H; }
+      bx.setTransform(1,0,0,1,0,0); bx.globalAlpha=1; bx.globalCompositeOperation='source-over'; bx.filter='none';
+      // soft field ground (top → deep) with a gentle light lift toward upper-centre
+      const bg=bx.createLinearGradient(0,0,0,H);
+      bg.addColorStop(0, RGBA(COL.gtop,1)); bg.addColorStop(1, RGBA(COL.gbot,1));
+      bx.fillStyle=bg; bx.fillRect(0,0,W,H);
+      const glow=bx.createRadialGradient(W*0.42,H*0.30,0, W*0.42,H*0.30, Math.max(W,H)*0.7);
+      glow.addColorStop(0, RGBA(MIX(COL.gtop,[255,255,255],0.5),0.55)); glow.addColorStop(1, RGBA(COL.gtop,0));
+      bx.fillStyle=glow; bx.fillRect(0,0,W,H);
+
+      const rng=mulberry32((P.seed*2654435761)>>>0);
+      const specs=[]; for(let i=0;i<P.fans;i++) specs.push(makeFan(rng,i,P.fans));
+      specs.sort((a,b)=>a.depth-b.depth);
+      for(const s of specs) drawFan(bx, W, H, s, tm);
+      drawSediment(bx, W, H);
+
+      // a gentle atmospheric soft-focus — enough to feel misty without dissolving the striations (Softness)
+      const blur=(P.soft/100)*Math.min(W,H)*0.004;
+      g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.globalCompositeOperation='source-over';
+      g.filter = blur>0.3 ? 'blur('+blur.toFixed(1)+'px)' : 'none'; g.drawImage(buf,0,0); g.filter='none';
+      drawGrain(g, W, H);
+    }
+
+    // ---- sizing ----
+    let W=1280, H=1600, clock=0;
+    function aspectWH(){ const p=(P.aspect||'1280/1600').split(/[/:x]/).map(Number), a=p[0]||4, b=p[1]||5, long=1600;
+      return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
+    function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H;
+      const dr=$('dimReadout'); if(dr){ const p=(P.aspect||'').split(/[/:x]/).map(Number); dr.textContent=(p[0]||W)+' × '+(p[1]||H); } drawNow(); }
+    function drawNow(){ render(ctx, W, H, clock); }
+
+    // ---- animation loop ----
+    let t0=performance.now();
+    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ clock += dt*(P.spd/10); render(ctx,W,H,clock); } requestAnimationFrame(frame); }
+    requestAnimationFrame(frame);
+
+    // ---- wire the rail ----
+    function bind(id, rid, set, fmt){ const r=$(id), v=$(rid); if(!r) return;
+      r.oninput=()=>{ set(+r.value); if(v) v.textContent=fmt?fmt(+r.value):r.value; if(!P.play) drawNow(); }; }
+    bind('fans','fansR',v=>P.fans=v|0);
+    bind('scale','scaleR',v=>P.scale=v/100, v=>(v/100).toFixed(2));
+    bind('scatter','scatterR',v=>P.scatter=v/100, v=>(v/100).toFixed(2));
+    bind('span','spanR',v=>P.span=v);
+    bind('scall','scallR',v=>P.scallops=v|0);
+    bind('wave','waveR',v=>P.wave=v);
+    bind('wander','wanderR',v=>P.wander=v);
+    bind('rays','raysR',v=>P.rays=v|0);
+    bind('reach','reachR',v=>P.reach=v/100, v=>(v/100).toFixed(2));
+    bind('stri','striR',v=>P.stri=v);
+    bind('hue','hueR',v=>P.hue=v);
+    bind('soft','softR',v=>P.soft=v);
+    bind('grain','grainR',v=>P.grain=v);
+    bind('sed','sedR',v=>P.sed=v);
+    bind('drift','driftR',v=>P.drift=v);
+    bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
+    ['core','rim','gtop','gbot'].forEach(id=>$(id).addEventListener('input',e=>{ P[id]=e.target.value; if(!P.play) drawNow(); }));
+    $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
+    $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999); drawNow(); });
+    $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play)); $('playBtn').textContent=P.play?'Pause':'Play'; if(!P.play) drawNow(); });
+
+    // ---- output: shared export panel + record ----
+    Opal.mountOutput(art,'frond',{ render:(long)=>{ const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
+      const c=document.createElement('canvas'); c.width=Math.round(aw*s); c.height=Math.round(ah*s);
+      render(c.getContext('2d'), c.width, c.height, clock); return c; } });
+    let rec=null, chunks=[];
+    $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
+      if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
+      const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+      rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:24000000}:undefined); chunks=[];
+      rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+      rec.onstop=()=>{ const ext=mime.indexOf('mp4')>=0?'mp4':'webm'; const blob=new Blob(chunks,{type:mime||'video/webm'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='frond.'+ext; a.click();
+        $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
+      rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; });
+
+    // ---- drag & drop not needed; boot ----
+    fit();
+  })();
+  </script>
+</body>
+</html>
