@@ -2,20 +2,21 @@
    OP/AL LAB — OPALAB.css   ·   the ONE shared stylesheet
    ----------------------------------------------------------------------------
    Every tool loads exactly this, LAST in <head> (after the tool's own <style>).
-   It is the single source of truth for type, colour, the neumorphic component
+   It is the single source of truth for type, colour, the flat component
    library, and the geometry of BOTH shells:
      · the rail-and-artboard tools  — a #dock left rail
      · the bespoke / full-bleed tools — a #rail or #panel left rail
    A tool supplies its canvas + art. It should not restyle a button, slider,
    island, heading, swatch, toggle or size dock — they all live here.
 
-   The look: soft neumorphism on a single near-white surface. IBM Plex for type,
-   one interactive accent (IBM Blue #0f62fe) for selected + focus. Raised islands
-   and buttons, inset fields, pill toggles, groove sliders with an accent dial.
+   The look: FLAT. One white surface; every edge is a hairline; no shadows, no
+   gradients, nothing 3D. IBM Plex for type, one accent for selected + focus
+   (a solid fill with white ink). Flat cards, flat buttons, thin-line sliders
+   with a flat dot, flat pill toggles.
 
    Contents
      0  Type faces + tokens
-     1  Neumorphism — the component library (buttons · fields · sliders · toggles)
+     1  Flat — the component library (buttons · fields · sliders · toggles)
      2  Base + canvas / artboard mat
      3  Topbar + sub-header
      4  Left rail  (#dock)  ·  islands  ·  Output island
@@ -40,60 +41,49 @@
   /* type */
   --font:'IBM Plex Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* ink + greys — tuned for the soft neumorphic ground (dark-grey text, not pure black) */
+  /* ink + greys */
   --ink:#000000;                 /* text, slider thumbs */
   --dim:#454545; --mute:#454545; /* muted labels / captions */
-  --line:rgba(60,70,90,1);       /* line colour */
-  --hair:rgba(77,101,147,0);     /* panel edges (currently transparent) */
-  --track:rgba(120,120,128,0.47);/* slider tracks (inset) */
-  --paper:#ffffff;               /* the one surface — page + cards share it */
-  --cell:#ffffff;                /* button / input ground — same as the surface, shaped by shadow */
-  --mat:#fcfcfc;                 /* canvas mat behind the artboard */
+  --line:rgba(0,0,0,.16);        /* hairlines draw every edge — there are no shadows */
+  --hair:rgba(0,0,0,.18);        /* control + panel edges */
+  --track:rgba(0,0,0,.18);       /* slider tracks — a thin flat line */
+  --paper:#ffffff;               /* the page + rail ground */
+  --cell:#ffffff;                /* button / input face — white, edged by a hairline */
+  --mat:#ebecef;                 /* canvas mat behind the artboard — a step darker, so the white board reads */
   --rail-bg:var(--paper);        /* the left rail */
-  --island:var(--paper);         /* a control card · also the artboard */
+  --island:#ffffff;              /* a control card — white, hairline-edged */
   --rec:#da1e28;                 /* record indicator (Carbon red-60, AA) */
   /* the one interactive accent — IBM Blue */
   --accent:#000000;              /* primary, selected, focus */
   --accent-hover:#2b00ff;        /* hover */
   --accent-active:#002d9c;       /* Blue 80 */
   --on-accent:#ffffff;
-  /* radii — rounder for the soft look */
-  --r-island:5px; --r-control:10px; --r-input:10px; --r-seg:10px;
-  /* NEUMORPHISM — dual light/dark shadows: raised (islands/buttons) + inset (inputs/pressed) */
-  --nm-lo:rgba(255,255,255,.9);   /* the light (top-left) */
-  --nm-hi:rgba(186,186,186,.6);   /* the dark (bottom-right) — NEUTRAL grey, no blue */
-  --shadow:-4px -4px 9px var(--nm-lo), 5px 5px 12px var(--nm-hi);              /* raised islands */
-  --shadow-float:-6px -6px 14px var(--nm-lo), 8px 8px 20px var(--nm-hi);       /* floating panels */
-  --shadow-inset:inset 2px 2px 5px var(--nm-hi), inset -2px -2px 5px var(--nm-lo); /* inputs */
-  --shadow-sm:-3px -3px 6px var(--nm-lo), 3px 3px 6px var(--nm-hi);            /* raised buttons */
-  --shadow-pressed:inset 3px 3px 7px var(--nm-hi), inset -3px -3px 7px var(--nm-lo); /* button turned ON */
+  /* radii — crisp and flat */
+  --r-island:6px; --r-control:6px; --r-input:6px; --r-seg:6px;
+  /* FLAT — there are no shadows. The tokens stay defined (all none / transparent) so any
+     tool that references them keeps working; nothing may reintroduce a shadow. */
+  --nm-lo:transparent; --nm-hi:transparent;
+  --shadow:none; --shadow-float:none; --shadow-inset:none; --shadow-sm:none; --shadow-pressed:none;
 }
-/* Note: the neumorphic light/dark pair is keyed to the SURFACE, not body.dark — most
-   "dark" tools only darken the topbar and keep a light rail. Tools with a genuinely dark
-   rail (e.g. fractal) redefine --nm-lo/--nm-hi in their own scope, after this file. */
 
-/* 1 — NEUMORPHISM — the component library =================================== */
-/* raised buttons — a soft convex gradient face lifted off the surface, that presses IN.
-   NB: kept low-specificity (no :not() chain) so :active / :hover / selected reliably win;
-   the special buttons (.rowhead / .opal-info / .tw) are reset separately below. */
+/* 1 — FLAT — the component library ========================================= */
+/* flat buttons — a white face with a hairline. Selected goes solid accent with white ink.
+   No shadows, no gradients, no recess. Kept low-specificity so :active / :hover /
+   selected reliably win; the special buttons (.rowhead / .opal-info / .tw) reset below. */
 :where(#dock,#rail,#panel,#output,#sizeDock,.opal-export,.opal-save__panel) button:not(.sw),
 .opal-sessions-btn, .filebtn, .chip, .seg button, .railact button, .btn{
-  background:linear-gradient(145deg, #fafafb, #e9e9ee) !important; border:none !important;
-  box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 1px rgba(60,70,90,.06) !important;
+  background:var(--cell) !important; border:1px solid var(--hair) !important; box-shadow:none !important;
   border-radius:var(--r-control) !important; color:var(--ink) !important;
-  transition:box-shadow .16s ease, transform .08s ease, background .16s ease, color .15s ease; will-change:box-shadow, transform; }
+  transition:background .12s ease, color .12s ease, border-color .12s ease; }
 :where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) button:not(.sw):hover, .opal-sessions-btn:hover, .btn:hover, .seg button:hover{
-  box-shadow:-4px -4px 9px var(--nm-lo), 5px 5px 11px var(--nm-hi), inset 0 1px 0 rgba(255,255,255,.6) !important; }
-/* click — clearly recessed: dark inner shadow, darker face, dimmed ink, a firm scale in */
+  background:#f0f0f2 !important; border-color:rgba(0,0,0,.32) !important; }
+/* click — a firmer face, no recess */
 :where(#dock,#rail,#panel,#output,#sizeDock) button:not(.sw):active, .btn:active, .seg button:active, .railact button:active, .chip:active, .filebtn:active, .opal-sessions-btn:active{
-  background:linear-gradient(145deg, #d7d7dd, #ececf0) !important;
-  box-shadow:inset 3px 3px 7px var(--nm-hi), inset -3px -3px 6px var(--nm-lo), inset 0 2px 5px rgba(20,24,34,.20) !important;
-  color:var(--mute) !important; transform:scale(.95); }
-/* selected / on → held IN + accent ink (distinct from the momentary :active press) */
+  background:#e2e2e6 !important; }
+/* selected / on → solid accent, white ink */
 :where(#dock,#rail,#panel,#output,#sizeDock) button:not(.sw)[aria-pressed="true"], .seg button[aria-pressed="true"],
 .btn[aria-pressed="true"], .btn.primary, .chip.active, .railact button.primary, .railact button.on{
-  background:linear-gradient(145deg, #e7e7ec, #f2f2f5) !important;
-  box-shadow:var(--shadow-pressed), inset 0 1px 3px rgba(20,24,34,.10) !important; color:var(--accent) !important; }
+  background:var(--accent) !important; border-color:var(--accent) !important; color:var(--on-accent) !important; }
 /* the special buttons keep their own look (accordion headers, info glyph, tooltip word) */
 :where(#dock,#rail,#panel,#output,#sizeDock) button.rowhead,
 :where(#dock,#rail,#panel,#output,#sizeDock) button.opal-info,
@@ -103,7 +93,7 @@
 .seg button{ flex:0 1 auto; min-width:0; }
 /* fields — inset. background-COLOR only, so the tool's chevron survives; add our own chevron + padding */
 :where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) select, #sizeDock select, .opal-export select{
-  background-color:var(--cell) !important; border:none !important; box-shadow:var(--shadow-inset) !important;
+  background-color:var(--cell) !important; border:1px solid var(--hair) !important; box-shadow:none !important;
   border-radius:var(--r-input) !important; color:var(--ink) !important;
   -webkit-appearance:none !important; appearance:none !important;
   padding:10px 34px 10px 14px !important; line-height:1.2 !important;
@@ -112,54 +102,45 @@
 :where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) input[type=text],
 :where(#dock,#rail,#panel,#output,#sizeDock,.opal-export) input[type=number],
 :where(#dock,#rail,#panel) textarea{
-  background:var(--cell) !important; border:none !important; box-shadow:var(--shadow-inset) !important;
+  background:var(--cell) !important; border:1px solid var(--hair) !important; box-shadow:none !important;
   border-radius:var(--r-input) !important; color:var(--ink) !important; padding:10px 12px !important; }
-/* sliders — inset groove + raised ACCENT dial */
+/* sliders — a thin flat line + a flat accent dot */
 :where(#dock,#rail,#panel,#output) input[type=range]{ height:22px !important; background:transparent !important; }
 :where(#dock,#rail,#panel,#output) input[type=range]::-webkit-slider-runnable-track{
-  height:8px !important; border-radius:8px !important; background:var(--cell) !important; box-shadow:var(--shadow-inset) !important; }
+  height:3px !important; border-radius:3px !important; background:var(--track) !important; box-shadow:none !important; }
 :where(#dock,#rail,#panel,#output) input[type=range]::-moz-range-track{
-  height:8px !important; border-radius:8px !important; background:var(--cell) !important; box-shadow:var(--shadow-inset) !important; }
+  height:3px !important; border-radius:3px !important; background:var(--track) !important; box-shadow:none !important; }
 :where(#dock,#rail,#panel,#output) input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none !important; appearance:none !important; width:18px !important; height:18px !important; margin-top:-5px !important;
-  border-radius:50% !important; background:var(--accent) !important; border:2px solid var(--cell) !important; box-shadow:var(--shadow-sm) !important; cursor:pointer; }
+  -webkit-appearance:none !important; appearance:none !important; width:16px !important; height:16px !important; margin-top:-6.5px !important;
+  border-radius:50% !important; background:var(--accent) !important; border:none !important; box-shadow:none !important; cursor:pointer; }
 :where(#dock,#rail,#panel,#output) input[type=range]::-moz-range-thumb{
-  width:18px !important; height:18px !important; border-radius:50% !important; background:var(--accent) !important; border:2px solid var(--cell) !important; box-shadow:var(--shadow-sm) !important; }
+  width:16px !important; height:16px !important; border-radius:50% !important; background:var(--accent) !important; border:none !important; box-shadow:none !important; }
 /* breathing room so the soft shadows never collide or clip into each other */
 :where(#dock,#rail,#panel) .btn, :where(#dock,#rail,#panel) select, :where(#dock,#rail,#panel) input[type=range],
 :where(#dock,#rail,#panel) input[type=text], :where(#dock,#rail,#panel) input[type=number], :where(#dock,#rail,#panel) .filebtn,
 :where(#dock,#rail,#panel) input[type=color]{ margin-top:5px !important; margin-bottom:5px !important; }
 #dock > .group, #dock > .row, #rail.rail-l .row, #panel .grp, #panel .eng-params{ padding:18px !important; margin-bottom:18px !important; }
 /* .ctrl-btn keeps a defined grey edge (per request) */
-.ctrl-btn{ border:1px solid #919191 !important; box-shadow:var(--shadow-sm) !important; }
+.ctrl-btn{ border:1px solid #919191 !important; box-shadow:none !important; }
 /* controllers that float over the artwork (size dock + Output) — NO drop shadow; a hairline instead */
 #sizeDock, #output, .group.out, #dock > .group.out, #dock > .row.out{
-  box-shadow:none !important; border:1px solid rgba(120,124,134,.26) !important; }
+  box-shadow:none !important; border:1px solid var(--hair) !important; }
 /* every slider reads the same accent dial — native range thumbs AND custom SVG knobs */
 .knob .k-vl, .knob .k-pt{ stroke:var(--accent) !important; }
-/* checkboxes → dimensional pill switches: a grooved track (goes green ON) + a knob with grip dots */
+/* checkboxes → flat pill switches: a grey track (goes accent ON) + a plain white knob */
 :where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]{
-  -webkit-appearance:none !important; appearance:none !important; width:46px !important; height:26px !important; flex:none;
+  -webkit-appearance:none !important; appearance:none !important; width:42px !important; height:24px !important; flex:none;
   border-radius:999px !important; position:relative; cursor:pointer; margin:0;
-  background:linear-gradient(to bottom, #d3d3d8, #e8e8ec) !important;
-  box-shadow:inset 0 0 1px 2px rgba(255,255,255,.22), inset 0 1px 2px rgba(20,24,34,.4) !important;
-  transition:background .38s ease; }
+  background:#d6d7dc !important; border:1px solid var(--hair) !important; box-shadow:none !important;
+  transition:background .2s ease, border-color .2s ease; }
 :where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]::after{
-  content:''; position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%;
-  /* three grip dots centred on the convex knob (22px → centre 11,11) */
-  background:
-    radial-gradient(circle at 7.5px 11px, #bfbfc6 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 11px 11px,  #bfbfc6 0 1.1px, transparent 1.7px),
-    radial-gradient(circle at 14.5px 11px, #bfbfc6 0 1.1px, transparent 1.7px),
-    linear-gradient(to bottom, #f4f4f6, #dcdce1);
-  background-repeat:no-repeat;
-  box-shadow:inset 0 -1px 1px 2px rgba(20,24,34,.08), inset 0 3px 1px rgba(255,255,255,.55), 0 2px 3px rgba(20,24,34,.4);
-  transition:left .38s cubic-bezier(.5,.1,.3,1.2); }
+  content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%;
+  background:#ffffff; box-shadow:none; transition:left .2s ease; }
 :where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]:checked{
-  background:linear-gradient(to bottom, #2ea043, #34c759) !important; }
-:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]:checked::after{ left:22px; }
-/* islands lose their hairline border (shadow defines the edge) */
-#dock > .group, #dock > .row, #rail.rail-l .row, #output, .group.out, #sizeDock, #panel .grp, #panel .eng-params, .opal-sessions-pop{ border:none !important; }
+  background:var(--accent) !important; border-color:var(--accent) !important; }
+:where(#dock,#rail,#panel,#output,#sizeDock) input[type=checkbox]:checked::after{ left:20px; }
+/* islands carry a hairline — nothing else defines the edge now */
+#dock > .group, #dock > .row, #rail.rail-l .row, #output, .group.out, #sizeDock, #panel .grp, #panel .eng-params, .opal-sessions-pop{ border:1px solid var(--hair) !important; }
 
 /* 2 — BASE + CANVAS / ARTBOARD MAT ========================================= */
 html, body{ background:var(--paper); color:var(--ink); font-family:var(--font); }
@@ -203,10 +184,9 @@ code, kbd, samp, pre, .mono, [data-mono]{ font-family:var(--mono); }
      created a containing block that trapped the fixed bottom-right OUTPUT panel */
   -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
 
-/* the rail holds rounded cards that FLOAT — a subtle drop-shadow lifts them off
-   the single flat surface so they read as islands. */
+/* the rail holds flat cards — white on the ground, edged by a hairline. */
 #dock > .group, #dock > .row{ background:var(--island);
-  border-radius:var(--r-island); padding:16px !important; box-shadow:var(--shadow); }
+  border-radius:var(--r-island); padding:16px !important; box-shadow:none; }
 #dock > .row{ border-bottom:0 !important; }
 /* the OUTPUT island (Record + Export) — pinned to the BOTTOM-RIGHT of the screen,
    the exact same fixed spot on every tool. */
@@ -214,7 +194,7 @@ code, kbd, samp, pre, .mono, [data-mono]{ font-family:var(--mono); }
   position:fixed !important; right:20px; bottom:20px; left:auto; top:auto;
   width:auto; min-width:208px; max-width:300px; margin:0 !important; z-index:20;
   background:var(--island); border-radius:var(--r-island);
-  padding:14px !important; box-shadow:var(--shadow-float); }
+  padding:14px !important; box-shadow:none; }
 
 /* NO UPPERCASE anywhere in the chrome */
 #dock, #dock *, #rail, #rail *, #panel, #panel *, #output, #output *, #sizeDock, #sizeDock *,
@@ -236,8 +216,10 @@ code, kbd, samp, pre, .mono, [data-mono]{ font-family:var(--mono); }
 /* collapsible islands (accordion) — click the heading to shrink; caret shows state */
 #dock > .group:not(.out) > .group__t{ cursor:pointer; user-select:none;
   display:flex; align-items:center; justify-content:space-between; gap:8px; }
-#dock > .group:not(.out) > .group__t::after{ content:'▾'; font-size:9px; color:var(--mute);
-  transition:transform .15s ease; flex:none; }
+/* the caret is a drawn triangle, not a character */
+#dock > .group:not(.out) > .group__t::after{ content:''; width:0; height:0; flex:none;
+  border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid var(--mute);
+  transition:transform .15s ease; }
 #dock > .group.collapsed > .group__t::after{ transform:rotate(-90deg); }
 #dock > .group.collapsed > *:not(.group__t){ display:none !important; }
 .seg-select{ width:100%; }
@@ -278,11 +260,11 @@ textarea, input[type=text], input[type=number]{ color:var(--ink); font-family:va
 .crow label{ font-size:12px; color:var(--ink); text-transform:none; letter-spacing:0; }
 /* Colour SWATCHES & pickers — one clean round chip that shows its colour, used both as palette
    buttons (colour/gradient via inline background) and as <input type=color>. Swatch buttons are
-   exempt from the neumorphic button fill above, so their own colour shows through. */
+   exempt from the flat button face above, so their own colour shows through. */
 input[type=color], .sw{
   width:26px !important; height:26px !important; min-width:26px; flex:none; padding:0 !important; cursor:pointer;
-  border-radius:50% !important; border:1px solid rgba(0,0,0,.20) !important; background:none;
-  box-shadow:inset 0 1px 2px rgba(255,255,255,.45), 0 1px 3px rgba(20,24,34,.18) !important;
+  border-radius:50% !important; border:1px solid rgba(0,0,0,.22) !important; background:none;
+  box-shadow:none !important;
   -webkit-appearance:none; appearance:none; overflow:hidden; vertical-align:middle;
   transition:transform .1s ease, box-shadow .15s ease; }
 input[type=color]:hover, .sw:hover{ transform:scale(1.09); }
@@ -291,7 +273,7 @@ input[type=color]::-webkit-color-swatch{ border:none; border-radius:50%; }
 input[type=color]::-moz-color-swatch{ border:none; border-radius:50%; }
 /* selected swatch — a crisp accent ring with a paper gap (no muddy outline) */
 .sw[aria-pressed="true"], .sw.on, .sw.active{
-  box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--accent), inset 0 1px 2px rgba(255,255,255,.45) !important; }
+  outline:2px solid var(--accent); outline-offset:2px; box-shadow:none !important; }
 
 /* 10 — TOGGLES · TOOLTIPS · SIZE DOCK · SAVE DIALOG ======================= */
 .tog{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -304,8 +286,8 @@ input[type=color]::-moz-color-swatch{ border:none; border-radius:50%; }
   position:fixed !important; bottom:auto !important; right:auto !important;
   top:calc(var(--top, 120px) + 14px) !important; left:calc(var(--rail, 0px) + 16px) !important; transform:none !important;
   display:flex !important; align-items:center; gap:10px; z-index:9 !important;
-  background:var(--island,#f4f4f4); border-radius:var(--r-island); padding:6px 9px 6px 13px;
-  box-shadow:var(--shadow-float);
+  background:var(--island,#fff); border-radius:var(--r-island); padding:6px 9px 6px 13px;
+  box-shadow:none;
 }
 #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
 #sizeDock select{
@@ -323,7 +305,7 @@ input[type=color]::-moz-color-swatch{ border:none; border-radius:50%; }
 #opal-save{ position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center;
   background:rgba(22,22,22,.32); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
 .opal-save__panel{ width:340px; max-width:calc(100vw - 32px); background:var(--island); border:1px solid var(--line);
-  border-radius:var(--r-island); box-shadow:var(--shadow-float); padding:18px; display:flex; flex-direction:column; gap:12px; }
+  border-radius:var(--r-island); box-shadow:none; padding:18px; display:flex; flex-direction:column; gap:12px; }
 .opal-save__t{ font-size:14px; font-weight:600; color:var(--ink); }
 .opal-save__row{ display:flex; align-items:center; gap:10px; }
 .opal-save__row[hidden]{ display:none !important; }
@@ -340,7 +322,7 @@ input[type=color]::-moz-color-swatch{ border:none; border-radius:50%; }
 #rail.rail-l{ background:var(--rail-bg); padding:16px 14px; }
 #rail.rail-l .row{ background:var(--island);
   border-radius:var(--r-island) !important; margin:0 0 18px !important; padding:18px !important;
-  box-shadow:var(--shadow) !important; }
+  box-shadow:none !important; border:1px solid var(--hair) !important; }
 #rail.rail-l .row:last-child{ margin-bottom:0 !important; }
 
 /* the standalone Output island (bespoke tools mount it at the body root, not inside #dock) —
@@ -355,8 +337,8 @@ input[type=color]::-moz-color-swatch{ border:none; border-radius:50%; }
 /* 12 — MOBILE ( ≤760px ): the left rail becomes a slide-in drawer =========== */
 /* Hamburger + scrim are injected by opal.js on every tool; hidden on desktop.   */
 .opal-navtoggle{ display:none; position:fixed; top:calc(var(--top, 120px) + 10px); left:12px; z-index:62;
-  width:44px; height:44px; padding:0; border:none; border-radius:12px; background:var(--island);
-  box-shadow:var(--shadow-float); cursor:pointer; align-items:center; justify-content:center;
+  width:44px; height:44px; padding:0; border:1px solid var(--hair); border-radius:var(--r-control); background:var(--island);
+  box-shadow:none; cursor:pointer; align-items:center; justify-content:center;
   flex-direction:column; gap:4px; }
 .opal-navtoggle i{ display:block; width:18px; height:2px; background:var(--ink); border-radius:2px;
   transition:transform .25s ease, opacity .2s ease; }
@@ -381,7 +363,7 @@ body.opal-nav-open .opal-navtoggle i:nth-child(3){ transform:translateY(-6px) ro
     width:min(86vw, 340px) !important; max-width:340px !important;
     padding-top:60px !important;               /* clear the hamburger / close button */
     transition:left .28s cubic-bezier(.4,0,.2,1) !important; z-index:60 !important;
-    box-shadow:10px 0 44px rgba(20,24,34,.30) !important;
+    box-shadow:none !important; border-right:1px solid var(--hair) !important;
     overflow-y:auto !important; -webkit-overflow-scrolling:touch; }
   body.opal-drawer.opal-nav-open #dock, body.opal-drawer.opal-nav-open #rail{ left:0 !important; }
 
