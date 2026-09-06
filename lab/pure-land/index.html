@@ -74,6 +74,7 @@
         <div class="knob"><label>Reach <b id="reachR">70</b></label><input id="reach" type="range" min="12" max="180" value="70"></div>
         <div class="knob"><label>Bands <b id="bandsR">3.0</b></label><input id="bands" type="range" min="5" max="120" value="30"></div>
       </div>
+      <div class="knob"><label>Edge <b id="edgeR">30</b></label><input id="edge" type="range" min="0" max="100" value="30"></div>
     </div>
 
     <div class="group">
@@ -121,7 +122,7 @@
   <script id="frag" type="x-shader/x-fragment">
 precision highp float;
 uniform vec2 uRes; uniform float uT;
-uniform float uShape, uMode, uScale, uRot, uReach, uBands, uHue, uDisp, uBright, uWarp, uFlow, uPulse, uGrain, uSeed;
+uniform float uShape, uMode, uScale, uRot, uReach, uBands, uHue, uDisp, uBright, uWarp, uFlow, uPulse, uGrain, uSeed, uEdge;
 uniform vec3 uGround, uPA, uPB, uPC, uPD;
 const float TAU=6.2831853;
 
@@ -168,6 +169,7 @@ void main(){
     w += a*vec2(fbm(uv*2.4 + vec2(0., uT*0.15)), fbm(uv*2.4 + vec2(5.2,-uT*0.13))); }
 
   float d = sdf(w);
+  float ew = mix(0.05, 0.0012, uEdge);   // mask half-width: soft → hard
   vec3 col = uGround;
   // a soft ground glow of colour
   col = mix(col, pal(0.08 - ph)*0.22, smoothstep(1.15, 0.0, length(uv))*0.5);
@@ -178,7 +180,7 @@ void main(){
     float env = exp(-r*r*1.15);                         // brightness envelope
     vec3 c = disperse(r*(uBands*0.06) - ph, disp);      // iridescent rings
     c += pal(0.85-ph)*exp(-r*r*3.5)*0.85;               // luminous colour core (not pure white)
-    float mask = smoothstep(0.03, -0.05, d);            // inside the form (soft)
+    float mask = smoothstep(ew, -ew, d);            // inside the form (soft)
     col = mix(col, c*env*uBright, clamp(mask,0.,1.));
     float glow = exp(-max(d,0.)*9.0)*env;               // spill just past the edge
     col += pal(0.55-ph)*glow*0.5*uBright;
@@ -189,7 +191,7 @@ void main(){
     col = mix(col, c*uBright, clamp(band,0.,1.2));
     col += disperse(ang*1.5+ph, disp)*exp(-abs(d)/max(uReach*0.006,1e-3))*0.30*uBright;   // soft outward bleed
   } else if(m<2.5){            // SWEEP — rotating iridescent fill
-    float inside = smoothstep(0.02,-0.03,d);
+    float inside = smoothstep(ew, -ew, d);
     float ang = atan(w.y,w.x)/TAU + 0.5;
     float rr = length(w)/max(uScale,1e-3);
     vec3 c = disperse(ang + rr*0.4 + ph, disp);
@@ -206,6 +208,10 @@ void main(){
     col += c*exp(-abs(shell-0.0)*3.0)*0.06*uBright*fade; // soft glow between
   }
 
+  // crisp iridescent outline — the defined edge; strength & sharpness rise with Edge
+  if(uEdge>0.02){ float lw=mix(0.006,0.0015,uEdge); float o=smoothstep(lw,0.0,abs(d));
+    vec3 ec=disperse(atan(w.y,w.x)/TAU+0.5 + ph*1.2, disp*1.4)*uBright;
+    col=mix(col, ec, o*uEdge); }
   // filmic-ish tone map — bright rolls into colour, never clips to a flat white
   col = vec3(1.0) - exp(-max(col,0.0)*1.35);
   // fine grain
@@ -224,7 +230,7 @@ void main(){
 
     const P={ aspect:'1080/1920', seed:3, shape:0, scale:0.60, rot:0, mode:0, reach:70, bands:30,
       palette:'iris', hue:0, disp:18, bright:1.0, warp:22, ground:'#080810',
-      flow:50, pulse:35, spd:1.0, grain:10, play:true };
+      flow:50, pulse:35, spd:1.0, grain:10, edge:30, play:true };
 
     // IQ cosine palette coefficients per preset: {A,B,C,D}
     const PALS={
@@ -248,7 +254,7 @@ void main(){
     const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, -1,1, 1,1]),gl.STATIC_DRAW);
     const ploc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(ploc); gl.vertexAttribPointer(ploc,2,gl.FLOAT,false,0,0);
-    const U={}; ['uRes','uT','uShape','uMode','uScale','uRot','uReach','uBands','uHue','uDisp','uBright','uWarp','uFlow','uPulse','uGrain','uSeed','uGround','uPA','uPB','uPC','uPD'].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+    const U={}; ['uRes','uT','uShape','uMode','uScale','uRot','uReach','uBands','uHue','uDisp','uBright','uWarp','uFlow','uPulse','uGrain','uSeed','uEdge','uGround','uPA','uPB','uPC','uPD'].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 
     let W=1080,H=1920,clock=0;
     function draw(w,h,tm){
@@ -260,7 +266,7 @@ void main(){
       gl.uniform1f(U.uReach,P.reach); gl.uniform1f(U.uBands,P.bands);
       gl.uniform1f(U.uHue,P.hue/360); gl.uniform1f(U.uDisp,P.disp); gl.uniform1f(U.uBright,P.bright);
       gl.uniform1f(U.uWarp,P.warp); gl.uniform1f(U.uFlow,P.flow); gl.uniform1f(U.uPulse,P.pulse);
-      gl.uniform1f(U.uGrain,P.grain/100); gl.uniform1f(U.uSeed,P.seed*0.137);
+      gl.uniform1f(U.uGrain,P.grain/100); gl.uniform1f(U.uSeed,P.seed*0.137); gl.uniform1f(U.uEdge,P.edge/100);
       gl.uniform3fv(U.uGround,HEX(P.ground));
       gl.uniform3fv(U.uPA,pl.A); gl.uniform3fv(U.uPB,pl.B); gl.uniform3fv(U.uPC,pl.C); gl.uniform3fv(U.uPD,pl.D);
       gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
@@ -281,6 +287,7 @@ void main(){
     bind('rot','rotR',v=>P.rot=v);
     bind('reach','reachR',v=>P.reach=v);
     bind('bands','bandsR',v=>P.bands=v, v=>(v/10).toFixed(1));
+    bind('edge','edgeR',v=>P.edge=v);
     bind('hue','hueR',v=>P.hue=v);
     bind('disp','dispR',v=>P.disp=v);
     bind('bright','brightR',v=>P.bright=v/100, v=>(v/100).toFixed(2));
