@@ -15,13 +15,10 @@
   #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; background:var(--mat);
     display:flex; align-items:center; justify-content:center; padding:22px; }
   #art{ max-width:100%; max-height:100%; display:block; box-shadow:none; }
-  #sizeDock{ display:flex; align-items:center; gap:10px; }
-  #sizeDock #dimReadout{ font-size:12px; color:var(--mute); font-variant-numeric:tabular-nums; white-space:nowrap; }
-  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11; display:none; align-items:center; gap:7px;
-    padding:6px 12px; border-radius:999px; background:var(--rec); color:#fff; font:600 12px/1 var(--mono); letter-spacing:.06em; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
   #recDot.on{ display:flex; }
-  #recDot i{ width:8px; height:8px; border-radius:50%; background:#fff; animation:rp 1s ease-in-out infinite; }
-  @keyframes rp{ 50%{ opacity:.25; } }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); }
   .group{ display:flex; flex-direction:column; gap:9px; }
   .knob{ display:flex; flex-direction:column; gap:2px; }
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
@@ -44,7 +41,7 @@
       <option value="1600/900">Landscape · 16:9</option>
     </select>
   </div>
-  <div id="recDot"><i></i><b>REC</b></div>
+  <div id="recDot"><i></i><b>0:00</b></div>
 
   <div id="dock">
     <div class="group">
@@ -269,7 +266,7 @@
     Opal.mountOutput(art,'frond',{ render:(long)=>{ const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
       const c=document.createElement('canvas'); c.width=Math.round(aw*s); c.height=Math.round(ah*s);
       render(c.getContext('2d'), c.width, c.height, clock); return c; } });
-    let rec=null, chunks=[];
+    let rec=null, chunks=[], rt=0, tk=0;
     $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
       if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
       const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
@@ -277,8 +274,10 @@
       rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
       rec.onstop=()=>{ const ext=mime.indexOf('mp4')>=0?'mp4':'webm'; const blob=new Blob(chunks,{type:mime||'video/webm'});
         const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='frond.'+ext; a.click();
-        $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
-      rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop'; });
+        clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
+      rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop';
+      rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
+        $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
 
     fit();
   })();
