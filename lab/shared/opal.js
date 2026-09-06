@@ -62,7 +62,8 @@ const Opal = (() => {
         .opal-export .opal-ex-row.row-dpi select{ width:auto; }
         /* Output island: collapsed by default, click the heading to open */
         .oc-head{ cursor:pointer; user-select:none; display:flex !important; align-items:center; justify-content:space-between; gap:10px; margin:0 !important; }
-        .oc-head::after{ content:'▾'; font-size:9px; color:var(--mute,#888); transition:transform .15s ease; flex:none; }
+        /* caret is a drawn triangle, never a glyph */
+        .oc-head::after{ content:''; width:0; height:0; flex:none; border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid var(--mute,#888); transition:transform .15s ease; }
         #output.oc-collapsed .oc-head::after, .group.out.oc-collapsed .oc-head::after{ transform:rotate(-90deg); }
         #output.oc-collapsed > :not(.group__t), .group.out.oc-collapsed > :not(.group__t){ display:none !important; }`;
       document.head.appendChild(st);
