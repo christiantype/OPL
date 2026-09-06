@@ -7,61 +7,29 @@
 <title>Sequins — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
 <style>
-  :root{ --ink:#f2f3f7; --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.14); --rail:300px; --top:120px; }
+  /* layout only — every control is owned by OPALAB.css (loaded last) */
+  :root{ --rail:300px; --top:120px; }
   @media (max-width:560px){ :root{ --top:112px; } }
   *{ box-sizing:border-box; }
-  html,body{ height:100%; margin:0; background:#07070c; color:var(--ink);
-    font-family:var(--font, 'IBM Plex Sans', system-ui, -apple-system, sans-serif); overscroll-behavior:none; }
-  body.dark .opal-topbar, body.dark .opal-subhead{ background:#07070c; border-bottom-color:rgba(255,255,255,.1); }
-  body.dark .opal-subhead__name{ color:var(--ink); }
-  body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+  html,body{ height:100%; margin:0; overscroll-behavior:none; }
   #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
   #art{ max-width:100%; max-height:100%; display:block; }  /* board frame owned by OPALAB (border, no shadow) */
-  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); font-size:13px; color:var(--dim);
-    background:rgba(7,7,12,.7); padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .3s; z-index:7; }
-  /* canvas-size dock — pinned top-right on every tool */
-  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
-  #sizeDock select{ background:rgba(11,11,18,.92); color:var(--ink); border:1px solid var(--line); border-radius:2px;
-    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
-    -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
-  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
-    padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
-    background:rgba(11,11,18,.92); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none;
+    align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
   #recDot.on{ display:flex; }
-  #recDot i{ width:7px; height:7px; border-radius:50%; background:#ff5468; animation:recblink 1s infinite; }
-  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); animation:recblink 1s infinite; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
   @keyframes recblink{ 50%{ opacity:.25; } }
-  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
-    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
-    background:rgba(11,11,18,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
-  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start; }
-  .btn{ appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--ink);
-    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
-    display:inline-flex; align-items:center; justify-content:center;
-    padding:8px 12px; border-radius:2px; cursor:pointer; transition:.15s; white-space:nowrap; }
-  .btn:hover{ background:rgba(255,255,255,.11); }
-  .btn[aria-pressed="true"]{ background:var(--ink); color:#07070c; border-color:var(--ink); }
-  .btn.primary{ background:var(--ink); color:#07070c; border-color:var(--ink); font-weight:600; }
-  .chip{ font-size:11px; letter-spacing:.04em; padding:7px 10px; }
-  .sep{ width:1px; align-self:stretch; background:var(--line); margin:2px 4px; }
-  /* grouped sections — a clean, labelled stack with dividers */
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; overflow-x:hidden; }
   .group{ display:flex; flex-direction:column; gap:9px; }
-  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--line); }
-  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .grid2 .btn, .btn.full{ width:100%; }
+  select.full{ width:100%; }
   #sliders{ display:flex; flex-direction:column; gap:14px; width:100%; }
   .knob{ display:flex; flex-direction:column; gap:2px; }
-  .knob label{ display:flex; justify-content:space-between; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); }
-  .knob b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
-  /* slider is owned by OPALAB.css */
-  .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
-    background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
-    -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
-    box-shadow:0 16px 40px -20px rgba(0,0,0,.6);
-    font-size:11px; line-height:1.5; letter-spacing:.005em; text-transform:none;
-    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px;
+    line-height:1.5; pointer-events:none; opacity:0; transition:opacity .14s ease; }
 </style>
 <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
 </head>

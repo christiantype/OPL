@@ -82,7 +82,8 @@
   background:#e2e2e6 !important; }
 /* selected / on → solid accent, white ink */
 :where(#dock,#rail,#panel,.ds-demo,#output,#sizeDock) button:not(.sw)[aria-pressed="true"], .seg button[aria-pressed="true"],
-.btn[aria-pressed="true"], .btn.primary, .chip.active, .railact button.primary, .railact button.on{
+.btn[aria-pressed="true"], .btn.primary, .chip.active, .railact button.primary, .railact button.on,
+:where(#dock,#rail,#panel,.ds-demo) button.is-active, .seg button.is-active{
   background:var(--accent) !important; border-color:var(--accent) !important; color:var(--on-accent) !important; }
 /* the special buttons keep their own look (accordion headers, info glyph, tooltip word) */
 :where(#dock,#rail,#panel,.ds-demo,#output,#sizeDock) button.rowhead,
@@ -94,6 +95,9 @@
 :where(#dock,#rail,#panel,.ds-demo,#output,#sizeDock) button.rowhead, .rowhead{
   border:none !important; padding-left:0 !important; padding-right:0 !important; }
 .seg{ border:none !important; background:transparent !important; box-shadow:none !important; gap:10px !important; display:flex !important; flex-wrap:wrap !important; }
+/* …but a seg that opal.js collapsed into a select must stay hidden: it sets an inline
+   display:none, which this rule's !important would otherwise beat (showing both). */
+.seg[data-autosel]{ display:none !important; }
 .seg button{ flex:0 1 auto; min-width:0; }
 /* fields — inset. background-COLOR only, so the tool's chevron survives; add our own chevron + padding */
 :where(#dock,#rail,#panel,.ds-demo,#output,#sizeDock,.opal-export) select, #sizeDock select, .opal-export select{

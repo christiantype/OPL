@@ -8,17 +8,9 @@
 <link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
 <script src="/assets/js/Tone.js"></script>
 <style>
-  /* Shell conformed to the Attractor standard: one always-open glassy left #dock of
-     labelled .group sections, plain sliders wrapped as .knob with live <b id> readouts,
-     a top-right #sizeDock, a centred #hint. Colour tokens are scoped to the body so the
-     tool's own light/dark toggle keeps winning over the dark-only shared OPALAB.css. */
+  /* Layout only. The flat shell (tokens, buttons, sliders, islands, size dock) lives in
+     shared/OPALAB.css, which loads last and owns every control. */
   :root{ --top:120px; --rail:300px; }
-  body:not(.dark){ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
-    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
-    --track:rgba(0,0,0,.3); --liton:#6f9bff; --dim:var(--mute); --line:var(--edge); }
-  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
-    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
-    --track:rgba(255,255,255,.3); --liton:#8ab0ff; --dim:var(--mute); --line:var(--edge); }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
     font-family:var(--font, 'IBM Plex Sans', system-ui, -apple-system, sans-serif); overflow:hidden; }
@@ -28,30 +20,9 @@
     display:flex; align-items:center; justify-content:center; padding:24px; }
   /* the artboard: a board letterboxed to the size dock, centred on the grey mat.
      OPALAB.css paints the board white + 1px border + no shadow. */
-  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; border-radius:2px; }
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; }
 
-  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
-    font-size:13px; color:var(--mute); background:var(--panel); padding:6px 14px; border-radius:999px;
-    pointer-events:none; transition:opacity .3s; z-index:7;
-    -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
-
-  /* canvas-size dock — pinned top-right on every tool */
-  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:9; }
-  #sizeDock select{ background:var(--panel); color:var(--ink); border:1px solid var(--hair); border-radius:2px;
-    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
-    width:auto; background-image:none; -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
-
-  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
-     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
-     so the shared chrome gets carried into the theme too. The brand link sets its colour
-     inline via mountTopbar, hence !important. */
-  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
-  body.dark .opal-brand{ color:var(--ink) !important; }
-  body.dark .opal-subhead__name{ color:var(--ink); }
-  body.dark .opal-brand .opal-product,
-  body.dark .opal-subhead__desc,
-  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
-  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+  #hint{ display:none; }
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
   body.fs #dock, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
@@ -62,48 +33,38 @@
   @media (max-width:560px){ :root{ --top:112px; } }
 
   #status{ position:fixed; bottom:14px; left:calc(var(--rail) + 16px); z-index:5; pointer-events:none;
-    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+    color:var(--mute); display:none; }
 
-  /* theme / pause / full screen now live in the rail's View island; #exitFs keeps the .icon look */
-  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
-    background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
-    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  /* pause / full screen now live in the rail's View island; #exitFs keeps the .icon look */
+  .icon{ appearance:none; width:34px; height:34px; border:1px solid var(--hair);
+    background:var(--cell); color:var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:0; }
   .icon svg{ display:block; }
-  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
-     fixed right offset kept colliding with it. Stays put in full screen so a recording
-     always shows its own timer. */
-  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
-    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
-    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
-    background:var(--panel); border:1px solid var(--hair);
-    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  /* Sits below the size dock, clear of the artwork. Stays put in full screen so a
+     recording always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 64px); left:calc(var(--rail) + 16px); z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px;
+    border:1px solid var(--hair); }
   #recDot.on{ display:flex; }
   /* Count-in. Big enough that you are in no doubt what is about to happen. */
 
   #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
-  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
   body.fs #recDot{ top:14px; }
   @keyframes blink{ 50%{opacity:.2;} }
 
-  /* Left dock — one always-visible glassy rail, controls top-to-bottom (Attractor #dock). */
+  /* Left dock — one always-visible rail, controls top-to-bottom. Position only;
+     OPALAB.css paints it. */
   #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
-    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
-    background:var(--panel); border-right:1px solid var(--edge);
-    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
-    display:flex; flex-direction:column; gap:0; }
-  /* OPALAB.css paints #dock with a dark ground gradient (right for dark mode); flatten it in light */
-  body:not(.dark) #dock{ background:var(--panel); }
-  /* grouped sections with free dividers */
+    overflow-y:auto; overflow-x:hidden;
+    display:flex; flex-direction:column; }
+  /* grouped sections */
   .group{ display:flex; flex-direction:column; gap:9px; }
-  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--edge); }
-  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--mute); font-weight:600; }
-  .rowhint{ margin:0 0 2px; font-size:10px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
-  /* sliders — Attractor .knob: label + live readout + range */
+  .rowhint{ margin:0 0 2px; line-height:1.5; color:var(--mute); }
+  /* sliders — .knob: label + live readout + range */
   .knob{ display:flex; flex-direction:column; gap:2px; min-width:0; }
-  .knob label{ display:flex; justify-content:space-between; gap:8px; font-size:11px; letter-spacing:.04em;
-    text-transform:uppercase; color:var(--mute); }
-  .knob b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  .knob label{ display:flex; justify-content:space-between; gap:8px; color:var(--mute); }
+  .knob b{ color:var(--ink); font-variant-numeric:tabular-nums; }
   /* slider is owned by OPALAB.css */
   /* generic (non-slider) group: segs, source, labelled rows */
   .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
@@ -114,66 +75,29 @@
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
   .grid2 .btn, .btn.full{ width:100%; }
 
-  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:10px; line-height:1.25;
-    color:var(--mute); white-space:normal; }
-  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
-  /* seg base is owned by OPALAB.css (no border/overflow:hidden — it clipped the raised pills) */
-  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
-  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
-  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
-     the control they describe and get out of the way on click. */
-  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
-    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
-    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
-    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
-    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
-    pointer-events:none; opacity:0; transition:opacity .14s ease; }
-  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
-     underline is what the lane tabs use for that other meaning, so these fill instead. */
-
-  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
-    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
-    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
-  /* (Tape's old SVG dial styles removed — sliders now use the shared .knob slider look.) */
-  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
-    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
-    padding:8px 12px; cursor:pointer; border-radius:2px; }
-  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  .btn:disabled{ opacity:.35; cursor:not-allowed; }
-  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
-  input[type=text]::placeholder{ color:var(--mute); }
+  .grp > label{ line-height:1.25; color:var(--mute); white-space:normal; }
+  .grp > label b{ color:var(--ink); font-variant-numeric:tabular-nums; }
+  /* seg / select / .btn / fields are owned by OPALAB.css */
+  .seg.lanes button{ display:flex; align-items:center; justify-content:center; gap:6px; }
 
   /* step editor — a row of cells for the active lane; click one to set its note */
 
   #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
-  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
-  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
-  #veil .orb{ width:88px; height:88px; border-radius:50%;
-    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
-    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
-  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  #veil h1{ font-weight:500; font-size:15px; margin:0; }
+  #veil p{ max-width:38ch; line-height:1.8; color:var(--mute); margin:0; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%; background:var(--ink); opacity:.85;
+    animation:pulse 5s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.5; } 50%{ transform:scale(1.08); opacity:.85; } }
 
   /* ---- Tape's own ---- */
-  #reels{ position:fixed; left:16px; bottom:14px; z-index:5; display:flex; gap:7px; pointer-events:none; }
-  .reel{ font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute);
-    padding:5px 9px; border-radius:999px; border:1px solid var(--hair); background:var(--panel);
-    -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
-    pointer-events:auto; cursor:pointer; }
-  .reel:hover{ border-color:var(--edge); }
-  .reel b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
-  .reel.armed{ color:#ff4d5e; border-color:#ff4d5e; }
-  .reel-x{ opacity:.4; margin-left:2px; } .reel:hover .reel-x{ opacity:1; }
-  body.fs #reels{ display:none; }
-  .seg.arm button[aria-pressed="true"]{ background:#ff4d5e; color:#fff; box-shadow:none; }
-  .seg.frz button[aria-pressed="true"]{ background:currentColor; box-shadow:none; }
-  .seg.frz button[aria-pressed="true"] span{ color:var(--paper); font-weight:600; }
-  .seg.frz button[aria-pressed="false"] span{ opacity:.5; }
-  .seg.loops button[aria-pressed="true"]{ color:var(--ink); background:transparent;
-    box-shadow:inset 0 -2px 0 currentColor; }
-  .seg.loops button{ font-weight:600; }
+  /* the four loop readouts, as plain rows inside the Loops island */
+  .reel{ display:flex; align-items:center; gap:8px; color:var(--mute);
+    padding:5px 0; cursor:pointer; }
+  .reel b{ color:var(--ink); font-variant-numeric:tabular-nums; }
+  .reel .reel-len{ font-family:var(--mono); }
+  .reel.armed{ color:var(--rec); }
+  .reel-x{ margin-left:auto; opacity:.45; } .reel:hover .reel-x{ opacity:1; }
   .wearbar{ height:3px; border-radius:2px; background:var(--track); overflow:hidden; }
   .wearbar i{ display:block; height:100%; background:var(--ink); width:0; transition:width .3s linear; }
 </style>
@@ -193,14 +117,12 @@
 </div>
 <div id="status"></div>
 <div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
-<div id="reels"></div>
 <button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
 
 <div id="dock">
   <div class="group">
     <div class="group__t">View</div>
     <div class="grid2">
-      <button class="btn" id="themeBtn" aria-label="light or dark" title="Light / dark" data-tip="Switches the interface between light and dark.">Theme</button>
       <button class="btn" id="pauseBtn" aria-label="pause" title="Pause / play &#183; space" aria-pressed="false" data-tip="Pauses the loops and holds the picture still. Press again, or Space, to carry on.">Pause</button>
       <button class="btn" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only" data-tip="Fills the screen with the canvas alone. Press Esc or F to leave.">Full screen</button>
     </div>
@@ -225,6 +147,7 @@
       <button class="btn" id="eraseBtn" data-tip="Wipes this loop and resets its wear, without touching the others.">Erase</button>
       <button class="btn" id="eraseAll" data-tip="Wipes all four loops back to silence.">Erase all</button>
     </div>
+    <div id="reels" data-tip="All four loops at a glance — number, length, and whether it is armed or held. Click one to wipe it."></div>
   </div>
 
   <div class="group">
@@ -307,7 +230,7 @@
   const state={ ready:false, paused:false, dec:18, drv:22, wow:26, flt:18, his:24, dpt:70,
     inLvl:0.70, mon:0.60, mst:0.80, src:'voice', vp:48, recAudio:false };
 
-  let THEME = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  let THEME = 'light';   // the Lab shell is one flat light surface — the canvas draws to match
   const isDark=()=>THEME==='dark';
   const hsla=(h,s,l,a)=>`hsla(${((h%360)+360)%360},${s}%,${l}%,${a})`;
   const IL=l=>isDark()? l : 100-l*0.82;                       // light theme wants darker ink
@@ -500,8 +423,7 @@
     const el=$('reels'); if(!el) return; el.innerHTML='';
     loops.forEach((lp,i)=>{ const d=document.createElement('div');
       d.className='reel'+(lp.arm?' armed':'');
-      d.innerHTML=`<b>${i+1}</b> ${lp.len.toFixed(1)}s${lp.frz?' &#183; held':''} <span class="reel-x">&#10005;</span>`;
-      d.style.borderColor = lp.arm ? '#ff4d5e' : '';
+      d.innerHTML=`<b>${i+1}</b> <span class="reel-len">${lp.len.toFixed(1)}s</span>${lp.arm?' &#183; armed':''}${lp.frz?' &#183; held':''} <span class="reel-x">&#10005;</span>`;
       d.title=`clear loop ${i+1}`; d.onclick=()=>eraseLoop(i);
       el.appendChild(d); });
   }
@@ -654,10 +576,9 @@
     strike(state.vp + Math.floor(deg/SC.length)*12 + SC[deg%SC.length]);
   });
 
-  // theme / full screen / pause
+  // full screen / pause  (no theme toggle — the Lab shell is one flat light surface)
   function setTheme(t){ THEME=t; document.body.classList.toggle('dark',t==='dark');
-    $('themeBtn').setAttribute('aria-pressed',String(t==='dark')); refreshSegs(); refreshReels(); }
-  $('themeBtn').addEventListener('click',()=>setTheme(isDark()?'light':'dark'));
+    refreshSegs(); refreshReels(); }
   function setFs(on){ document.body.classList.toggle('fs',on);
     if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
     else if(!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});

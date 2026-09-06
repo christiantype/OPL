@@ -7,37 +7,20 @@
 <title>Letter Strings — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
 <style>
-  /* Pattern shares the family chrome with the other Lab tools. */
-
-  /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
-     same knobs. What differs is everything below the chrome. */
-  :root{ --liton:#6f9bff; --top:120px; --rail:290px; }
-  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
-    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
-    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  /* Layout only. Every token and control — buttons, sliders, fields, islands, the size
+     dock — is owned by shared/OPALAB.css, which loads last. */
+  :root{ --top:120px; --rail:290px; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
     font-family:var(--font, 'IBM Plex Sans', system-ui, -apple-system, sans-serif); overflow:hidden; }
-  /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
-     wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
-  #stagewrap{ position:fixed; top:var(--top); left:0; right:0; bottom:0; }
-  #stage{ display:block; width:100%; height:100%; touch-action:none; }
-
-  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
-     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
-     so the shared chrome gets carried into the theme too. The brand link sets its colour
-     inline via mountTopbar, hence !important. */
-  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
-  body.dark .opal-brand{ color:var(--ink) !important; }
-  body.dark .opal-subhead__name{ color:var(--ink); }
-  body.dark .opal-brand .opal-product,
-  body.dark .opal-subhead__desc,
-  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
-  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
+  /* the canvas area: the grey mat right of the rail, with the artboard centred on it */
+  #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center; padding:28px; }
+  #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; }
 
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
   body.fs .rail, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
-  body.fs #stagewrap{ top:0; left:0; }
+  body.fs #stagewrap{ top:0; left:0; padding:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
   body.fs #exitFs{ display:flex; }
   body.fs.hint #exitFs{ opacity:1; }
@@ -45,146 +28,60 @@
   @media (max-width:560px){ :root{ --top:112px; } }
 
   #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
-    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+    color:var(--mute); display:none; }
 
   /* the floating control strip is retired — its buttons now live in the rail's View section */
-  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
-    background:var(--cell); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
-    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  .icon{ appearance:none; width:34px; height:34px; border:1px solid var(--hair);
+    background:var(--cell); color:var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:0; }
   .icon svg{ display:block; }
-  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
-     fixed right offset kept colliding with it. Stays put in full screen so a recording
-     always shows its own timer. */
-  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
-    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
-    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
-    background:var(--cell); border:1px solid var(--hair);
-    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  /* Sits below the size dock, clear of the artwork. Stays put in full screen so a
+     recording always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 64px); left:calc(var(--rail) + 16px); z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; border:1px solid var(--hair); }
   #recDot.on{ display:flex; }
-  /* Count-in. Big enough that you are in no doubt what is about to happen. */
-
-  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
-  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:var(--rec); animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
   body.fs #recDot{ top:14px; }
   @keyframes blink{ 50%{opacity:.2;} }
 
-  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
-     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
-     work with. */
-
+  /* The left rail. Position + layout only — OPALAB.css paints it and its islands. */
   .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
-    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
-    background:var(--cell);
-    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
-    display:flex; flex-direction:column; transition:transform .28s ease; }
-  .rail-l{ left:0; border-right:1px solid var(--line); }
-  .rail-r{ right:0; border-left:1px solid var(--line); }
-  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
-    padding:14px 0; border-bottom:1px solid var(--line); }
-  .row:last-of-type{ border-bottom:0; }
-  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
-     past when you only want two of them. */
-  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:9px; color:var(--ink);
-    font-weight:600; opacity:.9; padding-bottom:2px;
+    overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; }
+  .rail-l{ left:0; }
+  .rail-r{ right:0; }
+  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px; }
+  /* Section heads fold their section away — nine sections is a lot to scroll past
+     when you only want two of them. */
+  .rowhead{ color:var(--ink); padding-bottom:2px;
     display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
     width:100%; background:none; border:0; font-family:inherit; text-align:left; }
-  .rowhead:hover{ opacity:1; }
-  .rowhint{ margin:0 0 2px; font-size:9.5px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhint{ margin:0 0 2px; line-height:1.5; color:var(--mute); }
   .rowhead::before{ content:''; width:0; height:0; flex:none;
     border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
     transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
   .row.folded .rowhead::before{ transform:rotate(0deg); }
   .row.folded > *:not(.rowhead){ display:none; }
-  .row.folded{ padding-bottom:10px; }
   .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
   .rail input[type=range]{ width:100%; }
   .rail select{ width:100%; }
   .rail .seg{ width:100%; }
-  .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
+  .rail .seg button{ flex:1; text-align:center; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .quad .grp > label{ font-size:8px; letter-spacing:.08em; }
-  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
-     nothing between you and the piece unless you ask for it. */
-  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
-  .rail-l{ transform:translateX(-100%); }
-  .rail-r{ transform:translateX(100%); }
   .rail.open{ transform:none; }
 
-  /* (chrome-fade rules removed along with the floating bar) */
+  .grp > label{ line-height:1.25; color:var(--mute); white-space:normal; }
+  .grp > label b{ color:var(--ink); font-variant-numeric:tabular-nums; }
+  /* seg / select / .btn / fields are owned by OPALAB.css */
 
-  /* Mood — the one control that stays reachable. */
-
-  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:9px; line-height:1.25;
-    color:var(--mute); white-space:nowrap; }
-  .rail .grp > label{ white-space:normal; }
-  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
-  /* seg base is owned by OPALAB.css (no border/overflow:hidden — it clipped the raised pills) */
-  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
-  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
-  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
-     the control they describe and get out of the way on click. */
-  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
-    background:var(--cell); border:1px solid var(--hair); color:var(--ink);
-    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
-    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
-    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
-    pointer-events:none; opacity:0; transition:opacity .14s ease; }
-  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
-     underline is what the lane tabs use for that other meaning, so these fill instead. */
-
-  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
-    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
-    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
-  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
-     it's just visually replaced, so listeners and readouts are untouched. */
-  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
-  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
-    opacity:0; margin:0; pointer-events:none; }
-  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
-  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
-  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
-    transition:stroke-dasharray .04s linear; }
-  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
-  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
-  .knob:focus-visible{ outline:none; }
-  .knob:focus-visible .k-hub{ stroke:var(--ink); }
-  .knob.drag .k-vl{ stroke-width:3.6; }
-  .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
-  .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
-  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:9px; line-height:1.15;
-    color:var(--mute); text-align:center; white-space:nowrap; }
-  .kcell .kval{ font-size:9px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
-  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
-    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
-    padding:8px 12px; cursor:pointer; border-radius:2px; }
-  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  .btn:disabled{ opacity:.35; cursor:not-allowed; }
-  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
-  input[type=text]::placeholder{ color:var(--mute); }
-
-  /* step editor — a row of cells for the active lane; click one to set its note */
-
-  #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
-  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
-  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
-  #veil .orb{ width:88px; height:88px; border-radius:50%;
-    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
-    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
-  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
-  @media (max-width:560px){ input[type=range]{ width:82px; } }
-
-  #stage{ background:transparent; touch-action:none; }
-  #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none; font-family:ui-monospace,Menlo,monospace; font-size:10px; letter-spacing:.05em; color:var(--mute); }
-  #hint b{ color:var(--ink); font-weight:600; } body.fs #hint{ display:none; }
-  select.sel{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink); font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
-  .cin{ display:flex; align-items:center; gap:8px; } .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
-  .cin label{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); } .swatches{ display:flex; gap:8px; } .swatches .cin{ flex:1; }
-  .rowhint{ opacity:.74; }
+  #hint{ position:fixed; left:calc(var(--rail) + 16px); bottom:14px; z-index:5; pointer-events:none;
+    font-family:var(--mono); font-size:12px; color:var(--mute); }
+  #hint b{ color:var(--ink); font-weight:500; } body.fs #hint{ display:none; }
+  select.sel{ width:100%; }
+  .cin{ display:flex; align-items:center; gap:8px; }
+  .cin label{ color:var(--mute); }
+  .swatches{ display:flex; gap:8px; } .swatches .cin{ flex:1; }
 </style>
   <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
 </head>
@@ -227,7 +124,15 @@ let drag=null;   // {x,y,px,py}
 // ---------------- geometry ----------------
 function aspectWH(){ const [a,b]=P.aspect.split(':').map(Number), L=P.longEdge; return a>=b?[L,Math.round(L*b/a)]:[Math.round(L*a/b),L]; }
 function CW(){ return aspectWH()[0]; } function CH(){ return aspectWH()[1]; }
-function resize(){ const d=Math.min(devicePixelRatio||1,2); stage.width=(innerWidth*d)|0; stage.height=(innerHeight*d)|0; }
+// The artboard letterboxes inside #stagewrap (the grey mat right of the rail): the canvas
+// ELEMENT carries the artwork's aspect, so it reads as a board on the mat like every tool.
+function resize(){ const wrap=document.getElementById('stagewrap'); if(!wrap) return;
+  const box=wrap.getBoundingClientRect(), PAD=56;                       // #stagewrap padding, both sides
+  const W=comp.width||CW(), H=comp.height||CH();
+  const s=Math.min(Math.max(40,box.width-PAD)/W, Math.max(40,box.height-PAD)/H);
+  stage.style.width=(W*s)+'px'; stage.style.height=(H*s)+'px';
+  const d=Math.min(devicePixelRatio||1,2);
+  stage.width=Math.max(1,Math.round(W*s*d)); stage.height=Math.max(1,Math.round(H*s*d)); }
 addEventListener('resize',resize);
 
 // ---------------- noise ----------------
@@ -253,7 +158,7 @@ function buildStream(need){ const segs=tokenize(P.text), rules=(P.colors||[]).fi
 
 // ---------------- build ----------------
 function build(){
-  const W=CW(), H=CH(); comp.width=W; comp.height=H;
+  const W=CW(), H=CH(); comp.width=W; comp.height=H; resize();
   strands=[]; nodes=[];
   const m=Math.max(24,P.size*1.6);
   if(is3D()){ build3D(P.shape); return; }
@@ -393,8 +298,8 @@ function drawClock(W,H){ const cx=W/2,cy=H/2,R=Math.min(W,H)*0.5*P.handLen;
 function blit(){ const sw=stage.width,sh=stage.height; sctx.setTransform(1,0,0,1,0,0);
   const paper=getComputedStyle(document.body).getPropertyValue('--paper').trim()||'#111';
   sctx.fillStyle=paper; sctx.fillRect(0,0,sw,sh); if(!comp.width) return;
-  const sc=Math.min(sw/comp.width,sh/comp.height)*0.94, dw=comp.width*sc, dh=comp.height*sc, ox=(sw-dw)/2, oy=(sh-dh)/2;
-  sctx.drawImage(comp,ox,oy,dw,dh); sctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--edge').trim(); sctx.lineWidth=1; sctx.strokeRect(ox+.5,oy+.5,dw-1,dh-1);
+  const sc=Math.min(sw/comp.width,sh/comp.height), dw=comp.width*sc, dh=comp.height*sc, ox=(sw-dw)/2, oy=(sh-dh)/2;
+  sctx.drawImage(comp,ox,oy,dw,dh);
   compRect={ox,oy,sc}; }
 let compRect={ox:0,oy:0,sc:1};
 
@@ -431,7 +336,7 @@ function buildPanel(){
   const color=(key,label)=>{ const cin=el('div','cin'); const inp=el('input'); inp.type='color'; inp.value=P[key]; inp.oninput=()=>{ P[key]=inp.value; }; cin.appendChild(inp); cin.appendChild(el('label',null,label)); refs.push({key,inp,kind:'color'}); return cin; };
 
   const gT=grp('Text','The characters that fill the strings. It cycles through them.');
-  const ta=el('textarea'); ta.value=P.text; ta.rows=3; ta.style.cssText='width:100%;box-sizing:border-box;background:var(--cell);border:1px solid var(--hair);color:var(--ink);border-radius:4px;font:12px ui-monospace,monospace;padding:8px'; ta.oninput=()=>{ P.text=ta.value; build(); }; gT.appendChild(ta);
+  const ta=el('textarea'); ta.value=P.text; ta.rows=3; ta.style.cssText='width:100%;box-sizing:border-box;font:13px var(--mono)'; ta.oninput=()=>{ P.text=ta.value; build(); }; gT.appendChild(ta);
   select(gT,'font','Typeface',[{t:'Mono',v:'mono'},{t:'Sans',v:'sans'},{t:'Serif',v:'serif'},{t:'Custom (uploaded)',v:'custom'}]);
   const fb=el('button','btn','Upload font (.ttf/.otf/.woff)'); fb.style.cssText='width:100%;margin-top:6px'; fb.onclick=()=>document.getElementById('fontFile').click(); gT.appendChild(fb);
 
@@ -478,10 +383,9 @@ function buildPanel(){
   const gE=grp('Motion','Re-settle the letters from scratch.');
   const rr=el('div',null,''); rr.style.cssText='display:flex;gap:6px'; const bReset=el('button','btn','Re-settle'); bReset.style.flex='1'; bReset.onclick=build; rr.appendChild(bReset); gE.appendChild(rr);
 
-  // View — theme, playback and full screen, moved off the floating bar into the rail
-  const gV=grp('View','Theme, playback and full screen.');
+  // View — playback and full screen, moved off the floating bar into the rail
+  const gV=grp('View','Playback and full screen.');
   const vbtn=(id,label)=>{ const b=el('button','btn',label); b.id=id; b.style.width='100%'; gV.appendChild(b); return b; };
-  vbtn('themeBtn','Theme');
   vbtn('playBtn','Pause');
   vbtn('fsBtn','Full screen');
 
@@ -510,7 +414,6 @@ function showTip(host){ const text=host.getAttribute('data-tip'); if(!text)retur
 function setPlayIcon(){ const b=document.getElementById('playBtn'); if(!b)return; b.setAttribute('aria-pressed',String(P.play)); b.textContent=P.play?'Pause':'Play'; }
 function setFs(on){ document.body.classList.toggle('fs',on); if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{}); else if(!on&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{}); }
 function wireBar(){ document.getElementById('playBtn').onclick=()=>{ P.play=!P.play; setPlayIcon(); };
-  document.getElementById('themeBtn').onclick=()=>{ document.body.classList.toggle('dark'); };
   document.getElementById('fsBtn').onclick=()=>setFs(!document.body.classList.contains('fs'));
   document.getElementById('exitFs').onclick=()=>setFs(false);
   // (the rail is always open now — the show/hide toggle was removed with the floating bar)
@@ -535,11 +438,11 @@ function beginRec(){ const mime=pickMime(); if(!mime)return; const FPS=60, strea
 function renderColorRules(){ const list=document.getElementById('colorList'); if(!list) return; list.innerHTML='';
   if(!P.colors.length){ const hint=el('p','rowhint','No coloured words yet.'); hint.style.margin='0 0 6px'; list.appendChild(hint); }
   P.colors.forEach((r,i)=>{ const row=el('div'); row.style.cssText='display:flex;gap:5px;align-items:center;margin-bottom:5px';
-    const w=el('input'); w.type='text'; w.value=r.word; w.placeholder='word'; w.spellcheck=false; w.style.cssText='flex:1;min-width:0;background:var(--cell);border:1px solid var(--hair);color:var(--ink);font:inherit;font-size:11px;padding:5px 6px;border-radius:2px;text-transform:uppercase';
+    const w=el('input'); w.type='text'; w.value=r.word; w.placeholder='word'; w.spellcheck=false; w.style.cssText='flex:1;min-width:0';
     w.oninput=()=>{ r.word=w.value; build(); };
-    const c=el('input'); c.type='color'; c.value=r.color; c.style.cssText='width:26px;height:24px;border:1px solid var(--hair);background:none;border-radius:4px;padding:0;cursor:pointer'; c.oninput=()=>{ r.color=c.value; build(); };
-    const n=el('input'); n.type='number'; n.min='1'; n.value=r.count; n.title='times coloured'; n.style.cssText='width:44px;background:var(--cell);border:1px solid var(--hair);color:var(--ink);font:inherit;font-size:11px;padding:5px;border-radius:2px'; n.oninput=()=>{ r.count=Math.max(1,parseInt(n.value)||1); build(); };
-    const x=el('button'); x.innerHTML='&#10005;'; x.style.cssText='background:none;border:0;color:var(--mute);cursor:pointer;font-size:12px;padding:2px 4px'; x.onclick=()=>{ P.colors.splice(i,1); renderColorRules(); build(); };
+    const c=el('input'); c.type='color'; c.value=r.color; c.style.cssText='flex:none'; c.oninput=()=>{ r.color=c.value; build(); };
+    const n=el('input'); n.type='number'; n.min='1'; n.value=r.count; n.title='times coloured'; n.style.cssText='width:58px;flex:none'; n.oninput=()=>{ r.count=Math.max(1,parseInt(n.value)||1); build(); };
+    const x=el('button'); x.innerHTML='&#10005;'; x.style.cssText='flex:none;width:26px;height:26px;padding:0;line-height:1'; x.onclick=()=>{ P.colors.splice(i,1); renderColorRules(); build(); };
     row.append(w,c,n,x); list.appendChild(row); }); }
 function loadFontFile(f){ if(!f) return; const rd=new FileReader(); rd.onload=e=>{ const ff=new FontFace('LS-Custom', e.target.result);
   ff.load().then(face=>{ document.fonts.add(face); P.font='custom'; syncPanel(); const sel=document.querySelector('#rail select.sel'); }).catch(()=>{}); }; rd.readAsArrayBuffer(f); }

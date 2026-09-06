@@ -10,18 +10,11 @@
 <style>
   /* Angel runs light: paper ground, ink marks. The canvas composites with multiply
      rather than the usual additive glow — see BLEND in the script. */
-  /* Angel runs LIGHT by default (paper ground). OPALAB.css loads last and sets dark :root tokens,
-     so these are raised to html:root specificity to keep the light default; body.dark still wins
-     in the tree for dark mode. */
-  html:root{ --ink:#141414; --hair:rgba(0,0,0,.26); --mute:rgba(0,0,0,.66); --paper:#ffffff;
-    --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --cell:rgba(255,255,255,.75);
-    --track:rgba(0,0,0,.3); --liton:#6f9bff; --top:120px; --rail:300px; }
-  body.dark{ --ink:#f2f4f8; --hair:rgba(255,255,255,.26); --mute:rgba(255,255,255,.72); --paper:#07080f;
-    --panel:rgba(14,15,22,.72); --edge:rgba(255,255,255,.16); --cell:rgba(255,255,255,.07);
-    --track:rgba(255,255,255,.3); --liton:#8ab0ff; }
+  /* layout only — every control is owned by OPALAB.css (loaded last). The two tool-private
+     tokens below just alias the shared ones so the tool's own bits stay in step. */
+  :root{ --top:120px; --rail:300px; --liton:#6f9bff; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
-    font-family:var(--font, 'IBM Plex Sans', system-ui, -apple-system, sans-serif); overflow:hidden; }
+  html,body{ margin:0; height:100%; overflow:hidden; }
   /* A canvas is a replaced element and won't stretch to an inset box, so it lives inside a
      wrapper that does — the wrapper's rect is the single source of truth for canvas size. */
   #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; display:flex; align-items:center; justify-content:center; padding:24px; }
@@ -29,61 +22,26 @@
   /* let the field take the whole width when the rail is tucked away */
   body.norail #stagewrap{ left:0; }
 
-  /* opal.css hard-codes a white topbar and leaves .opal-subhead__name to inherit its colour.
-     In dark mode that inherits near-white ink onto a white bar and the tool name disappears —
-     so the shared chrome gets carried into the theme too. The brand link sets its colour
-     inline via mountTopbar, hence !important. */
-  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
-  body.dark .opal-brand{ color:var(--ink) !important; }
-  body.dark .opal-subhead__name{ color:var(--ink); }
-  body.dark .opal-brand .opal-product,
-  body.dark .opal-subhead__desc,
-  body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
-  body.dark .opal-brand .opal-divider{ background:rgba(255,255,255,.2); }
-
   /* Full-screen: canvas only. Everything chrome-like steps out of the way. */
-  body.fs #dock, body.fs #kbdBtn, body.fs #sizeDock, body.fs #hint, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
+  body.fs #dock, body.fs #sizeDock, body.fs .opal-topbar, body.fs .opal-subhead{ display:none !important; }
   body.norail #dock{ display:none; }
   body.fs #stagewrap{ top:0; left:0; padding:0; }
   #exitFs{ position:fixed; top:14px; right:14px; z-index:12; display:none; opacity:0; transition:opacity .25s ease; }
-  body.fs #exitFs{ display:flex; }
+  body.fs #exitFs{ display:inline-flex; }
   body.fs.hint #exitFs{ opacity:1; }
 
-  @media (max-width:560px){ html:root{ --top:112px; } }
+  @media (max-width:560px){ :root{ --top:112px; } }
 
   #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
-    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+    font-size:11px; color:var(--mute); display:none; }
 
-  /* The keyboard toggle stays a floating icon (theme / pause / full screen moved to the rail's
-     View island). It tucks under the canvas-size dock, pinned top-right. */
-  #kbdBtn{ position:fixed; top:calc(var(--top) + 56px); right:14px; z-index:10; }
-  /* canvas-size dock — pinned top-right on every tool (shared shell standard). On Angel the
-     working canvas is a full-viewport instrument, so this sets the EXPORTED frame and stays in
-     sync with the Export section's size buttons. */
-  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:14px; z-index:12; }
-  #sizeDock select{ background:var(--panel); color:var(--ink); border:1px solid var(--hair); border-radius:2px;
-    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
-    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
-    background-image:none; }
-  /* centered caption over the canvas — fades once you get going */
-  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%); z-index:7;
-    font-size:12px; letter-spacing:.02em; color:var(--mute); background:var(--panel);
-    padding:6px 14px; border-radius:999px; pointer-events:none; transition:opacity .5s ease;
-    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid var(--hair); }
-  #hint.gone{ opacity:0; }
-  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
-    background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
-    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
-  .icon svg{ display:block; }
-  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
-     fixed right offset kept colliding with it. Stays put in full screen so a recording
-     always shows its own timer. */
+  /* canvas-size dock — pinned top-left of the canvas by OPALAB (shared shell standard). On
+     Angel the working canvas is a full-viewport instrument, so this sets the EXPORTED frame
+     and stays in sync with the Export section's size buttons. */
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
+  /* Stays put in full screen so a recording always shows its own timer. */
   #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
-    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
-    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
-    background:var(--panel); border:1px solid var(--hair);
-    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
   #recDot.on{ display:flex; }
   /* Count-in. Big enough that you are in no doubt what is about to happen. */
   #countin{ position:fixed; inset:0; z-index:28; display:none; flex-direction:column; align-items:center;
@@ -91,75 +49,46 @@
   #countin.on{ display:flex; }
   #countin b{ font-size:118px; font-weight:200; line-height:1; letter-spacing:-.04em; color:var(--ink);
     font-variant-numeric:tabular-nums; animation:countpop .9s ease-out; }
-  #countin span{ font-size:10px; letter-spacing:.3em; text-transform:uppercase; color:var(--mute); }
+  #countin span{ font-size:12px; color:var(--mute); }
   @keyframes countpop{ from{ opacity:0; transform:scale(1.5); } 40%{ opacity:1; } to{ opacity:.25; transform:scale(1); } }
   /* Waveform. Kept region full strength, trimmed ends dimmed rather than hidden, so you can
      see what you are leaving out and drag it back. */
-  #chopCv{ width:100%; height:58px; display:block; border:1px solid var(--hair); border-radius:2px;
+  #chopCv{ width:100%; height:58px; display:block; border:1px solid var(--hair); border-radius:var(--r-input);
     background:var(--cell); cursor:ew-resize; touch-action:none; }
   #chopWrap.empty #chopCv{ opacity:.4; cursor:default; }
   #chopWrap.empty .btn, #chopWrap.empty select{ opacity:.4; pointer-events:none; }
-  #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
-  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  #recDot i{ width:7px;height:7px;border-radius:50%;background:var(--rec); animation:blink 1s infinite; flex:none; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
   body.fs #recDot{ top:14px; }
   @keyframes blink{ 50%{opacity:.2;} }
 
   /* One flush-left rail — the shared shell standard. Both former rails collapse into this
-     single column; the playable field sits to its right. Frosted so the panel reads apart
-     from the white topbar. */
-  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
-    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
-    background:var(--panel); border-right:1px solid var(--edge);
-    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
-    display:flex; flex-direction:column; gap:0; }
-  body.dark #dock{ background:var(--panel); border-right-color:var(--edge); }
-  /* labelled sections — dividers come free between them */
+     single column; the playable field sits to its right. */
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; overflow-x:hidden; }
   .group{ display:flex; flex-direction:column; align-items:stretch; gap:11px; }
-  .group + .group{ margin-top:16px; padding-top:16px; border-top:1px solid var(--edge); }
-  .group__t{ text-transform:uppercase; letter-spacing:.12em; font-size:10px; color:var(--ink);
-    font-weight:600; }
-  .rowhint{ margin:-3px 0 1px; font-size:11px; line-height:1.5; color:var(--mute); letter-spacing:.01em; }
+  .rowhint{ margin:-3px 0 1px; line-height:1.5; color:var(--mute); }
   .grp{ display:flex; flex-direction:column; gap:7px; min-width:0; }
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .grid2 .btn{ width:100%; }
+  .btn.full{ width:100%; }
   #dock select{ width:100%; }
   #dock .seg{ width:100%; }
   #dock .seg button{ flex:1; text-align:center; padding:7px 4px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .quad{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
 
-  /* Chrome fades out while you listen and comes back on movement. */
-  #kbdBtn{ transition:opacity .5s ease; }
-  body.idle #kbdBtn{ opacity:0; pointer-events:none; }
-  body.panels #kbdBtn{ opacity:1; pointer-events:auto; }
-
-  /* Mood — the one control that stays reachable. */
-  #mood{ position:fixed; left:calc(50% + var(--rail)/2); bottom:26px; transform:translateX(-50%); z-index:9;
-    display:flex; align-items:center; gap:12px; padding:9px 16px; border-radius:999px;
-    border:1px solid var(--hair); background:var(--panel); color:var(--ink); cursor:pointer;
-    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
-    font:inherit; font-size:10px; letter-spacing:.22em; text-transform:uppercase;
-    transition:opacity .5s ease; }
-  body.idle #mood{ opacity:0; }
-  body.fs #mood{ display:none; }
-  #mood b{ font-weight:600; letter-spacing:.18em; }
-  #mood span{ opacity:.5; font-size:10px; letter-spacing:.14em; }
-  body.kbd #mood{ bottom:168px; }
-
   /* Playable keyboard — plays the selected lane's voice; computer keys or clicks. */
   #kbd{ position:fixed; left:calc(50% + var(--rail)/2); bottom:26px; transform:translateX(-50%); z-index:9;
-    display:flex; flex-direction:column; gap:7px; padding:9px; border-radius:10px; user-select:none;
+    display:flex; flex-direction:column; gap:7px; padding:9px; border-radius:var(--r-island); user-select:none;
     max-width:calc(100vw - 32px);
-    background:var(--panel); -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
-    border:1px solid var(--hair); box-shadow:0 12px 40px -20px rgba(0,0,0,.45); transition:opacity .5s ease; }
+    background:var(--island); border:1px solid var(--hair); transition:opacity .5s ease; }
   #kbd.hidden{ display:none; }
   body.idle #kbd{ opacity:0; pointer-events:none; }
   body.fs #kbd{ display:none; }
-  #kbdHead{ display:flex; align-items:center; gap:8px; font-size:10px; letter-spacing:.13em;
-    text-transform:uppercase; color:var(--mute); padding:0 2px; }
+  #kbdHead{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--mute); padding:0 2px; }
   #kbdHead b{ color:var(--ink); font-weight:600; }
-  #kbdMode{ padding:3px 7px; border-radius:2px; border:1px solid var(--hair); color:var(--ink); }
-  #kbd.assign #kbdMode{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  #kbdMode{ padding:3px 7px; border-radius:var(--r-input); border:1px solid var(--hair); color:var(--ink); }
+  #kbd.assign #kbdMode{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   #kbdKeys{ position:relative; display:flex; height:88px; overflow-x:auto; overflow-y:hidden; }
   .wk{ position:relative; width:24px; flex:none; height:100%; border:1px solid var(--hair); border-top:0;
     border-radius:0 0 4px 4px; background:var(--paper); cursor:pointer; touch-action:none; }
@@ -167,26 +96,20 @@
     background:var(--ink); border-radius:0 0 4px 4px; cursor:pointer; touch-action:none; }
   .wk.lit, .bk.lit{ background:var(--liton); }
   /* the step's current note stays marked, so you can see what you are replacing */
-  .wk.held{ box-shadow:inset 0 -3px 0 var(--ink); }
-  .bk.held{ box-shadow:inset 0 -3px 0 var(--liton); }
+  .wk.held{ border-bottom:3px solid var(--accent); }
+  .bk.held{ border-bottom:3px solid var(--liton); }
   .wk .kc{ position:absolute; bottom:4px; left:0; right:0; text-align:center; font-size:8px; color:var(--mute); pointer-events:none; }
   .wk .kn{ position:absolute; bottom:15px; left:0; right:0; text-align:center; font-size:7.5px;
-    letter-spacing:.04em; color:var(--mute); opacity:.75; pointer-events:none; }
-  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:10px; line-height:1.25;
-    color:var(--mute); white-space:nowrap; }
+    color:var(--mute); opacity:.75; pointer-events:none; }
+  .grp > label{ font-size:11px; line-height:1.25; color:var(--mute); white-space:nowrap; }
   #dock .grp > label{ white-space:normal; }
   .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
-  /* seg base is owned by OPALAB.css (no border/overflow:hidden — it clipped the raised pills) */
-  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
+  /* seg base + selected state are owned by OPALAB.css */
   .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
   /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
-     the control they describe and get out of the way on click. */
-  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
-    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
-    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
-    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
-    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
-    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+     the control they describe and get out of the way on click. The skin is OPALAB's. */
+  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px;
+    line-height:1.55; pointer-events:none; opacity:0; transition:opacity .14s ease; }
   /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
      underline is what the lane tabs use for that other meaning, so these fill instead. */
   .seg.lfolanes button{ padding:7px 9px; }
@@ -194,92 +117,70 @@
   .seg.lfolanes button[aria-pressed="true"]{ background:currentColor; box-shadow:none; }
   .seg.lfolanes button[aria-pressed="true"] span{ color:var(--paper); font-weight:600; }
   .seg.lfolanes button[aria-pressed="false"] span{ opacity:.5; }
-  .lanepop{ position:fixed; z-index:40; padding:10px; border-radius:10px;
-    background:var(--panel); border:1px solid var(--hair);
-    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
-    box-shadow:0 18px 44px -20px rgba(0,0,0,.55); }
-  .lanepop__t{ font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); padding-bottom:8px; }
+  .lanepop{ position:fixed; z-index:40; padding:10px; border-radius:var(--r-island);
+    background:var(--island); border:1px solid var(--hair); }
+  .lanepop__t{ font-size:11px; color:var(--mute); padding-bottom:8px; }
   .lanepop__g{ display:grid; grid-template-columns:repeat(6,18px); gap:6px; }
-  .lanepop__s{ width:18px; height:18px; border-radius:50%; border:0; cursor:pointer; padding:0;
-    box-shadow:0 0 0 1px rgba(0,0,0,.2) inset; }
-  .lanepop__s:hover{ transform:scale(1.14); }
-  .lanepop__s.on{ box-shadow:0 0 0 2px var(--ink), 0 0 0 3px var(--panel); }
+  .lanepop__s{ width:18px; height:18px; border-radius:50%; cursor:pointer; padding:0;
+    border:1px solid var(--hair); }
+  .lanepop__s.on{ outline:2px solid var(--accent); outline-offset:2px; }
   .lanepop__more{ display:flex; align-items:center; justify-content:space-between; gap:8px;
     margin-top:9px; padding-top:9px; border-top:1px solid var(--hair);
-    font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); cursor:pointer; }
+    font-size:11px; color:var(--mute); cursor:pointer; }
   .lanepop__more input{ width:26px; height:20px; padding:0; border:1px solid var(--hair);
-    background:none; border-radius:4px; cursor:pointer; }
+    background:none; border-radius:var(--r-input); cursor:pointer; }
   /* Muted reads as absent, not as selected — a boxed pill looked like the active tab next door. */
   .seg.mutes button[aria-pressed="true"]{ opacity:.3; background:transparent; box-shadow:none;
     text-decoration:line-through; text-decoration-thickness:1.5px; }
   .lane-dot{ width:8px; height:8px; border-radius:50%; flex:none; display:inline-block;
-    box-shadow:0 0 0 1px rgba(0,0,0,.18) inset; }
-  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
-    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
-    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
-  /* Flat sliders — the shared-shell control (rotary dials removed). The real <input type=range>
-     drives every existing handler and readout unchanged; the wrapper just lays out label + value. */
+    border:1px solid var(--hair); }
+  /* Sliders + selects + buttons are owned by OPALAB.css; the wrappers just lay out label + value. */
   .knob{ display:flex; flex-direction:column; gap:3px; min-width:0; }
   .knob > label{ display:flex; justify-content:space-between; gap:8px; align-items:baseline;
-    text-transform:uppercase; letter-spacing:.1em; font-size:10px; line-height:1.2; color:var(--mute); }
+    font-size:11px; line-height:1.2; color:var(--mute); }
   .knob > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
-  /* slider is owned by OPALAB.css */
-  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
-    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
-    padding:8px 12px; cursor:pointer; border-radius:2px; }
-  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   .btn:disabled{ opacity:.35; cursor:not-allowed; }
-  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
-  input[type=text]::placeholder{ color:var(--mute); }
+  input[type=text]{ width:100%; }
 
   /* step editor — a row of cells for the active lane; click one to set its note */
   #stepRow{ display:flex; flex-wrap:wrap; gap:3px; }
-  #stepRow button{ appearance:none; min-width:27px; height:27px; padding:0 5px; cursor:pointer;
-    border:1px solid var(--hair); background:var(--cell); color:var(--mute);
-    border-radius:2px; font:inherit; font-size:10px; letter-spacing:.02em; font-variant-numeric:tabular-nums;
-    transition:background .12s ease, color .12s ease, border-color .12s ease; }
-  #stepRow button:hover{ border-color:var(--mute); }
-  #stepRow button.on{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  #stepRow button{ position:relative; min-width:27px; height:27px; padding:0 5px !important;
+    font-size:11px; font-variant-numeric:tabular-nums; }
+  #stepRow button.on{ background:var(--accent) !important; color:var(--on-accent) !important; border-color:var(--accent) !important; }
   #stepRow button.samp::after{ content:''; position:absolute; left:50%; bottom:3px; transform:translateX(-50%);
     width:4px; height:4px; border-radius:50%; background:currentColor; }
-  #stepRow button{ position:relative; }
-  #stepRow button.sel{ box-shadow:0 0 0 2px var(--ink), 0 0 0 3px var(--paper); }
+  #stepRow button.sel{ outline:2px solid var(--accent); outline-offset:-2px; }
   #noteEd{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
   #noteEd.off{ opacity:.55; pointer-events:none; }
 
-  /* Arrangement strip. It sits above the mood button rather than in a rail, because a
+  /* Arrangement strip. It sits over the field rather than in a rail, because a
      timeline you cannot see while you play is not a timeline. */
-  #arr{ position:fixed; left:calc(50% + var(--rail)/2); bottom:76px; transform:translateX(-50%); z-index:9;
-    display:none; align-items:center; gap:9px; padding:7px 11px; border-radius:999px;
+  #arr{ position:fixed; left:calc(50% + var(--rail)/2); bottom:26px; transform:translateX(-50%); z-index:9;
+    display:none; align-items:center; gap:9px; padding:8px 12px; border-radius:var(--r-island);
     width:min(620px, calc(100vw - 40px));
-    background:var(--panel); border:1px solid var(--hair);
-    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
-    box-shadow:0 14px 40px -24px rgba(0,0,0,.5); transition:opacity .4s ease; }
+    background:var(--island); border:1px solid var(--hair); transition:opacity .4s ease; }
   body.arr #arr{ display:flex; }
-  body.kbd #arr{ bottom:218px; }
+  body.kbd #arr{ bottom:168px; }
   body.idle #arr{ opacity:.25; }
   body.fs #arr{ display:none; }
   .arrbtn{ appearance:none; width:26px; height:26px; flex:none; border-radius:50%;
-    border:1px solid var(--hair); background:transparent; color:var(--ink); cursor:pointer;
-    display:flex; align-items:center; justify-content:center; font-size:12px; padding:0; }
+    border:1px solid var(--hair); background:var(--cell); color:var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:12px; padding:0; line-height:1; }
   .arrbtn:disabled{ opacity:.3; cursor:not-allowed; }
-  .arrbtn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  #arrRec i{ width:9px; height:9px; border-radius:50%; background:#ff4d5e; display:block; }
-  #arrRec[aria-pressed="true"]{ background:#ff4d5e; border-color:#ff4d5e; }
+  .arrbtn[aria-pressed="true"]{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  #arrRec i{ width:9px; height:9px; border-radius:50%; background:var(--rec); display:block; }
+  #arrRec[aria-pressed="true"]{ background:var(--rec); border-color:var(--rec); }
   #arrRec[aria-pressed="true"] i{ background:#fff; border-radius:2px; width:8px; height:8px; }
-  #arr b, #arr span{ font-size:9.5px; letter-spacing:.08em; font-variant-numeric:tabular-nums;
+  #arr b, #arr span{ font-size:11px; font-variant-numeric:tabular-nums;
     flex:none; color:var(--ink); font-weight:600; }
   #arr span{ color:var(--mute); font-weight:400; }
   #arrCv{ flex:1 1 auto; height:26px; min-width:80px; cursor:pointer; touch-action:none; }
   #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
-  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
+  #veil h1{ font-weight:400; font-size:15px; margin:0; }
   #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
-  #veil .orb{ width:88px; height:88px; border-radius:50%;
-    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
-    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%; background:var(--ink);
+    animation:pulse 5s ease-in-out infinite; }
   @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
 </style>
 <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
@@ -289,7 +190,7 @@
 <div id="stagewrap"><canvas id="stage"></canvas></div>
 <div id="hint">Tap a ring to place steps · tap the open field for orbs</div>
 <div id="status"></div>
-<div id="recDot"><i></i><span id="recLabel">REC</span> <b id="recTime">0:00</b></div>
+<div id="recDot"><i></i><span id="recLabel">Rec</span> <b id="recTime">0:00</b></div>
 <div id="countin" aria-live="assertive"><b id="countinN">3</b><span>get ready</span></div>
 <div id="arr" aria-label="arrangement">
   <button class="arrbtn" id="arrRec" aria-label="record a performance" title="Record what you do &#183; R" aria-pressed="false"><i></i></button>
@@ -299,7 +200,6 @@
   <canvas id="arrCv" title="Click anywhere to jump there"></canvas>
   <span id="arrLen">&#8212;</span>
 </div>
-<button id="mood" aria-label="change mood" data-tip="Loads a whole patch at once — voices, notes, tuning and motion together. Tap to move somewhere else."><b id="moodName">Drone</b><span>mood</span></button>
 <div id="kbd" class="hidden" aria-label="playable keyboard"></div>
 <div id="sizeDock">
   <select id="aspect" title="Canvas / export size" data-tip="The shape of the exported still or video. Angel's live field fills the screen; this sets the frame it exports into.">
@@ -309,15 +209,15 @@
     <option value="1920/1080">Landscape · 16:9</option>
   </select>
 </div>
-<button class="icon" id="kbdBtn" aria-label="keyboard" title="Playable keyboard" aria-pressed="false">&#9835;</button>
-<button class="icon" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">&#10005;</button>
+<button class="btn" id="exitFs" aria-label="exit full screen" title="Exit (Esc)">Exit full screen</button>
 
 <div id="dock">
 <div class="group">
-    <div class="group__t">View</div>
+    <div class="group__t">Play</div>
+    <button class="btn full" id="mood" aria-label="change mood" data-tip="Loads a whole patch at once — voices, notes, tuning and motion together. Tap to move somewhere else.">Mood &#183; <b id="moodName">Drone</b></button>
     <div class="grid2">
-      <button class="btn" id="themeBtn" aria-label="light or dark" title="Light / dark" data-tip="Switches the interface between light and dark.">Theme</button>
       <button class="btn" id="pauseBtn" aria-label="pause" title="Pause / play &#183; space" aria-pressed="false" data-tip="Pauses the sound and holds the picture still. Press again, or Space, to carry on.">Pause</button>
+      <button class="btn" id="kbdBtn" aria-label="keyboard" title="Playable keyboard" aria-pressed="false" data-tip="Opens a playable keyboard under the field — play a lane's voice with the mouse or the computer keys.">Keyboard</button>
       <button class="btn" id="fsBtn" aria-label="full screen" title="Full screen &#8212; canvas only" data-tip="Fills the screen with the canvas alone. Press Esc or F to leave.">Full screen</button>
     </div>
   </div>
@@ -446,6 +346,9 @@
         <button data-v="haze" aria-pressed="false">Haze</button>
         <button data-v="camera" aria-pressed="false">Camera</button>
       </div>
+    </div>
+    <div class="grp" data-tip="The ground the piece is drawn on. On paper the marks darken into it; on a dark field they glow. Two different physics, not a tint."><label>Ground</label>
+      <button class="btn full" id="themeBtn" aria-label="paper or dark ground" title="Paper / dark ground">Dark field</button>
     </div>
     <div class="grp" data-tip="The path the rings trace. Slash is the stroke from the OP/AL wordmark, one line per lane."><label>Shape</label>
       <div class="seg" id="shapeSeg">
@@ -1687,7 +1590,7 @@
     chunks=[]; mrec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.min(60000000,Math.max(24000000,Math.round(recCanvas.width*recCanvas.height*60*0.25)))});
     mrec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     mrec.onstop=()=>{ dl(new Blob(chunks,{type:mime}),`angel-${Date.now()}.${extFor(mime)}`); };
-    mrec.start(); state.recording=true; startRecClock('REC');
+    mrec.start(); state.recording=true; startRecClock('Rec');
     $('recBtn').setAttribute('aria-pressed',true); $('recBtn').textContent='Stop';
   }catch(e){ alert('Video recording is not available in this browser — PNG still works.'); } }
   function stopRec(){ if(mrec && mrec.state!=='inactive') mrec.stop(); state.recording=false; recCanvas=null; recCtx=null;
@@ -1702,7 +1605,7 @@
     achunks=[]; arec=new MediaRecorder(dest.stream,{mimeType:mime,audioBitsPerSecond:192000});
     arec.ondataavailable=e=>{ if(e.data.size) achunks.push(e.data); };
     arec.onstop=()=>{ dl(new Blob(achunks,{type:mime}),`angel-${Date.now()}.${extFor(mime)}`); };
-    arec.start(); state.recAudio=true; startRecClock('AUDIO');
+    arec.start(); state.recAudio=true; startRecClock('Audio');
     $('audBtn').setAttribute('aria-pressed',true); $('audBtn').textContent='Stop audio';
   }catch(e){ alert('Audio recording is not available in this browser.'); } }
   function stopAud(){ if(arec && arec.state!=='inactive') arec.stop(); state.recAudio=false;
@@ -1852,6 +1755,7 @@
   function setTheme(t){ THEME=t; document.body.classList.toggle('dark',t==='dark');
     try{ localStorage.setItem('angel-theme',t); }catch(e){}
     $('themeBtn').setAttribute('aria-pressed', String(t==='dark'));
+    $('themeBtn').textContent = t==='dark' ? 'Dark field' : 'Paper';
     // repaint the ground immediately so the wash doesn't cross-fade from the old theme
     ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation='source-over';
     ctx.fillStyle=PAPERC(); ctx.fillRect(0,0,cv.width,cv.height); ctx.restore();
@@ -2573,7 +2477,7 @@
         };
         micRec.start();
         micTarget={lane:editLane, step:selStep};   // pinned now, so the take cannot be misplaced
-        state.recMic=true; startRecClock('MIC'); micMeterStart(micStream);
+        state.recMic=true; startRecClock('Mic'); micMeterStart(micStream);
         $('micBtn').textContent='Stop'; $('micBtn').setAttribute('aria-pressed','true');
       }catch(e){ setStatus('could not start recording'); setTimeout(()=>setStatus(''),2500); micIdle(); }
     });

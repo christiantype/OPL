@@ -10,112 +10,71 @@
   /* Halftone conformed to the shared Lab shell (Attractor / Fence standard):
      always-open left #dock rail, labelled .group sections, .knob sliders,
      top-right #sizeDock select. OPALAB.css loads last and unifies the control look. */
-  :root{ --ink:#f2f3f7; --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.14); --rail:300px; --top:120px;
-    --hair:rgba(255,255,255,.24); --mute:rgba(255,255,255,.60); --cell:rgba(255,255,255,.07);
-    --edge:rgba(255,255,255,.16); --liton:#8ab0ff; --paper:#07080f; }
+  /* layout only — every control is owned by OPALAB.css (loaded last) */
+  :root{ --rail:300px; --top:120px; }
   @media (max-width:560px){ :root{ --top:112px; } }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{ height:100%; margin:0; background:#0b0c14; color:var(--ink);
-    font-family:var(--font, 'IBM Plex Sans', system-ui, -apple-system, sans-serif); overscroll-behavior:none; overflow:hidden; }
-  body.dark .opal-topbar, body.dark .opal-subhead{ background:#0b0c14; border-bottom-color:rgba(255,255,255,.1); }
-  body.dark .opal-subhead__name{ color:var(--ink); }
-  body.dark .opal-subhead__desc, body.dark .opal-subhead__ver{ color:rgba(255,255,255,.52); }
+  html,body{ height:100%; margin:0; overscroll-behavior:none; overflow:hidden; }
 
   /* canvas area — inset to the right of the rail; a centered mat, the board letterboxes within */
   #stagewrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0;
     display:flex; align-items:center; justify-content:center; padding:24px; }
   #stage{ display:block; max-width:100%; max-height:100%; touch-action:none; }
 
-  #hint{ position:fixed; top:calc(var(--top) + 14px); left:calc((100% + var(--rail))/2); transform:translateX(-50%);
-    font-size:13px; color:var(--dim); background:rgba(11,12,20,.7); padding:6px 14px; border-radius:999px;
-    pointer-events:none; transition:opacity .3s; z-index:7; text-transform:none; letter-spacing:0; white-space:nowrap; }
-
-  /* canvas-size dock — pinned top-right on every tool */
-  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:8; }
-  #sizeDock select{ background:rgba(15,16,24,.92); color:var(--ink); border:1px solid var(--line); border-radius:2px;
-    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer;
-    -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #sizeDock{ display:flex; align-items:center; gap:10px; }
 
   /* left control rail */
-  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
-    padding:18px 16px 24px; overflow-y:auto; overflow-x:hidden;
-    background:rgba(15,16,24,.92); -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
-    border-right:1px solid var(--line); display:flex; flex-direction:column; gap:0; }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; overflow-x:hidden; }
 
   .group{ display:flex; flex-direction:column; gap:9px; }
-  .group + .group{ margin-top:15px; padding-top:15px; border-top:1px solid var(--line); }
-  .group__t{ font-size:10px; letter-spacing:.11em; text-transform:uppercase; color:var(--dim); font-weight:600; }
-  .rowhint{ margin:0; font-size:11px; line-height:1.5; color:var(--mute); letter-spacing:.005em; }
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .rowhint{ margin:0; font-size:12px; line-height:1.5; color:var(--mute); }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .grid2 .btn, .btn.full{ width:100%; }
+  select.full{ width:100%; }
 
-  .btn{ appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--ink);
-    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
-    display:inline-flex; align-items:center; justify-content:center;
-    padding:8px 12px; border-radius:2px; cursor:pointer; transition:.15s; white-space:nowrap; }
-  .btn:hover{ background:rgba(255,255,255,.11); }
-  .btn[aria-pressed="true"], .btn.primary{ background:var(--ink); color:#0b0c14; border-color:var(--ink); }
   .btn:disabled{ opacity:.35; cursor:not-allowed; }
 
   .knob{ display:flex; flex-direction:column; gap:4px; }
-  .knob label{ display:flex; justify-content:space-between; align-items:baseline; gap:8px;
-    font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--dim); }
-  .knob b{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
-  /* slider is owned by OPALAB.css */
-
-  /* segmented controls */
-  /* seg is owned by OPALAB.css (removed border/overflow:hidden — it clipped the raised pills) */
+  .knob label{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  /* slider + seg are owned by OPALAB.css */
 
   /* tooltips — follow the control they describe */
-  .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px; border-radius:8px;
-    background:rgba(18,20,28,.97); border:1px solid var(--line); color:var(--ink);
-    -webkit-backdrop-filter:blur(20px) saturate(160%); backdrop-filter:blur(20px) saturate(160%);
-    box-shadow:0 16px 40px -20px rgba(0,0,0,.6);
-    font-size:11px; line-height:1.5; letter-spacing:.005em; text-transform:none;
-    pointer-events:none; opacity:0; transition:opacity .14s ease; }
+  .tip{ position:fixed; z-index:60; display:none; max-width:230px; padding:9px 11px;
+    line-height:1.5; pointer-events:none; opacity:0; transition:opacity .14s ease; }
 
   /* transient status line */
   #status{ position:fixed; bottom:14px; left:calc(var(--rail) + 20px); z-index:5; pointer-events:none;
-    font-size:11px; letter-spacing:.06em; color:var(--dim); display:none; }
+    font-size:11px; color:var(--mute); display:none; }
 
   /* record indicator — pinned at canvas-left, shown while recording */
-  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none; align-items:center; gap:7px;
-    padding:6px 12px; border-radius:999px; font-size:10px; letter-spacing:.12em; color:#ff5468;
-    background:rgba(15,16,24,.92); border:1px solid var(--line); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11; display:none;
+    align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
   #recDot.on{ display:flex; }
-  #recDot i{ width:7px; height:7px; border-radius:50%; background:#ff5468; animation:recblink 1s infinite; }
-  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); animation:recblink 1s infinite; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
   @keyframes recblink{ 50%{ opacity:.25; } }
 
   /* Halftone's own — colour inputs, marks, drop hint */
   #markRow{ display:flex; flex-direction:column; gap:9px; }
   .cin{ display:flex; align-items:center; gap:8px; }
-  .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--line); background:none; border-radius:4px; padding:0; cursor:pointer; }
-  .cin label{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); }
   .mk-row{ display:flex; align-items:center; gap:8px; padding:3px 0; }
   .mk-ord{ width:15px; text-align:center; font-size:11px; color:var(--mute); flex:none; }
-  .mk-col{ width:26px; height:24px; border:1px solid var(--line); background:none; border-radius:4px; padding:0; cursor:pointer; flex:none; }
-  .mk-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.72; font-size:11px; }
-  .mk-rm{ flex:none; width:22px; height:22px; border:1px solid var(--line); background:none; color:var(--mute);
-    border-radius:4px; cursor:pointer; font-size:11px; line-height:1; padding:0; }
-  .mk-rm:hover{ color:var(--ink); border-color:var(--edge); }
-  .mk-pre{ aspect-ratio:1; border:1px solid var(--line); background:var(--cell); border-radius:5px; cursor:pointer;
-    padding:5px; display:flex; align-items:center; justify-content:center; }
-  .mk-pre:hover{ border-color:var(--liton); }
+  .mk-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+  .mk-rm{ flex:none; width:24px; height:24px; padding:0 !important; line-height:1; }
+  .mk-pre{ aspect-ratio:1; padding:5px !important; display:flex; align-items:center; justify-content:center; }
   .mk-pre svg{ width:100%; height:100%; display:block; fill:var(--ink); }
   #dropHint{ position:fixed; inset:var(--top) 0 0 var(--rail); z-index:4; display:none; align-items:center; justify-content:center;
-    pointer-events:none; color:var(--dim); font-size:12px; letter-spacing:.12em; text-transform:uppercase; }
+    pointer-events:none; color:var(--mute); font-size:12px; }
   body.nofile #dropHint{ display:flex; }
 
   /* intro veil (removed on load) */
-  #veil{ position:fixed; inset:0; z-index:30; background:#0b0c14; display:flex; flex-direction:column;
+  #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
-  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
+  #veil h1{ font-weight:400; font-size:15px; margin:0; }
   #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
-  #veil .orb{ width:88px; height:88px; border-radius:50%;
-    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
-    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
+  #veil .orb{ width:88px; height:88px; border-radius:50%; background:var(--ink);
+    animation:pulse 5s ease-in-out infinite; }
   @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
 </style>
 <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
@@ -123,7 +82,7 @@
 <body class="dark">
 
 <div id="stagewrap"><canvas id="stage"></canvas></div>
-<div id="dropHint">drop a photo, or load one from the panel</div>
+<div id="dropHint">Drop a photo, or load one from the panel</div>
 <div id="status"></div>
 <div id="hint"></div>
 <div id="recDot"><i></i><b>0:00</b></div>

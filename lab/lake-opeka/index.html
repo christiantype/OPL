@@ -59,8 +59,8 @@
   }
   .lo-subhead .lo-id { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
   .lo-subhead .lo-name { font-family: var(--font); font-size: 15px; letter-spacing: 0.01em; }
-  .lo-subhead .lo-desc { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mute); }
-  .lo-subhead .lo-ver { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); }
+  .lo-subhead .lo-desc { font-size: 12px; color: var(--mute); }
+  .lo-subhead .lo-ver { font-family: var(--mono); font-size: 11px; color: var(--mute); }
 
   /* ── Top bar — matches the OPL chrome used across all Tools.
         White surface, ZLMC wordmark on the left + product label,
@@ -79,7 +79,7 @@
   .opl-product {
     color: #8a8a8a;
     font-family: var(--font);
-    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    font-size: 12px;
   }
   .opl-right { display: flex; align-items: center; gap: 18px; color: #1a1a1a; }
   .opl-seed {
@@ -98,7 +98,7 @@
     background: transparent; border: 1px solid #ececec;
     color: #1a1a1a; height: 26px; padding: 0 12px;
     cursor: pointer; font-family: var(--font);
-    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    font-size: 12px;
     transition: border-color 0.15s ease, color 0.15s ease;
   }
   #btn-how:hover { border-color: var(--cobalt); color: var(--cobalt); }
@@ -120,14 +120,14 @@
   .magic-pop {
     position: absolute; left: 18px; bottom: 62px; z-index: 40;
     width: 210px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
-    background: rgba(255,255,255,0.94); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    border: 1px solid var(--line); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
+    background: var(--island);
+    border: 1px solid var(--hair); border-radius: var(--r-island);
   }
   .magic-pop[hidden] { display: none; }
   .magic-pop__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .magic-pop__row > span { font-size: 11px; letter-spacing: .04em; color: var(--mute); text-transform: uppercase; }
+  .magic-pop__row > span { font-size: 12px; color: var(--mute); }
   .magic-pop select { width: 118px; padding: 6px 24px 6px 8px; }
-  .magic-num { display: inline-flex; align-items: center; gap: 1px; width: 118px; background: var(--cell); border: 1px solid var(--line); border-radius: 0; padding: 0 8px; box-sizing: border-box; }
+  .magic-num { display: inline-flex; align-items: center; gap: 1px; width: 118px; background: var(--cell); border: 1px solid var(--hair); border-radius: var(--r-input); padding: 0 8px; box-sizing: border-box; }
   .magic-num input { width: 100%; border: none; background: transparent; color: var(--ink); font-family: var(--mono); font-size: 12px; text-align: right; padding: 7px 0; -moz-appearance: textfield; }
   .magic-num input:focus { outline: none; }
   .magic-num input::-webkit-outer-spin-button, .magic-num input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -148,26 +148,30 @@
   }
   .rec-dot--live { animation: rec-blink 1s steps(2,start) infinite; }
   @keyframes rec-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
-  .rec-indicator {
-    position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
-    display: flex; align-items: center; gap: 7px;
-    background: rgba(20,20,22,0.86); color: #fff;
-    padding: 7px 14px; border-radius: 100px;
-    font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em;
+  /* the shell's record indicator — flat, hairline, over the canvas top edge */
+  #recDot {
+    /* centred over the canvas field, right of the rail */
+    position: fixed; top: calc(var(--top, 120px) + 14px);
+    left: calc(50% + var(--rail, 0px) / 2); transform: translateX(-50%);
+    display: none; align-items: center; gap: 7px;
+    border: 1px solid var(--hair);
+    padding: 6px 12px;
+    font-family: var(--mono); font-size: 12px;
     z-index: 60; pointer-events: none;
   }
-  .rec-indicator[hidden] { display: none; }
+  #recDot.on { display: flex; }
+  #recDot i { width: 7px; height: 7px; border-radius: 50%; background: var(--rec); }
+  #recDot b { font-variant-numeric: tabular-nums; font-weight: 600; }
 
   #help, #how { position: fixed; inset: 0; z-index: 1000; }
   #help[hidden], #how[hidden] { display: none; }
-  .help__scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); }
+  .help__scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
   .help__panel {
     position: absolute;
     top: 6vh; right: 6vw; bottom: 6vh;
     width: min(680px, 88vw);
-    background: var(--paper); border: 1px solid var(--line);
+    background: var(--paper); border: 1px solid var(--hair);
     display: flex; flex-direction: column;
-    box-shadow: -30px 30px 100px rgba(0,0,0,0.5);
   }
   .help__head {
     display: flex; align-items: center; justify-content: space-between;
@@ -215,7 +219,7 @@
   }
   .help__body h3 {
     font-family: var(--font); font-weight: 500;
-    font-size: 10px; letter-spacing: 0.20em; text-transform: uppercase;
+    font-size: 12px;
     color: var(--accent);
     margin: 24px 0 10px; padding-top: 4px;
   }
@@ -236,11 +240,11 @@
   .images {
     position: absolute; top: 116px; left: 16px; width: 236px; z-index: 6;
     max-height: calc(100vh - 192px); overflow-y: auto; padding: 16px;
-    background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    border: 1px solid var(--line); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
+    background: var(--island);
+    border: 1px solid var(--hair); border-radius: var(--r-island);
   }
   .images__label {
-    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    font-size: 12px;
     color: var(--mute); margin-bottom: 12px;
     display: flex; align-items: center; justify-content: space-between;
   }
@@ -248,7 +252,7 @@
   .images__clear {
     background: transparent; border: none;
     color: var(--mute);
-    font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+    font-size: 12px;
     cursor: pointer; padding: 2px 0;
     transition: color 0.15s ease;
   }
@@ -300,11 +304,10 @@
     letter-spacing: -0.02em;
     z-index: 9999;
     pointer-events: none;
-    backdrop-filter: blur(2px);
   }
   .drop__hint {
     display: block; margin-top: 6px;
-    font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+    font-size: 12px;
     color: var(--mute);
   }
   .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -342,8 +345,8 @@
   .thumb { cursor: grab; }
   .thumb:active { cursor: grabbing; }
   .thumb.is-dragging { opacity: 0.35; }
-  .thumb.is-dropbefore { box-shadow: inset 3px 0 0 0 var(--accent); }
-  .thumb.is-dropafter  { box-shadow: inset -3px 0 0 0 var(--accent); }
+  .thumb.is-dropbefore { border-left: 3px solid var(--accent); }
+  .thumb.is-dropafter  { border-right: 3px solid var(--accent); }
 
   /* ── Stage: canvas ──────────────────────────────────────────── */
   .stage {
@@ -353,10 +356,9 @@
     position: relative;
     overflow: hidden;
   }
-  #canvas {
+  #art {
     max-width: 100%; max-height: 100%;
     background: #ffffff;
-    box-shadow: 0 12px 40px -10px rgba(0,0,0,0.15);
     display: block;
   }
   .empty {
@@ -378,9 +380,8 @@
   }
   .stage-actions button {
     background: var(--cell); border: 1px solid var(--line);
-    color: var(--ink); padding: 9px 14px; border-radius: 0;
+    color: var(--ink); padding: 9px 14px; border-radius: var(--r-control);
     font-family: var(--font); font-size: 12px;
-    letter-spacing: 0.14em; text-transform: uppercase;
     cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
   .stage-actions button:hover { border-color: var(--accent); }
@@ -396,8 +397,8 @@
   .canvas-size {
     position: absolute; top: 116px; right: 16px; z-index: 7;
     display: flex; gap: 6px; padding: 8px;
-    background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    border: 1px solid var(--line); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
+    background: var(--island);
+    border: 1px solid var(--hair); border-radius: var(--r-island);
   }
   .canvas-size select { width: 138px; padding: 7px 24px 7px 9px; }
 
@@ -406,8 +407,8 @@
   .controls {
     position: absolute; top: 168px; right: 16px; width: 300px; z-index: 6;
     max-height: calc(100vh - 244px); overflow-y: auto; padding: 16px;
-    background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-    border: 1px solid var(--line); border-radius: 0; box-shadow: 0 10px 30px -16px rgba(0,0,0,0.22);
+    background: var(--island);
+    border: 1px solid var(--hair); border-radius: var(--r-island);
   }
   .ctrl-group {
     margin-bottom: 22px;
@@ -416,7 +417,7 @@
   }
   .ctrl-group:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
   .ctrl-label {
-    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    font-size: 12px;
     color: var(--mute); margin-bottom: 14px;
   }
   .row {
@@ -437,38 +438,44 @@
   .info:hover { border-color: var(--accent); color: var(--accent); }
   .tip-pop {
     position: fixed; z-index: 1200; max-width: 248px;
-    background: var(--ink); color: #fff;
+    background: #161616; color: #fff;
     font-family: var(--font); font-size: 12px; line-height: 1.45;
-    padding: 8px 11px; border-radius: 5px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.35); pointer-events: none;
+    padding: 8px 11px; border-radius: var(--r-input);
+    pointer-events: none;
   }
-  /* Type-or-slide: the value display is an editable text input that
-     looks like a label by default, becomes a field on hover/focus. */
-  input.row__val {
+  /* Knob rows: label left, mono readout right, slider under it. The readout
+     is still an editable field (type-or-slide) — it just reads as a value,
+     not as a full-width text box. */
+  .knob { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+  .knob:last-child { margin-bottom: 0; }
+  .knob > .row { margin-bottom: 0; align-items: center; cursor: default; }
+  #dock input.row__val, input.row__val {
     -webkit-appearance: none; appearance: none;
-    background: transparent; border: none;
-    color: var(--ink);
-    font-family: var(--mono); font-size: 12px; font-weight: 600;
-    text-align: right; padding: 2px 4px;
-    width: 72px; cursor: text;
-    transition: background 0.15s ease, outline-color 0.15s ease;
-    outline: 1px solid transparent; outline-offset: -1px;
-    border-radius: 2px;
+    background: transparent !important; border: 1px solid transparent !important;
+    box-shadow: none !important;
+    color: var(--ink) !important;
+    font-family: var(--mono) !important; font-size: 12px; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    text-align: right; padding: 2px 5px !important;
+    margin: 0 !important;
+    width: 62px; flex: none; cursor: text;
+    border-radius: var(--r-input) !important;
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
-  input.row__val:hover { background: rgba(0, 0, 0, 0.05); outline-color: var(--line); }
-  input.row__val:focus { background: rgba(0, 0, 0, 0.08); outline-color: var(--accent); }
+  #dock input.row__val:hover, input.row__val:hover { background: var(--cell) !important; border-color: var(--hair) !important; }
+  #dock input.row__val:focus, input.row__val:focus { background: var(--cell) !important; border-color: var(--accent) !important; outline: none; }
 
   /* Lake Opeka glyph presets — multi-select gallery */
   .glyph-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
   .glyph-preset {
     aspect-ratio: 1; background: #f2f2f0; border: 1px solid var(--line);
-    border-radius: 4px; cursor: pointer; padding: 7px; position: relative;
+    border-radius: var(--r-input); cursor: pointer; padding: 7px; position: relative;
     display: flex; align-items: center; justify-content: center;
-    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+    transition: border-color 0.12s ease;
   }
   .glyph-preset img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
   .glyph-preset:hover { border-color: var(--mute); }
-  .glyph-preset.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .glyph-preset.is-active { border-color: var(--accent); outline: 1px solid var(--accent); outline-offset: -2px; }
   .glyph-preset.is-active::after {
     content: ''; position: absolute; top: 3px; right: 3px;
     width: 12px; height: 12px; border-radius: 50%; background: var(--accent);
@@ -477,7 +484,7 @@
   }
   .glyph-presets__act {
     background: none; border: none; color: var(--accent); cursor: pointer;
-    font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 0;
+    font-size: 12px; padding: 0;
   }
   .glyph-presets__act:hover { text-decoration: underline; }
 
@@ -489,8 +496,8 @@
   .sessions__scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.45); }
   .sessions__panel {
     position: relative; width: min(420px, 92vw); max-height: 80vh; overflow: hidden;
-    background: var(--bg, #fff); color: var(--ink); border: 1px solid var(--line);
-    border-radius: 0; box-shadow: 0 30px 80px -20px rgba(0,0,0,0.5);
+    background: var(--island, #fff); color: var(--ink); border: 1px solid var(--hair);
+    border-radius: var(--r-island);
     display: flex; flex-direction: column;
   }
   .sessions__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
@@ -513,67 +520,12 @@
   .sessions__item .sessions__del:hover { border-color: #e03; color: #e03; }
   .sessions__empty { padding: 14px 12px; font-size: 12px; color: var(--mute); text-align: center; }
 
-  /* Pill sliders: light-gray rounded track + tall rounded white handle */
-  input[type=range] {
-    -webkit-appearance: none; appearance: none;
-    width: 100%; height: 26px;
-    background: transparent; cursor: pointer; padding: 0; margin: 0 0 12px;
-  }
-  input[type=range]::-webkit-slider-runnable-track {
-    background: rgba(0,0,0,.28); height: 2px; border-radius: 0;
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 14px; height: 14px; border-radius: 50%;
-    background: #161616; border: 0; box-shadow: none; margin-top: -6px;
-  }
-  input[type=range]::-moz-range-track { background: rgba(0,0,0,.28); height: 2px; border-radius: 0; }
-  input[type=range]::-moz-range-thumb {
-    width: 14px; height: 14px; border-radius: 50%;
-    background: #161616; border: 0; box-shadow: none;
-  }
-
-  /* Unified dropdown — custom chevron, no native arrow (shared with Flux) */
-  select {
-    width: 100%; padding: 8px 28px 8px 11px;
-    background-color: var(--cell); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 0;
-    -webkit-appearance: none; appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c7c84' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 11px center;
-    font-family: var(--font); font-size: 12px;
-    margin-bottom: 10px; cursor: pointer;
-  }
-  select:hover { border-color: var(--mute); }
-  /* Unified segmented control — rounded, uppercase (shared language with Flux .chip) */
-  .seg {
-    display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 4px; margin-bottom: 4px;
-  }
-  .seg button {
-    background: var(--cell); border: 1px solid var(--line); border-radius: 0;
-    color: var(--mute); padding: 8px 5px;
-    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-    cursor: pointer; transition: all 0.15s ease;
-  }
-  .seg button.is-active {
-    background: var(--accent); color: var(--on-accent); border-color: var(--accent);
-  }
-  .seg button:hover:not(.is-active) { color: var(--ink); border-color: var(--mute); }
-
-  .ctrl-btn {
-    width: 100%; padding: 9px 10px;
-    background: var(--cell); border: 1px solid var(--line);
-    color: var(--ink); font-size: 12px;
-    letter-spacing: 0.14em; text-transform: uppercase;
-    cursor: pointer; margin-top: 8px;
-    transition: border-color 0.15s ease, color 0.15s ease;
-  }
-  .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+  /* Sliders, selects, segmented rows, buttons and checkboxes are OPALAB's.
+     Only the layout the tool needs is kept here. */
+  select { width: 100%; }
+  .ctrl-btn { display: block; width: 100%; padding: 9px 10px; text-align: center;
+    cursor: pointer; margin-top: 8px; }
   .row.toggle { cursor: pointer; }
-  .row.toggle input[type=checkbox] {
-    accent-color: var(--accent); width: 16px; height: 16px;
-  }
   .scatter-item {
     display: grid;
     grid-template-columns: 32px 1fr;
@@ -603,7 +555,7 @@
   }
   .scatter-item__fields label {
     display: flex; align-items: center; gap: 4px;
-    letter-spacing: 0.06em; text-transform: uppercase; font-size: 9px;
+    font-size: 11px;
   }
   .scatter-item__fields input[type=number] {
     width: 100%; padding: 3px 5px;
@@ -613,15 +565,15 @@
   .scatter-item__fields input[type=number]:focus { outline: none; border-color: var(--accent); }
 
   /* Scatter overlay tools on the stage */
-  #canvas.is-scatter { cursor: grab; }
-  #canvas.is-scatter.is-dragging { cursor: grabbing; }
+  #art.is-scatter { cursor: grab; }
+  #art.is-scatter.is-dragging { cursor: grabbing; }
   /* Effect-layer canvas: crosshair while compositing, grab when hovering
      an existing point handle so it reads as draggable. */
-  #canvas.is-layer { cursor: crosshair; }
-  #canvas.is-layer.is-hover-pt { cursor: grab; }
-  #canvas.is-layer.is-dragging { cursor: grabbing; }
+  #art.is-layer { cursor: crosshair; }
+  #art.is-layer.is-hover-pt { cursor: grab; }
+  #art.is-layer.is-dragging { cursor: grabbing; }
   /* Smudge brush */
-  #canvas.is-brush { cursor: none; }
+  #art.is-brush { cursor: none; }
   #brush-cursor {
     position: absolute;
     border: 1.5px solid rgba(255,255,255,0.9);
@@ -630,14 +582,13 @@
     mix-blend-mode: difference;
     display: none;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
     transition: width 0.05s, height 0.05s;
   }
 
   /* mobile panel toggles (hidden on desktop) */
-  .m-toggle { display: none; font-family: var(--font); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
-    background: rgba(255,255,255,.92); border: 1px solid var(--line); border-radius: 0; padding: 9px 13px; color: var(--ink);
-    cursor: pointer; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 6px 20px -10px rgba(0,0,0,.3); }
+  .m-toggle { display: none; font-family: var(--font); font-size: 12px;
+    background: var(--island); border: 1px solid var(--hair); border-radius: var(--r-control); padding: 9px 13px; color: var(--ink);
+    cursor: pointer; }
 
   /* ── Mobile: the Sources + Controls islands become slide-up bottom sheets ── */
   @media (max-width: 760px) {
@@ -655,7 +606,7 @@
       position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none;
       max-height: 74vh; border-radius: 16px 16px 0 0; padding: 16px 16px calc(72px + env(safe-area-inset-bottom,0px));
       transform: translateY(105%); transition: transform .28s cubic-bezier(.2,.7,.2,1); z-index: 18;
-      box-shadow: 0 -12px 40px -16px rgba(0,0,0,.28); border: none;
+      border: 1px solid var(--hair);
     }
     body.sources-open .images { transform: none; }
     body.controls-open .controls { transform: none; }
@@ -696,7 +647,7 @@
         <button id="help-close" type="button" aria-label="Close help">×</button>
       </header>
       <div class="help__body">
-        <p class="help__lede">Drop photos in. Pick a base <strong>Mode</strong> on the right. Sliders + value fields are bidirectional — slide or type a number. <strong>Re-roll</strong> rolls a fresh seed; <strong>Export PNG / SVG</strong> renders at the Output size.</p>
+        <p class="help__lede">Drop photos in. Pick a base <strong>Mode</strong> on the right. Sliders + value fields are bidirectional — slide or type a number. <strong>Re-roll</strong> rolls a fresh seed. <strong>Output</strong> (bottom right) holds Record and Save — pick PNG, JPG, PDF or SVG and the pixel size there.</p>
 
         <h3>Modes</h3>
         <ul>
@@ -822,10 +773,10 @@
   </aside>
 
   <!-- CENTER: CANVAS -->
-  <section class="stage" id="stage">
+  <section class="stage" id="stagewrap">
     <button id="mSources" class="m-toggle m-left">☰ Sources</button>
     <button id="mControls" class="m-toggle m-right">Controls ☰</button>
-    <canvas id="canvas" width="1000" height="1000"></canvas>
+    <canvas id="art" width="1000" height="1000"></canvas>
     <div id="brush-cursor"></div>
     <div class="empty" id="empty" style="display:none">
       <strong>Drop photos to start.</strong>
@@ -856,8 +807,7 @@
         </select>
       </div>
     </div>
-    <!-- Recording indicator + pre-roll countdown -->
-    <div class="rec-indicator" id="rec-indicator" hidden><span class="rec-dot rec-dot--live"></span> REC <span id="rec-time">0:00</span></div>
+    <!-- Pre-roll countdown (the REC timer is the shell's #recDot, at body level) -->
     <div class="rec-countdown" id="rec-countdown" hidden>3</div>
 
     <!-- Sessions panel -->
@@ -923,14 +873,14 @@
           <button data-le="glyph">Glyph</button>
         </div>
 
-        <div class="row"><span class="row__label">Resolution</span><input class="row__val" id="v-layRes" type="text" value="5"></div>
-        <input type="range" id="r-layRes" min="1" max="8" step="1" value="5">
-        <div class="row"><span class="row__label">Dot size</span><input class="row__val" id="v-laySize" type="text" value="5"></div>
-        <input type="range" id="r-laySize" min="1" max="8" step="1" value="5">
-        <div class="row"><span class="row__label">Sample blur</span><input class="row__val" id="v-layBlur" type="text" value="3"></div>
-        <input type="range" id="r-layBlur" min="1" max="8" step="1" value="3">
-        <div class="row"><span class="row__label">Opacity</span><input class="row__val" id="v-layOpacity" type="text" value="1.00"></div>
-        <input type="range" id="r-layOpacity" min="0" max="1" step="0.01" value="1">
+        <div class="knob"><label class="row"><span class="row__label">Resolution</span><input class="row__val" id="v-layRes" type="text" value="5"></label>
+        <input type="range" id="r-layRes" min="1" max="8" step="1" value="5"></div>
+        <div class="knob"><label class="row"><span class="row__label">Dot size</span><input class="row__val" id="v-laySize" type="text" value="5"></label>
+        <input type="range" id="r-laySize" min="1" max="8" step="1" value="5"></div>
+        <div class="knob"><label class="row"><span class="row__label">Sample blur</span><input class="row__val" id="v-layBlur" type="text" value="3"></label>
+        <input type="range" id="r-layBlur" min="1" max="8" step="1" value="3"></div>
+        <div class="knob"><label class="row"><span class="row__label">Opacity</span><input class="row__val" id="v-layOpacity" type="text" value="1.00"></label>
+        <input type="range" id="r-layOpacity" min="0" max="1" step="0.01" value="1"></div>
 
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line)">
           <div class="ctrl-label" style="margin-bottom:10px">Where</div>
@@ -938,10 +888,10 @@
             <strong style="color:var(--mute)">No points</strong> → effect covers whole canvas.<br>
             <strong style="color:var(--mute)">Click canvas</strong> → drop a point. Effect confines to those circles with falloff.
           </div>
-          <div class="row"><span class="row__label">Brush radius</span><input class="row__val" id="v-layRadius" type="text" value="280"></div>
-          <input type="range" id="r-layRadius" min="40" max="800" step="5" value="280">
-          <div class="row"><span class="row__label">Falloff</span><input class="row__val" id="v-layFalloff" type="text" value="0.55"></div>
-          <input type="range" id="r-layFalloff" min="0" max="1" step="0.01" value="0.55">
+          <div class="knob"><label class="row"><span class="row__label">Brush radius</span><input class="row__val" id="v-layRadius" type="text" value="280"></label>
+          <input type="range" id="r-layRadius" min="40" max="800" step="5" value="280"></div>
+          <div class="knob"><label class="row"><span class="row__label">Falloff</span><input class="row__val" id="v-layFalloff" type="text" value="0.55"></label>
+          <input type="range" id="r-layFalloff" min="0" max="1" step="0.01" value="0.55"></div>
           <div id="layer-points" style="font-family:var(--mono);font-size:10px;color:var(--mute);max-height:120px;overflow-y:auto;margin-top:10px"></div>
           <button class="ctrl-btn" id="btn-layerClear" style="margin-top:6px">Clear points</button>
         </div>
@@ -969,12 +919,12 @@
           <option value="courier">Courier</option>
           <option value="serif">Serif</option>
         </select>
-        <div class="row"><span class="row__label">Count</span><input class="row__val" id="v-winCount" type="text" value="1"></div>
-        <input type="range" id="r-winCount" min="1" max="10" step="1" value="1">
-        <div class="row"><span class="row__label">Size</span><input class="row__val" id="v-winSize" type="text" value="0.80"></div>
-        <input type="range" id="r-winSize" min="0.20" max="1.5" step="0.01" value="0.80">
-        <div class="row"><span class="row__label">Position jitter</span><input class="row__val" id="v-winJitter" type="text" value="0.20"></div>
-        <input type="range" id="r-winJitter" min="0" max="1" step="0.01" value="0.20">
+        <div class="knob"><label class="row"><span class="row__label">Count</span><input class="row__val" id="v-winCount" type="text" value="1"></label>
+        <input type="range" id="r-winCount" min="1" max="10" step="1" value="1"></div>
+        <div class="knob"><label class="row"><span class="row__label">Size</span><input class="row__val" id="v-winSize" type="text" value="0.80"></label>
+        <input type="range" id="r-winSize" min="0.20" max="1.5" step="0.01" value="0.80"></div>
+        <div class="knob"><label class="row"><span class="row__label">Position jitter</span><input class="row__val" id="v-winJitter" type="text" value="0.20"></label>
+        <input type="range" id="r-winJitter" min="0" max="1" step="0.01" value="0.20"></div>
       </div>
     </div>
 
@@ -982,18 +932,18 @@
     <div class="mode-group" data-mode-show="echo" style="display:none">
       <div class="ctrl-group">
         <div class="ctrl-label">Echo</div>
-        <div class="row"><span class="row__label">Repeats</span><input class="row__val" id="v-ecCount" type="text" value="5"></div>
-        <input type="range" id="r-ecCount" min="2" max="14" step="1" value="5">
-        <div class="row"><span class="row__label">Offset X</span><input class="row__val" id="v-ecDx" type="text" value="40"></div>
-        <input type="range" id="r-ecDx" min="-200" max="200" step="2" value="40">
-        <div class="row"><span class="row__label">Offset Y</span><input class="row__val" id="v-ecDy" type="text" value="40"></div>
-        <input type="range" id="r-ecDy" min="-200" max="200" step="2" value="40">
-        <div class="row"><span class="row__label">Fade</span><input class="row__val" id="v-ecFade" type="text" value="0.85"></div>
-        <input type="range" id="r-ecFade" min="0" max="1" step="0.01" value="0.85">
-        <div class="row"><span class="row__label">Scale step</span><input class="row__val" id="v-ecScale" type="text" value="0.00"></div>
-        <input type="range" id="r-ecScale" min="-0.30" max="0.30" step="0.01" value="0">
-        <div class="row"><span class="row__label">Base size</span><input class="row__val" id="v-ecBase" type="text" value="0.60"></div>
-        <input type="range" id="r-ecBase" min="0.20" max="1.20" step="0.01" value="0.60">
+        <div class="knob"><label class="row"><span class="row__label">Repeats</span><input class="row__val" id="v-ecCount" type="text" value="5"></label>
+        <input type="range" id="r-ecCount" min="2" max="14" step="1" value="5"></div>
+        <div class="knob"><label class="row"><span class="row__label">Offset X</span><input class="row__val" id="v-ecDx" type="text" value="40"></label>
+        <input type="range" id="r-ecDx" min="-200" max="200" step="2" value="40"></div>
+        <div class="knob"><label class="row"><span class="row__label">Offset Y</span><input class="row__val" id="v-ecDy" type="text" value="40"></label>
+        <input type="range" id="r-ecDy" min="-200" max="200" step="2" value="40"></div>
+        <div class="knob"><label class="row"><span class="row__label">Fade</span><input class="row__val" id="v-ecFade" type="text" value="0.85"></label>
+        <input type="range" id="r-ecFade" min="0" max="1" step="0.01" value="0.85"></div>
+        <div class="knob"><label class="row"><span class="row__label">Scale step</span><input class="row__val" id="v-ecScale" type="text" value="0.00"></label>
+        <input type="range" id="r-ecScale" min="-0.30" max="0.30" step="0.01" value="0"></div>
+        <div class="knob"><label class="row"><span class="row__label">Base size</span><input class="row__val" id="v-ecBase" type="text" value="0.60"></label>
+        <input type="range" id="r-ecBase" min="0.20" max="1.20" step="0.01" value="0.60"></div>
       </div>
     </div>
 
@@ -1001,12 +951,12 @@
     <div class="mode-group" data-mode-show="grid" style="display:none">
       <div class="ctrl-group">
         <div class="ctrl-label">Broken grid</div>
-        <div class="row"><span class="row__label">Density</span><input class="row__val" id="v-grDens" type="text" value="6"></div>
-        <input type="range" id="r-grDens" min="3" max="14" step="1" value="6">
-        <div class="row"><span class="row__label">Asymmetry</span><input class="row__val" id="v-grAsym" type="text" value="0.60"></div>
-        <input type="range" id="r-grAsym" min="0" max="1" step="0.01" value="0.60">
-        <div class="row"><span class="row__label">Gap</span><input class="row__val" id="v-grGap" type="text" value="4"></div>
-        <input type="range" id="r-grGap" min="0" max="24" step="1" value="4">
+        <div class="knob"><label class="row"><span class="row__label">Density</span><input class="row__val" id="v-grDens" type="text" value="6"></label>
+        <input type="range" id="r-grDens" min="3" max="14" step="1" value="6"></div>
+        <div class="knob"><label class="row"><span class="row__label">Asymmetry</span><input class="row__val" id="v-grAsym" type="text" value="0.60"></label>
+        <input type="range" id="r-grAsym" min="0" max="1" step="0.01" value="0.60"></div>
+        <div class="knob"><label class="row"><span class="row__label">Gap</span><input class="row__val" id="v-grGap" type="text" value="4"></label>
+        <input type="range" id="r-grGap" min="0" max="24" step="1" value="4"></div>
       </div>
     </div>
 
@@ -1020,29 +970,29 @@
           <button data-cs="beads">Beads</button>
         </div>
 
-        <div class="row"><span class="row__label">Count</span><input class="row__val" id="v-cCount" type="text" value="8"></div>
-        <input type="range" id="r-cCount" min="2" max="24" step="1" value="8">
+        <div class="knob"><label class="row"><span class="row__label">Count</span><input class="row__val" id="v-cCount" type="text" value="8"></label>
+        <input type="range" id="r-cCount" min="2" max="24" step="1" value="8"></div>
 
-        <div class="row"><span class="row__label">Inner radius</span><input class="row__val" id="v-cInner" type="text" value="0.05"></div>
-        <input type="range" id="r-cInner" min="0" max="0.45" step="0.01" value="0.05">
-        <div class="row"><span class="row__label">Outer radius</span><input class="row__val" id="v-cOuter" type="text" value="0.48"></div>
-        <input type="range" id="r-cOuter" min="0.10" max="0.50" step="0.01" value="0.48">
+        <div class="knob"><label class="row"><span class="row__label">Inner radius</span><input class="row__val" id="v-cInner" type="text" value="0.05"></label>
+        <input type="range" id="r-cInner" min="0" max="0.45" step="0.01" value="0.05"></div>
+        <div class="knob"><label class="row"><span class="row__label">Outer radius</span><input class="row__val" id="v-cOuter" type="text" value="0.48"></label>
+        <input type="range" id="r-cOuter" min="0.10" max="0.50" step="0.01" value="0.48"></div>
 
-        <div class="row"><span class="row__label">Rotation</span><input class="row__val" id="v-cRot" type="text" value="0°"></div>
-        <input type="range" id="r-cRot" min="0" max="360" step="1" value="0">
-        <div class="row"><span class="row__label">Spin per ring</span><input class="row__val" id="v-cSpin" type="text" value="0°"></div>
-        <input type="range" id="r-cSpin" min="0" max="90" step="0.5" value="0">
+        <div class="knob"><label class="row"><span class="row__label">Rotation</span><input class="row__val" id="v-cRot" type="text" value="0°"></label>
+        <input type="range" id="r-cRot" min="0" max="360" step="1" value="0"></div>
+        <div class="knob"><label class="row"><span class="row__label">Spin per ring</span><input class="row__val" id="v-cSpin" type="text" value="0°"></label>
+        <input type="range" id="r-cSpin" min="0" max="90" step="0.5" value="0"></div>
 
-        <div class="row"><span class="row__label">Gap</span><input class="row__val" id="v-cGap" type="text" value="2"></div>
-        <input type="range" id="r-cGap" min="0" max="30" step="1" value="2">
+        <div class="knob"><label class="row"><span class="row__label">Gap</span><input class="row__val" id="v-cGap" type="text" value="2"></label>
+        <input type="range" id="r-cGap" min="0" max="30" step="1" value="2"></div>
 
         <div id="circleBeadOnly" style="display:none">
-          <div class="row" style="margin-top:14px"><span class="row__label">Beads per ring</span><input class="row__val" id="v-cBeads" type="text" value="12"></div>
-          <input type="range" id="r-cBeads" min="3" max="64" step="1" value="12">
-          <div class="row"><span class="row__label">Bead size</span><input class="row__val" id="v-cBeadSize" type="text" value="0.08"></div>
-          <input type="range" id="r-cBeadSize" min="0.02" max="0.30" step="0.01" value="0.08">
+          <div class="knob" style="margin-top:14px"><label class="row"><span class="row__label">Beads per ring</span><input class="row__val" id="v-cBeads" type="text" value="12"></label>
+          <input type="range" id="r-cBeads" min="3" max="64" step="1" value="12"></div>
+          <div class="knob"><label class="row"><span class="row__label">Bead size</span><input class="row__val" id="v-cBeadSize" type="text" value="0.08"></label>
+          <input type="range" id="r-cBeadSize" min="0.02" max="0.30" step="0.01" value="0.08"></div>
 
-          <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Shape</div>
+          <div style="font-size:12px;color:var(--mute);margin:14px 0 6px">Shape</div>
           <div class="seg" id="seg-cBeadShape" style="grid-template-columns:repeat(5,1fr)">
             <button data-bs="circle" class="is-active">●</button>
             <button data-bs="square">■</button>
@@ -1051,14 +1001,14 @@
             <button data-bs="star">★</button>
           </div>
 
-          <div class="row" style="margin-top:14px"><span class="row__label">Size jitter</span><input class="row__val" id="v-cBeadJit" type="text" value="0.00"></div>
-          <input type="range" id="r-cBeadJit" min="0" max="1" step="0.01" value="0">
+          <div class="knob" style="margin-top:14px"><label class="row"><span class="row__label">Size jitter</span><input class="row__val" id="v-cBeadJit" type="text" value="0.00"></label>
+          <input type="range" id="r-cBeadJit" min="0" max="1" step="0.01" value="0"></div>
 
-          <div class="row"><span class="row__label">Size falloff</span><input class="row__val" id="v-cBeadFall" type="text" value="0.00"></div>
-          <input type="range" id="r-cBeadFall" min="-1" max="1" step="0.01" value="0">
+          <div class="knob"><label class="row"><span class="row__label">Size falloff</span><input class="row__val" id="v-cBeadFall" type="text" value="0.00"></label>
+          <input type="range" id="r-cBeadFall" min="-1" max="1" step="0.01" value="0"></div>
 
-          <div class="row"><span class="row__label">Opacity</span><input class="row__val" id="v-cBeadOpac" type="text" value="1.00"></div>
-          <input type="range" id="r-cBeadOpac" min="0.1" max="1" step="0.01" value="1">
+          <div class="knob"><label class="row"><span class="row__label">Opacity</span><input class="row__val" id="v-cBeadOpac" type="text" value="1.00"></label>
+          <input type="range" id="r-cBeadOpac" min="0.1" max="1" step="0.01" value="1"></div>
 
           <label class="row toggle" style="margin-top:10px">
             <span class="row__label">Stagger rings</span>
@@ -1082,43 +1032,43 @@
       <div class="ctrl-group">
         <div class="ctrl-label">Nest</div>
 
-        <div class="row"><span class="row__label">Frames</span><input class="row__val" id="v-nCount" type="text" value="8"></div>
-        <input type="range" id="r-nCount" min="2" max="30" step="1" value="8">
+        <div class="knob"><label class="row"><span class="row__label">Frames</span><input class="row__val" id="v-nCount" type="text" value="8"></label>
+        <input type="range" id="r-nCount" min="2" max="30" step="1" value="8"></div>
 
-        <div class="row"><span class="row__label">Frame width</span><input class="row__val" id="v-nWidth" type="text" value="0.06"></div>
-        <input type="range" id="r-nWidth" min="0.01" max="0.20" step="0.005" value="0.06">
+        <div class="knob"><label class="row"><span class="row__label">Frame width</span><input class="row__val" id="v-nWidth" type="text" value="0.06"></label>
+        <input type="range" id="r-nWidth" min="0.01" max="0.20" step="0.005" value="0.06"></div>
 
-        <div class="row"><span class="row__label">Width falloff</span><input class="row__val" id="v-nFall" type="text" value="0.00"></div>
-        <input type="range" id="r-nFall" min="-1" max="1" step="0.01" value="0">
+        <div class="knob"><label class="row"><span class="row__label">Width falloff</span><input class="row__val" id="v-nFall" type="text" value="0.00"></label>
+        <input type="range" id="r-nFall" min="-1" max="1" step="0.01" value="0"></div>
 
-        <div class="row"><span class="row__label">Scale step</span><input class="row__val" id="v-nScale" type="text" value="0.86"></div>
-        <input type="range" id="r-nScale" min="0.50" max="0.98" step="0.01" value="0.86">
+        <div class="knob"><label class="row"><span class="row__label">Scale step</span><input class="row__val" id="v-nScale" type="text" value="0.86"></label>
+        <input type="range" id="r-nScale" min="0.50" max="0.98" step="0.01" value="0.86"></div>
 
-        <div class="row"><span class="row__label">Aspect</span><input class="row__val" id="v-nAspect" type="text" value="1.00"></div>
-        <input type="range" id="r-nAspect" min="0.40" max="2.50" step="0.01" value="1.00">
+        <div class="knob"><label class="row"><span class="row__label">Aspect</span><input class="row__val" id="v-nAspect" type="text" value="1.00"></label>
+        <input type="range" id="r-nAspect" min="0.40" max="2.50" step="0.01" value="1.00"></div>
 
-        <div class="row"><span class="row__label">Vanishing X</span><input class="row__val" id="v-nVx" type="text" value="0.00"></div>
-        <input type="range" id="r-nVx" min="-0.45" max="0.45" step="0.01" value="0">
+        <div class="knob"><label class="row"><span class="row__label">Vanishing X</span><input class="row__val" id="v-nVx" type="text" value="0.00"></label>
+        <input type="range" id="r-nVx" min="-0.45" max="0.45" step="0.01" value="0"></div>
 
-        <div class="row"><span class="row__label">Vanishing Y</span><input class="row__val" id="v-nVy" type="text" value="0.00"></div>
-        <input type="range" id="r-nVy" min="-0.45" max="0.45" step="0.01" value="0">
+        <div class="knob"><label class="row"><span class="row__label">Vanishing Y</span><input class="row__val" id="v-nVy" type="text" value="0.00"></label>
+        <input type="range" id="r-nVy" min="-0.45" max="0.45" step="0.01" value="0"></div>
 
-        <div class="row"><span class="row__label">Rotation jitter</span><input class="row__val" id="v-nRot" type="text" value="0°"></div>
-        <input type="range" id="r-nRot" min="0" max="45" step="0.5" value="0">
+        <div class="knob"><label class="row"><span class="row__label">Rotation jitter</span><input class="row__val" id="v-nRot" type="text" value="0°"></label>
+        <input type="range" id="r-nRot" min="0" max="45" step="0.5" value="0"></div>
 
-        <div class="row"><span class="row__label">Position jitter</span><input class="row__val" id="v-nPos" type="text" value="0.00"></div>
-        <input type="range" id="r-nPos" min="0" max="0.20" step="0.005" value="0">
+        <div class="knob"><label class="row"><span class="row__label">Position jitter</span><input class="row__val" id="v-nPos" type="text" value="0.00"></label>
+        <input type="range" id="r-nPos" min="0" max="0.20" step="0.005" value="0"></div>
 
-        <div class="row"><span class="row__label">Opacity ramp</span><input class="row__val" id="v-nOpac" type="text" value="0.00"></div>
-        <input type="range" id="r-nOpac" min="-1" max="1" step="0.01" value="0">
+        <div class="knob"><label class="row"><span class="row__label">Opacity ramp</span><input class="row__val" id="v-nOpac" type="text" value="0.00"></label>
+        <input type="range" id="r-nOpac" min="-1" max="1" step="0.01" value="0"></div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Direction</div>
+        <div style="font-size:12px;color:var(--mute);margin:14px 0 6px">Direction</div>
         <div class="seg" id="seg-nDir" style="grid-template-columns:repeat(2,1fr)">
           <button data-nd="in" class="is-active">Inward</button>
           <button data-nd="out">Outward</button>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Container shape</div>
+        <div style="font-size:12px;color:var(--mute);margin:14px 0 6px">Container shape</div>
         <div class="seg" id="seg-nShape" style="grid-template-columns:repeat(2,1fr);margin-bottom:10px">
           <button data-ns="rect" class="is-active">Rect</button>
           <button data-ns="glyph">Glyph</button>
@@ -1131,11 +1081,11 @@
           <button class="ctrl-btn" id="btn-nGlyphClear" style="width:auto;padding:9px 12px;margin:0" title="Remove uploaded glyph">Clear</button>
         </div>
         <div id="nest-glyph-preview" style="display:none;align-items:center;gap:10px;padding:8px;background:var(--cell);border:1px solid var(--line);margin-bottom:14px">
-          <img id="nest-glyph-preview-img" style="width:36px;height:36px;object-fit:contain;background:repeating-conic-gradient(#e0e0e0 0% 25%,#f5f5f5 25% 50%) 50% / 12px 12px">
+          <img id="nest-glyph-preview-img" style="width:36px;height:36px;object-fit:contain;background:#f0f0f2;border:1px solid var(--hair)">
           <span id="nest-glyph-preview-name" style="font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:6px 0 7px">Lake Opeka glyphs</div>
+        <div style="font-size:12px;color:var(--mute);margin:6px 0 7px">Lake Opeka glyphs</div>
         <div id="nest-glyph-presets" class="glyph-presets"></div>
         <p style="font-size:10px;color:var(--mute);line-height:1.4;margin:0 0 10px">Pick one or more — frames cycle through your selection.</p>
 
@@ -1171,7 +1121,7 @@
           <button data-g="◢">◢</button>
           <button data-g="●">●</button>
         </div>
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Custom (SVG / PNG)</div>
+        <div style="font-size:12px;color:var(--mute);margin:14px 0 6px">Custom (SVG / PNG)</div>
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px">
           <label class="ctrl-btn" id="r-glyphCustomBtn" style="flex:1;margin:0;text-align:center">
             Upload glyph
@@ -1180,27 +1130,27 @@
           <button class="ctrl-btn" id="btn-glyphClear" style="width:auto;padding:9px 12px;margin:0" title="Use the typed character / preset instead of an uploaded glyph">Clear</button>
         </div>
         <div id="glyph-preview" style="display:none;align-items:center;gap:10px;padding:8px;background:var(--cell);border:1px solid var(--line);margin-bottom:14px">
-          <img id="glyph-preview-img" style="width:36px;height:36px;object-fit:contain;background:repeating-conic-gradient(#e0e0e0 0% 25%,#f5f5f5 25% 50%) 50% / 12px 12px">
+          <img id="glyph-preview-img" style="width:36px;height:36px;object-fit:contain;background:#f0f0f2;border:1px solid var(--hair)">
           <span id="glyph-preview-name" style="font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">—</span>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:16px 0 7px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:12px;color:var(--mute);margin:16px 0 7px;display:flex;justify-content:space-between;align-items:center">
           <span>Lake Opeka glyphs</span>
           <span><button id="btn-glyphPresetsAll" class="glyph-presets__act" type="button">All</button><button id="btn-glyphPresetsNone" class="glyph-presets__act" type="button" style="margin-left:10px">None</button></span>
         </div>
         <div id="glyph-presets" class="glyph-presets"></div>
         <p id="glyph-presets-hint" style="font-size:10px;color:var(--mute);line-height:1.4;margin:0 0 14px">Pick one, several, or all — the grid mixes the selected glyphs.</p>
 
-        <div class="row"><span class="row__label">Resolution</span><input class="row__val" id="v-gRes" type="text" value="4"></div>
-        <input type="range" id="r-gRes" min="1" max="8" step="1" value="4">
-        <div class="row"><span class="row__label">Size</span><input class="row__val" id="v-gSize" type="text" value="4"></div>
-        <input type="range" id="r-gSize" min="1" max="8" step="1" value="4">
-        <div class="row"><span class="row__label">Rotation jitter</span><input class="row__val" id="v-gRot" type="text" value="0°"></div>
-        <input type="range" id="r-gRot" min="0" max="180" step="1" value="0">
-        <div class="row"><span class="row__label">Position jitter</span><input class="row__val" id="v-gJitter" type="text" value="0"></div>
-        <input type="range" id="r-gJitter" min="0" max="8" step="1" value="0">
-        <div class="row"><span class="row__label">Blur source</span><input class="row__val" id="v-gBlur" type="text" value="3"></div>
-        <input type="range" id="r-gBlur" min="0" max="8" step="1" value="3">
+        <div class="knob"><label class="row"><span class="row__label">Resolution</span><input class="row__val" id="v-gRes" type="text" value="4"></label>
+        <input type="range" id="r-gRes" min="1" max="8" step="1" value="4"></div>
+        <div class="knob"><label class="row"><span class="row__label">Size</span><input class="row__val" id="v-gSize" type="text" value="4"></label>
+        <input type="range" id="r-gSize" min="1" max="8" step="1" value="4"></div>
+        <div class="knob"><label class="row"><span class="row__label">Rotation jitter</span><input class="row__val" id="v-gRot" type="text" value="0°"></label>
+        <input type="range" id="r-gRot" min="0" max="180" step="1" value="0"></div>
+        <div class="knob"><label class="row"><span class="row__label">Position jitter</span><input class="row__val" id="v-gJitter" type="text" value="0"></label>
+        <input type="range" id="r-gJitter" min="0" max="8" step="1" value="0"></div>
+        <div class="knob"><label class="row"><span class="row__label">Blur source</span><input class="row__val" id="v-gBlur" type="text" value="3"></label>
+        <input type="range" id="r-gBlur" min="0" max="8" step="1" value="3"></div>
         <div class="seg" id="seg-glyphColor" style="grid-template-columns:repeat(3,1fr);margin-top:14px">
           <button data-c="sample" class="is-active">From photo</button>
           <button data-c="ink">Ink</button>
@@ -1213,12 +1163,12 @@
     <div class="mode-group" data-mode-show="scatter" style="display:none">
       <div class="ctrl-group">
         <div class="ctrl-label">Scatter</div>
-        <div class="row"><span class="row__label">Square size</span><input class="row__val" id="v-sqSize" type="text" value="200"></div>
-        <input type="range" id="r-sqSize" min="60" max="500" step="5" value="200">
-        <div class="row"><span class="row__label">Size variation</span><input class="row__val" id="v-sqVar" type="text" value="0.30"></div>
-        <input type="range" id="r-sqVar" min="0" max="1" step="0.01" value="0.30">
-        <div class="row"><span class="row__label">Rotation</span><input class="row__val" id="v-sqRot" type="text" value="0°"></div>
-        <input type="range" id="r-sqRot" min="0" max="20" step="0.5" value="0">
+        <div class="knob"><label class="row"><span class="row__label">Square size</span><input class="row__val" id="v-sqSize" type="text" value="200"></label>
+        <input type="range" id="r-sqSize" min="60" max="500" step="5" value="200"></div>
+        <div class="knob"><label class="row"><span class="row__label">Size variation</span><input class="row__val" id="v-sqVar" type="text" value="0.30"></label>
+        <input type="range" id="r-sqVar" min="0" max="1" step="0.01" value="0.30"></div>
+        <div class="knob"><label class="row"><span class="row__label">Rotation</span><input class="row__val" id="v-sqRot" type="text" value="0°"></label>
+        <input type="range" id="r-sqRot" min="0" max="20" step="0.5" value="0"></div>
         <button class="ctrl-btn" id="btn-scatter-randomize">↻ Re-scatter</button>
       </div>
       <div class="ctrl-group">
@@ -1226,7 +1176,7 @@
         <label class="row toggle"><span class="row__label">Show trails</span>
           <input type="checkbox" id="r-showLines" checked></label>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Connect</div>
+        <div style="font-size:12px;color:var(--mute);margin:14px 0 6px">Connect</div>
         <div class="seg" id="seg-lineMode" style="grid-template-columns:repeat(3,1fr);row-gap:4px;margin-bottom:4px">
           <button data-lm="chain">Chain</button>
           <button data-lm="nearest">Near 2</button>
@@ -1235,13 +1185,13 @@
           <button data-lm="all">All</button>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Anchor</div>
+        <div style="font-size:12px;color:var(--mute);margin:14px 0 6px">Anchor</div>
         <div class="seg" id="seg-anchorMode" style="grid-template-columns:1fr 1fr;margin-bottom:4px">
           <button data-am="center">Square center</button>
           <button data-am="subject" class="is-active">Subject</button>
         </div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Style</div>
+        <div style="font-size:12px;color:var(--mute);margin:14px 0 6px">Style</div>
         <div class="seg" id="seg-lineStyle" style="grid-template-columns:repeat(2,1fr);row-gap:4px;margin-bottom:4px">
           <button data-ls="straight">Straight</button>
           <button data-ls="curved" class="is-active">Curved</button>
@@ -1249,19 +1199,19 @@
           <button data-ls="wavy">Wavy</button>
         </div>
 
-        <div class="row" style="margin-top:14px"><span class="row__label">Curvature</span><input class="row__val" id="v-curv" type="text" value="0.18"></div>
-        <input type="range" id="r-curv" min="0" max="1" step="0.01" value="0.18">
-        <div class="row"><span class="row__label">Line weight</span><input class="row__val" id="v-lineW" type="text" value="1.2"></div>
-        <input type="range" id="r-lineW" min="0.5" max="8" step="0.1" value="1.2">
-        <div class="row"><span class="row__label">Line opacity</span><input class="row__val" id="v-lineA" type="text" value="0.75"></div>
-        <input type="range" id="r-lineA" min="0" max="1" step="0.01" value="0.75">
+        <div class="knob" style="margin-top:14px"><label class="row"><span class="row__label">Curvature</span><input class="row__val" id="v-curv" type="text" value="0.18"></label>
+        <input type="range" id="r-curv" min="0" max="1" step="0.01" value="0.18"></div>
+        <div class="knob"><label class="row"><span class="row__label">Line weight</span><input class="row__val" id="v-lineW" type="text" value="1.2"></label>
+        <input type="range" id="r-lineW" min="0.5" max="8" step="0.1" value="1.2"></div>
+        <div class="knob"><label class="row"><span class="row__label">Line opacity</span><input class="row__val" id="v-lineA" type="text" value="0.75"></label>
+        <input type="range" id="r-lineA" min="0" max="1" step="0.01" value="0.75"></div>
 
-        <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px">Color</div>
+        <div style="font-size:12px;color:var(--mute);margin:14px 0 6px">Color</div>
         <div class="seg" id="seg-lineColorMode" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
           <button data-cm="solid">Solid</button>
           <button data-cm="gradient" class="is-active">Subject gradient</button>
         </div>
-        <input type="color" id="r-lineC" value="#1a1a1a" style="width:100%;height:28px;border:1px solid var(--line);background:var(--cell);cursor:pointer;border-radius:8px;padding:1px">
+        <div class="crow"><label class="row__label">Trail colour</label><input type="color" class="sw" id="r-lineC" value="#1a1a1a"></div>
       </div>
 
       <div class="ctrl-group">
@@ -1273,8 +1223,8 @@
           <button data-ms="ring">Ring</button>
           <button data-ms="crosshair">Cross</button>
         </div>
-        <div class="row"><span class="row__label">Marker size</span><input class="row__val" id="v-markerSize" type="text" value="10"></div>
-        <input type="range" id="r-markerSize" min="3" max="40" step="1" value="10">
+        <div class="knob"><label class="row"><span class="row__label">Marker size</span><input class="row__val" id="v-markerSize" type="text" value="10"></label>
+        <input type="range" id="r-markerSize" min="3" max="40" step="1" value="10"></div>
       </div>
 
       <div class="ctrl-group">
@@ -1287,22 +1237,22 @@
     <div class="mode-group" data-mode-show="slice">
     <div class="ctrl-group">
       <div class="ctrl-label">Geometry</div>
-      <div class="row"><span class="row__label">Slices</span><input class="row__val" id="v-count" type="text" value="40"></div>
-      <input type="range" id="r-count" min="2" max="160" step="1" value="40">
-      <div class="row"><span class="row__label">Angle</span><input class="row__val" id="v-angle" type="text" value="90°"></div>
-      <input type="range" id="r-angle" min="0" max="180" step="1" value="90">
-      <div class="row"><span class="row__label">Variation</span><input class="row__val" id="v-variation" type="text" value="0.30"></div>
-      <input type="range" id="r-variation" min="0" max="1" step="0.01" value="0.3">
+      <div class="knob"><label class="row"><span class="row__label">Slices</span><input class="row__val" id="v-count" type="text" value="40"></label>
+      <input type="range" id="r-count" min="2" max="160" step="1" value="40"></div>
+      <div class="knob"><label class="row"><span class="row__label">Angle</span><input class="row__val" id="v-angle" type="text" value="90°"></label>
+      <input type="range" id="r-angle" min="0" max="180" step="1" value="90"></div>
+      <div class="knob"><label class="row"><span class="row__label">Variation</span><input class="row__val" id="v-variation" type="text" value="0.30"></label>
+      <input type="range" id="r-variation" min="0" max="1" step="0.01" value="0.3"></div>
     </div>
 
     <div class="ctrl-group">
       <div class="ctrl-label">Jitter</div>
-      <div class="row"><span class="row__label">Offset</span><input class="row__val" id="v-offset" type="text" value="0.10"></div>
-      <input type="range" id="r-offset" min="0" max="0.5" step="0.01" value="0.1">
-      <div class="row"><span class="row__label">Rotation</span><input class="row__val" id="v-rot" type="text" value="0°"></div>
-      <input type="range" id="r-rot" min="0" max="30" step="0.5" value="0">
-      <div class="row"><span class="row__label">Scale</span><input class="row__val" id="v-scale" type="text" value="0.00"></div>
-      <input type="range" id="r-scale" min="0" max="0.5" step="0.01" value="0">
+      <div class="knob"><label class="row"><span class="row__label">Offset</span><input class="row__val" id="v-offset" type="text" value="0.10"></label>
+      <input type="range" id="r-offset" min="0" max="0.5" step="0.01" value="0.1"></div>
+      <div class="knob"><label class="row"><span class="row__label">Rotation</span><input class="row__val" id="v-rot" type="text" value="0°"></label>
+      <input type="range" id="r-rot" min="0" max="30" step="0.5" value="0"></div>
+      <div class="knob"><label class="row"><span class="row__label">Scale</span><input class="row__val" id="v-scale" type="text" value="0.00"></label>
+      <input type="range" id="r-scale" min="0" max="0.5" step="0.01" value="0"></div>
     </div>
 
     <div class="ctrl-group">
@@ -1330,12 +1280,12 @@
           <button data-smpull="start">Start</button>
           <button data-smpull="end">End</button>
         </div>
-        <div class="row"><span class="row__label">Origin</span><input class="row__val" id="v-smOrigin" type="text" value="0.50"></div>
-        <input type="range" id="r-smOrigin" min="0" max="1" step="0.01" value="0.5">
-        <div class="row"><span class="row__label">Reach</span><input class="row__val" id="v-smReach" type="text" value="1.00"></div>
-        <input type="range" id="r-smReach" min="0" max="1" step="0.01" value="1">
-        <div class="row"><span class="row__label">Blend</span><input class="row__val" id="v-smBlend" type="text" value="0.30"></div>
-        <input type="range" id="r-smBlend" min="0" max="1" step="0.01" value="0.3">
+        <div class="knob"><label class="row"><span class="row__label">Origin</span><input class="row__val" id="v-smOrigin" type="text" value="0.50"></label>
+        <input type="range" id="r-smOrigin" min="0" max="1" step="0.01" value="0.5"></div>
+        <div class="knob"><label class="row"><span class="row__label">Reach</span><input class="row__val" id="v-smReach" type="text" value="1.00"></label>
+        <input type="range" id="r-smReach" min="0" max="1" step="0.01" value="1"></div>
+        <div class="knob"><label class="row"><span class="row__label">Blend</span><input class="row__val" id="v-smBlend" type="text" value="0.30"></label>
+        <input type="range" id="r-smBlend" min="0" max="1" step="0.01" value="0.3"></div>
         <div class="row"><span class="row__label">Edge</span></div>
         <div class="seg" id="seg-smProfile" style="grid-template-columns:repeat(3,1fr)">
           <button data-smprof="linear" class="is-active">Linear</button>
@@ -1345,12 +1295,12 @@
       </div>
       <div class="ctrl-group">
         <div class="ctrl-label">Lanes</div>
-        <div class="row"><span class="row__label">Bands</span><input class="row__val" id="v-smBands" type="text" value="1"></div>
-        <input type="range" id="r-smBands" min="1" max="80" step="1" value="1">
-        <div class="row"><span class="row__label">Jitter</span><input class="row__val" id="v-smJitter" type="text" value="0.00"></div>
-        <input type="range" id="r-smJitter" min="0" max="1" step="0.01" value="0">
-        <div class="row"><span class="row__label">Gap</span><input class="row__val" id="v-smGap" type="text" value="0"></div>
-        <input type="range" id="r-smGap" min="0" max="24" step="1" value="0">
+        <div class="knob"><label class="row"><span class="row__label">Bands</span><input class="row__val" id="v-smBands" type="text" value="1"></label>
+        <input type="range" id="r-smBands" min="1" max="80" step="1" value="1"></div>
+        <div class="knob"><label class="row"><span class="row__label">Jitter</span><input class="row__val" id="v-smJitter" type="text" value="0.00"></label>
+        <input type="range" id="r-smJitter" min="0" max="1" step="0.01" value="0"></div>
+        <div class="knob"><label class="row"><span class="row__label">Gap</span><input class="row__val" id="v-smGap" type="text" value="0"></label>
+        <input type="range" id="r-smGap" min="0" max="24" step="1" value="0"></div>
         <div class="row" style="margin-top:4px"><span class="row__label">Source</span></div>
         <div class="seg" id="seg-smSource" style="grid-template-columns:repeat(3,1fr)">
           <button data-smsrc="order" class="is-active">In order</button>
@@ -1368,10 +1318,10 @@
         <input type="checkbox" id="r-brushOn">
       </label>
       <div id="brush-controls" style="display:none">
-        <div class="row"><span class="row__label">Size</span><input class="row__val" id="v-brushSize" type="text" value="40"></div>
-        <input type="range" id="r-brushSize" min="5" max="150" step="1" value="40">
-        <div class="row"><span class="row__label">Strength</span><input class="row__val" id="v-brushStr" type="text" value="0.50"></div>
-        <input type="range" id="r-brushStr" min="0.05" max="1" step="0.01" value="0.5">
+        <div class="knob"><label class="row"><span class="row__label">Size</span><input class="row__val" id="v-brushSize" type="text" value="40"></label>
+        <input type="range" id="r-brushSize" min="5" max="150" step="1" value="40"></div>
+        <div class="knob"><label class="row"><span class="row__label">Strength</span><input class="row__val" id="v-brushStr" type="text" value="0.50"></label>
+        <input type="range" id="r-brushStr" min="0.05" max="1" step="0.01" value="0.5"></div>
         <button class="ctrl-btn" id="btn-brushClear" style="margin-top:6px">Clear strokes</button>
       </div>
     </div>
@@ -1396,22 +1346,21 @@
         <button data-bg="#fff">White</button>
         <button data-bg="transparent">None</button>
       </div>
-      <div class="bg-custom" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:10px">
-        <label class="row__label" style="font-size:12px;color:var(--mute);letter-spacing:0.10em;text-transform:uppercase">Custom color</label>
-        <input type="color" id="r-bgColor" value="#0d0d10" style="width:60px;height:28px;background:var(--cell);border:1px solid var(--line);cursor:pointer;padding:1px;border-radius:8px">
+      <div class="crow bg-custom" style="margin-top:10px">
+        <label class="row__label">Custom color</label>
+        <input type="color" class="sw" id="r-bgColor" value="#0d0d10">
       </div>
     </div>
 
   </aside>
 </div>
 
+<!-- The Output island — Opal.mountOutput() fills in format · pixels · DPI above these two buttons. -->
 <div id="output" data-export-custom><div class="group__t">Output</div>
-  <div class="lo-export" style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
-    <label style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--mute)">Export size <input class="row__val" id="v-export" type="text" value="3000×3000" style="width:92px;text-align:right"></label>
-    <input type="range" id="r-export" min="1000" max="5000" step="500" value="3000">
-  </div>
-  <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
-  <button class="btn" id="btn-export-svg" style="width:100%;margin-top:8px">Export SVG</button></div>
+  <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div></div>
+
+<!-- the shell's record indicator -->
+<div id="recDot"><i></i><b>0:00</b></div>
 
 <script>
 /* ============================================================
@@ -1606,9 +1555,9 @@ const $ = id => document.getElementById(id);
 // mobile: slide-up bottom-sheet panels (Sources / Controls), one at a time
 $('mSources')?.addEventListener('click',()=>{document.body.classList.remove('controls-open');document.body.classList.toggle('sources-open');});
 $('mControls')?.addEventListener('click',()=>{document.body.classList.remove('sources-open');document.body.classList.toggle('controls-open');});
-const canvas    = $('canvas');
+const canvas    = $('art');        // the artboard — shell id is #art
 const ctx       = canvas.getContext('2d');
-const stage     = $('stage');
+const stage     = $('stagewrap');  // the canvas mat — shell id is #stagewrap
 const empty     = $('empty');
 const stageInfo = $('stage-info');
 const thumbsEl  = $('thumbs');
@@ -4567,8 +4516,11 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
 // the Record button or the R key.
 (function () {
   const btn = $('recBtn');
-  const indicator = $('rec-indicator');
-  const timeEl = $('rec-time');
+  // the shell's record indicator: #recDot toggles .on, its <b> holds the elapsed time
+  // (opal.js's wireRecTimer mirrors that onto the Record button).
+  const indicator = $('recDot');
+  const timeEl = indicator && indicator.querySelector('b');
+  const showRec = on => indicator && indicator.classList.toggle('on', on);
   const countEl = $('rec-countdown');
   if (!btn || !canvas.captureStream || typeof MediaRecorder === 'undefined') {
     if (btn) { btn.disabled = true; btn.title = 'Recording is not supported in this browser'; }
@@ -4738,7 +4690,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     };
     recorder.start();
     startedAt = Date.now();
-    indicator.hidden = false;
+    showRec(true);
     timeEl.textContent = '0:00';
     timer = setInterval(() => { timeEl.textContent = fmt(Date.now() - startedAt); }, 250);
     return true;
@@ -4784,7 +4736,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     if (!recorder) return;
     clearInterval(timer); timer = null;
     resetButton();
-    indicator.hidden = true;
+    showRec(false);
     recorder.stop();   // fires onstop → builds + downloads the file
     restoreOutputSize();
   }
@@ -4847,7 +4799,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && howEl && !ho
     if (magicRAF) cancelAnimationFrame(magicRAF);
     magicRAF = null; magicActive = false;
     clearInterval(timer); timer = null;
-    indicator.hidden = true;
+    showRec(false);
     if (recorder) recorder.stop();     // fires onstop → downloads the clip
     restoreControls();
     restoreOutputSize();
@@ -5001,8 +4953,6 @@ const EXPLAIN = {
   'r-smBands':   'Splits the canvas into this many lanes, each smeared independently.',
   'r-smJitter':  'Randomly varies each lane’s origin line for a broken, brushed feel.',
   'r-smGap':     'Background gap left between lanes.',
-  // Output
-  'r-export':    'Pixel size of the exported PNG/SVG — the on-screen preview scales to match.',
 };
 
 (function attachInfoIcons() {
@@ -5130,13 +5080,6 @@ renderLayerPoints();
   });
 })();
 
-$('r-export').addEventListener('input', e => {
-  state.params.export = parseInt(e.target.value, 10);
-  refreshExportLabel();
-});
-// keep the export-size readout showing the true W×H for the chosen ratio
-$('cv-ratio').addEventListener('change', () => refreshExportLabel());
-$('cv-orient').addEventListener('change', () => refreshExportLabel());
 $('r-blend').addEventListener('change', e => {
   state.params.blend = e.target.value;
   render();
@@ -5184,25 +5127,18 @@ document.querySelectorAll('#seg-pick button').forEach(btn => {
 // SVG export — exports the EFFECT-LAYER fragments (transparent bg) as
 // vector circles/glyphs. The photographic modes (Slice, Smudge, Scatter,
 // Window, Echo, Grid, …) stay raster — use PNG for those.
-$('btn-export-svg').addEventListener('click', () => {
+// Handed to Opal.mountOutput as opts.svg, so "SVG · vector" is just another
+// format in the shared Output island. Receives the chosen long edge in px.
+function loBuildSVG(px) {
   const active = state.images.filter(s => s.enabled);
-  if (!active.length) { alert('Add some photos first.'); return; }
-  const { w, h } = loExportDims(state.params.export);
-  let svg, name;
-  if (state.layer.enabled) {
-    svg  = buildLayerSVG(w, h, active);
-    name = `lake-opeka-fragments-${state.layer.effect}-${state.seed}-${w}x${h}.svg`;
-  } else {
+  if (!active.length) { alert('Add some photos first.'); throw new Error('lake-opeka: no photos'); }
+  if (!state.layer.enabled) {
     alert('SVG export needs an enabled Effect Layer.\nUse PNG for the raster modes (Slice, Smudge, etc.).');
-    return;
+    throw new Error('lake-opeka: effect layer off');
   }
-  const blob = new Blob([svg], { type: 'image/svg+xml' });
-  const a = document.createElement('a');
-  a.download = name;
-  a.href = URL.createObjectURL(blob);
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-});
+  const { w, h } = loExportDims(px);
+  return buildLayerSVG(w, h, active);
+}
 
 // Re-roll: new seed
 $('btn-reroll').addEventListener('click', () => {
@@ -5222,25 +5158,16 @@ function loExportDims(longEdge) {
   else          { h = longEdge; w = Math.round(longEdge * aw / ah); }
   return { w: Math.max(2, w), h: Math.max(2, h) };
 }
-function refreshExportLabel() {
-  const { w, h } = loExportDims(state.params.export);
-  const v = $('v-export'); if (v && v.dataset.typing !== '1') v.value = `${w}×${h}`;
-}
-
-// Export: render at chosen size + aspect, download PNG
-$('saveBtn').addEventListener('click', () => {
-  const { w, h } = loExportDims(state.params.export);
+// Raster export: re-render the composition at the chosen long edge, honouring
+// the canvas ratio. Handed to Opal.mountOutput as opts.render, so PNG / JPG /
+// PDF all come out of a true full-size render rather than an upscaled preview.
+function loRenderExport(px) {
+  const { w, h } = loExportDims(px);
   const out = document.createElement('canvas');
   out.width = w; out.height = h;
   render(out);
-  out.toBlob(blob => {
-    const a = document.createElement('a');
-    a.download = `lake-opeka-${state.seed}-${w}x${h}.png`;
-    a.href = URL.createObjectURL(blob);
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }, 'image/png');
-});
+  return out;
+}
 
 // ── First paint ───────────────────────────────────────────────
 empty.style.display = 'block';
@@ -5270,14 +5197,11 @@ try {
     set('r-imageOpacity', 'v-imageOpacity', state.params.imageOpacity, v => String(v));
     set('r-imageBlur',    'v-imageBlur',    state.params.imageBlur,    v => String(v));
     $('r-blend').value = state.params.blend;
-    $('r-export').value = state.params.export;
-    refreshExportLabel();
     document.querySelectorAll('#seg-bg button').forEach(b => b.classList.toggle('is-active', b.dataset.bg === state.params.bg));
     document.querySelectorAll('#seg-pick button').forEach(b => b.classList.toggle('is-active', b.dataset.pick === state.params.pick));
     applyMode();
   }
 } catch (e) {}
-refreshExportLabel();   // show the true W×H for the current ratio from first paint
 setInterval(() => {
   try { localStorage.setItem(LS, JSON.stringify({ params: state.params, mode: state.mode })); } catch (e) {}
 }, 2000);
@@ -5348,20 +5272,19 @@ $('btn-add-collection')?.addEventListener('click', loadCollection);
   }
   if(document.readyState!=='loading') build(); else document.addEventListener('DOMContentLoaded', build);
 })();
+// The Output island is the shared export panel: format (PNG · JPG · PDF · SVG),
+// pixel size and DPI. loRenderExport re-renders at the true target size; loBuildSVG
+// hands back the Effect-Layer vector. Record stays the tool's own.
+Opal.mountOutput(document.getElementById('art'), 'lake-opeka', {
+  render: loRenderExport,
+  svg:    loBuildSVG,
+});
 </script>
 <style>
   /* bespoke header replaced by the shared topbar + sub-header */
   .topbar, .lo-subhead{ display:none !important; }
   :root{ --top:120px; --rail:320px; }
-  /* shared sub-header band (restated locally so it matches the shell) */
-  .opal-subhead{ position:fixed; top:82px; left:0; right:0; z-index:9; height:38px; box-sizing:border-box;
-    display:flex; align-items:center; gap:12px; padding:0 160px;
-    background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-  .opal-subhead__id{ display:flex; align-items:center; gap:11px; }
-  .opal-subhead__name{ font-size:13px; font-weight:600; color:var(--ink); }
-  .opal-subhead__desc{ font-size:12px; color:var(--mute); }
-  .opal-subhead__ver{ margin-left:auto; font-size:11px; color:var(--mute); }
-  @media (max-width:900px){ .opal-subhead{ padding:0 64px; } }
+  /* the sub-header band is OPALAB's — nothing restated here */
   /* left rail built from .images + .controls */
   #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6;
     overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px;
@@ -5371,11 +5294,11 @@ $('btn-add-collection')?.addEventListener('click', loadCollection);
     -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
   /* .images stays one island; .controls becomes a transparent stack whose GROUPS are the islands */
   #dock .images{ background:var(--island) !important; border:1px solid var(--line) !important;
-    border-radius:var(--r-island) !important; box-shadow:var(--shadow) !important; padding:16px !important; }
+    border-radius:var(--r-island) !important; box-shadow:none !important; padding:16px !important; }
   #dock .controls{ background:transparent !important; border:0 !important; box-shadow:none !important;
     padding:0 !important; display:flex !important; flex-direction:column !important; gap:16px !important; }
   #dock .controls .ctrl-group{ background:var(--island) !important; border:1px solid var(--line) !important;
-    border-radius:var(--r-island) !important; box-shadow:var(--shadow) !important; padding:16px !important;
+    border-radius:var(--r-island) !important; box-shadow:none !important; padding:16px !important;
     margin:0 !important; border-bottom:0 !important; padding-bottom:16px !important; }
   /* the rail is the ONE scroll — no nested scrolls inside islands */
   #dock{ overflow-y:auto !important; }
@@ -5388,11 +5311,11 @@ $('btn-add-collection')?.addEventListener('click', loadCollection);
   #sizeDock{ position:fixed !important; bottom:auto !important; right:auto !important;
     top:calc(var(--top) + 14px) !important; left:calc(var(--rail) + 16px) !important; transform:none !important;
     background:var(--island) !important; border:1px solid var(--line) !important; border-radius:var(--r-island) !important;
-    box-shadow:var(--shadow-float) !important; z-index:9 !important; }
+    box-shadow:none !important; z-index:9 !important; }
   /* output island — bottom-right, same as every tool */
   #output{ position:fixed !important; right:20px !important; bottom:20px !important; left:auto !important; top:auto !important; z-index:20;
     background:var(--island) !important; border:1px solid var(--line) !important; border-radius:var(--r-island) !important;
-    box-shadow:var(--shadow-float) !important; padding:14px !important; }
+    box-shadow:none !important; padding:14px !important; }
   /* native Sessions button replaced by the shared top-right Sessions */
   #btn-sessions{ display:none !important; }
   /* remaining stage actions (Magic · Re-roll · Export SVG) sit top-left of the canvas, clear of the size island */
@@ -5402,7 +5325,7 @@ $('btn-add-collection')?.addEventListener('click', loadCollection);
   #cv-orient{ display:none !important; }
   /* relocated actions (Magic · Re-roll · Export SVG) as a rail island */
   #dock .stage-actions{ position:static !important; inset:auto !important; display:flex; flex-wrap:wrap; gap:8px;
-    background:var(--island); border:1px solid var(--line); border-radius:var(--r-island); box-shadow:var(--shadow); padding:16px; margin:0; }
+    background:var(--island); border:1px solid var(--line); border-radius:var(--r-island); box-shadow:none; padding:16px; margin:0; }
   #dock .stage-actions button{ background:var(--cell); border:1px solid var(--line) !important; color:var(--ink);
     border-radius:var(--r-control); padding:8px 10px; font:inherit; font-size:12px; cursor:pointer; letter-spacing:0; }
   #dock .stage-actions button:hover{ border-color:rgba(0,0,0,.42) !important; }

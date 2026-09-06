@@ -7,17 +7,10 @@
 <title>Image Train — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
 <style>
-  /* Pattern shares the family chrome with the other Lab tools. */
-
-  /* Tape shares Angel's chrome so the two read as one family: same tokens, same rail,
-     same knobs. What differs is everything below the chrome. */
-  /* Layout tokens only. Colour tokens (--ink/--mute/--hair/--line/--track/--cell/--paper)
-     are owned by OPALAB.css (loaded last) so the whole Lab shares one light shell.
-     --panel/--edge/--liton kept here as light values OPALAB.css doesn't define.
-     The `dark` body class is legacy — OPALAB.css keys its light topbar off it; it no
-     longer re-themes the rail, so there is no dark mode. */
-  :root{ --panel:rgba(252,252,253,.72); --edge:rgba(0,0,0,.14); --liton:#6f9bff;
-    --top:120px; --rail:290px; }
+  /* Layout only. Every token and control — buttons, sliders, fields, islands, the size
+     dock — is owned by shared/OPALAB.css, which loads last. The `dark` body class is
+     legacy; there is no dark mode. */
+  :root{ --top:120px; --rail:290px; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink);
     font-family:var(--font, 'IBM Plex Sans', system-ui, -apple-system, sans-serif); overflow:hidden; }
@@ -38,52 +31,40 @@
   @media (max-width:560px){ :root{ --top:112px; } }
 
   #status{ position:fixed; bottom:14px; left:16px; z-index:5; pointer-events:none;
-    font-size:10px; letter-spacing:.08em; color:var(--mute); display:none; }
+    color:var(--mute); display:none; }
 
-  /* theme / play-pause / full screen now live in the rail's View row; #exitFs keeps the .icon look */
-  .icon{ appearance:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--hair);
-    background:var(--panel); color:var(--ink); cursor:pointer; backdrop-filter:blur(8px);
-    display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.04em; padding:0; }
+  /* play-pause / full screen live in the rail's View row; #exitFs keeps the .icon look */
+  .icon{ appearance:none; width:34px; height:34px; border:1px solid var(--hair);
+    background:var(--cell); color:var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:0; }
   .icon svg{ display:block; }
-  .icon[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  /* Sits BELOW the icon row, not beside it — the row grows as controls are added and a
-     fixed right offset kept colliding with it. Stays put in full screen so a recording
-     always shows its own timer. */
-  #recDot{ position:fixed; top:calc(var(--top) + 14px); left:calc(var(--rail) + 24px); z-index:11;
-    display:none; align-items:center; gap:7px; padding:6px 12px; border-radius:999px;
-    font-size:10px; letter-spacing:.12em; color:#ff4d5e;
-    background:var(--panel); border:1px solid var(--hair);
-    -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%); }
+  /* Sits below the size dock, clear of the artwork. Stays put in full screen so a
+     recording always shows its own timer. */
+  #recDot{ position:fixed; top:calc(var(--top) + 64px); left:calc(var(--rail) + 16px); z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px;
+    border:1px solid var(--hair); }
   #recDot.on{ display:flex; }
   /* Count-in. Big enough that you are in no doubt what is about to happen. */
 
   #recDot i{ width:7px;height:7px;border-radius:50%;background:#ff4d5e; animation:blink 1s infinite; flex:none; }
-  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; letter-spacing:.06em; }
+  #recDot b{ font-variant-numeric:tabular-nums; font-weight:600; }
   body.fs #recDot{ top:14px; }
   @keyframes blink{ 50%{opacity:.2;} }
 
-  /* Two rails: the lane you're editing on the left, everything global on the right, canvas
-     between them. Frosted — the fill stays translucent or backdrop-filter has nothing to
-     work with. */
+  /* The left rail. Position + layout only — OPALAB.css paints it and its islands. */
 
   .rail{ position:fixed; top:var(--top); bottom:0; width:var(--rail); z-index:6;
-    padding:4px 16px 24px; overflow-y:auto; overflow-x:hidden;
-    background:var(--panel);
-    -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
-    display:flex; flex-direction:column; transition:transform .28s ease; }
-  .rail-l{ left:0; border-right:1px solid var(--edge); }
-  .rail-r{ right:0; border-left:1px solid var(--edge); }
-  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px;
-    padding:14px 0; border-bottom:1px solid var(--edge); }
-  .row:last-of-type{ border-bottom:0; }
-  /* Section heads fold their section away. Nine sections in two rails is a lot to scroll
+    overflow-y:auto; overflow-x:hidden;
+    display:flex; flex-direction:column; }
+  .rail-l{ left:0; }
+  .rail-r{ right:0; }
+  .row{ display:flex; flex-direction:column; align-items:stretch; gap:13px; }
+  /* Section heads fold their section away. Nine sections is a lot to scroll
      past when you only want two of them. */
-  .rowhead{ text-transform:uppercase; letter-spacing:.16em; font-size:10px; color:var(--ink);
-    font-weight:600; opacity:.9; padding-bottom:2px;
+  .rowhead{ color:var(--ink); padding-bottom:2px;
     display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none;
     width:100%; background:none; border:0; font-family:inherit; text-align:left; }
-  .rowhead:hover{ opacity:1; }
-  .rowhint{ margin:0 0 2px; font-size:11px; line-height:1.55; color:var(--mute); letter-spacing:.01em; }
+  .rowhint{ margin:0 0 2px; line-height:1.55; color:var(--mute); }
   .rowhead::before{ content:''; width:0; height:0; flex:none;
     border-left:4px solid currentColor; border-top:3.5px solid transparent; border-bottom:3.5px solid transparent;
     transform:rotate(90deg); transition:transform .18s ease; opacity:.65; }
@@ -97,91 +78,35 @@
   .rail .seg button{ flex:1; text-align:center; padding:7px 4px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .quad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .quad .grp > label{ font-size:10px; letter-spacing:.08em; }
-  /* The canvas is the instrument. Rails stay out of the way until summoned, at every width —
-     nothing between you and the piece unless you ask for it. */
-  .rail{ width:290px; box-shadow:0 0 60px -20px rgba(0,0,0,.45); }
-  /* #dock (rail-l) is always open now — the collapse toggle is gone, so it no longer slides off-screen. */
+  /* #dock (rail-l) is always open — the collapse toggle is gone. */
   .rail.open{ transform:none; }
 
-  /* Mood — the one control that stays reachable. */
-
-  .grp > label{ text-transform:uppercase; letter-spacing:.13em; font-size:10px; line-height:1.25;
-    color:var(--mute); white-space:nowrap; }
+  .grp > label{ line-height:1.25; color:var(--mute); white-space:nowrap; }
   .rail .grp > label{ white-space:normal; }
-  .grp > label b{ font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
-  .rail select{ width:100%; background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:2px; padding:8px 9px; font:inherit; font-size:12px; cursor:pointer; }
-  /* overlay text / svg item editors */
-  .titem{ border:1px solid var(--hair); border-radius:3px; padding:9px; display:flex; flex-direction:column; gap:7px; }
+  .grp > label b{ color:var(--ink); font-variant-numeric:tabular-nums; }
+  /* overlay text / svg item editors — layout only */
+  .titem{ border:1px solid var(--hair); border-radius:var(--r-island,6px); padding:9px;
+    display:flex; flex-direction:column; gap:7px; }
   .titem + .titem{ margin-top:8px; }
-  .titem .seg button{ padding:5px 4px; font-size:10px; }
-  .titem .grp label{ font-size:10px; }
   .thead{ display:flex; gap:6px; align-items:center; }
-  .tt{ flex:1; min-width:0; background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:2px; padding:7px 8px; font:inherit; font-size:12px; }
-  .tbadge{ flex:1; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink); display:flex; align-items:center; gap:7px; min-width:0; }
+  .tt{ flex:1; min-width:0; }
+  .tbadge{ flex:1; color:var(--ink); display:flex; align-items:center; gap:7px; min-width:0; }
   .tbadge img{ width:22px; height:22px; object-fit:contain; background:rgba(127,127,127,.14); border-radius:2px; }
-  .xbtn{ appearance:none; border:1px solid var(--hair); background:transparent; color:var(--ink); width:26px; height:26px; border-radius:3px; cursor:pointer; font-size:15px; line-height:1; flex:none; }
-  .xbtn:hover{ background:var(--hair); }
-  /* seg base is owned by OPALAB.css (no border/overflow:hidden — it clipped the raised pills) */
-  .seg.lanes button[aria-pressed="true"]{ color:var(--ink); background:transparent; box-shadow:inset 0 -2px 0 currentColor; }
-  .seg.lanes button{ font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
-  /* Tooltips. A native title= arrives late and lands wherever the OS puts it; these follow
-     the control they describe and get out of the way on click. */
-  .tip{ position:fixed; z-index:60; display:none; max-width:246px; padding:8px 10px; border-radius:7px;
-    background:var(--panel); border:1px solid var(--hair); color:var(--ink);
-    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
-    box-shadow:0 16px 40px -20px rgba(0,0,0,.5);
-    font-size:10.5px; line-height:1.55; letter-spacing:.005em; text-transform:none;
-    pointer-events:none; opacity:0; transition:opacity .14s ease; }
-  /* The LFO's lane pills are on/off switches, not a "which one am I editing" tab. An
-     underline is what the lane tabs use for that other meaning, so these fill instead. */
-
-  select{ appearance:none; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 24px 7px 10px; border-radius:2px; cursor:pointer;
-    background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
-    background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px; background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
-  /* Knobs. The real <input type=range> stays in the DOM driving all the existing wiring —
-     it's just visually replaced, so listeners and readouts are untouched. */
-  .knob{ position:relative; width:46px; height:46px; flex:none; touch-action:none; cursor:ns-resize; }
-  .knob input[type=range]{ position:absolute; inset:0; width:100%; height:100%;
-    opacity:0; margin:0; pointer-events:none; }
-  .knob svg{ display:block; width:46px; height:46px; overflow:visible; }
-  .knob .k-tr{ fill:none; stroke:var(--track); stroke-width:3; stroke-linecap:round; }
-  .knob .k-vl{ fill:none; stroke:var(--ink); stroke-width:3; stroke-linecap:round;
-    transition:stroke-dasharray .04s linear; }
-  .knob .k-hub{ fill:var(--cell); stroke:var(--hair); stroke-width:1; }
-  .knob .k-pt{ stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
-  .knob:focus-visible{ outline:none; }
-  .knob:focus-visible .k-hub{ stroke:var(--ink); }
-  .knob.drag .k-vl{ stroke-width:3.6; }
+  .xbtn{ width:26px; height:26px; cursor:pointer; line-height:1; flex:none; padding:0; }
+  /* seg / select / .btn / fields are owned by OPALAB.css */
+  .seg.lanes button{ display:flex; align-items:center; justify-content:center; gap:6px; }
   .knobrow{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
   .kcell{ display:flex; flex-direction:column; align-items:center; gap:5px; width:46px; }
-  .kcell .klab{ text-transform:uppercase; letter-spacing:.1em; font-size:10px; line-height:1.15;
-    color:var(--mute); text-align:center; white-space:nowrap; }
-  .kcell .kval{ font-size:10px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
-  .btn{ appearance:none; background:var(--cell); border:1px solid var(--hair);
-    color:var(--ink); font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
-    padding:8px 12px; cursor:pointer; border-radius:2px; }
-  .btn[aria-pressed="true"]{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-  .btn:disabled{ opacity:.35; cursor:not-allowed; }
-  input[type=text]{ width:100%; background:var(--cell); border:1px solid var(--hair); color:var(--ink);
-    font:inherit; font-size:11px; padding:7px 9px; border-radius:2px; }
-  input[type=text]::placeholder{ color:var(--mute); }
-
-  /* step editor — a row of cells for the active lane; click one to set its note */
+  .kcell .klab{ line-height:1.15; color:var(--mute); text-align:center; white-space:nowrap; }
+  .kcell .kval{ color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
 
   #veil{ position:fixed; inset:0; z-index:30; background:var(--paper); display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:26px; cursor:pointer; text-align:center; padding:24px; }
-  #veil h1{ font-weight:300; font-size:15px; letter-spacing:.4em; text-transform:uppercase; margin:0; }
-  #veil p{ max-width:38ch; font-size:12px; line-height:1.8; color:var(--mute); margin:0; }
-  #veil .orb{ width:88px; height:88px; border-radius:50%;
-    background:radial-gradient(circle at 42% 38%, rgba(90,140,255,.85), rgba(150,60,255,.5) 45%, transparent 72%);
-    filter:blur(3px); animation:pulse 5s ease-in-out infinite; }
-  @keyframes pulse{ 0%,100%{ transform:scale(.9); opacity:.7; } 50%{ transform:scale(1.08); opacity:1; } }
+  #veil h1{ font-weight:500; font-size:15px; margin:0; }
+  #veil p{ max-width:38ch; line-height:1.8; color:var(--mute); margin:0; }
 
   /* Image Train's own */
-  #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none;
-    font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); }
+  #hint{ position:fixed; left:16px; bottom:14px; z-index:5; pointer-events:none; color:var(--mute); }
   body.fs #hint{ display:none; }
   /* Canvas and rail both start below the header; canvas sits right of the rail so the
      artboard centres in the visible field (not behind the rail), same as every tool. */
@@ -189,20 +114,14 @@
   .rail{ top:var(--top) !important; }
   .rowhint{ opacity:.72; }
   #countdown{ position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
-    pointer-events:none; font:800 clamp(90px,22vw,220px)/1 ui-sans-serif,Helvetica,Arial,sans-serif;
-    color:#fff; text-shadow:0 6px 40px rgba(0,0,0,.6); }
+    pointer-events:none; font:600 clamp(90px,22vw,220px)/1 var(--font); color:#fff; }
   #countdown.show{ display:flex; }
   .cin{ display:flex; align-items:center; gap:8px; }
-  .cin input[type=color]{ width:30px; height:26px; border:1px solid var(--hair); background:none; border-radius:4px; padding:0; cursor:pointer; }
-  .cin label{ font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:var(--mute); }
+  .cin label{ color:var(--mute); }
   #thumbs{ display:flex; flex-wrap:wrap; gap:5px; margin:2px 0 2px; }
   #thumbs img{ width:38px; height:38px; object-fit:cover; border-radius:4px; border:1px solid var(--hair); }
-  /* canvas-size dock — pinned top-right, matches the tool's own theme */
-  #sizeDock{ position:fixed; top:calc(var(--top) + 12px); right:20px; z-index:10; transition:opacity .5s ease; }
-  #sizeDock select{ background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:4px;
-    font:inherit; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:8px 10px; cursor:pointer; }
-  body.idle #sizeDock{ opacity:0; pointer-events:none; }
-  body.panels #sizeDock{ opacity:1; pointer-events:auto; }
+  /* canvas-size dock — position + geometry are owned by OPALAB.css */
+  #sizeDock{ z-index:10; }
 </style>
 <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
 </head>
@@ -227,7 +146,6 @@
   <div class="row" style="padding-bottom:6px">
     <div class="grp"><label>View</label>
       <div style="display:flex; gap:6px;">
-        <button class="btn" id="themeBtn" style="flex:1" aria-label="light or dark" title="Light / dark" data-tip="Switches the interface between light and dark.">Theme</button>
         <button class="btn" id="playBtn" style="flex:1" aria-label="play or pause" title="Play / pause &#183; space" aria-pressed="true" data-tip="Pauses the motion and holds the frame still. Press again, or Space, to carry on.">Pause</button>
         <button class="btn" id="fsBtn" style="flex:1" aria-label="full screen" title="Full screen &#8212; canvas only" data-tip="Fills the screen with the canvas alone. Press Esc or F to leave.">Full screen</button>
       </div>
@@ -292,7 +210,7 @@
       <div class="seg" id="maskSeg"><button data-x="0" aria-pressed="true">Off</button><button data-x="1" aria-pressed="false">On</button></div>
     </div>
     <div id="maskWrap" style="display:none">
-      <input id="maskText" type="text" value="WHISKEY &amp; TEA" spellcheck="false" placeholder="mask word(s)…" style="width:100%; background:var(--paper); color:var(--ink); border:1px solid var(--hair); border-radius:2px; padding:8px 9px; font:inherit; font-size:12px; letter-spacing:.04em;" />
+      <input id="maskText" type="text" value="WHISKEY &amp; TEA" spellcheck="false" placeholder="mask word(s)…" style="width:100%" />
       <div class="grp" data-tip="The colour outside the letters." style="margin-top:8px"><div class="cin"><input type="color" id="maskBg" value="#ffffff"><label>Outside</label></div></div>
     </div>
     <div class="grp" data-tip="Overlay the frame with its own data — clinical telemetry, code fragments, time, location and per-band speeds scattered across the frame."><label>Metadata</label>
@@ -371,13 +289,13 @@
   </div>
 
 
-  <div class="row out">
-    <button type="button" class="rowhead" aria-expanded="true">Output</button>
+  <div class="group out" id="output" data-export-custom>
+    <div class="group__t">Output</div>
     <p class="rowhint">A still, or the motion (with your track) as a video.</p>
-    <div class="grp"><div style="display:flex; gap:6px;">
-      <button class="btn" id="recBtn" style="flex:1" data-tip="Records the motion as a video (MP4 where supported).">Record</button>
-      <button class="btn" id="saveBtn" style="flex:1" data-tip="Saves the current frame as a high-resolution PNG.">Save</button>
-    </div></div>
+    <div class="grid2">
+      <button class="btn" id="recBtn" data-tip="Records the motion as a video (MP4 where supported).">Record</button>
+      <button class="btn" id="saveBtn" data-tip="Saves the current frame as a high-resolution PNG.">Save</button>
+    </div>
   </div>
 </div>
 
@@ -388,7 +306,7 @@
 (function(){
   const $=id=>document.getElementById(id);
   const clamp=(v,a,b)=>v<a?a:v>b?b:v;
-  let THEME='dark';
+  /* no theme toggle — the Lab shell is one flat light surface */
   const state={ count:43, uneven:100, axis:'weave', cross:61, speed:45, spread:60, bg:'#ffffff',
     size:'1080x1350', res:3200, seed:7, meta:1, fragment:26, smudge:16, grunge:0, halftone:0, duo:'0', duoLo:'#181826', duoHi:'#f2d24a',
     maskOn:'0', maskText:'WHISKEY & TEA', maskBg:'#ffffff', gap:0, vol:85, playing:true,
@@ -1010,8 +928,6 @@
     $('vol').addEventListener('input',e=>{ state.vol=+e.target.value; $('volR').textContent=e.target.value; if(masterGain) masterGain.gain.value=state.vol/100; });
     $('playBtn').addEventListener('click',()=>{ state.playing=!state.playing; last=null; $('playBtn').setAttribute('aria-pressed',String(state.playing));
       $('playBtn').innerHTML=state.playing?'<svg viewBox="0 0 12 12" width="11" height="11"><rect x="2.6" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/><rect x="6.9" y="1.8" width="2.5" height="8.4" rx="1.1" fill="currentColor"/></svg>':'<svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 1.8 L10 6 L3 10.2 Z" fill="currentColor"/></svg>'; });
-    $('themeBtn').addEventListener('click',()=>{ THEME=THEME==='dark'?'light':'dark'; document.body.classList.toggle('dark',THEME==='dark'); $('themeBtn').setAttribute('aria-pressed',String(THEME==='dark'));
-      if(THEME==='light'&&state.bg==='#0a0b10'){ state.bg='#eef0f4'; $('bg').value=state.bg; } else if(THEME==='dark'&&state.bg==='#eef0f4'){ state.bg='#0a0b10'; $('bg').value=state.bg; } markDirty(); });
     $('fsBtn').addEventListener('click',()=>setFs(!document.body.classList.contains('fs')));
     $('exitFs').addEventListener('click',()=>setFs(false));
     ['dragover','drop'].forEach(ev=>addEventListener(ev,e=>e.preventDefault()));
