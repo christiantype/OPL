@@ -56,31 +56,30 @@ A clean `#dock` reference implementation is **[offset/index.html](/lab/offset/in
 |---|---|---|
 | `--font` | `'IBM Plex Sans', system-ui…` | interface type |
 | `--mono` | `'IBM Plex Mono', ui-monospace…` | readouts, code |
-| `--accent` | `#0f62fe` | selected, pressed, focus, slider dial (IBM Blue 60); `--accent-hover` `#0353e9` |
-| `--ink` | `#33383f` | primary text, thumbs |
-| `--dim` / `--mute` | `#6b7280` | muted labels / captions |
-| `--line` / `--hair` | `rgba(60,70,90,.06)` / `.07` | the near-invisible edges (shadow defines form) |
-| `--track` | `rgba(120,120,128,.20)` | slider grooves |
-| `--paper` / `--cell` / `--island` | `#f4f4f6` | the one surface — page, buttons, cards |
-| `--mat` | `#cbced4` | canvas mat behind the artboard (darker) |
+| `--accent` | `#000000` | selected, pressed, focus, slider dot; `--accent-hover` `#2b00ff` |
+| `--ink` | `#000000` | primary text |
+| `--dim` / `--mute` | `#454545` | muted labels / captions |
+| `--line` / `--hair` | `rgba(0,0,0,.16)` / `.18` | the hairlines that draw every edge — there are no shadows |
+| `--track` | `rgba(0,0,0,.18)` | the slider's thin line |
+| `--paper` / `--cell` / `--island` | `#ffffff` | the one surface — page, rail, buttons, cards |
+| `--mat` | `#ebecef` | canvas mat behind the artboard (a step darker, so the white board reads) |
 | `--rec` | `#da1e28` | record indicator |
-| `--r-island` / `--r-control` / `--r-input` | `18px` / `12px` / `10px` | rounded corners |
-| `--shadow` / `--shadow-float` | raised islands / floating panels | the dual light-dark lift |
-| `--shadow-inset` / `--shadow-sm` / `--shadow-pressed` | inset fields / raised buttons / pressed-on | neumorphic states |
+| `--r-island` / `--r-control` / `--r-input` / `--r-seg` | `6px` | crisp corners, one value |
+| `--shadow*` / `--nm-lo` / `--nm-hi` | `none` / `transparent` | **kept only so old references resolve — nothing may reintroduce a shadow** |
 
-Neumorphism is keyed to the **surface**, not `body.dark`: most "dark" tools only darken the topbar and keep a light rail. A genuinely dark-rail tool redefines `--nm-lo`/`--nm-hi` (the light/dark shadow pair) in its own scope, after OPALAB.
+There is no dark shell and no theme toggle. A tool paints its own artwork dark if it wants to; the chrome stays white. Tools must not redefine any token above.
 
 ---
 
 ## 4. Control language (use these classes)
 
-- **Groups = islands.** `<div class="group">` + `<div class="group__t">Caption</div>`. OPALAB renders each as a **borderless, rounded, soft-shadowed island** on the rail, with a consistent gap between them — don't add manual margins/dividers. `#dock` groups are collapsible accordions (click the caption).
-- **Sliders:** `<div class="knob"><label>Name <b id="xR">val</b></label><input type="range" …></div>` — inset groove + raised **accent dial**, mono readout. Wire the `<b>` on `input`.
-- **Buttons:** `.btn` (raised); selected/primary via `[aria-pressed="true"]` / `.primary` / `.on` press **IN** (inset shadow + accent ink). `.grid2` for two-up. `.seg` groups auto-collapse to a select above 3 options.
-- **Selects / fields:** inset, with the shared chevron; `#sizeDock select` is the canonical size chooser.
-- **Colour rows:** `.crow` — label left, `<input type="color" class="sw">` right.
-- **Toggles:** `<input type="checkbox">` renders as a **pill switch** (accent knob when on).
-- **Tooltips:** `.tip` (solid dark).
+- **Groups = islands.** `<div class="group">` + `<div class="group__t">Caption</div>`. OPALAB renders each as a **white, hairline-edged card** on the rail, with a consistent gap between them — don't add manual margins/dividers (a `.group + .group` spacer is drift). `#dock` groups are collapsible accordions: the caption is the handle and carries a **drawn triangle**, never a glyph.
+- **Sliders:** `<div class="knob"><label>Name <b id="xR">val</b></label><input type="range" …></div>` — a 3px flat line + a 16px flat **accent dot**, mono readout. Wire the `<b>` on `input`.
+- **Buttons:** `.btn` — a white face with a hairline edge; selected/primary via `[aria-pressed="true"]` / `.primary` / `.on` fill **solid accent with white ink**. `.grid2` for two-up. `.seg` is gapped pills (no wrapper) and auto-collapses to a select above 3 options.
+- **Selects / fields:** flat and hairline-edged, with the shared chevron — **never give a `<select>` `class="btn"`**, the button face wipes the chevron. `#sizeDock select` is the canonical size chooser.
+- **Colour rows:** `.crow` — label left, `<input type="color" class="sw">` right (a 26px round well). A selected `.sw` takes a 2px accent **outline**, never a ring drawn with a shadow.
+- **Toggles:** `<input type="checkbox">` renders as a **flat pill switch** (grey track, accent when on, plain white knob).
+- **Tooltips:** `.tip` (solid dark, no blur).
 
 ---
 
@@ -108,7 +107,9 @@ Every tool carries **one Output island**, pinned to the **bottom-right of the sc
 
 ## 6. Conformance (2026-08)
 
-All ~25 tools share the shell — one left rail (`#dock`, or `#rail`/`#panel` for bespoke tools), the white artboard on the grey mat, the top-left size dock, top-right cross-tool Sessions, and the identical bottom-right Output island — on the single **OPALAB.css**, in soft neumorphism. Zero console errors across the fleet.
+All ~30 tools share the shell — one left rail (`#dock`, or `#rail`/`#panel` for bespoke tools), the white artboard on the grey mat, the top-left size dock, top-right cross-tool Sessions, and the identical bottom-right Output island — on the single **OPALAB.css**, flat. Zero console errors across the fleet.
+
+**Drift to watch for** (found across the fleet in the 2026-09 flat audit, and the reason for most of the `!important`s in OPALAB): a tool redefining shell tokens in its own `:root`/`html:root`/`body` scope; a leftover `body.dark` theme or a Theme toggle; `.rail`/`#dock` frosted backgrounds and `backdrop-filter`; `box-shadow` on the artboard or on a popover; `.group + .group` margins; 8–10px uppercase labels; `<select class="btn">`; controls floating over the canvas; a hand-wired Save instead of `Opal.mountOutput`.
 
 **Intentional exceptions** (different tool *categories*, not the parametric instruments): **open-capture** is a 4-clip batch-recorder gallery, and **open-reel** is an immersive fixed-format 9:16 reel (a locked size readout, no rail).
 
