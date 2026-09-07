@@ -31,7 +31,7 @@
 <body>
   <script src="/lab/shared/opal.js"></script>
   <script>Opal.mountTopbar({ name:'Pure Land', desc:'A grid of squares, each one a moving gradient',
-    about:'A field of squares, tiled across the canvas. Inside every square a linear gradient travels through the colours you choose, in the direction you set. The squares can be offset against each other two ways: the gradient inside each one can run ahead of its neighbours, so colour moves across the grid as a wave; and the squares themselves can stagger sideways row by row, like a running bond. Set the columns and rows, open a gap between the tiles, order the offsets or scatter them, and let it run. WebGL, so it stays smooth and exports at full size. Save a still, or record the drift.' });</script>
+    about:'A field of squares, tiled across the canvas. Inside every square a linear gradient travels through the colours you choose, in the direction you set. The squares can be offset against each other two ways: the gradient inside each one can run ahead of its neighbours, so colour moves across the grid as a wave; and the squares themselves can stagger sideways row by row, like a running bond. The grid always fills the canvas edge to edge — set the columns and rows and the squares resize to cover it. Order the offsets or scatter them, and let it run. WebGL, so it stays smooth and exports at full size. Save a still, or record the drift.' });</script>
   <div id="sizeDock">
     <span id="dimReadout">1080 × 1920</span>
     <select id="aspect" title="Canvas size">
@@ -57,9 +57,8 @@
         <div class="knob"><label>Columns <b id="colsR">4</b></label><input id="cols" type="range" min="1" max="24" value="4"></div>
         <div class="knob"><label>Rows <b id="rowsR">7</b></label><input id="rows" type="range" min="1" max="24" value="7"></div>
       </div>
-      <div class="knob"><label>Gap <b id="gapR">6</b></label><input id="gap" type="range" min="0" max="60" value="6"></div>
       <label class="tog"><span>Square tiles</span><input type="checkbox" id="square" checked></label>
-      <p class="rowhint">Square tiles keeps every cell a true square and centres the grid; off, the tiles stretch to fill the canvas.</p>
+      <p class="rowhint">The grid always fills the canvas. Square tiles keeps every cell a true square, growing them so the overflowing edge crops; off, the tiles stretch to land exactly on the count.</p>
     </div>
 
     <div class="group">
@@ -73,7 +72,17 @@
       <div class="crow" id="rowC1"><label>Colour 2</label><input type="color" class="sw" id="c1" value="#ea2b1e"></div>
       <div class="crow" id="rowC2"><label>Colour 3</label><input type="color" class="sw" id="c2" value="#1f40e6"></div>
       <div class="crow" id="rowC3" hidden><label>Colour 4</label><input type="color" class="sw" id="c3" value="#10b981"></div>
-      <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#ffffff"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Rim</div>
+      <div class="duo">
+        <div class="knob"><label>Width <b id="rimR">6</b></label><input id="rim" type="range" min="0" max="40" value="6"></div>
+        <div class="knob"><label>Direction <b id="rimAngR">90°</b></label><input id="rimAng" type="range" min="0" max="360" value="90"></div>
+      </div>
+      <div class="knob"><label>Strength <b id="rimAR">100</b></label><input id="rimA" type="range" min="0" max="100" value="100"></div>
+      <div class="crow"><label>Rim colour</label><input type="color" class="sw" id="rimC" value="#ffffff"></div>
+      <p class="rowhint">A stroke inside each square that holds its colour at one edge and blends to transparent across the tile. Width 0 turns it off.</p>
     </div>
 
     <div class="group">
@@ -103,8 +112,9 @@
   <script id="frag" type="x-shader/x-fragment">
 precision highp float;
 uniform vec2 uRes; uniform float uT;
-uniform float uCols, uRows, uGap, uAngle, uSpread, uGradOff, uTileOff, uScatter, uSeed, uSquare, uStops;
-uniform vec3 uC0, uC1, uC2, uC3, uBg;
+uniform float uCols, uRows, uAngle, uSpread, uGradOff, uTileOff, uScatter, uSeed, uSquare, uStops;
+uniform float uRim, uRimAngle, uRimA;
+uniform vec3 uC0, uC1, uC2, uC3, uRimC;
 
 float hash21(vec2 p){ p=fract(p*vec2(123.34,345.45)); p+=dot(p,p+34.345); return fract(p.x*p.y); }
 
@@ -129,19 +139,19 @@ void main(){
   vec2 cells = vec2(uCols, uRows);
 
   /* grid space — one unit per cell */
-  vec2 g; vec2 cellPx;
+  vec2 g; float cellMin;
   if(uSquare > 0.5){
-    float cs = min(uRes.x/uCols, uRes.y/uRows);        // true squares, grid centred
+    /* true squares, grown to COVER the canvas and centred — the grid always fills,
+       the overflowing axis simply crops. Never letterboxed. */
+    float cs = max(uRes.x/uCols, uRes.y/uRows);
     vec2 origin = (uRes - cs*cells) * 0.5;
     g = (fc - origin) / cs;
-    cellPx = vec2(cs);
+    cellMin = cs;
   } else {
-    cellPx = uRes / cells;                             // stretched to fill
-    g = fc / cellPx;
+    vec2 cp = uRes / cells;                            // stretched to fill
+    g = fc / cp;
+    cellMin = min(cp.x, cp.y);
   }
-
-  /* outside the grid is background */
-  if(g.x < 0.0 || g.y < 0.0 || g.x > uCols || g.y > uRows){ gl_FragColor = vec4(uBg,1.0); return; }
 
   /* the squares themselves stagger sideways, row by row — wrapped, so a row stays whole */
   float row = floor(g.y);
@@ -162,12 +172,16 @@ void main(){
 
   vec3 col = ramp(t);
 
-  /* the gap between tiles */
-  if(uGap > 0.001){
-    float halfw = 0.5 - uGap*0.5;
-    float m = max(abs(f.x - 0.5), abs(f.y - 0.5));
-    float aa = 1.5 / max(min(cellPx.x, cellPx.y), 1.0);
-    col = mix(col, uBg, smoothstep(halfw - aa, halfw + aa, m));
+  /* the rim — a stroke inside the square, solid where its direction points,
+     blending to transparent across the tile */
+  if(uRim > 0.0005){
+    float e = 0.5 - max(abs(f.x - 0.5), abs(f.y - 0.5));   // 0 at the tile edge
+    float aa = 1.2 / max(cellMin, 1.0);
+    float band = 1.0 - smoothstep(uRim - aa, uRim + aa, e);
+    vec2 rd = vec2(cos(uRimAngle), sin(uRimAngle));
+    float rext = abs(rd.x) + abs(rd.y);
+    float fade = clamp(dot(f - 0.5, rd) / rext + 0.5, 0.0, 1.0);
+    col = mix(col, uRimC, band * fade * uRimA);
   }
 
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -181,9 +195,10 @@ void main(){
     const $=id=>document.getElementById(id);
     if(!gl){ const c=art.getContext('2d'); c.fillStyle='#111'; c.fillRect(0,0,art.width,art.height); c.fillStyle='#fff'; c.font='24px sans-serif'; c.fillText('WebGL unavailable',40,60); return; }
 
-    const P={ aspect:'1080/1920', seed:3, cols:4, rows:7, gap:0.06, square:true,
-      ang:45, spread:0.5, stops:3, cols_:null,
-      c:['#f7de4c','#ea2b1e','#1f40e6','#10b981'], bg:'#ffffff',
+    const P={ aspect:'1080/1920', seed:3, cols:4, rows:7, square:true,
+      ang:45, spread:0.5, stops:3,
+      c:['#f7de4c','#ea2b1e','#1f40e6','#10b981'],
+      rim:0.03, rimAng:90, rimA:1.0, rimC:'#ffffff',
       goff:0.60, toff:0.0, scat:0, spd:1.0, play:true };
 
     const HEX=h=>{ const n=parseInt(h.slice(1),16); return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]; };
@@ -199,7 +214,7 @@ void main(){
     const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, -1,1, 1,1]),gl.STATIC_DRAW);
     const ploc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(ploc); gl.vertexAttribPointer(ploc,2,gl.FLOAT,false,0,0);
-    const U={}; ['uRes','uT','uCols','uRows','uGap','uAngle','uSpread','uGradOff','uTileOff','uScatter','uSeed','uSquare','uStops','uC0','uC1','uC2','uC3','uBg']
+    const U={}; ['uRes','uT','uCols','uRows','uAngle','uSpread','uGradOff','uTileOff','uScatter','uSeed','uSquare','uStops','uRim','uRimAngle','uRimA','uC0','uC1','uC2','uC3','uRimC']
       .forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 
     let W=1080,H=1920,clock=0;
@@ -207,14 +222,15 @@ void main(){
       gl.viewport(0,0,w,h);
       gl.uniform2f(U.uRes,w,h); gl.uniform1f(U.uT,tm);
       gl.uniform1f(U.uCols,P.cols); gl.uniform1f(U.uRows,P.rows);
-      gl.uniform1f(U.uGap,P.gap); gl.uniform1f(U.uAngle,P.ang*Math.PI/180);
+      gl.uniform1f(U.uAngle,P.ang*Math.PI/180);
       gl.uniform1f(U.uSpread,P.spread); gl.uniform1f(U.uGradOff,P.goff);
       gl.uniform1f(U.uTileOff,P.toff); gl.uniform1f(U.uScatter,P.scat);
       gl.uniform1f(U.uSeed,P.seed*0.137); gl.uniform1f(U.uSquare,P.square?1:0);
       gl.uniform1f(U.uStops,P.stops);
       gl.uniform3fv(U.uC0,HEX(P.c[0])); gl.uniform3fv(U.uC1,HEX(P.c[1]));
       gl.uniform3fv(U.uC2,HEX(P.c[2])); gl.uniform3fv(U.uC3,HEX(P.c[3]));
-      gl.uniform3fv(U.uBg,HEX(P.bg));
+      gl.uniform1f(U.uRim,P.rim); gl.uniform1f(U.uRimAngle,P.rimAng*Math.PI/180);
+      gl.uniform1f(U.uRimA,P.rimA); gl.uniform3fv(U.uRimC,HEX(P.rimC));
       gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     }
     function drawNow(){ draw(W,H,clock); }
@@ -231,19 +247,21 @@ void main(){
       r.oninput=()=>{ set(+r.value); if(v) v.textContent=fmt?fmt(+r.value):r.value; if(!P.play) drawNow(); }; }
     bind('cols','colsR',v=>P.cols=v);
     bind('rows','rowsR',v=>P.rows=v);
-    bind('gap','gapR',v=>P.gap=v/100);
     bind('ang','angR',v=>P.ang=v, v=>v+'°');
     bind('spread','spreadR',v=>P.spread=v/100, v=>(v/100).toFixed(2));
     bind('goff','goffR',v=>P.goff=v/100, v=>(v/100).toFixed(2));
     bind('toff','toffR',v=>P.toff=v/100, v=>(v/100).toFixed(2));
     bind('scat','scatR',v=>P.scat=v/100);
     bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
+    bind('rim','rimR',v=>P.rim=v/200);
+    bind('rimAng','rimAngR',v=>P.rimAng=v, v=>v+'°');
+    bind('rimA','rimAR',v=>P.rimA=v/100);
 
     // colour count — show only the swatches in play
     function syncStops(){ for(let i=0;i<4;i++){ const row=$('rowC'+i); if(row) row.hidden = i >= P.stops; } }
     $('stops').oninput=e=>{ P.stops=+e.target.value; $('stopsR').textContent=P.stops; syncStops(); if(!P.play) drawNow(); };
     for(let i=0;i<4;i++){ const el=$('c'+i); if(el) el.oninput=e=>{ P.c[i]=e.target.value; if(!P.play) drawNow(); }; }
-    $('bg').oninput=e=>{ P.bg=e.target.value; if(!P.play) drawNow(); };
+    $('rimC').oninput=e=>{ P.rimC=e.target.value; if(!P.play) drawNow(); };
     $('square').onchange=e=>{ P.square=e.target.checked; if(!P.play) drawNow(); };
 
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
