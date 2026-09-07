@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>AHA — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
+<style>
+  :root{ --rail:300px; --top:120px; }
+  @media (max-width:560px){ :root{ --top:112px; } }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100vh; height:100dvh; overflow:hidden; background:var(--paper); font-family:var(--font,'IBM Plex Sans',system-ui,sans-serif); }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; background:var(--mat);
+    display:flex; align-items:center; justify-content:center; padding:22px; }
+  #art{ max-width:100%; max-height:100%; display:block; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
+  #thumbs{ display:grid; grid-template-columns:repeat(5,1fr); gap:5px; }
+  #thumbs:empty{ display:none; }
+  #thumbs img{ width:100%; aspect-ratio:3/4; object-fit:cover; display:block;
+    border:1px solid var(--hair); border-radius:var(--r-input); }
+  body.drag #wrap{ outline:2px dashed var(--accent); outline-offset:-14px; }
+  .group[hidden]{ display:none !important; }
+</style>
+  <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
+</head>
+<body>
+  <script src="/lab/shared/opal.js"></script>
+  <script>Opal.mountTopbar({ name:'AHA', desc:'A band for every poster, smudged and moving',
+    about:'A teaser for a series. Every poster you add takes its own band across the frame, and each band is smudged — the ASYNC drag from Lake Opeka, where a single line of the poster is stretched the length of the band so the detail across that line survives while everything else pulls into long painterly streaks. Then the source line travels, each band at its own pace and direction, so every poster reveals itself a column at a time and never quite assembles. Add images or drop a PDF and every page becomes a poster. Set the bands to follow the count, or override it. Export a still, or record the whole reveal.' });</script>
+  <div id="sizeDock">
+    <span id="dimReadout">1080 × 1920</span>
+    <select id="aspect" title="Canvas size">
+      <option value="1080/1920" selected>Story · 9:16</option>
+      <option value="1280/1600">Portrait · 4:5</option>
+      <option value="1400/1400">Square · 1:1</option>
+      <option value="1600/900">Landscape · 16:9</option>
+    </select>
+  </div>
+  <div id="recDot"><i></i><b>0:00</b></div>
+
+  <div id="dock">
+    <div class="group">
+      <div class="group__t">Posters</div>
+      <p class="rowhint">Add your posters — or drop a PDF and every page becomes one. Each gets a band of its own. Nothing leaves this page.</p>
+      <div class="grid2">
+        <button class="btn" id="addBtn">Add posters</button>
+        <button class="btn" id="clearBtn">Clear</button>
+      </div>
+      <input id="fileInp" type="file" accept="image/*,application/pdf,.pdf" multiple hidden />
+      <p class="rowhint" id="status">No posters yet.</p>
+      <div id="thumbs"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Bands</div>
+      <label class="tog"><span>One band per poster</span><input type="checkbox" id="auto" checked></label>
+      <div class="knob"><label>Bands <b id="bandsR">43</b></label><input id="bands" type="range" min="1" max="120" value="43" disabled></div>
+      <div class="knob"><label>Direction</label>
+        <div class="seg" id="axisSeg">
+          <button data-x="h" aria-pressed="true">Horizontal</button>
+          <button data-x="v" aria-pressed="false">Vertical</button>
+        </div>
+      </div>
+      <div class="knob"><label>Order</label>
+        <div class="seg" id="orderSeg">
+          <button data-x="seq" aria-pressed="true">In order</button>
+          <button data-x="shuf" aria-pressed="false">Shuffled</button>
+        </div>
+      </div>
+      <div class="knob"><label>Gap <b id="gapR">0</b></label><input id="gap" type="range" min="0" max="24" value="0"></div>
+      <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#0b0b0e"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Smudge</div>
+      <div class="duo">
+        <div class="knob"><label>Origin <b id="originR">0.50</b></label><input id="origin" type="range" min="0" max="100" value="50"></div>
+        <div class="knob"><label>Reach <b id="reachR">0.75</b></label><input id="reach" type="range" min="0" max="100" value="75"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Blend <b id="blendR">0.55</b></label><input id="blend" type="range" min="0" max="100" value="55"></div>
+        <div class="knob"><label>Jitter <b id="jitR">0.00</b></label><input id="jit" type="range" min="0" max="100" value="0"></div>
+      </div>
+      <div class="knob"><label>Edge</label>
+        <div class="seg" id="profSeg">
+          <button data-x="linear" aria-pressed="true">Linear</button>
+          <button data-x="smooth" aria-pressed="false">Smooth</button>
+          <button data-x="hard" aria-pressed="false">Hard</button>
+        </div>
+      </div>
+      <div class="knob"><label>Pull</label>
+        <div class="seg" id="pullSeg">
+          <button data-x="both" aria-pressed="true">Both ways</button>
+          <button data-x="start" aria-pressed="false">To start</button>
+          <button data-x="end" aria-pressed="false">To end</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Motion</div>
+      <p class="rowhint">Each band pans through its own poster, at its own pace and direction, so the series reveals itself slowly.</p>
+      <div class="grid2"><button class="btn" id="shuffle">Shuffle</button><button class="btn" id="playBtn" aria-pressed="true">Pause</button></div>
+      <div class="duo">
+        <div class="knob"><label>Speed <b id="spdR">45</b></label><input id="spd" type="range" min="0" max="100" value="45"></div>
+        <div class="knob"><label>Spread <b id="spreadR">60</b></label><input id="spread" type="range" min="0" max="100" value="60"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="wrap"><canvas id="art" width="1080" height="1920"></canvas></div>
+
+  <div class="group out" id="output" data-export-custom>
+    <div class="group__t">Output</div>
+    <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
+  </div>
+
+  <script>
+  (function(){
+    const art=document.getElementById('art'), ctx=art.getContext('2d');
+    const $=id=>document.getElementById(id);
+    const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+
+    const P={ aspect:'1080/1920', seed:7, auto:true, bands:43, axis:'h', order:'seq', gap:0,
+      bg:'#0b0b0e', origin:0.5, reach:0.75, blend:0.55, jit:0.0, prof:'linear', pull:'both',
+      spd:45, spread:60, play:true };
+
+    let imgs=[], W=1080, H=1920, t=0;
+
+    // deterministic RNG so a seed always lays the bands out the same way
+    function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
+      let x=Math.imul(a^a>>>15,1|a); x=x+Math.imul(x^x>>>7,61|x)^x;
+      return ((x^x>>>14)>>>0)/4294967296; }; }
+
+    // ---- band layout: one lane per poster (or an override count) -------------
+    let lanes=[], laneKey='';
+    function layout(){
+      const N=Math.max(1, P.auto ? (imgs.length||1) : Math.round(P.bands));
+      const key=[N,P.axis,P.order,P.gap,P.seed,imgs.length,W,H].join('|');
+      if(laneKey===key) return; laneKey=key;
+      const r=mulberry((P.seed*2654435761)>>>0);
+      const cross=P.axis==='h'?H:W, gap=P.gap, laneLen=(cross-gap*Math.max(0,N-1))/N;
+      // which poster lands on which band
+      let pick=[...Array(N)].map((_,i)=>imgs.length?i%imgs.length:0);
+      if(P.order==='shuf'&&imgs.length){ const pool=[...Array(N)].map((_,i)=>i%imgs.length);
+        for(let i=pool.length-1;i>0;i--){ const j=(r()*(i+1))|0; [pool[i],pool[j]]=[pool[j],pool[i]]; } pick=pool; }
+      lanes=[];
+      for(let i=0;i<N;i++) lanes.push({
+        start:i*(laneLen+gap), len:laneLen, img:pick[i],
+        jit:(r()-0.5)*2,                         // per-band origin offset, scaled by Jitter
+        spd:0.35+r()*1.3,                        // its own pace  (image-train)
+        dir:r()<0.5?-1:1,                        // its own direction
+        phase:r() });
+    }
+
+    // ---- base: each poster fills the LENGTH of its own band, cropped to the
+    // band's thickness, and pans through itself over time — so a 43-band frame
+    // shows a full-width slit of every poster, and each slowly reveals itself
+    // end to end (image-train's per-band pace and direction).
+    const base=document.createElement('canvas');
+    function buildBase(w,h,time){
+      if(base.width!==w||base.height!==h){ base.width=w; base.height=h; }
+      const b=base.getContext('2d');
+      b.setTransform(1,0,0,1,0,0);
+      b.fillStyle=P.bg; b.fillRect(0,0,w,h);
+      if(!imgs.length) return;
+      const horiz=P.axis==='h', sc=(horiz?h:w)/(horiz?H:W);
+      const rate=(P.spd/100)*0.16, vary=P.spread/100;
+      for(const L of lanes){
+        const im=imgs[L.img]; if(!im||!im.naturalWidth) continue;
+        const s0=L.start*sc, ln=Math.max(1,L.len*sc);
+        const iw=im.naturalWidth, ih=im.naturalHeight;
+        // pan: a smooth there-and-back through the poster, each band its own pace
+        const u=time*rate*(1+(L.spd-1)*vary)*L.dir + L.phase*2;
+        const v=Math.abs(((u%2)+2)%2 - 1);                     // 0..1 triangle, no jump
+        if(horiz){
+          const srcH=Math.min(ih, ln*iw/w);                    // the slit, in source pixels
+          b.drawImage(im, 0, v*(ih-srcH), iw, srcH, 0, s0, w, ln);
+        } else {
+          const srcW=Math.min(iw, ln*ih/h);
+          b.drawImage(im, v*(iw-srcW), 0, srcW, ih, s0, 0, ln, h);
+        }
+      }
+    }
+
+    // ---- the smudge: stretch each band's source line the length of the band --
+    const strip=document.createElement('canvas'), mask=document.createElement('canvas');
+    function draw(g,w,h,time){
+      layout(); buildBase(w,h,time);
+      g.setTransform(1,0,0,1,0,0);
+      g.fillStyle=P.bg; g.fillRect(0,0,w,h);
+      if(!imgs.length){ g.fillStyle='rgba(255,255,255,.55)';
+        g.font='500 '+Math.round(Math.min(w,h)*0.028)+'px "IBM Plex Sans",system-ui,sans-serif';
+        g.textAlign='center'; g.fillText('Add posters — each one takes a band', w/2, h/2); g.textAlign='left'; return; }
+      g.drawImage(base,0,0);                       // the posters, crisp
+      if(P.reach<=0.001) return;
+
+      const horiz=P.axis==='h', along=horiz?w:h, sc=(horiz?h:w)/(horiz?H:W);
+      strip.width=w; strip.height=h; mask.width=w; mask.height=h;
+      const sx=strip.getContext('2d'), mx=mask.getContext('2d');
+      sx.clearRect(0,0,w,h); mx.clearRect(0,0,w,h);
+
+      const ease=u=> P.prof==='hard' ? Math.pow(u,0.3) : P.prof==='smooth' ? (u*u*(3-2*u)) : u;
+      const leftReach  = P.pull==='end'   ? 0 : P.reach;
+      const rightReach = P.pull==='start' ? 0 : P.reach;
+
+      for(const L of lanes){
+        const s0=Math.round(L.start*sc), ln=Math.round(L.len*sc);
+        if(ln<1) continue;
+        // where the poster stays crisp; Jitter offsets it band to band
+        const o=clamp(P.origin + L.jit*P.jit, 0, 1);
+        const oPx=clamp(Math.round(o*(along-1)),0,along-1);
+
+        if(horiz) sx.drawImage(base, oPx, s0, 1, ln, 0, s0, w, ln);
+        else      sx.drawImage(base, s0, oPx, ln, 1, s0, 0, ln, h);
+
+        // valley mask: transparent at the source line, ramping outward to Reach
+        const transPx=Math.max(1, P.blend*along*0.5), cPos=oPx/along;
+        const stops=[{p:0,a:leftReach},{p:1,a:rightReach},{p:cPos,a:0}];
+        for(let k=1;k<=6;k++){ const u=k/6;
+          stops.push({p:cPos-(transPx/along)*u, a:leftReach*ease(u)});
+          stops.push({p:cPos+(transPx/along)*u, a:rightReach*ease(u)}); }
+        stops.sort((a,b)=>a.p-b.p);
+        const grad = horiz ? mx.createLinearGradient(0,0,w,0) : mx.createLinearGradient(0,0,0,h);
+        let last=-1;
+        for(const st of stops){ let p=clamp(st.p,0,1); if(p<=last) p=Math.min(1,last+1e-4); last=p;
+          grad.addColorStop(p,'rgba(255,255,255,'+st.a+')'); }
+        mx.fillStyle=grad;
+        if(horiz) mx.fillRect(0,s0,w,ln); else mx.fillRect(s0,0,ln,h);
+      }
+      sx.globalCompositeOperation='destination-in'; sx.drawImage(mask,0,0);
+      sx.globalCompositeOperation='source-over';
+      g.drawImage(strip,0,0);                      // the streaks ride over the posters
+    }
+    function drawNow(){ draw(ctx,W,H,t); }
+
+    // ---- sizing + loop ------------------------------------------------------
+    function aspectWH(){ const p=(P.aspect||'1080/1920').split(/[/:x]/).map(Number), a=p[0]||9, b=p[1]||16, long=1920;
+      return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
+    function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; laneKey=''; drawNow(); }
+    let t0=performance.now();
+    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now;
+      if(P.play){ t+=dt; drawNow(); } requestAnimationFrame(frame); }
+    requestAnimationFrame(frame);
+
+    // ---- posters ------------------------------------------------------------
+    function setStatus(m){ $('status').textContent=m; }
+    function counts(){ const n=imgs.length, b=lanes.length||0;
+      setStatus(n? n+(n===1?' poster · ':' posters · ')+b+(b===1?' band':' bands') : 'No posters yet.'); }
+    function thumbs(){ const h=$('thumbs'); h.innerHTML='';
+      imgs.forEach(im=>{ const t=document.createElement('img'); t.src=im.src; h.appendChild(t); }); }
+    function added(){ if(P.auto){ P.bands=Math.max(1,imgs.length); $('bands').value=Math.min(120,P.bands); $('bandsR').textContent=P.bands; }
+      laneKey=''; layout(); thumbs(); counts(); drawNow(); }
+    const isPDF=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
+    function addImage(file){ const im=new Image();
+      im.onload=()=>{ imgs.push(im); added(); };
+      im.onerror=()=>setStatus('could not read '+file.name);
+      im.src=URL.createObjectURL(file); }
+    let pdfReady=null;
+    function ensurePDF(){ if(pdfReady) return pdfReady;
+      pdfReady=new Promise((res,rej)=>{ const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+        s.onload=()=>{ try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; res(window.pdfjsLib); }catch(e){ rej(e); } };
+        s.onerror=()=>rej(new Error('pdf.js failed to load')); document.head.appendChild(s); });
+      return pdfReady; }
+    async function loadPDF(file){ setStatus('reading PDF…');
+      try{ const lib=await ensurePDF(), buf=await file.arrayBuffer(), pdf=await lib.getDocument({data:buf}).promise;
+        const n=pdf.numPages;
+        for(let p=1;p<=n;p++){ setStatus('PDF page '+p+' / '+n+'…');
+          const page=await pdf.getPage(p), v0=page.getViewport({scale:1});
+          const s=Math.min(1800/Math.max(v0.width,v0.height),3), vp=page.getViewport({scale:s});
+          const c=document.createElement('canvas'); c.width=Math.ceil(vp.width); c.height=Math.ceil(vp.height);
+          const cx=c.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,c.width,c.height);
+          await page.render({canvasContext:cx,viewport:vp}).promise;
+          const im=new Image(); await new Promise((r,e)=>{ im.onload=r; im.onerror=e; im.src=c.toDataURL('image/jpeg',0.86); });
+          imgs.push(im); added(); }
+      }catch(e){ console.warn(e); setStatus('could not read that PDF'); } }
+    const addFile=f=>isPDF(f)?loadPDF(f):addImage(f);
+    $('addBtn').addEventListener('click',()=>$('fileInp').click());
+    $('fileInp').addEventListener('change',e=>{ [...e.target.files].forEach(addFile); e.target.value=''; });
+    $('clearBtn').addEventListener('click',()=>{ imgs=[]; added(); });
+    ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); document.body.classList.add('drag'); }));
+    ['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{ if(ev==='drop'||e.target===document.documentElement) document.body.classList.remove('drag'); }));
+    document.addEventListener('drop',e=>{ e.preventDefault(); [...(e.dataTransfer?.files||[])].forEach(addFile); });
+
+    // ---- wire ---------------------------------------------------------------
+    function bind(id,rid,set,fmt,relay){ const r=$(id), v=$(rid); if(!r) return;
+      r.oninput=()=>{ set(+r.value); if(v) v.textContent=fmt?fmt(+r.value):r.value;
+        if(relay){ laneKey=''; layout(); counts(); } if(!P.play) drawNow(); }; }
+    bind('bands','bandsR',v=>P.bands=v,null,true);
+    bind('gap','gapR',v=>P.gap=v,null,true);
+    bind('origin','originR',v=>P.origin=v/100,v=>(v/100).toFixed(2));
+    bind('reach','reachR',v=>P.reach=v/100,v=>(v/100).toFixed(2));
+    bind('blend','blendR',v=>P.blend=v/100,v=>(v/100).toFixed(2));
+    bind('jit','jitR',v=>P.jit=v/100,v=>(v/100).toFixed(2));
+    bind('spd','spdR',v=>P.spd=v);
+    bind('spread','spreadR',v=>P.spread=v);
+    $('auto').onchange=e=>{ P.auto=e.target.checked; $('bands').disabled=P.auto;
+      if(P.auto){ P.bands=Math.max(1,imgs.length); $('bands').value=Math.min(120,P.bands); $('bandsR').textContent=P.bands; }
+      laneKey=''; layout(); counts(); drawNow(); };
+    $('bg').oninput=e=>{ P.bg=e.target.value; if(!P.play) drawNow(); };
+    function seg(id,set,relay){ const el=$(id); if(!el) return;
+      el.addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return;
+        [...el.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+        set(b.dataset.x); if(relay){ laneKey=''; layout(); counts(); } drawNow(); }); }
+    seg('axisSeg',v=>P.axis=v,true);
+    seg('orderSeg',v=>P.order=v,true);
+    seg('profSeg',v=>P.prof=v);
+    seg('pullSeg',v=>P.pull=v);
+    $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
+    $('shuffle').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999); laneKey=''; layout(); counts(); drawNow(); });
+    $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play));
+      $('playBtn').textContent=P.play?'Pause':'Play'; if(!P.play) drawNow(); });
+
+    function forceStory(){ const sel=$('aspect'); if(!sel) return;
+      const opt=[...sel.options].find(o=>/1080\s*[\/x]\s*1920|9\s*[:\/x]\s*16|story/i.test(o.value+' '+o.textContent));
+      if(opt && sel.value!==opt.value){ sel.value=opt.value; P.aspect=opt.value; fit();
+        sel.dispatchEvent(new Event('change',{bubbles:true})); } }   // opal.js writes the readout
+    setTimeout(forceStory,260); setTimeout(forceStory,700);
+
+    // ---- output -------------------------------------------------------------
+    Opal.mountOutput(art,'aha',{ render:(long)=>{ const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
+      const c=document.createElement('canvas'); c.width=Math.round(aw*s); c.height=Math.round(ah*s);
+      draw(c.getContext('2d'), c.width, c.height, t); return c; } });
+    let rec=null, chunks=[], rt=0, tk=0;
+    $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
+      if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
+      const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+      const bits=Math.min(120e6, Math.max(12e6, Math.round(art.width*art.height*30*0.25)));
+      rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:bits}:undefined); chunks=[];
+      rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+      rec.onstop=()=>{ const ext=mime.indexOf('mp4')>=0?'mp4':'webm', blob=new Blob(chunks,{type:mime||'video/webm'});
+        if(blob.size>0){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='aha.'+ext; a.click(); }
+        else alert('The recorder produced no frames. Try a smaller canvas size.');
+        clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
+      rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop';
+      rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
+        $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
+
+    fit(); counts();
+  })();
+  </script>
+</body>
+</html>
