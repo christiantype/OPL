@@ -23,14 +23,15 @@
   .knob{ display:flex; flex-direction:column; gap:2px; }
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .crow[hidden]{ display:none; }
   .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
 </style>
   <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
 </head>
 <body>
   <script src="/lab/shared/opal.js"></script>
-  <script>Opal.mountTopbar({ name:'Pure Land', desc:'Volumetric motion gradients, shaped by a form',
-    about:'A gradient field obeys a form. A signed-distance shape — circle, ring, square, capsule, triangle, arch — carries a soft, volumetric, oil-slick gradient: Bloom (a luminous iridescent orb masked inside), Rim (a dispersed gradient light along the edge), Sweep (a rotating iridescent fill), or Echo (concentric shells receding into a tunnel). An IQ cosine palette gives the oil-on-water iridescence; chromatic dispersion splits it; a domain-warp breathes it. Drift the hue, warp, disperse, and set it in motion. WebGL, so it stays smooth and deep. Export a still, or record the drift.' });</script>
+  <script>Opal.mountTopbar({ name:'Pure Land', desc:'A grid of squares, each one a moving gradient',
+    about:'A field of squares, tiled across the canvas. Inside every square a linear gradient travels through the colours you choose, in the direction you set. The squares can be offset against each other two ways: the gradient inside each one can run ahead of its neighbours, so colour moves across the grid as a wave; and the squares themselves can stagger sideways row by row, like a running bond. Set the columns and rows, open a gap between the tiles, order the offsets or scatter them, and let it run. WebGL, so it stays smooth and exports at full size. Save a still, or record the drift.' });</script>
   <div id="sizeDock">
     <span id="dimReadout">1080 × 1920</span>
     <select id="aspect" title="Canvas size">
@@ -44,68 +45,51 @@
 
   <div id="dock">
     <div class="group">
-      <div class="group__t">Form</div>
-      <select class="opal-input" id="shape">
-        <option value="0" selected>Circle</option>
-        <option value="1">Ring</option>
-        <option value="2">Square</option>
-        <option value="3">Capsule</option>
-        <option value="4">Triangle</option>
-        <option value="5">Arch</option>
-      </select>
-      <div class="duo">
-        <div class="knob"><label>Scale <b id="scaleR">0.60</b></label><input id="scale" type="range" min="15" max="120" value="60"></div>
-        <div class="knob"><label>Rotate <b id="rotR">0</b></label><input id="rot" type="range" min="0" max="360" value="0"></div>
-      </div>
-    </div>
-
-    <div class="group">
       <div class="group__t">Mode</div>
       <select class="opal-input" id="mode">
-        <option value="0" selected>Bloom · luminous orb inside</option>
-        <option value="1">Rim · dispersed edge light</option>
-        <option value="2">Sweep · rotating fill</option>
-        <option value="3">Echo · receding shells</option>
+        <option value="tiles" selected>Tiles · gradient grid</option>
       </select>
-      <div class="duo">
-        <div class="knob"><label>Reach <b id="reachR">70</b></label><input id="reach" type="range" min="12" max="180" value="70"></div>
-        <div class="knob"><label>Bands <b id="bandsR">3.0</b></label><input id="bands" type="range" min="5" max="120" value="30"></div>
-      </div>
-      <div class="knob"><label>Edge <b id="edgeR">30</b></label><input id="edge" type="range" min="0" max="100" value="30"></div>
     </div>
 
     <div class="group">
-      <div class="group__t">Colour</div>
-      <select class="opal-input" id="palette">
-        <option value="iris" selected>Iridescent (oil-slick)</option>
-        <option value="aurora">Aurora</option>
-        <option value="ember">Ember</option>
-        <option value="ice">Ice</option>
-        <option value="dusk">Dusk</option>
-        <option value="gold">Gold</option>
-      </select>
+      <div class="group__t">Grid</div>
       <div class="duo">
-        <div class="knob"><label>Hue <b id="hueR">0</b></label><input id="hue" type="range" min="-180" max="180" value="0"></div>
-        <div class="knob"><label>Dispersion <b id="dispR">18</b></label><input id="disp" type="range" min="0" max="80" value="18"></div>
+        <div class="knob"><label>Columns <b id="colsR">4</b></label><input id="cols" type="range" min="1" max="24" value="4"></div>
+        <div class="knob"><label>Rows <b id="rowsR">7</b></label><input id="rows" type="range" min="1" max="24" value="7"></div>
       </div>
+      <div class="knob"><label>Gap <b id="gapR">6</b></label><input id="gap" type="range" min="0" max="60" value="6"></div>
+      <label class="tog"><span>Square tiles</span><input type="checkbox" id="square" checked></label>
+      <p class="rowhint">Square tiles keeps every cell a true square and centres the grid; off, the tiles stretch to fill the canvas.</p>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Gradient</div>
       <div class="duo">
-        <div class="knob"><label>Bright <b id="brightR">1.00</b></label><input id="bright" type="range" min="40" max="180" value="100"></div>
-        <div class="knob"><label>Warp <b id="warpR">22</b></label><input id="warp" type="range" min="0" max="100" value="22"></div>
+        <div class="knob"><label>Direction <b id="angR">45°</b></label><input id="ang" type="range" min="0" max="360" value="45"></div>
+        <div class="knob"><label>Spread <b id="spreadR">0.50</b></label><input id="spread" type="range" min="10" max="200" value="50"></div>
       </div>
-      <div class="crow"><label>Ground</label><input type="color" class="sw" id="ground" value="#080810"></div>
+      <div class="knob"><label>Colours <b id="stopsR">3</b></label><input id="stops" type="range" min="2" max="4" value="3"></div>
+      <div class="crow" id="rowC0"><label>Colour 1</label><input type="color" class="sw" id="c0" value="#f7de4c"></div>
+      <div class="crow" id="rowC1"><label>Colour 2</label><input type="color" class="sw" id="c1" value="#ea2b1e"></div>
+      <div class="crow" id="rowC2"><label>Colour 3</label><input type="color" class="sw" id="c2" value="#1f40e6"></div>
+      <div class="crow" id="rowC3" hidden><label>Colour 4</label><input type="color" class="sw" id="c3" value="#10b981"></div>
+      <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#ffffff"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Offset</div>
+      <div class="knob"><label>Gradient offset <b id="goffR">0.60</b></label><input id="goff" type="range" min="0" max="200" value="60"></div>
+      <p class="rowhint">How far each square's gradient runs ahead of its neighbour — colour travels across the grid as a wave.</p>
+      <div class="knob"><label>Tile offset <b id="toffR">0.00</b></label><input id="toff" type="range" min="0" max="100" value="0"></div>
+      <p class="rowhint">Staggers the squares themselves sideways, row by row.</p>
+      <div class="knob"><label>Scatter <b id="scatR">0</b></label><input id="scat" type="range" min="0" max="100" value="0"></div>
+      <p class="rowhint">Ordered at 0 — the offset runs diagonally. Turn it up to shuffle the squares out of sequence.</p>
     </div>
 
     <div class="group">
       <div class="group__t">Motion</div>
       <div class="grid2"><button class="btn" id="reroll">Re-seed</button><button class="btn" id="playBtn" aria-pressed="true">Pause</button></div>
-      <div class="duo">
-        <div class="knob"><label>Flow <b id="flowR">50</b></label><input id="flow" type="range" min="0" max="150" value="50"></div>
-        <div class="knob"><label>Pulse <b id="pulseR">35</b></label><input id="pulse" type="range" min="0" max="120" value="35"></div>
-      </div>
-      <div class="duo">
-        <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="40" value="10"></div>
-        <div class="knob"><label>Grain <b id="grainR">10</b></label><input id="grain" type="range" min="0" max="70" value="10"></div>
-      </div>
+      <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="40" value="10"></div>
     </div>
   </div>
 
@@ -119,102 +103,74 @@
   <script id="frag" type="x-shader/x-fragment">
 precision highp float;
 uniform vec2 uRes; uniform float uT;
-uniform float uShape, uMode, uScale, uRot, uReach, uBands, uHue, uDisp, uBright, uWarp, uFlow, uPulse, uGrain, uSeed, uEdge;
-uniform vec3 uGround, uPA, uPB, uPC, uPD;
-const float TAU=6.2831853;
+uniform float uCols, uRows, uGap, uAngle, uSpread, uGradOff, uTileOff, uScatter, uSeed, uSquare, uStops;
+uniform vec3 uC0, uC1, uC2, uC3, uBg;
 
 float hash21(vec2 p){ p=fract(p*vec2(123.34,345.45)); p+=dot(p,p+34.345); return fract(p.x*p.y); }
-float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
-  float a=hash21(i), b=hash21(i+vec2(1,0)), c=hash21(i+vec2(0,1)), d=hash21(i+vec2(1,1));
-  return mix(mix(a,b,f.x), mix(c,d,f.x), f.y); }
-float fbm(vec2 p){ float s=0.,a=.5; for(int i=0;i<4;i++){ s+=a*vnoise(p); p*=2.03; a*=.5; } return s; }
 
-vec3 pal(float t){ return uPA + uPB*cos(TAU*(uPC*t + uPD + uHue)); }
-
-mat2 rot(float a){ float c=cos(a),s=sin(a); return mat2(c,-s,s,c); }
-float sdCircle(vec2 p,float r){ return length(p)-r; }
-float sdBox(vec2 p,vec2 b){ vec2 d=abs(p)-b; return length(max(d,0.))+min(max(d.x,d.y),0.); }
-float sdRoundBox(vec2 p,vec2 b,float r){ vec2 d=abs(p)-b+r; return length(max(d,0.))+min(max(d.x,d.y),0.)-r; }
-float sdTri(vec2 p,float r){ const float k=1.7320508; p.x=abs(p.x)-r; p.y=p.y+r/k;
-  if(p.x+k*p.y>0.) p=vec2(p.x-k*p.y,-k*p.x-p.y)/2.; p.x-=clamp(p.x,-2.*r,0.); return -length(p)*sign(p.y); }
-
-float sdf(vec2 p){
-  p=rot(uRot)*p;
-  float sh=uShape;
-  if(sh<0.5) return sdCircle(p, uScale);
-  else if(sh<1.5) return abs(sdCircle(p, uScale)) - uScale*0.19;               // ring
-  else if(sh<2.5) return sdBox(p, vec2(uScale*0.9));
-  else if(sh<3.5) return sdRoundBox(p, vec2(uScale*0.55, uScale), uScale*0.55); // capsule
-  else if(sh<4.5) return sdTri(p*1.05, uScale*0.9);
-  else { float c=sdCircle(p,uScale); float cut=p.y - uScale*0.02; return max(c, -cut); } // arch (top half-ish)
+vec3 stopAt(int i){
+  if(i==0) return uC0;
+  if(i==1) return uC1;
+  if(i==2) return uC2;
+  return uC3;
 }
-
-vec3 disperse(float t, float amt){ // sample palette per channel for chromatic split
-  return vec3( pal(t-amt).r, pal(t).g, pal(t+amt).b );
+/* the ramp is cyclic — the last colour runs back into the first, so the travel never seams */
+vec3 ramp(float t){
+  float n = uStops;
+  float x = fract(t) * n;
+  float fi = floor(x);
+  float k = fract(x);
+  k = k*k*(3.0 - 2.0*k);                       // ease the hand-off so the stops read as one gradient
+  return mix(stopAt(int(fi)), stopAt(int(mod(fi + 1.0, n))), k);
 }
 
 void main(){
-  vec2 uv=(gl_FragCoord.xy - 0.5*uRes)/min(uRes.x,uRes.y);
-  float ph = uT*uFlow*0.04 + uSeed;
-  float pulse = 1. + uPulse*0.14*sin(uT*0.8);
-  float reach = uReach*0.008*pulse;
-  float disp = uDisp*0.01;
+  vec2 fc = gl_FragCoord.xy;
+  vec2 cells = vec2(uCols, uRows);
 
-  // domain warp — breathes the field organically
-  vec2 w = uv;
-  if(uWarp>0.001){ float a=uWarp*0.003;
-    w += a*vec2(fbm(uv*2.4 + vec2(0., uT*0.15)), fbm(uv*2.4 + vec2(5.2,-uT*0.13))); }
-
-  float d = sdf(w);
-  float ew = mix(0.05, 0.0012, uEdge);   // mask half-width: soft → hard
-  vec3 col = uGround;
-  // a soft ground glow of colour
-  col = mix(col, pal(0.08 - ph)*0.22, smoothstep(1.15, 0.0, length(uv))*0.5);
-
-  float m = uMode;
-  if(m<0.5){                    // BLOOM
-    float r = length(w)/max(reach,1e-3);
-    float env = exp(-r*r*1.15);                         // brightness envelope
-    vec3 c = disperse(r*(uBands*0.06) - ph, disp);      // iridescent rings
-    c += pal(0.85-ph)*exp(-r*r*3.5)*0.85;               // luminous colour core (not pure white)
-    float mask = smoothstep(ew, -ew, d);            // inside the form (soft)
-    col = mix(col, c*env*uBright, clamp(mask,0.,1.));
-    float glow = exp(-max(d,0.)*9.0)*env;               // spill just past the edge
-    col += pal(0.55-ph)*glow*0.5*uBright;
-  } else if(m<1.5){             // RIM — dispersed edge light
-    float band = exp(-abs(d)/max(uReach*0.0016,1e-4));                 // tight iridescent edge
-    float ang = atan(w.y,w.x)/TAU + 0.5;
-    vec3 c = disperse(ang*(uBands*0.05+0.6) + ph, disp*1.6);
-    col = mix(col, c*uBright, clamp(band,0.,1.2));
-    col += disperse(ang*1.5+ph, disp)*exp(-abs(d)/max(uReach*0.006,1e-3))*0.30*uBright;   // soft outward bleed
-  } else if(m<2.5){            // SWEEP — rotating iridescent fill
-    float inside = smoothstep(ew, -ew, d);
-    float ang = atan(w.y,w.x)/TAU + 0.5;
-    float rr = length(w)/max(uScale,1e-3);
-    vec3 c = disperse(ang + rr*0.4 + ph, disp);
-    c *= mix(0.7,1.25, exp(-rr*rr*0.8));                 // luminous centre
-    col = mix(col, c*uBright, inside);
-  } else {                     // ECHO — concentric shells receding
-    float sp = 1.0/(uBands*0.06+1.0);
-    float dd = d - uT*uFlow*0.02;
-    float shell = abs(fract(dd/sp)-0.5)*2.0;             // 0 at shell line
-    float line = smoothstep(0.28, 0.0, shell);
-    vec3 c = disperse(dd*3.0 + ph, disp);
-    float fade = exp(-max(-d,0.)*1.4);                   // dim toward the far centre
-    col = mix(col, c*uBright, line*fade);
-    col += c*exp(-abs(shell-0.0)*3.0)*0.06*uBright*fade; // soft glow between
+  /* grid space — one unit per cell */
+  vec2 g; vec2 cellPx;
+  if(uSquare > 0.5){
+    float cs = min(uRes.x/uCols, uRes.y/uRows);        // true squares, grid centred
+    vec2 origin = (uRes - cs*cells) * 0.5;
+    g = (fc - origin) / cs;
+    cellPx = vec2(cs);
+  } else {
+    cellPx = uRes / cells;                             // stretched to fill
+    g = fc / cellPx;
   }
 
-  // crisp iridescent outline — the defined edge; strength & sharpness rise with Edge
-  if(uEdge>0.02){ float lw=mix(0.006,0.0015,uEdge); float o=smoothstep(lw,0.0,abs(d));
-    vec3 ec=disperse(atan(w.y,w.x)/TAU+0.5 + ph*1.2, disp*1.4)*uBright;
-    col=mix(col, ec, o*uEdge); }
-  // filmic-ish tone map — bright rolls into colour, never clips to a flat white
-  col = vec3(1.0) - exp(-max(col,0.0)*1.35);
-  // fine grain
-  col += (hash21(gl_FragCoord.xy + uT*60.0) - 0.5) * (uGrain*0.055);
-  col = clamp(col, 0.0, 1.0);
-  gl_FragColor = vec4(col, 1.0);
+  /* outside the grid is background */
+  if(g.x < 0.0 || g.y < 0.0 || g.x > uCols || g.y > uRows){ gl_FragColor = vec4(uBg,1.0); return; }
+
+  /* the squares themselves stagger sideways, row by row — wrapped, so a row stays whole */
+  float row = floor(g.y);
+  g.x = mod(g.x + row * uTileOff, uCols);
+
+  vec2 cell = floor(g);
+  vec2 f = fract(g);
+
+  /* the gradient inside the square, along the chosen direction */
+  vec2 dir = vec2(cos(uAngle), sin(uAngle));
+  float ext = abs(dir.x) + abs(dir.y);                 // normalise so a diagonal still spans 0..1
+  float t = (dot(f - 0.5, dir) / ext + 0.5) * uSpread;
+
+  /* each square runs ahead of its neighbour: ordered diagonally, or scattered */
+  float ord = (cell.x + cell.y) / max(uCols + uRows - 2.0, 1.0);
+  float rnd = hash21(cell + uSeed);
+  t += mix(ord, rnd, uScatter) * uGradOff + uT;
+
+  vec3 col = ramp(t);
+
+  /* the gap between tiles */
+  if(uGap > 0.001){
+    float halfw = 0.5 - uGap*0.5;
+    float m = max(abs(f.x - 0.5), abs(f.y - 0.5));
+    float aa = 1.5 / max(min(cellPx.x, cellPx.y), 1.0);
+    col = mix(col, uBg, smoothstep(halfw - aa, halfw + aa, m));
+  }
+
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
   </script>
 
@@ -225,19 +181,11 @@ void main(){
     const $=id=>document.getElementById(id);
     if(!gl){ const c=art.getContext('2d'); c.fillStyle='#111'; c.fillRect(0,0,art.width,art.height); c.fillStyle='#fff'; c.font='24px sans-serif'; c.fillText('WebGL unavailable',40,60); return; }
 
-    const P={ aspect:'1080/1920', seed:3, shape:0, scale:0.60, rot:0, mode:0, reach:70, bands:30,
-      palette:'iris', hue:0, disp:18, bright:1.0, warp:22, ground:'#080810',
-      flow:50, pulse:35, spd:1.0, grain:10, edge:30, play:true };
+    const P={ aspect:'1080/1920', seed:3, cols:4, rows:7, gap:0.06, square:true,
+      ang:45, spread:0.5, stops:3, cols_:null,
+      c:['#f7de4c','#ea2b1e','#1f40e6','#10b981'], bg:'#ffffff',
+      goff:0.60, toff:0.0, scat:0, spd:1.0, play:true };
 
-    // IQ cosine palette coefficients per preset: {A,B,C,D}
-    const PALS={
-      iris:  {A:[0.5,0.5,0.5], B:[0.5,0.5,0.5], C:[1,1,1],    D:[0.0,0.33,0.67]},
-      aurora:{A:[0.32,0.5,0.45],B:[0.35,0.35,0.3],C:[1,1,1],  D:[0.55,0.62,0.78]},
-      ember: {A:[0.6,0.35,0.28],B:[0.45,0.35,0.3],C:[1,1,0.9],D:[0.0,0.12,0.2]},
-      ice:   {A:[0.42,0.55,0.62],B:[0.35,0.35,0.3],C:[1,1,1], D:[0.62,0.68,0.75]},
-      dusk:  {A:[0.5,0.4,0.55], B:[0.45,0.35,0.4],C:[1,1,1],  D:[0.35,0.5,0.68]},
-      gold:  {A:[0.6,0.45,0.28],B:[0.4,0.35,0.25],C:[1,1,0.8],D:[0.08,0.14,0.22]},
-    };
     const HEX=h=>{ const n=parseInt(h.slice(1),16); return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]; };
 
     // ---- compile ----
@@ -251,21 +199,22 @@ void main(){
     const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, -1,1, 1,1]),gl.STATIC_DRAW);
     const ploc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(ploc); gl.vertexAttribPointer(ploc,2,gl.FLOAT,false,0,0);
-    const U={}; ['uRes','uT','uShape','uMode','uScale','uRot','uReach','uBands','uHue','uDisp','uBright','uWarp','uFlow','uPulse','uGrain','uSeed','uEdge','uGround','uPA','uPB','uPC','uPD'].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+    const U={}; ['uRes','uT','uCols','uRows','uGap','uAngle','uSpread','uGradOff','uTileOff','uScatter','uSeed','uSquare','uStops','uC0','uC1','uC2','uC3','uBg']
+      .forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 
     let W=1080,H=1920,clock=0;
     function draw(w,h,tm){
-      const pl=PALS[P.palette]||PALS.iris;
       gl.viewport(0,0,w,h);
       gl.uniform2f(U.uRes,w,h); gl.uniform1f(U.uT,tm);
-      gl.uniform1f(U.uShape,P.shape); gl.uniform1f(U.uMode,P.mode);
-      gl.uniform1f(U.uScale,P.scale); gl.uniform1f(U.uRot,P.rot*Math.PI/180);
-      gl.uniform1f(U.uReach,P.reach); gl.uniform1f(U.uBands,P.bands);
-      gl.uniform1f(U.uHue,P.hue/360); gl.uniform1f(U.uDisp,P.disp); gl.uniform1f(U.uBright,P.bright);
-      gl.uniform1f(U.uWarp,P.warp); gl.uniform1f(U.uFlow,P.flow); gl.uniform1f(U.uPulse,P.pulse);
-      gl.uniform1f(U.uGrain,P.grain/100); gl.uniform1f(U.uSeed,P.seed*0.137); gl.uniform1f(U.uEdge,P.edge/100);
-      gl.uniform3fv(U.uGround,HEX(P.ground));
-      gl.uniform3fv(U.uPA,pl.A); gl.uniform3fv(U.uPB,pl.B); gl.uniform3fv(U.uPC,pl.C); gl.uniform3fv(U.uPD,pl.D);
+      gl.uniform1f(U.uCols,P.cols); gl.uniform1f(U.uRows,P.rows);
+      gl.uniform1f(U.uGap,P.gap); gl.uniform1f(U.uAngle,P.ang*Math.PI/180);
+      gl.uniform1f(U.uSpread,P.spread); gl.uniform1f(U.uGradOff,P.goff);
+      gl.uniform1f(U.uTileOff,P.toff); gl.uniform1f(U.uScatter,P.scat);
+      gl.uniform1f(U.uSeed,P.seed*0.137); gl.uniform1f(U.uSquare,P.square?1:0);
+      gl.uniform1f(U.uStops,P.stops);
+      gl.uniform3fv(U.uC0,HEX(P.c[0])); gl.uniform3fv(U.uC1,HEX(P.c[1]));
+      gl.uniform3fv(U.uC2,HEX(P.c[2])); gl.uniform3fv(U.uC3,HEX(P.c[3]));
+      gl.uniform3fv(U.uBg,HEX(P.bg));
       gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     }
     function drawNow(){ draw(W,H,clock); }
@@ -280,25 +229,25 @@ void main(){
     // ---- wire ----
     function bind(id, rid, set, fmt){ const r=$(id), v=$(rid); if(!r) return;
       r.oninput=()=>{ set(+r.value); if(v) v.textContent=fmt?fmt(+r.value):r.value; if(!P.play) drawNow(); }; }
-    bind('scale','scaleR',v=>P.scale=v/100, v=>(v/100).toFixed(2));
-    bind('rot','rotR',v=>P.rot=v);
-    bind('reach','reachR',v=>P.reach=v);
-    bind('bands','bandsR',v=>P.bands=v, v=>(v/10).toFixed(1));
-    bind('edge','edgeR',v=>P.edge=v);
-    bind('hue','hueR',v=>P.hue=v);
-    bind('disp','dispR',v=>P.disp=v);
-    bind('bright','brightR',v=>P.bright=v/100, v=>(v/100).toFixed(2));
-    bind('warp','warpR',v=>P.warp=v);
-    bind('flow','flowR',v=>P.flow=v);
-    bind('pulse','pulseR',v=>P.pulse=v);
+    bind('cols','colsR',v=>P.cols=v);
+    bind('rows','rowsR',v=>P.rows=v);
+    bind('gap','gapR',v=>P.gap=v/100);
+    bind('ang','angR',v=>P.ang=v, v=>v+'°');
+    bind('spread','spreadR',v=>P.spread=v/100, v=>(v/100).toFixed(2));
+    bind('goff','goffR',v=>P.goff=v/100, v=>(v/100).toFixed(2));
+    bind('toff','toffR',v=>P.toff=v/100, v=>(v/100).toFixed(2));
+    bind('scat','scatR',v=>P.scat=v/100);
     bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
-    bind('grain','grainR',v=>P.grain=v);
-    $('shape').addEventListener('change',e=>{ P.shape=+e.target.value; drawNow(); });
-    $('mode').addEventListener('change',e=>{ P.mode=+e.target.value; drawNow(); });
-    $('palette').addEventListener('change',e=>{ P.palette=e.target.value; drawNow(); });
-    $('ground').addEventListener('input',e=>{ P.ground=e.target.value; if(!P.play) drawNow(); });
+
+    // colour count — show only the swatches in play
+    function syncStops(){ for(let i=0;i<4;i++){ const row=$('rowC'+i); if(row) row.hidden = i >= P.stops; } }
+    $('stops').oninput=e=>{ P.stops=+e.target.value; $('stopsR').textContent=P.stops; syncStops(); if(!P.play) drawNow(); };
+    for(let i=0;i<4;i++){ const el=$('c'+i); if(el) el.oninput=e=>{ P.c[i]=e.target.value; if(!P.play) drawNow(); }; }
+    $('bg').oninput=e=>{ P.bg=e.target.value; if(!P.play) drawNow(); };
+    $('square').onchange=e=>{ P.square=e.target.checked; if(!P.play) drawNow(); };
+
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
-    $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*9999); P.hue=(Math.random()*360-180)|0; $('hue').value=P.hue; $('hueR').textContent=P.hue; drawNow(); });
+    $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*9999); drawNow(); });
     $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play)); $('playBtn').textContent=P.play?'Pause':'Play'; if(!P.play) drawNow(); });
 
     function forceStory(){ const sel=$('aspect'); if(!sel) return; const opt=[...sel.options].find(o=>/9\s*[:\/x]\s*16|story|1080\s*[\/x]\s*1920/i.test(o.value+' '+o.textContent));
@@ -325,6 +274,7 @@ void main(){
       rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
         $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
 
+    syncStops();
     fit();
   })();
   </script>
