@@ -25,6 +25,7 @@
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   #charIn{ text-align:center; font-size:16px; }
   .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
+  .group[hidden]{ display:none !important; }
 </style>
   <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
 </head>
@@ -50,26 +51,53 @@
       <input class="opal-input" id="charIn" type="text" value="?" maxlength="4" spellcheck="false" autocomplete="off">
       <div class="rowhint">Univers Next Pro · Medium</div>
       <div class="knob"><label>Size <b id="sizeR">80</b></label><input id="size" type="range" min="20" max="98" value="80"></div>
+      <div class="knob"><label>Density <b id="densR">100</b></label><input id="dens" type="range" min="20" max="100" value="100"></div>
     </div>
 
     <div class="group">
       <div class="group__t">Engine</div>
-      <select class="opal-input" id="engine"><option value="network" selected>Network / constellation</option></select>
+      <select class="opal-input" id="engine">
+        <option value="network" selected>Network / constellation</option>
+        <option value="thermal">Thermal field / organism</option>
+      </select>
     </div>
 
-    <div class="group">
-      <div class="group__t">Settings</div>
-      <div class="knob"><label>Density <b id="densR">100</b></label><input id="dens" type="range" min="20" max="100" value="100"></div>
+    <div class="group eng eng-network">
+      <div class="group__t">Network</div>
       <div class="knob"><label>Dispersion <b id="dispR">320</b></label><input id="disp" type="range" min="0" max="320" value="320"></div>
       <div class="knob"><label>Link distance <b id="linkR">98</b></label><input id="link" type="range" min="10" max="180" value="98"></div>
-    </div>
-
-    <div class="group">
-      <div class="group__t">Style</div>
       <div class="knob"><label>Stroke <b id="swR">0.6</b></label><input id="sw" type="range" min="1" max="60" value="6"></div>
       <div class="knob"><label>Link opacity <b id="lopR">50</b></label><input id="lop" type="range" min="8" max="100" value="50"></div>
       <div class="crow"><label>Fill</label><input type="color" class="sw" id="fill" value="#ffffff"></div>
       <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#000000"></div>
+    </div>
+
+    <div class="group eng eng-thermal" hidden>
+      <div class="group__t">Thermal field</div>
+      <select class="opal-input" id="heatPal">
+        <option value="turbo" selected>Turbo</option>
+        <option value="inferno">Inferno</option>
+        <option value="ice">Ice</option>
+        <option value="viridis">Viridis</option>
+        <option value="ember">Ember</option>
+        <option value="acid">Acid</option>
+        <option value="ultra">Ultra</option>
+        <option value="mono">Mono</option>
+      </select>
+      <div class="duo">
+        <div class="knob"><label>Scatter <b id="scatR">120</b></label><input id="scat" type="range" min="0" max="400" value="120"></div>
+        <div class="knob"><label>Drift <b id="driftR">18</b></label><input id="drift" type="range" min="0" max="120" value="18"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Breath <b id="breathR">0.55</b></label><input id="breath" type="range" min="0" max="100" value="55"></div>
+        <div class="knob"><label>Bloom <b id="bloomR">14</b></label><input id="bloom" type="range" min="0" max="60" value="14"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Gain <b id="gainR">1.00</b></label><input id="gain" type="range" min="30" max="260" value="100"></div>
+        <div class="knob"><label>Heat <b id="heatR">0</b></label><input id="heat" type="range" min="-30" max="60" value="0"></div>
+      </div>
+      <div class="knob"><label>Grain <b id="grainR">8</b></label><input id="grain" type="range" min="0" max="60" value="8"></div>
+      <p class="rowhint">The letterform seeds a blurred, breathing field — dense stroke areas run hot, the rest settles into the cold end of the ramp.</p>
     </div>
 
     <div class="group">
@@ -83,6 +111,12 @@
 
   <div class="group out" id="output" data-export-custom>
     <div class="group__t">Output</div>
+    <div class="crow" id="vidRow"><label>Video</label><select id="vidSize" title="Recording resolution">
+      <option value="1600">Working · fastest</option>
+      <option value="1920" selected>HD · 1080 × 1920</option>
+      <option value="2560">2.5K · 1440 × 2560</option>
+      <option value="3840">4K · 2160 × 3840</option>
+    </select></div>
     <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
   </div>
 
@@ -93,9 +127,11 @@
     const $=id=>document.getElementById(id);
     const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
 
-    const P={ aspect:'1080/1920', seed:1, char:'?', size:80,
+    const P={ aspect:'1080/1920', seed:1, char:'?', size:80, engine:'network',
       dens:100, disp:320, link:98, sw:0.6, lop:50,
-      fill:'#ffffff', bg:'#000000', spd:1.0, play:true };
+      fill:'#ffffff', bg:'#000000', spd:1.0, play:true,
+      // thermal field
+      heatPal:'turbo', scat:120, drift:18, breath:0.55, bloom:14, gain:1.0, heat:0, grain:8 };
 
     // ---- flux's exact helpers ----
     const smooth=t=>t*t*(3-2*t);
@@ -109,13 +145,35 @@
       u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],
       u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]]; }
 
+    // ---- thermal colourways (flux): each a stop list [pos,[r,g,b]] ----
+    const TURBO=[[0,[3,2,14]],[.10,[22,10,60]],[.22,[48,26,140]],[.34,[28,80,168]],[.46,[18,150,150]],
+      [.56,[28,182,92]],[.67,[150,204,44]],[.78,[244,196,32]],[.87,[244,124,26]],[.94,[228,52,28]],[1,[255,168,120]]];
+    const PALETTES={
+      turbo:TURBO,
+      inferno:[[0,[4,2,20]],[.18,[46,10,72]],[.38,[122,20,84]],[.58,[196,48,52]],[.76,[238,120,26]],[.9,[250,190,60]],[1,[252,252,196]]],
+      ice:[[0,[2,4,18]],[.32,[16,42,108]],[.56,[20,118,196]],[.78,[92,208,238]],[1,[240,252,255]]],
+      viridis:[[0,[38,6,80]],[.24,[54,60,140]],[.48,[30,130,142]],[.68,[70,182,92]],[.88,[180,210,40]],[1,[250,232,40]]],
+      ember:[[0,[8,8,32]],[.22,[74,12,120]],[.45,[196,28,54]],[.66,[240,120,20]],[.85,[250,214,44]],[1,[255,255,242]]],
+      acid:[[0,[8,10,4]],[.28,[22,82,28]],[.54,[120,200,20]],[.8,[220,240,60]],[1,[250,255,222]]],
+      ultra:[[0,[6,4,22]],[.3,[64,18,140]],[.55,[196,26,150]],[.78,[250,96,120]],[1,[255,224,236]]],
+      mono:[[0,[8,8,10]],[1,[250,250,252]]],
+    };
+    function ramp(arr,t){ t=clamp(t,0,1);
+      for(let i=1;i<arr.length;i++){ if(t<=arr[i][0]){ const a=arr[i-1],b=arr[i],k=(t-a[0])/(b[0]-a[0]);
+        return [Math.round(lerp(a[1][0],b[1][0],k)),Math.round(lerp(a[1][1],b[1][1],k)),Math.round(lerp(a[1][2],b[1][2],k))]; } }
+      const L=arr[arr.length-1][1]; return [L[0],L[1],L[2]]; }
+    const luma=c=>(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255;
+
     // ---- sample the glyph OUTLINE into points (flux sampleGlyph, recentred) ----
-    let font=null, pts=[];
+    let font=null, pts=[], glyphPath=null;
     function buildPoints(){
       if(!font){ pts=[]; return; }
       const W=art.width, H=art.height, size=H*(P.size/100);
       let path; try{ path=font.getPath(P.char||'?', 0, size, size); }catch(e){ pts=[]; return; }
-      const spacing=lerp(20,3, P.dens/100), raw=[]; let cur=[0,0];
+      // sample spacing scales with the canvas, so a 4K render is the SAME network drawn
+      // larger — not a denser one. k is 1 at the working size.
+      const k=Math.max(W,H)/1600;
+      const spacing=lerp(20,3, P.dens/100)*k, raw=[]; let cur=[0,0];
       const emit=(x,y)=>raw.push([x,y]);
       const seg=(a,b)=>{ const len=Math.hypot(b[0]-a[0],b[1]-a[1]), n=Math.max(1,Math.round(len/spacing));
         for(let i=1;i<=n;i++) emit(lerp(a[0],b[0],i/n), lerp(a[1],b[1],i/n)); };
@@ -130,6 +188,9 @@
       for(const p of raw){ if(p[0]<minx)minx=p[0]; if(p[1]<miny)miny=p[1]; if(p[0]>maxx)maxx=p[0]; if(p[1]>maxy)maxy=p[1]; }
       const ox=W/2-(minx+maxx)/2, oy=H/2-(miny+maxy)/2;
       pts=raw.map(p=>[p[0]+ox, p[1]+oy]);
+      // the filled outline, centred the same way — the thermal field uses it as its warm base
+      try{ glyphPath=new Path2D(); const p2=new Path2D(path.toPathData(2));
+        const m=new DOMMatrix().translate(ox,oy); glyphPath.addPath(p2,m); }catch(e){ glyphPath=null; }
     }
 
     // ---- render (flux drawNetwork: noise-dispersed points, links, nodes) ----
@@ -137,8 +198,9 @@
       g.setTransform(1,0,0,1,0,0); g.fillStyle=P.bg; g.fillRect(0,0,W,H);
       if(!pts.length) return;
       const spread=P.disp*(W/1080), link=P.link*(W/1080), l2=link*link, sO=P.seed*997;
+      const nk=1600/Math.max(W,H);        // sample the noise field in working-size units
       const D=pts.map((p,k)=>{ let x=p[0],y=p[1];
-        if(spread){ const a=grand(k+sO,2.2)*TAU, m=grand(k+sO,5.5)*vnoise(x*0.01,y*0.01,phase);
+        if(spread){ const a=grand(k+sO,2.2)*TAU, m=grand(k+sO,5.5)*vnoise(x*0.01*nk,y*0.01*nk,phase);
           x+=Math.cos(a)*m*spread; y+=Math.sin(a)*m*spread; } return [x,y]; });
 
       // spatial grid for fast links
@@ -155,14 +217,76 @@
       for(const p of D){ g.beginPath(); g.arc(p[0],p[1],nr,0,TAU); g.fill(); }
     }
 
+    // ---- THERMAL FIELD (flux drawThermalField): the letterform seeds a blurred,
+    //      breathing organism. Radii, scatter, drift and blur all scale with the canvas,
+    //      so a 4K frame is the same field rendered larger — never a denser one. ----
+    let hiRes=false, recording=false;
+    function fieldW(W){ return Math.round(Math.min(W, hiRes?4096 : recording?1800 : (P.play?760:1500))); }
+    function drawThermal(g, W, H, t){
+      const k=Math.max(W,H)/1600;                       // 1 at the working size
+      const fw=fieldW(W), scale=fw/W, fh=Math.max(1,Math.round(H*scale));
+      const A=document.createElement('canvas'); A.width=fw; A.height=fh;
+      const a=A.getContext('2d');
+      a.fillStyle='#000'; a.fillRect(0,0,fw,fh); a.globalCompositeOperation='lighter';
+      const br=P.breath, spread=P.scat*k, drift=P.drift*k;
+      // the letterform itself as a soft warm mass, so it still reads through the field
+      if(glyphPath){ a.save(); a.scale(scale,scale); a.fillStyle='rgba(52,52,52,1)'; a.fill(glyphPath); a.restore(); }
+      for(let i=0;i<pts.length;i+=2){
+        let x=pts[i][0], y=pts[i][1];
+        if(spread){ const sa=grand(i*13,4.7)*TAU, sm=Math.pow(grand(i*13,2.9),1.6)*spread;
+          x+=Math.cos(sa)*sm; y+=Math.sin(sa)*sm; }
+        const ang=vnoise(x*0.005/k, y*0.005/k, t)*TAU*2;
+        x=(x+Math.cos(ang)*drift)*scale; y=(y+Math.sin(ang)*drift)*scale;
+        const seed=grand(i*61,3.3), pulse=0.5+0.5*Math.sin(t*1.4+seed*TAU);
+        const hotCore=grand(i*31,6.6)>0.87;                                  // rare bright emitters
+        let inten=hotCore?(0.72+0.28*grand(i,4.2)):Math.pow(grand(i,1.1),2.0);  // mostly dim
+        inten*=(1-br+br*pulse);
+        const rad=(7+Math.pow(grand(i,2.2),2)*72)*k*scale*(0.8+0.4*pulse*br)*(hotCore?1.25:1);
+        const c=Math.round(24+185*inten);
+        const rg=a.createRadialGradient(x,y,0,x,y,rad);
+        rg.addColorStop(0,'rgba('+c+','+c+','+c+',1)'); rg.addColorStop(1,'rgba(0,0,0,0)');
+        a.fillStyle=rg; a.beginPath(); a.arc(x,y,rad,0,TAU); a.fill();
+      }
+      const B=document.createElement('canvas'); B.width=fw; B.height=fh; const b=B.getContext('2d');
+      b.filter='blur('+Math.max(1.2, P.bloom*k*scale*0.7)+'px)'; b.drawImage(A,0,0); b.filter='none';
+      const img=b.getImageData(0,0,fw,fh), px=img.data, bias=P.heat/100, PAL=PALETTES[P.heatPal]||TURBO;
+      for(let i=0;i<px.length;i+=4){ const col=ramp(PAL, clamp(px[i]/255*P.gain+bias,0,1));
+        px[i]=col[0]; px[i+1]=col[1]; px[i+2]=col[2]; px[i+3]=255; }
+      b.putImageData(img,0,0);
+      // the cold end of the ramp is the field at rest — ground and vignette follow it
+      const cold=ramp(PAL,0), coldCSS='rgb('+cold[0]+','+cold[1]+','+cold[2]+')';
+      g.setTransform(1,0,0,1,0,0);
+      g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+      g.fillStyle=coldCSS; g.fillRect(0,0,W,H); g.drawImage(B,0,0,W,H);
+      // additive glow would blow a light ground out to white — fade it as the ground brightens
+      const glow=0.32*(1-luma(cold));
+      if(glow>0.01){ g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=glow;
+        g.filter='blur('+(P.bloom*k*0.8)+'px)'; g.drawImage(B,0,0,W,H); g.restore(); g.filter='none'; g.globalAlpha=1; }
+      const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.16, W/2,H/2,Math.max(W,H)*0.72);
+      vg.addColorStop(0,'rgba('+cold[0]+','+cold[1]+','+cold[2]+',0)');
+      vg.addColorStop(1,'rgba('+cold[0]+','+cold[1]+','+cold[2]+',0.62)');
+      g.fillStyle=vg; g.fillRect(0,0,W,H);
+      if(P.grain) addGrain(g,W,H,P.grain);
+    }
+    function addGrain(g,W,H,amt){
+      const gw=300, gh=Math.max(1,Math.round(gw*H/W));
+      const c=document.createElement('canvas'); c.width=gw; c.height=gh; const gx=c.getContext('2d');
+      const id=gx.createImageData(gw,gh), d=id.data;
+      for(let i=0;i<d.length;i+=4){ const v=Math.random()*255; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; }
+      gx.putImageData(id,0,0);
+      g.save(); g.globalCompositeOperation='overlay'; g.globalAlpha=amt/100*0.45;
+      g.imageSmoothingEnabled=true; g.drawImage(c,0,0,W,H); g.restore(); g.globalAlpha=1;
+    }
+
     // ---- sizing + loop ----
     let W=1080, H=1920, phase=0;
     function aspectWH(){ const p=(P.aspect||'1080/1920').split(/[/:x]/).map(Number), a=p[0]||9, b=p[1]||16, long=1600;
       return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
     function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; buildPoints(); drawNow(); }  // opal.js owns #dimReadout
-    function drawNow(){ render(ctx, W, H, phase); }
+    function paint(g,w,h,ph){ if(P.engine==='thermal') drawThermal(g,w,h,ph); else render(g,w,h,ph); }
+    function drawNow(){ paint(ctx, W, H, phase); }
     let t0=performance.now();
-    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ phase += dt*(P.spd/10)*1.2; render(ctx,W,H,phase); } requestAnimationFrame(frame); }
+    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ phase += dt*(P.spd/10)*1.2; paint(ctx,W,H,phase); } requestAnimationFrame(frame); }
     requestAnimationFrame(frame);
 
     // ---- wire the rail ----
@@ -175,6 +299,17 @@
     bind('sw','swR',v=>P.sw=v/10, v=>(v/10).toFixed(1));
     bind('lop','lopR',v=>P.lop=v);
     bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
+    bind('scat','scatR',v=>P.scat=v);
+    bind('drift','driftR',v=>P.drift=v);
+    bind('breath','breathR',v=>P.breath=v/100, v=>(v/100).toFixed(2));
+    bind('bloom','bloomR',v=>P.bloom=v);
+    bind('gain','gainR',v=>P.gain=v/100, v=>(v/100).toFixed(2));
+    bind('heat','heatR',v=>P.heat=v);
+    bind('grain','grainR',v=>P.grain=v);
+    $('heatPal').addEventListener('change',e=>{ P.heatPal=e.target.value; if(!P.play) drawNow(); });
+    function syncEngine(){ document.querySelectorAll('#dock .group.eng').forEach(el=>{
+        el.hidden = !el.classList.contains('eng-'+P.engine); }); }
+    $('engine').addEventListener('change',e=>{ P.engine=e.target.value; syncEngine(); drawNow(); });
     $('charIn').addEventListener('input',e=>{ P.char=e.target.value||'?'; buildPoints(); if(!P.play) drawNow(); });
     ['fill','bg'].forEach(id=>$(id).addEventListener('input',e=>{ P[id]=e.target.value; if(!P.play) drawNow(); }));
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
@@ -192,16 +327,27 @@
     Opal.mountOutput(art,'what-are-people-for',{ render:(long)=>{ const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
       const c=document.createElement('canvas'); c.width=Math.round(aw*s); c.height=Math.round(ah*s);
       const sw=art.width, sh=art.height; art.width=c.width; art.height=c.height; buildPoints();
-      render(c.getContext('2d'), c.width, c.height, phase); art.width=sw; art.height=sh; buildPoints(); return c; } });
+      hiRes=true; paint(c.getContext('2d'), c.width, c.height, phase); hiRes=false;
+      art.width=sw; art.height=sh; buildPoints(); return c; } });
     let rec=null, chunks=[], rt=0, tk=0;
     $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
       if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
+      // record at the chosen resolution: resize the canvas first, so the captured
+      // stream is that size, then restore the working size on stop
+      const tgt=+(($('vidSize')||{}).value||1920), [aw,ah]=aspectWH(), sc=tgt/Math.max(aw,ah);
+      const vw=Math.round(aw*sc/2)*2, vh=Math.round(ah*sc/2)*2;      // even dimensions for H.264
+      recording=true;
+      if(vw!==art.width || vh!==art.height){ art.width=vw; art.height=vh; W=vw; H=vh; buildPoints(); }
+      drawNow();
       const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
-      rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:24000000}:undefined); chunks=[];
+      const bits=Math.min(120e6, Math.max(12e6, Math.round(vw*vh*30*0.25)));
+      rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:bits}:undefined); chunks=[];
       rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
       rec.onstop=()=>{ const ext=mime.indexOf('mp4')>=0?'mp4':'webm'; const blob=new Blob(chunks,{type:mime||'video/webm'});
-        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='what-are-people-for.'+ext; a.click();
-        clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
+        if(blob.size>0){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='what-are-people-for.'+ext; a.click(); }
+        else alert('The recorder produced no frames at '+vw+' × '+vh+'.\n\nThat resolution is beyond what this browser can encode here — try a smaller Video size.');
+        clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null;
+        recording=false; fit(); };                                   // back to the working size
       rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop';
       rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
         $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
