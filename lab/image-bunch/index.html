@@ -101,7 +101,7 @@
       <p class="rowhint">The pictures drop one after another and pile up, each landing a little askew — a stack of prints on a table.</p>
       <div class="duo">
         <div class="knob"><label>Print size <b id="pSizeR">62</b></label><input id="pSize" type="range" min="15" max="100" value="62"></div>
-        <div class="knob"><label>Scatter <b id="pSpreadR">18</b></label><input id="pSpread" type="range" min="0" max="100" value="18"></div>
+        <div class="knob"><label>Scatter <b id="pSpreadR">50</b></label><input id="pSpread" type="range" min="0" max="100" value="50"></div>
       </div>
       <div class="duo">
         <div class="knob"><label>Tilt <b id="pTiltR">9</b></label><input id="pTilt" type="range" min="0" max="45" value="9"></div>
@@ -129,7 +129,7 @@
         <div class="knob"><label>Hole across <b id="holeWR">1</b></label><input id="holeW" type="range" min="1" max="6" value="1"></div>
         <div class="knob"><label>Hole down <b id="holeHR">1</b></label><input id="holeH" type="range" min="1" max="6" value="1"></div>
       </div>
-      <div class="knob"><label>Logo size <b id="logoSizeR">120</b></label><input id="logoSize" type="range" min="10" max="300" value="120"></div>
+      <div class="knob"><label>Logo size <b id="logoSizeR">140</b></label><input id="logoSize" type="range" min="10" max="300" value="140"></div>
       <p class="rowhint">100 is as large as it fits. Past that it runs off the edges — set it high and the mark bleeds out of frame.</p>
     </div>
 
@@ -145,6 +145,12 @@
     </div>
 
     <div class="group">
+      <div class="group__t">Exposure</div>
+      <div class="knob"><label>Brightness <b id="brightR">100</b></label><input id="bright" type="range" min="20" max="220" value="100"></div>
+      <p class="rowhint">Lifts or sinks the pictures. The ground, the mark and the grain are left alone.</p>
+    </div>
+
+    <div class="group">
       <div class="group__t">Texture</div>
       <p class="rowhint">Both hide a low-resolution original: halftone rebuilds each picture as a field of dots, grain lays film noise over the whole frame.</p>
       <label class="tog"><span>Halftone</span><input type="checkbox" id="htOn"></label>
@@ -153,14 +159,13 @@
         <div class="knob"><label>Screen angle <b id="htAngR">45</b></label><input id="htAng" type="range" min="0" max="90" value="45"></div>
       </div>
       <div class="knob"><label>Grain <b id="grainR">0</b></label><input id="grain" type="range" min="0" max="100" value="0"></div>
-      <div class="knob"><label>Brightness <b id="brightR">100</b></label><input id="bright" type="range" min="20" max="220" value="100"></div>
     </div>
 
     <div class="group">
       <div class="group__t">Switching</div>
       <p class="rowhint lay lay-justified lay-masonry lay-grid">How long the reel runs. The pace follows from it, so every picture gets its turn in exactly that time — Record starts from the beginning and stops itself at the end.</p>
       <p class="rowhint lay lay-stack" hidden>How long the reel runs. Every picture drops onto the pile once in that time — Record starts from the beginning and stops itself at the end.</p>
-      <div class="knob"><label>Length <b id="durR">15</b></label><input id="dur" type="range" min="3" max="90" value="15"></div>
+      <div class="knob"><label>Length <b id="durR">60</b></label><input id="dur" type="range" min="3" max="180" value="60"></div>
       <p class="rowhint" id="rateHint">&nbsp;</p>
       <div class="knob lay lay-justified lay-masonry lay-grid"><label>At once <b id="atOnceR">1</b></label><input id="atOnce" type="range" min="1" max="8" value="1"></div>
       <div class="knob lay lay-justified lay-masonry lay-grid"><label>Fade <b id="fadeR">0.35</b></label><input id="fade" type="range" min="0" max="150" value="35"></div>
@@ -183,11 +188,11 @@
 
     const P={ aspect:'1080/1920', seed:5, layout:'stack', count:16, tiles:9, vary:0.55,
       cols:3, rows:5, gap:10, rad:0, bg:'#ffffff', fit:'contain',
-      pSize:0.62, pSpread:0.18, pTilt:9, pKeep:14, pEdge:0.030, pEdgeC:'#ffffff', pLand:0.22,
+      pSize:0.62, pSpread:0.50, pTilt:9, pKeep:14, pEdge:0.030, pEdgeC:'#ffffff', pLand:0.22,
       duoOn:false, duoA:'#101014', duoB:'#f7de4c', duoMix:1, duoStep:40,
       htOn:false, htSize:6, htAng:45, grain:0,
-      holeW:1, holeH:1, logoSize:1.20,
-      dur:15, atOnce:1, fade:0.35, bright:1, play:true };
+      holeW:1, holeH:1, logoSize:1.40,
+      dur:60, atOnce:1, fade:0.35, bright:1, play:true };
 
     let imgs=[], W=1080, H=1920, t=0, acc=0;
     // The length is the control; the pace falls out of it. One change per picture, so
@@ -351,7 +356,10 @@
       if(pile.length>keep) pile.splice(0, pile.length-keep);
     }
     function drawPile(g,w,h){
-      const m=Math.min(w,h), sp=P.pSpread*m*0.5, edge=P.pEdge*m;
+      const m=Math.min(w,h), edge=P.pEdge*m;
+      // scatter reaches the full frame — each axis is spread by its own dimension, so at
+      // 100 a print can land anywhere on the canvas instead of hugging the middle
+      const spx=P.pSpread*w*0.5, spy=P.pSpread*h*0.5;
       for(const q of pile){
         const im=pic(q.i, q.hue); if(!im||!iw(im)) continue;
         // a print is a solid object: it lands opaque and just settles. Only the very
@@ -364,7 +372,7 @@
         g.save();
         // fully opaque from the moment it lands — the settle is the scale, not a fade,
         // so a paused frame or a saved still never catches a ghost print
-        g.translate(w/2 + q.dx*sp, h/2 + q.dy*sp);
+        g.translate(w/2 + q.dx*spx, h/2 + q.dy*spy);
         g.rotate(q.rot*P.pTilt*Math.PI/180);
         g.scale(1.08-0.08*ease, 1.08-0.08*ease);          // settles as it lands
         if(edge>0.5){ g.fillStyle=P.pEdgeC;
