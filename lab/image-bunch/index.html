@@ -124,7 +124,7 @@
         <button class="btn" id="logoClear">Remove</button>
       </div>
       <input id="logoInp" type="file" accept="image/svg+xml,.svg,image/png,image/*" hidden />
-      <p class="rowhint" id="logoStatus">No logo.</p>
+      <p class="rowhint" id="logoStatus">AW Mark</p>
       <div class="duo lay lay-grid" hidden>
         <div class="knob"><label>Hole across <b id="holeWR">1</b></label><input id="holeW" type="range" min="1" max="6" value="1"></div>
         <div class="knob"><label>Hole down <b id="holeHR">1</b></label><input id="holeH" type="range" min="1" max="6" value="1"></div>
@@ -536,6 +536,11 @@
     $('logoBtn').addEventListener('click',()=>$('logoInp').click());
     $('logoInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadLogo(f); e.target.value=''; });
     $('logoClear').addEventListener('click',()=>{ logo=null; $('logoStatus').textContent='No logo.'; cellKey=''; layout(); counts(); drawNow(); });
+    // the AW mark is the default — tall, so it runs down the frame behind a Stack
+    (function defaultLogo(){ const im=new Image();
+      im.onload=()=>{ if(!logo){ logo=im; cellKey=''; layout(); counts(); drawNow(); } };
+      im.onerror=()=>{ $('logoStatus').textContent='No logo.'; };
+      im.src='/lab/shared/aw-mark.svg'; })();
     ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); document.body.classList.add('drag'); }));
     ['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{ if(ev==='drop'||e.target===document.documentElement) document.body.classList.remove('drag'); }));
     document.addEventListener('drop',e=>{ e.preventDefault(); [...(e.dataTransfer?.files||[])].forEach(addFile); });
