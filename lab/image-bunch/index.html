@@ -129,7 +129,8 @@
         <div class="knob"><label>Hole across <b id="holeWR">1</b></label><input id="holeW" type="range" min="1" max="6" value="1"></div>
         <div class="knob"><label>Hole down <b id="holeHR">1</b></label><input id="holeH" type="range" min="1" max="6" value="1"></div>
       </div>
-      <div class="knob"><label>Logo size <b id="logoSizeR">72</b></label><input id="logoSize" type="range" min="10" max="100" value="72"></div>
+      <div class="knob"><label>Logo size <b id="logoSizeR">72</b></label><input id="logoSize" type="range" min="10" max="300" value="72"></div>
+      <p class="rowhint">100 is as large as it fits. Past that it runs off the edges — set it high and the mark bleeds out of frame.</p>
     </div>
 
     <div class="group">
@@ -139,6 +140,19 @@
       <div class="crow"><label>Highlights</label><input type="color" class="sw" id="duoB" value="#f7de4c"></div>
       <div class="knob"><label>Amount <b id="duoMixR">100</b></label><input id="duoMix" type="range" min="0" max="100" value="100"></div>
       <p class="rowhint">Every picture is remapped by its own brightness — darks to the first colour, lights to the second — so a mixed set reads as one palette.</p>
+      <div class="knob lay lay-stack" hidden><label>Colour per print <b id="duoStepR">40</b></label><input id="duoStep" type="range" min="0" max="180" value="40"></div>
+      <p class="rowhint lay lay-stack" hidden>Each print that lands turns the pair further round the colour wheel, so the pile builds up in different colours. Zero keeps them all the same.</p>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Texture</div>
+      <p class="rowhint">Both hide a low-resolution original: halftone rebuilds each picture as a field of dots, grain lays film noise over the whole frame.</p>
+      <label class="tog"><span>Halftone</span><input type="checkbox" id="htOn"></label>
+      <div class="duo">
+        <div class="knob"><label>Dot size <b id="htSizeR">6</b></label><input id="htSize" type="range" min="2" max="40" value="6"></div>
+        <div class="knob"><label>Screen angle <b id="htAngR">45</b></label><input id="htAng" type="range" min="0" max="90" value="45"></div>
+      </div>
+      <div class="knob"><label>Grain <b id="grainR">0</b></label><input id="grain" type="range" min="0" max="100" value="0"></div>
     </div>
 
     <div class="group">
@@ -168,7 +182,8 @@
     const P={ aspect:'1080/1920', seed:5, layout:'justified', count:16, tiles:9, vary:0.55,
       cols:3, rows:5, gap:10, rad:0, bg:'#ffffff', fit:'contain',
       pSize:0.62, pSpread:0.18, pTilt:9, pKeep:14, pEdge:0.030, pEdgeC:'#ffffff', pLand:0.22,
-      duoOn:false, duoA:'#101014', duoB:'#f7de4c', duoMix:1,
+      duoOn:false, duoA:'#101014', duoB:'#f7de4c', duoMix:1, duoStep:40,
+      htOn:false, htSize:6, htAng:45, grain:0,
       holeW:1, holeH:1, logoSize:0.72,
       rate:1.4, atOnce:1, fade:0.35, play:true };
 
@@ -304,7 +319,7 @@
       const showing=new Set(pile.slice(-Math.min(pile.length,4)).map(q=>q.i));
       let pool=imgs.map((_,i)=>i).filter(i=>!showing.has(i));
       if(!pool.length) pool=imgs.map((_,i)=>i);
-      pile.push({ i: pool[(r()*pool.length)|0],
+      pile.push({ i: pool[(r()*pool.length)|0], hue:(pileSeq*P.duoStep)%360,
         dx:(r()-0.5)*2, dy:(r()-0.5)*2, rot:(r()-0.5)*2, born:t, sp:0.85+r()*0.3 });
       const keep=Math.max(1,Math.round(P.pKeep));
       if(pile.length>keep) pile.splice(0, pile.length-keep);
@@ -312,7 +327,7 @@
     function drawPile(g,w,h){
       const m=Math.min(w,h), sp=P.pSpread*m*0.5, edge=P.pEdge*m;
       for(const q of pile){
-        const im=pic(q.i); if(!im||!iw(im)) continue;
+        const im=pic(q.i, q.hue); if(!im||!iw(im)) continue;
         // a print is a solid object: it lands opaque and just settles. Only the very
         // first instant eases in, so a fast drop rate never leaves ghosts stacked up.
         const age=Math.max(0, t-q.born), land=Math.min(1, age/Math.max(0.02,P.pLand));
@@ -321,7 +336,8 @@
         const pw=iw(im)*k, ph=ih(im)*k;
         const ease=1-Math.pow(1-land,3);
         g.save();
-        g.globalAlpha=0.35+0.65*Math.min(1, age/0.09);
+        // fully opaque from the moment it lands — the settle is the scale, not a fade,
+        // so a paused frame or a saved still never catches a ghost print
         g.translate(w/2 + q.dx*sp, h/2 + q.dy*sp);
         g.rotate(q.rot*P.pTilt*Math.PI/180);
         g.scale(1.08-0.08*ease, 1.08-0.08*ease);          // settles as it lands
@@ -372,16 +388,35 @@
     // lazily, one picture at a time, the first time it is actually drawn — so adding
     // forty images doesn't stall, and only what you see is processed.
     const HEXRGB=h=>{ const v=parseInt(h.slice(1),16); return [v>>16&255, v>>8&255, v&255]; };
-    let duo=[], duoKey='';
-    function duoSync(){ const key=[P.duoOn,P.duoA,P.duoB,P.duoMix].join('|');
-      if(duoKey!==key){ duoKey=key; duo=[]; } }
-    function makeDuo(im){
+    // spin a colour round the wheel, keeping its lightness and saturation
+    function hueShift(rgb, deg){
+      if(!deg) return rgb;
+      let [r,g,b]=rgb.map(v=>v/255);
+      const mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2; let h=0, sat=0;
+      if(mx!==mn){ const d=mx-mn; sat=l>0.5 ? d/(2-mx-mn) : d/(mx+mn);
+        h = mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4; h/=6; }
+      h=(h + deg/360)%1; if(h<0) h+=1;
+      if(sat===0){ const v=Math.round(l*255); return [v,v,v]; }
+      const q=l<0.5 ? l*(1+sat) : l+sat-l*sat, pp=2*l-q;
+      const hk=t=>{ t=(t%1+1)%1;
+        if(t<1/6) return pp+(q-pp)*6*t;
+        if(t<1/2) return q;
+        if(t<2/3) return pp+(q-pp)*(2/3-t)*6;
+        return pp; };
+      return [hk(h+1/3), hk(h), hk(h-1/3)].map(v=>Math.round(v*255));
+    }
+    let duo=new Map(), duoKey='';
+    function duoSync(){ const key=[P.duoOn,P.duoA,P.duoB,P.duoMix,P.htOn,P.htSize,P.htAng].join('|');
+      if(duoKey!==key){ duoKey=key; duo.clear(); } }
+    // duotone, then halftone — both bake into the cached picture, so the work happens
+    // once per picture (and colour) rather than every frame
+    function makeDuo(im, deg){
       const long=Math.max(im.naturalWidth,im.naturalHeight), k=Math.min(1, 1000/Math.max(1,long));
       const c=document.createElement('canvas');
       c.width=Math.max(1,Math.round(im.naturalWidth*k)); c.height=Math.max(1,Math.round(im.naturalHeight*k));
       const g=c.getContext('2d'); g.drawImage(im,0,0,c.width,c.height);
       let id; try{ id=g.getImageData(0,0,c.width,c.height); }catch(e){ return im; }
-      const d=id.data, A=HEXRGB(P.duoA), B=HEXRGB(P.duoB), m=P.duoMix;
+      const d=id.data, A=hueShift(HEXRGB(P.duoA),deg), B=hueShift(HEXRGB(P.duoB),deg), m=P.duoMix;
       for(let i=0;i<d.length;i+=4){
         const l=(0.2126*d[i] + 0.7152*d[i+1] + 0.0722*d[i+2])/255;
         d[i]   = d[i]  +(A[0]+(B[0]-A[0])*l - d[i]  )*m;
@@ -390,11 +425,44 @@
       }
       g.putImageData(id,0,0); return c;
     }
-    function pic(i){
+    function makeHalftone(src, deg){
+      const w=src.width||src.naturalWidth, h=src.height||src.naturalHeight;
+      const work=document.createElement('canvas');
+      const k=Math.min(1, 1000/Math.max(1,Math.max(w,h)));
+      work.width=Math.max(1,Math.round(w*k)); work.height=Math.max(1,Math.round(h*k));
+      const wg=work.getContext('2d'); wg.drawImage(src,0,0,work.width,work.height);
+      let sd; try{ sd=wg.getImageData(0,0,work.width,work.height).data; }catch(e){ return src; }
+      const W2=work.width, H2=work.height;
+      // the ink and the paper: the duotone pair when it is on, else black on white
+      const A=P.duoOn?hueShift(HEXRGB(P.duoA),deg):[17,17,20];
+      const B=P.duoOn?hueShift(HEXRGB(P.duoB),deg):[255,255,255];
+      const out=document.createElement('canvas'); out.width=W2; out.height=H2;
+      const g=out.getContext('2d');
+      g.fillStyle='rgb('+B[0]+','+B[1]+','+B[2]+')'; g.fillRect(0,0,W2,H2);
+      g.fillStyle='rgb('+A[0]+','+A[1]+','+A[2]+')';
+      const cell=Math.max(2, P.htSize*(Math.min(W2,H2)/600));
+      const a=P.htAng*Math.PI/180, cs=Math.cos(a), sn=Math.sin(a), diag=Math.hypot(W2,H2);
+      const lum=(x,y)=>{ const xi=Math.min(W2-1,Math.max(0,x|0)), yi=Math.min(H2-1,Math.max(0,y|0));
+        const i=(yi*W2+xi)*4; return (0.2126*sd[i]+0.7152*sd[i+1]+0.0722*sd[i+2])/255; };
+      for(let v=-diag; v<diag; v+=cell) for(let u=-diag; u<diag; u+=cell){
+        const x=W2/2 + u*cs - v*sn, y=H2/2 + u*sn + v*cs;
+        if(x<-cell||y<-cell||x>W2+cell||y>H2+cell) continue;
+        const r=(1-lum(x,y))*cell*0.72;
+        if(r>0.3){ g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill(); }
+      }
+      return out;
+    }
+    function pic(i, deg){
       const im=imgs[i]; if(!im) return null;
-      if(!P.duoOn) return im;
-      if(!duo[i]) duo[i]=makeDuo(im);
-      return duo[i];
+      if(!P.duoOn && !P.htOn) return im;
+      deg=Math.round(deg||0)%360;
+      const key=i+'@'+deg;
+      let c=duo.get(key);
+      if(!c){ if(duo.size>90) duo.clear();     // a pile of many colours would grow forever
+        c=P.duoOn ? makeDuo(im,deg) : im;
+        if(P.htOn) c=makeHalftone(c,deg);
+        duo.set(key,c); }
+      return c;
     }
     const iw=o=>o.naturalWidth||o.width, ih=o=>o.naturalHeight||o.height;
 
@@ -418,13 +486,13 @@
       if(P.layout==='stack'){
         // behind the pile, running tall down the frame
         if(logo && logo.naturalWidth){
-          // as tall as it can be, but never wider than the frame — a wide wordmark
-          // scaled purely by height would run off both edges
-          const k=Math.min((h*P.logoSize)/logo.naturalHeight, w/logo.naturalWidth);
-          const lw=logo.naturalWidth*k, lh=logo.naturalHeight*k;
+          // 100% is the largest that fits the frame; past that it bleeds off the edges
+          const fit=Math.min(w/logo.naturalWidth, h/logo.naturalHeight);
+          const k=fit*P.logoSize, lw=logo.naturalWidth*k, lh=logo.naturalHeight*k;
           g.drawImage(logo, (w-lw)/2, (h-lh)/2, lw, lh);
         }
         if(imgs.length) drawPile(g,w,h);
+        addGrain(g,w,h);
         return;
       }
       if(!imgs.length){ g.fillStyle='rgba(0,0,0,.45)';
@@ -441,7 +509,9 @@
         else place(g, c.cur, r, inset);
         g.restore();
       }
-      // the logo, whole and centred in the space the grid left for it
+      addGrain(g,w,h);
+      // the logo, whole and centred in the space the grid left for it — over the grain,
+      // so a mark stays crisp
       if(logo && logo.naturalWidth){
         const box = hole ? {x:hole.x*sx, y:hole.y*sy, w:hole.w*sx, h:hole.h*sy}
                          : {x:0, y:0, w:w, h:h};
@@ -449,6 +519,22 @@
         const lw=logo.naturalWidth*k, lh=logo.naturalHeight*k;
         g.drawImage(logo, box.x+(box.w-lw)/2, box.y+(box.h-lh)/2, lw, lh);
       }
+    }
+    // film grain, laid over everything — regenerated each frame so it moves
+    const grainCv=document.createElement('canvas');
+    function addGrain(g,w,h){
+      if(P.grain<=0.5) return;
+      const gw=320, gh=Math.max(1,Math.round(gw*h/w));
+      grainCv.width=gw; grainCv.height=gh;
+      const gx=grainCv.getContext('2d'), id=gx.createImageData(gw,gh), d=id.data;
+      for(let i=0;i<d.length;i+=4){ const v=Math.random()*255; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; }
+      gx.putImageData(id,0,0);
+      // 'overlay' is the usual choice but it leaves white untouched, so grain vanished
+      // on a light ground — laid on directly it reads on every tone.
+      g.save(); g.globalAlpha=(P.grain/100)*0.16;
+      g.imageSmoothingEnabled=true; g.drawImage(grainCv,0,0,w,h);
+      g.globalCompositeOperation='overlay'; g.globalAlpha=(P.grain/100)*0.35;
+      g.drawImage(grainCv,0,0,w,h); g.restore(); g.globalAlpha=1;
     }
     function drawNow(){ draw(ctx,W,H); }
 
@@ -479,7 +565,7 @@
       setStatus(n+(n===1?' picture · ':' pictures · ')+what); }
     function thumbs(){ const h=$('thumbs'); h.innerHTML='';
       imgs.forEach(im=>{ const t=document.createElement('img'); t.src=im.src; h.appendChild(t); }); }
-    function added(){ cellKey=''; duo=[]; if(P.layout==='stack'){ if(!pile.length) drop(); } else { layout(); reseat(); } thumbs(); counts(); drawNow(); }
+    function added(){ cellKey=''; duo.clear(); if(P.layout==='stack'){ if(!pile.length) drop(); } else { layout(); reseat(); } thumbs(); counts(); drawNow(); }
     const isPDF=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
     function addImage(file){ const im=new Image();
       im.onload=()=>{ imgs.push(im); added(); };
@@ -575,6 +661,11 @@
       if(P.layout==='stack'){ pile=[]; drop(); } else layout();
       counts(); drawNow(); });
     bind('duoMix','duoMixR',v=>P.duoMix=v/100);
+    bind('duoStep','duoStepR',v=>P.duoStep=v);
+    bind('htSize','htSizeR',v=>P.htSize=v);
+    bind('htAng','htAngR',v=>P.htAng=v);
+    bind('grain','grainR',v=>P.grain=v);
+    $('htOn').onchange=e=>{ P.htOn=e.target.checked; drawNow(); };
     bind('holeW','holeWR',v=>P.holeW=v,null,true);
     bind('holeH','holeHR',v=>P.holeH=v,null,true);
     bind('logoSize','logoSizeR',v=>P.logoSize=v/100);
