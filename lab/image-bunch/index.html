@@ -29,7 +29,9 @@
   #thumbs img{ width:100%; aspect-ratio:1/1; object-fit:cover; display:block;
     border:1px solid var(--hair); border-radius:var(--r-input); }
   body.drag #wrap{ outline:2px dashed var(--accent); outline-offset:-14px; }
-  .group[hidden]{ display:none !important; }
+  /* [hidden] is only (0,1,0), so .knob/.duo/.rowhint's own display would beat it —
+     which silently left every mode's controls on screen. Make it win. */
+  [hidden]{ display:none !important; }
 </style>
   <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
 </head>
@@ -79,18 +81,6 @@
         <div class="knob"><label>Columns <b id="colsR">3</b></label><input id="cols" type="range" min="1" max="12" value="3"></div>
         <div class="knob"><label>Rows <b id="rowsR">5</b></label><input id="rows" type="range" min="1" max="12" value="5"></div>
       </div>
-      <div class="lay lay-stack" hidden>
-        <p class="rowhint">The pictures drop one after another and pile up, each landing a little askew — a stack of prints on a table.</p>
-        <div class="duo">
-          <div class="knob"><label>Print size <b id="pSizeR">62</b></label><input id="pSize" type="range" min="15" max="100" value="62"></div>
-          <div class="knob"><label>Scatter <b id="pSpreadR">18</b></label><input id="pSpread" type="range" min="0" max="100" value="18"></div>
-        </div>
-        <div class="duo">
-          <div class="knob"><label>Tilt <b id="pTiltR">9</b></label><input id="pTilt" type="range" min="0" max="45" value="9"></div>
-          <div class="knob"><label>Keep <b id="pKeepR">14</b></label><input id="pKeep" type="range" min="1" max="60" value="14"></div>
-        </div>
-        <div class="knob"><label>Print border <b id="pEdgeR">3.0</b></label><input id="pEdge" type="range" min="0" max="120" value="30"></div>
-      </div>
       <div class="duo lay lay-justified lay-masonry lay-grid">
         <div class="knob"><label>Gap <b id="gapR">10</b></label><input id="gap" type="range" min="0" max="60" value="10"></div>
         <div class="knob"><label>Corners <b id="radR">0</b></label><input id="rad" type="range" min="0" max="60" value="0"></div>
@@ -106,16 +96,36 @@
       <button class="btn" id="reshuffle">Reshuffle the wall</button>
     </div>
 
+    <div class="group lay lay-stack" hidden>
+      <div class="group__t">Stack</div>
+      <p class="rowhint">The pictures drop one after another and pile up, each landing a little askew — a stack of prints on a table.</p>
+      <div class="duo">
+        <div class="knob"><label>Print size <b id="pSizeR">62</b></label><input id="pSize" type="range" min="15" max="100" value="62"></div>
+        <div class="knob"><label>Scatter <b id="pSpreadR">18</b></label><input id="pSpread" type="range" min="0" max="100" value="18"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Tilt <b id="pTiltR">9</b></label><input id="pTilt" type="range" min="0" max="45" value="9"></div>
+        <div class="knob"><label>Keep <b id="pKeepR">14</b></label><input id="pKeep" type="range" min="1" max="60" value="14"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Border <b id="pEdgeR">3.0</b></label><input id="pEdge" type="range" min="0" max="200" value="30"></div>
+        <div class="knob"><label>Settle <b id="pLandR">0.22</b></label><input id="pLand" type="range" min="2" max="120" value="22"></div>
+      </div>
+      <div class="crow"><label>Border colour</label><input type="color" class="sw" id="pEdgeC" value="#ffffff"></div>
+    </div>
+
     <div class="group">
       <div class="group__t">Logo</div>
-      <p class="rowhint">Drop an SVG in the middle and the grid opens a hole for it, so the pictures sit around it. The hole is measured in tiles, so it always lands on the grid.</p>
+      <p class="rowhint lay lay-grid" hidden>Drop an SVG in the middle and the grid opens a hole for it, so the pictures sit around it. The hole is measured in tiles, so it always lands on the grid.</p>
+      <p class="rowhint lay lay-stack" hidden>In Stack the logo sits behind the pile, running tall down the frame, and the prints land over it.</p>
+      <p class="rowhint lay lay-justified lay-masonry">The logo sits over the wall, centred.</p>
       <div class="grid2">
         <button class="btn" id="logoBtn">Add logo</button>
         <button class="btn" id="logoClear">Remove</button>
       </div>
       <input id="logoInp" type="file" accept="image/svg+xml,.svg,image/png,image/*" hidden />
       <p class="rowhint" id="logoStatus">No logo.</p>
-      <div class="duo">
+      <div class="duo lay lay-grid" hidden>
         <div class="knob"><label>Hole across <b id="holeWR">1</b></label><input id="holeW" type="range" min="1" max="6" value="1"></div>
         <div class="knob"><label>Hole down <b id="holeHR">1</b></label><input id="holeH" type="range" min="1" max="6" value="1"></div>
       </div>
@@ -133,12 +143,11 @@
 
     <div class="group">
       <div class="group__t">Switching</div>
-      <p class="rowhint">Every so often a tile picks a picture it is not already showing and fades to it.</p>
-      <div class="duo">
-        <div class="knob"><label>Rate <b id="rateR">1.4</b></label><input id="rate" type="range" min="1" max="80" value="14"></div>
-        <div class="knob"><label>At once <b id="atOnceR">1</b></label><input id="atOnce" type="range" min="1" max="8" value="1"></div>
-      </div>
-      <div class="knob"><label>Fade <b id="fadeR">0.35</b></label><input id="fade" type="range" min="0" max="150" value="35"></div>
+      <p class="rowhint lay lay-justified lay-masonry lay-grid">Every so often a tile picks a picture it is not already showing and fades to it.</p>
+      <p class="rowhint lay lay-stack" hidden>How often the next print drops onto the pile.</p>
+      <div class="knob"><label>Rate <b id="rateR">1.4</b></label><input id="rate" type="range" min="1" max="80" value="14"></div>
+      <div class="knob lay lay-justified lay-masonry lay-grid"><label>At once <b id="atOnceR">1</b></label><input id="atOnce" type="range" min="1" max="8" value="1"></div>
+      <div class="knob lay lay-justified lay-masonry lay-grid"><label>Fade <b id="fadeR">0.35</b></label><input id="fade" type="range" min="0" max="150" value="35"></div>
       <button class="btn" id="playBtn" aria-pressed="true">Pause</button>
     </div>
   </div>
@@ -158,7 +167,7 @@
 
     const P={ aspect:'1080/1920', seed:5, layout:'justified', count:16, tiles:9, vary:0.55,
       cols:3, rows:5, gap:10, rad:0, bg:'#ffffff', fit:'contain',
-      pSize:0.62, pSpread:0.18, pTilt:9, pKeep:14, pEdge:0.030,
+      pSize:0.62, pSpread:0.18, pTilt:9, pKeep:14, pEdge:0.030, pEdgeC:'#ffffff', pLand:0.22,
       duoOn:false, duoA:'#101014', duoB:'#f7de4c', duoMix:1,
       holeW:1, holeH:1, logoSize:0.72,
       rate:1.4, atOnce:1, fade:0.35, play:true };
@@ -306,7 +315,7 @@
         const im=pic(q.i); if(!im||!iw(im)) continue;
         // a print is a solid object: it lands opaque and just settles. Only the very
         // first instant eases in, so a fast drop rate never leaves ghosts stacked up.
-        const age=Math.max(0, t-q.born), land=Math.min(1, age/0.22);
+        const age=Math.max(0, t-q.born), land=Math.min(1, age/Math.max(0.02,P.pLand));
         // the print, whole — fitted inside its box, so nothing is ever cropped
         const box=P.pSize*m*q.sp, k=Math.min(box/iw(im), box/ih(im));
         const pw=iw(im)*k, ph=ih(im)*k;
@@ -316,7 +325,7 @@
         g.translate(w/2 + q.dx*sp, h/2 + q.dy*sp);
         g.rotate(q.rot*P.pTilt*Math.PI/180);
         g.scale(1.08-0.08*ease, 1.08-0.08*ease);          // settles as it lands
-        if(edge>0.5){ g.fillStyle='#ffffff';
+        if(edge>0.5){ g.fillStyle=P.pEdgeC;
           g.fillRect(-pw/2-edge, -ph/2-edge, pw+edge*2, ph+edge*2); }
         g.drawImage(im, -pw/2, -ph/2, pw, ph);
         g.restore();
@@ -406,7 +415,18 @@
       const sx=w/W, sy=h/H;                              // export renders the same wall, larger
       g.setTransform(1,0,0,1,0,0);
       g.fillStyle=P.bg; g.fillRect(0,0,w,h);
-      if(imgs.length && P.layout==='stack'){ drawPile(g,w,h); return; }
+      if(P.layout==='stack'){
+        // behind the pile, running tall down the frame
+        if(logo && logo.naturalWidth){
+          // as tall as it can be, but never wider than the frame — a wide wordmark
+          // scaled purely by height would run off both edges
+          const k=Math.min((h*P.logoSize)/logo.naturalHeight, w/logo.naturalWidth);
+          const lw=logo.naturalWidth*k, lh=logo.naturalHeight*k;
+          g.drawImage(logo, (w-lw)/2, (h-lh)/2, lw, lh);
+        }
+        if(imgs.length) drawPile(g,w,h);
+        return;
+      }
       if(!imgs.length){ g.fillStyle='rgba(0,0,0,.45)';
         g.font='500 '+Math.round(Math.min(w,h)*0.028)+'px "IBM Plex Sans",system-ui,sans-serif';
         g.textAlign='center'; g.fillText('Add pictures — each one takes a tile', w/2, h/2); g.textAlign='left'; return; }
@@ -530,6 +550,8 @@
     bind('pTilt','pTiltR',v=>P.pTilt=v);
     bind('pKeep','pKeepR',v=>P.pKeep=v);
     bind('pEdge','pEdgeR',v=>P.pEdge=v/1000, v=>(v/10).toFixed(1));
+    bind('pLand','pLandR',v=>P.pLand=v/100, v=>(v/100).toFixed(2));
+    $('pEdgeC').oninput=e=>{ P.pEdgeC=e.target.value; if(!P.play) drawNow(); };
     bind('tiles','tilesR',v=>P.tiles=v,null,true);
     bind('vary','varyR',v=>P.vary=v/100,null,true);
     bind('cols','colsR',v=>P.cols=v,null,true);
