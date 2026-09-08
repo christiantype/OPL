@@ -24,6 +24,7 @@
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .crow[hidden]{ display:none; }
+  .group[hidden]{ display:none !important; }
   .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
 </style>
   <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
@@ -48,10 +49,12 @@
       <div class="group__t">Mode</div>
       <select class="opal-input" id="mode">
         <option value="tiles" selected>Tiles · gradient grid</option>
+        <option value="radial">Radial · pulsing rings</option>
+        <option value="strokes">Strokes · a word in contour</option>
       </select>
     </div>
 
-    <div class="group">
+    <div class="group mode mode-tiles">
       <div class="group__t">Grid</div>
       <div class="duo">
         <div class="knob"><label>Columns <b id="colsR">4</b></label><input id="cols" type="range" min="1" max="24" value="4"></div>
@@ -59,6 +62,41 @@
       </div>
       <label class="tog"><span>Square tiles</span><input type="checkbox" id="square" checked></label>
       <p class="rowhint">The grid always fills the canvas. Square tiles keeps every cell a true square, growing them so the overflowing edge crops; off, the tiles stretch to land exactly on the count.</p>
+    </div>
+
+    <div class="group mode mode-radial" hidden>
+      <div class="group__t">Radial</div>
+      <div class="duo">
+        <div class="knob"><label>Centre across <b id="cxR">0.50</b></label><input id="cx" type="range" min="-30" max="130" value="50"></div>
+        <div class="knob"><label>Centre down <b id="cyR">0.50</b></label><input id="cy" type="range" min="-30" max="130" value="50"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Size <b id="radR">0.55</b></label><input id="rad" type="range" min="5" max="180" value="55"></div>
+        <div class="knob"><label>Rings <b id="ringsR">4</b></label><input id="rings" type="range" min="1" max="24" value="4"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Pulse <b id="pulseR">0.25</b></label><input id="pulse" type="range" min="0" max="90" value="25"></div>
+        <div class="knob"><label>Pulse rate <b id="prateR">0.30</b></label><input id="prate" type="range" min="2" max="200" value="30"></div>
+      </div>
+      <p class="rowhint">Rings multiplies the gradient outward as concentric circles; Pulse breathes the whole field in and out.</p>
+    </div>
+
+    <div class="group mode mode-strokes" hidden>
+      <div class="group__t">Strokes</div>
+      <input class="opal-input" id="word" type="text" value="AHA" maxlength="14" spellcheck="false" autocomplete="off">
+      <select class="opal-input" id="face">
+        <option value="UniversNextPro-Bold.ttf" selected>Univers · Bold</option>
+        <option value="UniversNextPro-Medium.ttf">Univers · Medium</option>
+        <option value="UniversNextPro-Light.ttf">Univers · Light</option>
+        <option value="playfair-regular.ttf">Playfair</option>
+        <option value="zillaslab-regular.ttf">Zilla Slab</option>
+        <option value="pirata-one.ttf">Pirata One</option>
+      </select>
+      <div class="duo">
+        <div class="knob"><label>Size <b id="wsizeR">62</b></label><input id="wsize" type="range" min="10" max="95" value="62"></div>
+        <div class="knob"><label>Strokes <b id="strokesR">9</b></label><input id="strokes" type="range" min="1" max="40" value="9"></div>
+      </div>
+      <p class="rowhint">The word becomes a distance field — the strokes are contours stepping out from the letterforms, each one a band of the gradient.</p>
     </div>
 
     <div class="group">
@@ -85,7 +123,7 @@
       <p class="rowhint">A stroke inside each square that holds its colour at one edge and blends to transparent across the tile. Width 0 turns it off.</p>
     </div>
 
-    <div class="group">
+    <div class="group mode mode-tiles">
       <div class="group__t">Offset</div>
       <div class="knob"><label>Gradient offset <b id="goffR">0.60</b></label><input id="goff" type="range" min="0" max="200" value="60"></div>
       <p class="rowhint">How far each square's gradient runs ahead of its neighbour — colour travels across the grid as a wave.</p>
@@ -110,11 +148,16 @@
   </div>
 
   <script id="frag" type="x-shader/x-fragment">
+#extension GL_OES_standard_derivatives : enable
 precision highp float;
 uniform vec2 uRes; uniform float uT;
+uniform float uMode;                 /* 0 tiles · 1 radial · 2 strokes */
 uniform float uCols, uRows, uAngle, uSpread, uGradOff, uTileOff, uScatter, uSeed, uSquare, uStops;
 uniform float uRim, uRimAngle, uRimA;
+uniform vec2 uCenter; uniform float uRadius, uRings, uPulse, uPrate;   /* radial */
+uniform sampler2D uTex; uniform float uStrokes;                        /* strokes */
 uniform vec3 uC0, uC1, uC2, uC3, uRimC;
+const float TAU = 6.2831853;
 
 float hash21(vec2 p){ p=fract(p*vec2(123.34,345.45)); p+=dot(p,p+34.345); return fract(p.x*p.y); }
 
@@ -136,51 +179,83 @@ vec3 ramp(float t){
 
 void main(){
   vec2 fc = gl_FragCoord.xy;
-  vec2 cells = vec2(uCols, uRows);
 
-  /* grid space — one unit per cell */
-  vec2 g; float cellMin;
-  if(uSquare > 0.5){
-    /* true squares, grown to COVER the canvas and centred — the grid always fills,
-       the overflowing axis simply crops. Never letterboxed. */
-    float cs = max(uRes.x/uCols, uRes.y/uRows);
-    vec2 origin = (uRes - cs*cells) * 0.5;
-    g = (fc - origin) / cs;
-    cellMin = cs;
+  float t;          /* the gradient parameter — one unit is one trip round the ramp */
+  float edge;       /* distance to the edge of the repeating unit, 0 AT the edge  */
+  float aa;         /* antialias width, in the same units as edge                 */
+  vec2  fadeV;      /* -0.5..0.5 vector the rim fades along                       */
+
+  if(uMode < 0.5){
+    /* ---- TILES: a grid of squares, each holding a linear gradient ---- */
+    vec2 cells = vec2(uCols, uRows);
+    vec2 g; float cellMin;
+    if(uSquare > 0.5){
+      /* true squares, grown to COVER the canvas and centred — the grid always fills,
+         the overflowing axis simply crops. Never letterboxed. */
+      float cs = max(uRes.x/uCols, uRes.y/uRows);
+      vec2 origin = (uRes - cs*cells) * 0.5;
+      g = (fc - origin) / cs;
+      cellMin = cs;
+    } else {
+      vec2 cp = uRes / cells;                            // stretched to fill
+      g = fc / cp;
+      cellMin = min(cp.x, cp.y);
+    }
+    /* the squares themselves stagger sideways, row by row — wrapped, so a row stays whole */
+    float row = floor(g.y);
+    g.x = mod(g.x + row * uTileOff, uCols);
+
+    vec2 cell = floor(g);
+    vec2 f = fract(g);
+
+    /* the gradient inside the square, along the chosen direction */
+    vec2 dir = vec2(cos(uAngle), sin(uAngle));
+    float ext = abs(dir.x) + abs(dir.y);                 // normalise so a diagonal still spans 0..1
+    t = (dot(f - 0.5, dir) / ext + 0.5) * uSpread;
+
+    /* each square runs ahead of its neighbour: ordered diagonally, or scattered */
+    float ord = (cell.x + cell.y) / max(uCols + uRows - 2.0, 1.0);
+    float rnd = hash21(cell + uSeed);
+    t += mix(ord, rnd, uScatter) * uGradOff + uT;
+
+    edge  = 0.5 - max(abs(f.x - 0.5), abs(f.y - 0.5));   // 0 at the tile edge
+    aa    = 1.2 / max(cellMin, 1.0);
+    fadeV = f - 0.5;
+
+  } else if(uMode < 1.5){
+    /* ---- RADIAL: concentric rings from a moveable centre, breathing ---- */
+    float m = min(uRes.x, uRes.y);
+    vec2 d = (fc - uCenter * uRes) / m;                  // aspect-correct, centre-relative
+    float r = length(d);
+    float pulse = 1.0 + uPulse * sin(uT * uPrate * TAU); // the whole field breathes
+    t = (r / max(uRadius * pulse, 1e-4)) * uRings * uSpread + uT;
+
+    float fr = fract(t);
+    edge  = min(fr, 1.0 - fr);                           // 0 at each ring boundary
+    aa    = max(fwidth(t), 1e-5);
+    fadeV = 0.5 * normalize(d + vec2(1e-6));
+
   } else {
-    vec2 cp = uRes / cells;                            // stretched to fill
-    g = fc / cp;
-    cellMin = min(cp.x, cp.y);
+    /* ---- STROKES: contours stepping out from a word's distance field ---- */
+    vec2 uv = vec2(fc.x / uRes.x, 1.0 - fc.y / uRes.y);  // the field is drawn top-down
+    float sd = (texture2D(uTex, uv).r - 0.5) * 2.0;      // -1 inside … +1 outside
+    t = sd * uStrokes * uSpread + uT;
+
+    float fr = fract(t);
+    edge  = min(fr, 1.0 - fr);
+    aa    = max(fwidth(t), 1e-5);
+    fadeV = vec2(uv.x - 0.5, 0.5 - uv.y);
   }
-
-  /* the squares themselves stagger sideways, row by row — wrapped, so a row stays whole */
-  float row = floor(g.y);
-  g.x = mod(g.x + row * uTileOff, uCols);
-
-  vec2 cell = floor(g);
-  vec2 f = fract(g);
-
-  /* the gradient inside the square, along the chosen direction */
-  vec2 dir = vec2(cos(uAngle), sin(uAngle));
-  float ext = abs(dir.x) + abs(dir.y);                 // normalise so a diagonal still spans 0..1
-  float t = (dot(f - 0.5, dir) / ext + 0.5) * uSpread;
-
-  /* each square runs ahead of its neighbour: ordered diagonally, or scattered */
-  float ord = (cell.x + cell.y) / max(uCols + uRows - 2.0, 1.0);
-  float rnd = hash21(cell + uSeed);
-  t += mix(ord, rnd, uScatter) * uGradOff + uT;
 
   vec3 col = ramp(t);
 
-  /* the rim — a stroke inside the square, solid where its direction points,
-     blending to transparent across the tile */
+  /* the rim — a stroke on the edge of the repeating unit (a tile, a ring, a contour),
+     solid where its direction points and blending to transparent across the unit */
   if(uRim > 0.0005){
-    float e = 0.5 - max(abs(f.x - 0.5), abs(f.y - 0.5));   // 0 at the tile edge
-    float aa = 1.2 / max(cellMin, 1.0);
-    float band = 1.0 - smoothstep(uRim - aa, uRim + aa, e);
+    float band = 1.0 - smoothstep(uRim - aa, uRim + aa, edge);
     vec2 rd = vec2(cos(uRimAngle), sin(uRimAngle));
     float rext = abs(rd.x) + abs(rd.y);
-    float fade = clamp(dot(f - 0.5, rd) / rext + 0.5, 0.0, 1.0);
+    float fade = clamp(dot(fadeV, rd) / rext + 0.5, 0.0, 1.0);
     col = mix(col, uRimC, band * fade * uRimA);
   }
 
@@ -188,18 +263,23 @@ void main(){
 }
   </script>
 
+  <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
   <script>
   (function(){
     const art=document.getElementById('art');
     const gl=art.getContext('webgl',{preserveDrawingBuffer:true, antialias:true, premultipliedAlpha:false});
     const $=id=>document.getElementById(id);
     if(!gl){ const c=art.getContext('2d'); c.fillStyle='#111'; c.fillRect(0,0,art.width,art.height); c.fillStyle='#fff'; c.font='24px sans-serif'; c.fillText('WebGL unavailable',40,60); return; }
+    gl.getExtension('OES_standard_derivatives');
 
-    const P={ aspect:'1080/1920', seed:3, cols:4, rows:7, square:true,
+    const P={ aspect:'1080/1920', seed:3, mode:'tiles', cols:4, rows:7, square:true,
       ang:45, spread:0.5, stops:3,
       c:['#f7de4c','#ea2b1e','#1f40e6','#10b981'],
       rim:0.03, rimAng:90, rimA:1.0, rimC:'#ffffff',
-      goff:0.60, toff:0.0, scat:0, spd:1.0, play:true };
+      goff:0.60, toff:0.0, scat:0, spd:1.0, play:true,
+      cx:0.5, cy:0.5, rad:0.55, rings:4, pulse:0.25, prate:0.30,
+      word:'AHA', face:'UniversNextPro-Bold.ttf', wsize:62, strokes:9 };
+    const MODES={tiles:0, radial:1, strokes:2};
 
     const HEX=h=>{ const n=parseInt(h.slice(1),16); return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]; };
 
@@ -214,13 +294,91 @@ void main(){
     const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, -1,1, 1,1]),gl.STATIC_DRAW);
     const ploc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(ploc); gl.vertexAttribPointer(ploc,2,gl.FLOAT,false,0,0);
-    const U={}; ['uRes','uT','uCols','uRows','uAngle','uSpread','uGradOff','uTileOff','uScatter','uSeed','uSquare','uStops','uRim','uRimAngle','uRimA','uC0','uC1','uC2','uC3','uRimC']
+    const U={}; ['uRes','uT','uMode','uCols','uRows','uAngle','uSpread','uGradOff','uTileOff','uScatter','uSeed','uSquare','uStops',
+      'uRim','uRimAngle','uRimA','uCenter','uRadius','uRings','uPulse','uPrate','uTex','uStrokes','uC0','uC1','uC2','uC3','uRimC']
       .forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+
+    // ---- the word's distance field, as a texture -------------------------------
+    // A signed distance field is what makes the strokes possible: each contour is
+    // just a step of that distance, so the shader gets clean concentric bands for
+    // free and they animate by sliding the ramp along it.
+    const tex=gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,1,1,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,new Uint8Array([128]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    // exact euclidean distance transform (Felzenszwalb & Huttenlocher), 1D then 2D
+    const INF=1e20;
+    function edt1d(f,d,v,z,n){
+      v[0]=0; z[0]=-INF; z[1]=INF;
+      for(let q=1,k=0;q<n;q++){
+        let s2=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]);
+        while(k>0 && s2<=z[k]){ k--; s2=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]); }
+        k++; v[k]=q; z[k]=s2; z[k+1]=INF;
+      }
+      for(let q=0,k=0;q<n;q++){ while(z[k+1]<q) k++;
+        d[q]=(q-v[k])*(q-v[k])+f[v[k]]; }
+    }
+    function edt2d(data,w,h){
+      const m=Math.max(w,h), f=new Float64Array(m), d=new Float64Array(m),
+            v=new Int32Array(m), z=new Float64Array(m+1);
+      for(let x=0;x<w;x++){ for(let y=0;y<h;y++) f[y]=data[y*w+x];
+        edt1d(f,d,v,z,h); for(let y=0;y<h;y++) data[y*w+x]=d[y]; }
+      for(let y=0;y<h;y++){ for(let x=0;x<w;x++) f[x]=data[y*w+x];
+        edt1d(f,d,v,z,w); for(let x=0;x<w;x++) data[y*w+x]=d[x]; }
+    }
+    let font=null, fieldKey='';
+    function buildField(){
+      const key=[P.word,P.face,P.wsize,W,H].join('|');
+      if(!font || fieldKey===key) return; fieldKey=key;
+      const R=520, fw=Math.max(64, Math.round(R*(W>=H?1:W/H))), fh=Math.max(64, Math.round(R*(W>=H?H/W:1)));
+      const c=document.createElement('canvas'); c.width=fw; c.height=fh;
+      const g=c.getContext('2d');
+      g.fillStyle='#000'; g.fillRect(0,0,fw,fh);
+      // fit the whole word to the frame — Size is how much of it the word fills,
+      // so a long word shrinks to fit instead of running off the edge
+      const word=P.word||'A'; let path, bb;
+      try{
+        const ref=100, p0=font.getPath(word,0,0,ref), b0=p0.getBoundingBox();
+        const wR=Math.max(1e-3,(b0.x2-b0.x1)/ref), hR=Math.max(1e-3,(b0.y2-b0.y1)/ref);
+        const k=P.wsize/100, size=Math.min(fw*k/wR, fh*k/hR);
+        path=font.getPath(word,0,0,size); bb=path.getBoundingBox();
+      }catch(e){ return; }
+      const ox=fw/2-(bb.x1+bb.x2)/2, oy=fh/2-(bb.y1+bb.y2)/2;
+      g.save(); g.translate(ox,oy); g.fillStyle='#fff';
+      try{ g.fill(new Path2D(path.toPathData(2))); }catch(e){}
+      g.restore();
+      const px=g.getImageData(0,0,fw,fh).data, N=fw*fh;
+      const inside=new Float64Array(N), outside=new Float64Array(N);
+      for(let i=0;i<N;i++){ const on=px[i*4]>127;
+        inside[i]  = on ? INF : 0;      // distance from the ink, measured inside
+        outside[i] = on ? 0 : INF; }    // distance from the ink, measured outside
+      edt2d(inside,fw,fh); edt2d(outside,fw,fh);
+      const range=Math.min(fw,fh)*0.5, out=new Uint8Array(N);
+      for(let i=0;i<N;i++){
+        const sd=(Math.sqrt(outside[i]) - Math.sqrt(inside[i]))/range;   // -1 inside … +1 outside
+        out[i]=Math.max(0,Math.min(255, Math.round(128 + sd*127)));
+      }
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,fw,fh,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,out);
+    }
+    function loadFace(){ if(!window.opentype){ setTimeout(loadFace,120); return; }
+      opentype.load('/shared/fonts/'+P.face,(err,f)=>{ if(err){ console.warn('font load failed',err); return; }
+        font=f; fieldKey=''; buildField(); drawNow(); }); }
 
     let W=1080,H=1920,clock=0;
     function draw(w,h,tm){
       gl.viewport(0,0,w,h);
       gl.uniform2f(U.uRes,w,h); gl.uniform1f(U.uT,tm);
+      gl.uniform1f(U.uMode, MODES[P.mode]||0);
+      gl.uniform2f(U.uCenter,P.cx,P.cy); gl.uniform1f(U.uRadius,P.rad);
+      gl.uniform1f(U.uRings,P.rings); gl.uniform1f(U.uPulse,P.pulse); gl.uniform1f(U.uPrate,P.prate);
+      gl.uniform1f(U.uStrokes,P.strokes);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex); gl.uniform1i(U.uTex,0);
       gl.uniform1f(U.uCols,P.cols); gl.uniform1f(U.uRows,P.rows);
       gl.uniform1f(U.uAngle,P.ang*Math.PI/180);
       gl.uniform1f(U.uSpread,P.spread); gl.uniform1f(U.uGradOff,P.goff);
@@ -237,7 +395,7 @@ void main(){
 
     function aspectWH(){ const p=(P.aspect||'1080/1920').split(/[/:x]/).map(Number), a=p[0]||9, b=p[1]||16, long=1600;
       return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
-    function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; drawNow(); }
+    function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; fieldKey=''; buildField(); drawNow(); }
     let t0=performance.now();
     function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now; if(P.play){ clock += dt*(P.spd/10); drawNow(); } requestAnimationFrame(frame); }
     requestAnimationFrame(frame);
@@ -256,6 +414,20 @@ void main(){
     bind('rim','rimR',v=>P.rim=v/200);
     bind('rimAng','rimAngR',v=>P.rimAng=v, v=>v+'°');
     bind('rimA','rimAR',v=>P.rimA=v/100);
+    bind('cx','cxR',v=>P.cx=v/100, v=>(v/100).toFixed(2));
+    bind('cy','cyR',v=>P.cy=v/100, v=>(v/100).toFixed(2));
+    bind('rad','radR',v=>P.rad=v/100, v=>(v/100).toFixed(2));
+    bind('rings','ringsR',v=>P.rings=v);
+    bind('pulse','pulseR',v=>P.pulse=v/100, v=>(v/100).toFixed(2));
+    bind('prate','prateR',v=>P.prate=v/100, v=>(v/100).toFixed(2));
+    bind('strokes','strokesR',v=>P.strokes=v);
+    $('wsize').oninput=e=>{ P.wsize=+e.target.value; $('wsizeR').textContent=P.wsize; fieldKey=''; buildField(); if(!P.play) drawNow(); };
+    $('word').oninput=e=>{ P.word=e.target.value||'A'; fieldKey=''; buildField(); if(!P.play) drawNow(); };
+    $('face').onchange=e=>{ P.face=e.target.value; loadFace(); };
+    function syncMode(){ document.querySelectorAll('#dock .group.mode').forEach(el=>{
+        el.hidden = !el.classList.contains('mode-'+P.mode); }); }
+    $('mode').addEventListener('change',e=>{ P.mode=e.target.value; syncMode();
+      if(P.mode==='strokes'){ fieldKey=''; buildField(); } drawNow(); });
 
     // colour count — show only the swatches in play
     function syncStops(){ for(let i=0;i<4;i++){ const row=$('rowC'+i); if(row) row.hidden = i >= P.stops; } }
@@ -292,8 +464,9 @@ void main(){
       rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
         $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
 
-    syncStops();
+    syncStops(); syncMode();
     fit();
+    loadFace();
   })();
   </script>
 </body>
