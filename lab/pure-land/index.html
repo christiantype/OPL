@@ -7,6 +7,8 @@
 <title>Pure Land — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
 <style>
+  @font-face{ font-family:'Sidepiece-HoneyPie'; src:url('/shared/fonts/Sidepiece-HoneyPie.woff2') format('woff2');
+    font-weight:400; font-style:normal; font-display:swap; }
   :root{ --rail:300px; --top:120px; }
   @media (max-width:560px){ :root{ --top:112px; } }
   *{ box-sizing:border-box; }
@@ -143,18 +145,12 @@
           <button data-x="right" aria-pressed="false">Right</button>
         </div>
       </div>
-      <div class="knob"><label>Edge</label>
-        <div class="seg" id="sigEdge">
-          <button data-x="top" aria-pressed="false">Top</button>
-          <button data-x="bottom" aria-pressed="true">Bottom</button>
-        </div>
-      </div>
       <div class="duo">
         <div class="knob"><label>Size <b id="sigSizeR">2.0</b></label><input id="sigSize" type="range" min="8" max="70" value="20"></div>
         <div class="knob"><label>Margin <b id="sigMarR">4.0</b></label><input id="sigMar" type="range" min="10" max="140" value="40"></div>
       </div>
       <div class="crow"><label>Signature colour</label><input type="color" class="sw" id="sigC" value="#ffffff"></div>
-      <p class="rowhint">Burned into the canvas, so it is there in the saved still and the recording. The margin keeps it clear of the corners.</p>
+      <p class="rowhint">Set in Sidepiece and burned into the canvas, so it is there in the saved still and the recording. It always sits on the vertical centre; the margin holds it off the side.</p>
     </div>
 
     <div class="group">
@@ -310,7 +306,7 @@ void main(){
     const P={ aspect:'1080/1920', seed:3, mode:'tiles', cols:4, rows:7, square:true,
       ang:45, spread:0.5, stops:3,
       c:['#f7de4c','#ea2b1e','#1f40e6'],
-      sigOn:false, sigText:'lab colour study', sigAlign:'center', sigEdge:'bottom',
+      sigOn:false, sigText:'lab colour study', sigAlign:'center',
       sigSize:0.020, sigMar:0.040, sigC:'#ffffff',
       rim:0.03, rimAng:90, rimA:1.0, rimC:'#ffffff', stops:3,
       goff:0.60, toff:0.0, scat:0, spd:1.0, play:true,
@@ -418,27 +414,30 @@ void main(){
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
     let sigKey='';
     function buildSig(w,h){
-      const key=[P.sigOn,P.sigText,P.sigAlign,P.sigEdge,P.sigSize,P.sigMar,P.sigC,w,h].join('|');
+      const key=[P.sigOn,P.sigText,P.sigAlign,P.sigSize,P.sigMar,P.sigC,w,h,sigFontReady].join('|');
       if(sigKey===key) return; sigKey=key;
       if(!P.sigOn) return;
       sigCv.width=w; sigCv.height=h;
       const g=sigCv.getContext('2d');
       g.clearRect(0,0,w,h);
       const m=Math.min(w,h), px=Math.max(8, m*P.sigSize), mar=m*P.sigMar;
-      g.font='500 '+px+'px "IBM Plex Sans", system-ui, sans-serif';
+      g.font=px+'px "Sidepiece-HoneyPie", "IBM Plex Sans", system-ui, sans-serif';
       g.fillStyle=P.sigC;
       g.textAlign = P.sigAlign==='left' ? 'left' : P.sigAlign==='right' ? 'right' : 'center';
-      g.textBaseline = P.sigEdge==='top' ? 'top' : 'alphabetic';
+      g.textBaseline='middle';
       const x = P.sigAlign==='left' ? mar : P.sigAlign==='right' ? w-mar : w/2;
-      const y = P.sigEdge==='top' ? mar : h-mar;
-      g.fillText(P.sigText||'', x, y);
+      g.fillText(P.sigText||'', x, h/2);          // always on the vertical centre
       gl.bindTexture(gl.TEXTURE_2D,sigTex);
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,sigCv);
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
     }
-    // the webfont may land after first paint — redraw once it has
-    if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ sigKey=''; drawNow(); });
+    // Sidepiece has to be fetched before canvas can set type in it — a @font-face is
+    // only loaded on use, and canvas doesn't count as use, so ask for it explicitly.
+    let sigFontReady=0;
+    if(document.fonts && document.fonts.load){
+      document.fonts.load('40px "Sidepiece-HoneyPie"').then(()=>{ sigFontReady=1; sigKey=''; drawNow(); }).catch(()=>{});
+    }
 
     let W=1080,H=1920,clock=0;
     function draw(w,h,tm){
@@ -534,7 +533,6 @@ void main(){
         [...el.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
         set(b.dataset.x); drawNow(); }); }
     seg('sigAlign',v=>P.sigAlign=v);
-    seg('sigEdge',v=>P.sigEdge=v);
     $('square').onchange=e=>{ P.square=e.target.checked; if(!P.play) drawNow(); };
 
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
