@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Type Splash — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
+<style>
+  :root{ --rail:300px; --top:120px; }
+  @media (max-width:560px){ :root{ --top:112px; } }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100vh; height:100dvh; overflow:hidden; background:var(--paper); font-family:var(--font, 'IBM Plex Sans', system-ui, sans-serif); }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; background:var(--mat);
+    display:flex; align-items:center; justify-content:center; padding:22px; }
+  #art{ max-width:100%; max-height:100%; display:block; box-shadow:none; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  #wordIn{ text-align:center; letter-spacing:.06em; }
+  #nestIn{ text-align:center; }
+  .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
+  .crow[hidden], .rowhint[hidden]{ display:none; }
+  #nestRow[hidden]{ display:none; }
+</style>
+  <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
+</head>
+<body>
+  <script src="/lab/shared/opal.js"></script>
+  <script>Opal.mountTopbar({ name:'Type Splash', desc:'A word in outline, with the letters nested in their own counters',
+    about:'Type a word and it is drawn as outline — no fill, just the edge of every letterform. Then the counters, the enclosed holes inside O, P, A, e, g, are filled with the same letter again, fitted to the largest shape that will sit inside each hole. That nested letter has counters of its own, so it happens again, and again, down to the depth you set. Set the word, the typeface and the size; open the counters up with Inset, or let the nested letter be a fixed character of your choosing rather than a copy of its parent. Then splash it: every piece, at every depth, takes a direction out from the centre of the word and flies, with spin and scatter, either pulsing in and out or drifting. Seeded, so a still matches the frame in the recording. Save a still, or record the explosion.' });</script>
+  <div id="sizeDock">
+    <span id="dimReadout">1400 × 1400</span>
+    <select id="aspect" title="Canvas size">
+      <option value="1400/1400" selected>Square · 1:1</option>
+      <option value="1280/1600">Portrait · 4:5</option>
+      <option value="1080/1920">Story · 9:16</option>
+      <option value="1600/900">Landscape · 16:9</option>
+    </select>
+  </div>
+  <div id="recDot"><i></i><b>0:00</b></div>
+
+  <div id="dock">
+    <div class="group">
+      <div class="group__t">Word</div>
+      <input class="opal-input" id="wordIn" type="text" value="OPAL" maxlength="14" spellcheck="false" autocomplete="off">
+      <select class="opal-input" id="face">
+        <option value="UniversNextPro-Bold.ttf" selected>Univers Next Pro · Bold</option>
+        <option value="UniversNextPro-Medium.ttf">Univers Next Pro · Medium</option>
+        <option value="UniversNextPro-Light.ttf">Univers Next Pro · Light</option>
+        <option value="BentonSans-Bold.otf">Benton Sans · Bold</option>
+        <option value="UntitledSans-Bold.otf">Untitled Sans · Bold</option>
+        <option value="zillaslab-regular.ttf">Zilla Slab</option>
+        <option value="playfair-regular.ttf">Playfair</option>
+        <option value="chaparral-regular.ttf">Chaparral</option>
+        <option value="pirata-one.ttf">Pirata One</option>
+      </select>
+      <div class="duo">
+        <div class="knob"><label>Size <b id="sizeR">78</b></label><input id="size" type="range" min="20" max="96" value="78"></div>
+        <div class="knob"><label>Tracking <b id="trackR">2</b></label><input id="track" type="range" min="-12" max="40" value="2"></div>
+      </div>
+      <p class="rowhint">A bold face gives the biggest counters to nest into.</p>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Counters</div>
+      <div class="duo">
+        <div class="knob"><label>Depth <b id="depthR">3</b></label><input id="depth" type="range" min="1" max="5" value="3"></div>
+        <div class="knob"><label>Inset <b id="insetR">10</b></label><input id="inset" type="range" min="0" max="40" value="10"></div>
+      </div>
+      <label class="tog"><span>Nest the same letter</span><input type="checkbox" id="matchCh" checked></label>
+      <div id="nestRow" hidden>
+        <input class="opal-input" id="nestIn" type="text" value="O" maxlength="2" spellcheck="false" autocomplete="off">
+      </div>
+      <p class="rowhint">Every enclosed hole in a letter is filled with the letter again, fitted to the largest shape that sits inside it. Inset holds it off the walls.</p>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Stroke</div>
+      <div class="knob"><label>Weight <b id="wR">5</b></label><input id="w" type="range" min="1" max="30" value="5"></div>
+      <label class="tog"><span>Fill the letters</span><input type="checkbox" id="fillOn"></label>
+      <div class="crow"><label>Ink</label><input type="color" class="sw" id="ink" value="#000000"></div>
+      <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#ffffff"></div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Explode</div>
+      <div class="knob"><label>Explode <b id="expR">16</b></label><input id="exp" type="range" min="0" max="100" value="16"></div>
+      <div class="duo">
+        <div class="knob"><label>Spin <b id="spinR">40°</b></label><input id="spin" type="range" min="0" max="360" value="40"></div>
+        <div class="knob"><label>Scatter <b id="scatR">45</b></label><input id="scat" type="range" min="0" max="100" value="45"></div>
+      </div>
+      <div class="seg" id="motion">
+        <button class="btn" type="button" data-v="pulse" aria-pressed="true">Pulse</button>
+        <button class="btn" type="button" data-v="drift" aria-pressed="false">Drift</button>
+      </div>
+      <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="40" value="10"></div>
+      <div class="grid2"><button class="btn" id="reroll">Re-seed</button><button class="btn" id="playBtn" aria-pressed="true">Pause</button></div>
+      <p class="rowhint">Pulse breathes the pieces out and back. Drift lets each one wander on its own clock.</p>
+    </div>
+  </div>
+
+  <div id="wrap"><canvas id="art" width="1400" height="1400"></canvas></div>
+
+  <div class="group out" id="output" data-export-custom>
+    <div class="group__t">Output</div>
+    <div class="crow" id="vidRow"><label>Video</label><select id="vidSize" title="Recording resolution">
+      <option value="1400">Working</option>
+      <option value="1920" selected>HD · 1920</option>
+      <option value="2560">2.5K · 2560</option>
+    </select></div>
+    <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+  <script>
+  (function(){
+    const art=document.getElementById('art'), ctx=art.getContext('2d');
+    const $=id=>document.getElementById(id);
+    const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+    const EM=1000;                                  // every glyph is measured at this size
+
+    const P={ aspect:'1400/1400', seed:7, word:'OPAL', face:'UniversNextPro-Bold.ttf',
+      size:78, track:2, depth:3, inset:10, match:true, nest:'O',
+      w:5, fill:false, ink:'#000000', bg:'#ffffff',
+      exp:16, spin:40, scat:45, motion:'pulse', spd:1.0, play:true };
+
+    // seeded RNG (aha's mulberry) — a Re-seed reshuffles deterministically,
+    // so a still always matches the frame in the recording
+    function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
+      let x=Math.imul(a^a>>>15,1|a); x=x+Math.imul(x^x>>>7,61|x)^x;
+      return ((x^x>>>14)>>>0)/4294967296; }; }
+
+    // ---------------------------------------------------------------- glyphs
+    // Everything about a character is measured once at EM units and cached:
+    // its Path2D, its bounding box, and its CONTOURS split apart so we can tell
+    // the outline from the counters.
+    let font=null;
+    const G={};            // char -> {path, bbox, adv, counters}
+    const RECTS={};        // char|aspect|inset -> [rect per counter]
+
+    function qpt(p0,p1,p2,t){ const u=1-t; return [u*u*p0[0]+2*u*t*p1[0]+t*t*p2[0], u*u*p0[1]+2*u*t*p1[1]+t*t*p2[1]]; }
+    function cpt(p0,p1,p2,p3,t){ const u=1-t; return [
+      u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],
+      u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]]; }
+
+    // split the command list into contours (one per M) and flatten the curves
+    function contoursOf(cmds){
+      const out=[]; let cur=null, pen=[0,0];
+      const push=(x,y)=>{ if(cur) cur.push([x,y]); };
+      for(const c of cmds){
+        if(c.type==='M'){ if(cur&&cur.length>2) out.push(cur); cur=[[c.x,c.y]]; pen=[c.x,c.y]; }
+        else if(c.type==='L'){ push(c.x,c.y); pen=[c.x,c.y]; }
+        else if(c.type==='Q'){ for(let i=1;i<=12;i++){ const q=qpt(pen,[c.x1,c.y1],[c.x,c.y],i/12); push(q[0],q[1]); } pen=[c.x,c.y]; }
+        else if(c.type==='C'){ for(let i=1;i<=16;i++){ const q=cpt(pen,[c.x1,c.y1],[c.x2,c.y2],[c.x,c.y],i/16); push(q[0],q[1]); } pen=[c.x,c.y]; }
+        else if(c.type==='Z'){ if(cur&&cur.length>2) out.push(cur); cur=null; }
+      }
+      if(cur&&cur.length>2) out.push(cur);
+      return out;
+    }
+    function signedArea(p){ let a=0; for(let i=0,n=p.length;i<n;i++){ const q=p[(i+1)%n]; a+=p[i][0]*q[1]-q[0]*p[i][1]; } return a/2; }
+    function bboxOf(p){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+      for(const q of p){ if(q[0]<x0)x0=q[0]; if(q[1]<y0)y0=q[1]; if(q[0]>x1)x1=q[0]; if(q[1]>y1)y1=q[1]; }
+      return {x0,y0,x1,y1,w:x1-x0,h:y1-y0}; }
+    function inside(poly,x,y){ let hit=false;
+      for(let i=0,j=poly.length-1;i<poly.length;j=i++){ const a=poly[i],b=poly[j];
+        if((a[1]>y)!==(b[1]>y) && x < (b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]) hit=!hit; }
+      return hit; }
+
+    function glyph(ch){
+      if(G[ch]) return G[ch];
+      if(!font) return null;
+      let p; try{ p=font.getPath(ch,0,0,EM); }catch(e){ return null; }
+      const cs=contoursOf(p.commands);
+      let path=null; try{ path=new Path2D(p.toPathData(2)); }catch(e){ path=null; }
+      const adv=(font.getAdvanceWidth?font.getAdvanceWidth(ch,EM):EM*0.6)||EM*0.6;
+      if(!cs.length){ return G[ch]={ path:null, bbox:null, adv, counters:[] }; }
+      // the biggest contour sets the winding of the OUTLINE; anything wound the
+      // other way is a counter — the enclosed hole we are going to fill
+      const areas=cs.map(signedArea);
+      let big=0; for(let i=1;i<areas.length;i++) if(Math.abs(areas[i])>Math.abs(areas[big])) big=i;
+      const sgn=Math.sign(areas[big])||1;
+      const all=[]; for(const c of cs) all.push(...c);
+      const bbox=bboxOf(all);
+      // a thin ring of sample points around the whole letterform, kept relative to
+      // its own centre — this is what we push against the walls of a counter
+      const bcx=(bbox.x0+bbox.x1)/2, bcy=(bbox.y0+bbox.y1)/2;
+      const step=Math.max(1,Math.round(all.length/220)), pts=[];
+      for(let i=0;i<all.length;i+=step) pts.push([all[i][0]-bcx, all[i][1]-bcy]);
+      const counters=[];
+      for(let i=0;i<cs.length;i++){
+        if(Math.sign(areas[i])===sgn) continue;
+        const bb=bboxOf(cs[i]);
+        if(bb.w<EM*0.035 || bb.h<EM*0.035) continue;          // slivers can't hold a letter
+        counters.push({ poly:cs[i], bb, mask:maskOf(cs[i],bb) });
+      }
+      return G[ch]={ path, bbox, adv, counters, pts };
+    }
+
+    // a coarse inside/outside grid over the counter, plus its summed-area table,
+    // so we can ask "does this rectangle fit inside the hole?" in constant time
+    function maskOf(poly,bb){
+      const cell=Math.max(bb.w,bb.h)/44;
+      const nx=clamp(Math.ceil(bb.w/cell),2,64), ny=clamp(Math.ceil(bb.h/cell),2,64);
+      const cw=bb.w/nx, chh=bb.h/ny;
+      const S=new Int32Array((nx+1)*(ny+1));            // integral of OUTSIDE cells
+      const IN=new Uint8Array(nx*ny);
+      for(let y=0;y<ny;y++) for(let x=0;x<nx;x++){
+        const px=bb.x0+(x+0.5)*cw, py=bb.y0+(y+0.5)*chh;
+        // centre plus the four corners, so a cell only counts as inside when it
+        // really is — the nested letter never leans on a wall
+        let ok = inside(poly,px,py)
+          && inside(poly,px-cw*0.42,py-chh*0.42) && inside(poly,px+cw*0.42,py-chh*0.42)
+          && inside(poly,px-cw*0.42,py+chh*0.42) && inside(poly,px+cw*0.42,py+chh*0.42);
+        IN[y*nx+x]=ok?1:0;
+        S[(y+1)*(nx+1)+(x+1)] = (ok?0:1);
+      }
+      for(let y=1;y<=ny;y++) for(let x=1;x<=nx;x++)
+        S[y*(nx+1)+x] += S[(y-1)*(nx+1)+x] + S[y*(nx+1)+x-1] - S[(y-1)*(nx+1)+x-1];
+      return {nx,ny,cw,ch:chh,S,IN,x0:bb.x0,y0:bb.y0};
+    }
+    function badCells(m,x,y,w,h){ const n=m.nx+1;
+      return m.S[(y+h)*n+(x+w)] - m.S[y*n+(x+w)] - m.S[(y+h)*n+x] + m.S[y*n+x]; }
+    function hit(m,x,y){ const ix=((x-m.x0)/m.cw)|0, iy=((y-m.y0)/m.ch)|0;
+      if(ix<0||iy<0||ix>=m.nx||iy>=m.ny) return false; return m.IN[iy*m.nx+ix]===1; }
+    // does the letter, scaled by s and centred at (cx,cy), sit clear inside the hole?
+    function clears(m,pts,cx,cy,s){
+      for(let i=0;i<pts.length;i++) if(!hit(m, cx+pts[i][0]*s, cy+pts[i][1]*s)) return false;
+      return true; }
+
+    // the largest rectangle of the nested letter's proportions that fits in the hole
+    function fitRect(m,ar,cx,cy){
+      const cellAr=m.cw/m.ch;
+      let best=null;
+      for(let h=m.ny;h>=2;h--){
+        const w=Math.round(h*ar/cellAr);
+        if(w<1||w>m.nx) continue;
+        let pick=null,pd=1e18;
+        for(let y=0;y+h<=m.ny;y++) for(let x=0;x+w<=m.nx;x++){
+          if(badCells(m,x,y,w,h)) continue;
+          const rx=m.x0+(x+w/2)*m.cw, ry=m.y0+(y+h/2)*m.ch;
+          const d=(rx-cx)*(rx-cx)+(ry-cy)*(ry-cy);
+          if(d<pd){ pd=d; pick=[x,y]; }
+        }
+        if(pick){ best={ x:m.x0+pick[0]*m.cw, y:m.y0+pick[1]*m.ch, w:w*m.cw, h:h*m.ch }; break; }
+      }
+      return best;
+    }
+
+    // where each copy of `nest` goes inside each counter of `parent`, in the
+    // parent's own EM space — cached, because it never depends on canvas size
+    function placements(parentCh, nestCh){
+      const key=parentCh+' '+nestCh+' '+P.inset;
+      if(RECTS[key]) return RECTS[key];
+      const gp=glyph(parentCh), gn=glyph(nestCh);
+      if(!gp||!gn||!gn.bbox||!gp.counters.length) return RECTS[key]=[];
+      const ar=gn.bbox.w/gn.bbox.h, out=[];
+      for(const c of gp.counters){
+        const cx=(c.bb.x0+c.bb.x1)/2, cy=(c.bb.y0+c.bb.y1)/2;
+        const r=fitRect(c.mask,ar,cx,cy);
+        if(!r) continue;
+        // the rectangle is the safe starting point; now let the real letterform
+        // grow into the hole, drifting to wherever it has the most room, so a
+        // round counter gets a letter that fills it rather than one inscribed
+        // in the square inside it
+        let s=Math.min(r.w/gn.bbox.w, r.h/gn.bbox.h);
+        let px=r.x+r.w/2, py=r.y+r.h/2;
+        const m=c.mask;
+        let step=Math.max(m.cw,m.ch)*0.9;
+        // staying put is always the first candidate, so a round counter keeps its
+        // nested letter concentric instead of creeping off to one side
+        const ORD=[[0,0],[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+        for(let it=0;it<48;it++){
+          const ns=s*1.04; let done=false;
+          for(let k=0;k<9 && !done;k++){
+            const nx2=px+ORD[k][0]*step, ny2=py+ORD[k][1]*step;
+            if(clears(m,gn.pts,nx2,ny2,ns)){ s=ns; px=nx2; py=ny2; done=true; }
+          }
+          if(!done){ step*=0.6; if(step<Math.min(m.cw,m.ch)*0.1) break; }
+        }
+        s*=1-(P.inset/100)*0.5;                      // Inset holds it off the walls
+        if(!(s>0)) continue;
+        out.push({ s, tx:px-(gn.bbox.x0+gn.bbox.x1)/2*s, ty:py-(gn.bbox.y0+gn.bbox.y1)/2*s });
+      }
+      return RECTS[key]=out;
+    }
+
+    // ------------------------------------------------------- the piece tree
+    // one piece per letterform drawn: the top-level glyphs, then every letter
+    // nested in a counter, then every letter nested in one of those…
+    let pieces=[], centre=[0,0], rootScale=1, sig='';
+    function stateSig(W,H){ return [W,H,P.word,P.face,P.size,P.track,P.depth,P.inset,P.match,P.nest,P.seed].join('|'); }
+
+    function build(W,H){
+      pieces=[]; rootScale=1;
+      if(!font) return;
+      const chars=[...(P.word||'')];
+      if(!chars.length) return;
+      const tr=(P.track/100)*EM;
+      // lay the word out at EM, then scale the whole thing to the canvas
+      let pen=0; const set=[];
+      for(const ch of chars){ const g=glyph(ch); if(!g) continue;
+        set.push({ch,g,x:pen}); pen += g.adv + tr; }
+      if(!set.length) return;
+      let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+      for(const s of set){ if(!s.g.bbox) continue;
+        x0=Math.min(x0,s.x+s.g.bbox.x0); x1=Math.max(x1,s.x+s.g.bbox.x1);
+        y0=Math.min(y0,s.g.bbox.y0); y1=Math.max(y1,s.g.bbox.y1); }
+      if(x1<=x0||y1<=y0) return;
+      const f=P.size/100, S=Math.min(W*f/(x1-x0), H*f/(y1-y0));
+      rootScale=S;
+      const ox=W/2-((x0+x1)/2)*S, oy=H/2-((y0+y1)/2)*S;
+      centre=[W/2,H/2];
+      const minPx=Math.max(W,H)*0.006;                 // below this a piece stops recursing
+
+      const add=(ch,m,depth)=>{
+        const g=glyph(ch); if(!g||!g.path||!g.bbox) return;
+        const sc=m.a;                                   // uniform scale of the base matrix
+        const cx=m.e + (g.bbox.x0+g.bbox.x1)/2*sc, cy=m.f + (g.bbox.y0+g.bbox.y1)/2*sc;
+        pieces.push({ch,m,depth,sc,cx,cy});
+        if(depth+1>=P.depth) return;
+        const nest = P.match ? ch : ([...(P.nest||'O')][0]||'O');
+        const gn=glyph(nest); if(!gn||!gn.bbox) return;
+        if(gn.bbox.h*sc*0.35 < minPx*2) return;         // too small to be worth nesting
+        for(const pl of placements(ch,nest)){
+          const cm=new DOMMatrix([m.a*pl.s,0,0,m.d*pl.s, m.e+pl.tx*m.a, m.f+pl.ty*m.d]);
+          if(gn.bbox.h*cm.a < minPx) continue;
+          add(nest,cm,depth+1);
+        }
+      };
+      for(const s of set) add(s.ch, new DOMMatrix([S,0,0,S, ox+s.x*S, oy]), 0);
+
+      // a deterministic direction, distance and spin for every piece
+      const r=mulberry((P.seed*2654435761)>>>0);
+      for(const p of pieces){ p.r1=r(); p.r2=r(); p.r3=r(); p.r4=r(); }
+    }
+
+    // ------------------------------------------------------------- painting
+    function pieceMatrix(p,W,H,phase){
+      const E=P.exp/100;
+      if(E<=0.0005) return p.m;                       // nothing thrown, nothing turned
+      const sc=P.scat/100;
+      let amt;
+      if(!P.play) amt=1;
+      else if(P.motion==='drift') amt=0.5+0.5*Math.sin(phase*TAU*(0.35+0.55*p.r2)+p.r1*TAU);
+      else { const g=0.5-0.5*Math.cos(phase*TAU); amt=g*g*(3-2*g); }
+      // out from the centre of the word, bent towards a random heading by Scatter
+      let dx=p.cx-centre[0], dy=p.cy-centre[1];
+      const len=Math.hypot(dx,dy);
+      if(len<1e-3){ dx=Math.cos(p.r1*TAU); dy=Math.sin(p.r1*TAU); } else { dx/=len; dy/=len; }
+      const a=p.r1*TAU;
+      dx=lerp(dx,Math.cos(a),sc); dy=lerp(dy,Math.sin(a),sc);
+      const dl=Math.hypot(dx,dy)||1; dx/=dl; dy/=dl;
+      const f=(1+p.depth*0.38)*lerp(1,0.3+1.5*p.r3,sc);   // the small deep pieces fly furthest
+      const d=Math.min(W,H)*0.42*E*f*amt;
+      const rot=(p.r4*2-1)*P.spin*amt*Math.min(1,E*2.5);   // the spin arrives with the throw
+      return new DOMMatrix()
+        .translateSelf(p.cx+dx*d, p.cy+dy*d)
+        .rotateSelf(rot)
+        .translateSelf(-p.cx,-p.cy)
+        .multiplySelf(p.m);
+    }
+
+    function paint(g,W,H,phase){
+      g.setTransform(1,0,0,1,0,0);
+      g.fillStyle=P.bg; g.fillRect(0,0,W,H);
+      if(!pieces.length) return;
+      const base=P.w*(Math.min(W,H)/1400);
+      g.lineJoin='round'; g.lineCap='round';
+      g.strokeStyle=P.ink; g.fillStyle=P.ink;
+      // shallow pieces first, so a nested letter always lands on top of its host
+      for(const p of pieces){
+        const gl=glyph(p.ch); if(!gl||!gl.path) continue;
+        const m=pieceMatrix(p,W,H,phase);
+        const path=new Path2D();
+        try{ path.addPath(gl.path,m); }catch(e){ continue; }
+        if(P.fill) g.fill(path,'evenodd');
+        const rel=clamp(p.sc/rootScale,0.05,1);
+        g.lineWidth=Math.max(base*0.3, base*Math.pow(rel,0.34));
+        g.stroke(path);
+      }
+    }
+
+    // --------------------------------------------------------- size + loop
+    let W=1400,H=1400,phase=0;
+    function aspectWH(){ const p=(P.aspect||'1400/1400').split(/[/:x]/).map(Number), a=p[0]||1, b=p[1]||1, long=1600;
+      return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
+    function ensure(w,h){ const s=stateSig(w,h); if(s!==sig){ sig=s; build(w,h); } }
+    function drawNow(){ ensure(W,H); paint(ctx,W,H,phase); }
+    function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; sig=''; drawNow(); }
+    function invalidate(){ sig=''; if(!P.play) drawNow(); }
+    let t0=performance.now();
+    function frame(now){ const dt=Math.min(0.05,(now-t0)/1000); t0=now;
+      if(P.play){ phase += dt*(P.spd/10)*0.28; ensure(W,H); paint(ctx,W,H,phase); }
+      requestAnimationFrame(frame); }
+    requestAnimationFrame(frame);
+
+    // ------------------------------------------------------------ the rail
+    function bind(id,rid,set,fmt){ const r=$(id), v=$(rid); if(!r) return;
+      r.oninput=()=>{ set(+r.value); if(v) v.textContent=fmt?fmt(+r.value):r.value; invalidate(); }; }
+    bind('size','sizeR',v=>P.size=v);
+    bind('track','trackR',v=>P.track=v);
+    bind('depth','depthR',v=>P.depth=v);
+    bind('inset','insetR',v=>P.inset=v);
+    bind('w','wR',v=>P.w=v);
+    bind('exp','expR',v=>P.exp=v);
+    bind('spin','spinR',v=>P.spin=v, v=>v+'°');
+    bind('scat','scatR',v=>P.scat=v);
+    bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
+
+    $('wordIn').addEventListener('input',e=>{ P.word=e.target.value; invalidate(); });
+    $('nestIn').addEventListener('input',e=>{ P.nest=e.target.value||'O'; invalidate(); });
+    $('matchCh').addEventListener('change',e=>{ P.match=e.target.checked;
+      $('nestRow').hidden=P.match; invalidate(); });
+    $('fillOn').addEventListener('change',e=>{ P.fill=e.target.checked; if(!P.play) drawNow(); });
+    ['ink','bg'].forEach(id=>$(id).addEventListener('input',e=>{ P[id]=e.target.value; if(!P.play) drawNow(); }));
+    $('face').addEventListener('change',e=>{ P.face=e.target.value; loadFace(); });
+    [...$('motion').querySelectorAll('button')].forEach(b=>b.addEventListener('click',()=>{
+      P.motion=b.dataset.v;
+      [...$('motion').querySelectorAll('button')].forEach(o=>o.setAttribute('aria-pressed',String(o===b)));
+      if(!P.play) drawNow(); }));
+    $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
+    $('reroll').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999); sig=''; drawNow(); });
+    $('playBtn').addEventListener('click',()=>{ P.play=!P.play;
+      $('playBtn').setAttribute('aria-pressed',String(P.play));
+      $('playBtn').textContent=P.play?'Pause':'Play'; if(!P.play) drawNow(); });
+
+    // ------------------------------------------------------------- output
+    Opal.mountOutput(art,'type-splash',{ render:(long)=>{
+      const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
+      const c=document.createElement('canvas');
+      c.width=Math.max(2,Math.round(aw*s)); c.height=Math.max(2,Math.round(ah*s));
+      const sw=W, sh=H; W=c.width; H=c.height; sig=''; ensure(W,H);   // re-render at the real size
+      paint(c.getContext('2d'), W, H, phase);
+      W=sw; H=sh; sig=''; ensure(W,H); return c; } });
+
+    let rec=null, chunks=[], rt=0, tk=0;
+    $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
+      if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
+      const tgt=+(($('vidSize')||{}).value||1920), [aw,ah]=aspectWH(), sc=tgt/Math.max(aw,ah);
+      const vw=Math.round(aw*sc/2)*2, vh=Math.round(ah*sc/2)*2;      // even dimensions for H.264
+      if(vw!==art.width || vh!==art.height){ art.width=vw; art.height=vh; W=vw; H=vh; sig=''; }
+      drawNow();
+      const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+      const bits=Math.min(120e6, Math.max(12e6, Math.round(vw*vh*30*0.25)));
+      rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:bits}:undefined); chunks=[];
+      rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+      rec.onstop=()=>{ const ext=mime.indexOf('mp4')>=0?'mp4':'webm'; const blob=new Blob(chunks,{type:mime||'video/webm'});
+        if(blob.size>0){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='type-splash.'+ext; a.click(); }
+        else alert('The recorder produced no frames at '+vw+' × '+vh+'.\n\nThat resolution is beyond what this browser can encode here — try a smaller Video size.');
+        clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; fit(); };
+      rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop';
+      rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
+        $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
+
+    // --------------------------------------------------------------- boot
+    fit();
+    function loadFace(){
+      if(!window.opentype){ setTimeout(loadFace,120); return; }
+      const want=P.face;
+      opentype.load('/shared/fonts/'+want,(err,f)=>{
+        if(err||!f){ console.warn('font load failed',want,err); return; }
+        if(P.face!==want) return;
+        font=f; for(const k in G) delete G[k]; for(const k in RECTS) delete RECTS[k];
+        sig=''; drawNow(); });
+    }
+    loadFace();
+  })();
+  </script>
+</body>
+</html>
