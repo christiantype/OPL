@@ -481,6 +481,65 @@ const Opal = (() => {
       o.textContent = c.l; sel.appendChild(o); });
     sel.selectedIndex = 0; sel.dispatchEvent(new Event('change',{bubbles:true}));   // default every tool to 1:1 (Square)
   }
+  // EVERY numeric readout is typeable: click the value, type an exact one, Enter.
+  // A tool writes its readout with textContent and often in its own units (a 0–100
+  // slider showing 0.00–1.00, degrees, hertz), so rather than guess that mapping we
+  // measure it: on first focus, drive the slider to each end, read what the tool
+  // prints, and solve the line. All three dispatches happen in one synchronous task,
+  // so the browser never paints the intermediate states — there is no flicker.
+  function wireTypedReadouts(){
+    const num = s => { const m = String(s).replace(/,/g,'').match(/-?\d*\.?\d+/); return m ? parseFloat(m[0]) : NaN; };
+    document.querySelectorAll('#dock input[type=range], #rail input[type=range], #panel input[type=range], #output input[type=range]').forEach(r => {
+      if (r.dataset.typed) return;
+      const box = r.parentElement; if (!box) return;
+      const b = box.querySelector('label > b, label .kval, .klab .kval, :scope > b');
+      if (!b || b.children.length || b.isContentEditable) return;
+      if (!isFinite(num(b.textContent))) return;          // not a number — leave it alone
+      r.dataset.typed = '1';
+      b.setAttribute('contenteditable', 'true');
+      b.setAttribute('spellcheck', 'false');
+      b.classList.add('opal-typed');
+      b.title = 'Click to type an exact value';
+
+      let cal = null, before = '';
+      const fire = v => { r.value = v; r.dispatchEvent(new Event('input', { bubbles:true })); };
+      function calibrate(){
+        if (cal !== null) return cal;
+        const mn = parseFloat(r.min), mx = parseFloat(r.max), raw0 = r.value;
+        if (!isFinite(mn) || !isFinite(mx) || mn === mx) { cal = false; return cal; }
+        fire(mn); const dmin = num(b.textContent);
+        fire(mx); const dmax = num(b.textContent);
+        fire(raw0);                                        // put it back, same task → no repaint
+        cal = (isFinite(dmin) && isFinite(dmax) && dmin !== dmax) ? { mn, mx, dmin, dmax } : false;
+        return cal;
+      }
+      b.addEventListener('focus', () => {
+        before = b.textContent; calibrate();
+        // the click that focused this places its caret AFTER focus fires, which would
+        // collapse the selection and make typing append to the old value — so select
+        // on the next tick, once the caret has landed.
+        setTimeout(() => {
+          if (document.activeElement !== b) return;
+          const sel = window.getSelection(), rg = document.createRange();
+          rg.selectNodeContents(b); sel.removeAllRanges(); sel.addRange(rg);
+        }, 0);
+      });
+      b.addEventListener('keydown', e => {
+        if (e.key === 'Enter'){ e.preventDefault(); b.blur(); }
+        else if (e.key === 'Escape'){ e.preventDefault(); b.textContent = before; b.blur(); }
+      });
+      b.addEventListener('blur', () => {
+        const typed = num(b.textContent);
+        if (!isFinite(typed)){ b.textContent = before; return; }
+        const mn = parseFloat(r.min), mx = parseFloat(r.max), step = parseFloat(r.step) || 1;
+        let raw = cal ? cal.mn + (typed - cal.dmin) * (cal.mx - cal.mn) / (cal.dmax - cal.dmin) : typed;
+        raw = Math.max(mn, Math.min(mx, raw));
+        raw = Math.round(raw / step) * step;
+        fire(raw);                                         // the tool re-prints the readout itself
+      });
+    });
+  }
+
   function wireSizeReadout(){
     const dock=document.getElementById('sizeDock');
     const sel=dock && (dock.querySelector('#aspect') || dock.querySelector('#format') || dock.querySelector('select'));  // id varies (aspect / format / stAspect / …)
@@ -521,6 +580,7 @@ const Opal = (() => {
         if(b.length>3 && textOnly && b.filter(x=>x.getAttribute('aria-pressed')==='true').length===1) segToSelect(el);
       });
       document.querySelectorAll('#dock > .group:not(.out)').forEach(makeAccordion);
+      wireTypedReadouts();
       wireRecTimer();
       wireSizeReadout();
       autoMountOutput();
