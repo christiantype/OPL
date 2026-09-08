@@ -65,29 +65,61 @@
       <div class="group__t">Wall</div>
       <div class="knob"><label>Layout</label>
         <div class="seg" id="layoutSeg">
-          <button data-x="masonry" aria-pressed="true">Masonry</button>
+          <button data-x="justified" aria-pressed="true">Justified</button>
+          <button data-x="masonry" aria-pressed="false">Masonry</button>
           <button data-x="grid" aria-pressed="false">Grid</button>
+          <button data-x="stack" aria-pressed="false">Stack</button>
         </div>
       </div>
-      <div class="knob lay lay-masonry"><label>Tiles <b id="tilesR">9</b></label><input id="tiles" type="range" min="2" max="60" value="9"></div>
-      <div class="knob lay lay-masonry"><label>Unevenness <b id="varyR">55</b></label><input id="vary" type="range" min="0" max="100" value="55"></div>
+      <p class="rowhint lay lay-justified">Every tile takes the shape of its own picture and the rows are justified, so the canvas fills edge to edge and nothing is ever cropped. More pictures means smaller tiles; the number of rows follows from their shapes. Tiles only swap to a picture of the same shape.</p>
+      <div class="knob lay lay-justified"><label>Pictures on the wall <b id="countR">16</b></label><input id="count" type="range" min="2" max="80" value="16"></div>
+      <div class="knob lay lay-masonry" hidden><label>Tiles <b id="tilesR">9</b></label><input id="tiles" type="range" min="2" max="60" value="9"></div>
+      <div class="knob lay lay-masonry" hidden><label>Unevenness <b id="varyR">55</b></label><input id="vary" type="range" min="0" max="100" value="55"></div>
       <div class="duo lay lay-grid" hidden>
         <div class="knob"><label>Columns <b id="colsR">3</b></label><input id="cols" type="range" min="1" max="12" value="3"></div>
         <div class="knob"><label>Rows <b id="rowsR">5</b></label><input id="rows" type="range" min="1" max="12" value="5"></div>
       </div>
-      <div class="duo">
+      <div class="lay lay-stack" hidden>
+        <p class="rowhint">The pictures drop one after another and pile up, each landing a little askew — a stack of prints on a table.</p>
+        <div class="duo">
+          <div class="knob"><label>Print size <b id="pSizeR">62</b></label><input id="pSize" type="range" min="15" max="100" value="62"></div>
+          <div class="knob"><label>Scatter <b id="pSpreadR">18</b></label><input id="pSpread" type="range" min="0" max="100" value="18"></div>
+        </div>
+        <div class="duo">
+          <div class="knob"><label>Tilt <b id="pTiltR">9</b></label><input id="pTilt" type="range" min="0" max="45" value="9"></div>
+          <div class="knob"><label>Keep <b id="pKeepR">14</b></label><input id="pKeep" type="range" min="1" max="60" value="14"></div>
+        </div>
+        <div class="knob"><label>Print border <b id="pEdgeR">3.0</b></label><input id="pEdge" type="range" min="0" max="120" value="30"></div>
+      </div>
+      <div class="duo lay lay-justified lay-masonry lay-grid">
         <div class="knob"><label>Gap <b id="gapR">10</b></label><input id="gap" type="range" min="0" max="60" value="10"></div>
         <div class="knob"><label>Corners <b id="radR">0</b></label><input id="rad" type="range" min="0" max="60" value="0"></div>
       </div>
-      <div class="knob"><label>Photos</label>
+      <div class="knob lay lay-masonry lay-grid" hidden><label>Photos</label>
         <div class="seg" id="fitSeg">
           <button data-x="contain" aria-pressed="true">Whole photo</button>
           <button data-x="cover" aria-pressed="false">Fill the tile</button>
         </div>
       </div>
-      <p class="rowhint">Whole photo fits the picture inside its tile so nothing is ever cropped; Fill the tile crops the overflow to leave no ground showing.</p>
+      <p class="rowhint lay lay-masonry lay-grid" hidden>Whole photo fits the picture inside its tile so nothing is ever cropped; Fill the tile crops the overflow to leave no ground showing.</p>
       <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#ffffff"></div>
       <button class="btn" id="reshuffle">Reshuffle the wall</button>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Logo</div>
+      <p class="rowhint">Drop an SVG in the middle and the grid opens a hole for it, so the pictures sit around it. The hole is measured in tiles, so it always lands on the grid.</p>
+      <div class="grid2">
+        <button class="btn" id="logoBtn">Add logo</button>
+        <button class="btn" id="logoClear">Remove</button>
+      </div>
+      <input id="logoInp" type="file" accept="image/svg+xml,.svg,image/png,image/*" hidden />
+      <p class="rowhint" id="logoStatus">No logo.</p>
+      <div class="duo">
+        <div class="knob"><label>Hole across <b id="holeWR">1</b></label><input id="holeW" type="range" min="1" max="6" value="1"></div>
+        <div class="knob"><label>Hole down <b id="holeHR">1</b></label><input id="holeH" type="range" min="1" max="6" value="1"></div>
+      </div>
+      <div class="knob"><label>Logo size <b id="logoSizeR">72</b></label><input id="logoSize" type="range" min="10" max="100" value="72"></div>
     </div>
 
     <div class="group">
@@ -124,9 +156,11 @@
     const $=id=>document.getElementById(id);
     const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
-    const P={ aspect:'1080/1920', seed:5, layout:'masonry', tiles:9, vary:0.55,
+    const P={ aspect:'1080/1920', seed:5, layout:'justified', count:16, tiles:9, vary:0.55,
       cols:3, rows:5, gap:10, rad:0, bg:'#ffffff', fit:'contain',
+      pSize:0.62, pSpread:0.18, pTilt:9, pKeep:14, pEdge:0.030,
       duoOn:false, duoA:'#101014', duoB:'#f7de4c', duoMix:1,
+      holeW:1, holeH:1, logoSize:0.72,
       rate:1.4, atOnce:1, fade:0.35, play:true };
 
     let imgs=[], W=1080, H=1920, t=0, acc=0;
@@ -139,16 +173,23 @@
     // Masonry is cut by guillotine: take the biggest rectangle left and split it,
     // again and again, so the tiles are unequal but the frame is always filled
     // edge to edge with no gaps to place.
-    let cells=[], cellKey='';
+    let cells=[], cellKey='', hole=null, logo=null;
     function layout(){
-      const key=[P.layout,P.tiles,P.vary,P.cols,P.rows,P.seed,W,H].join('|');
+      const key=[P.layout,P.count,P.tiles,P.vary,P.cols,P.rows,P.seed,W,H,imgs.length,!!logo,P.holeW,P.holeH].join('|');
       if(cellKey===key) return; cellKey=key;
       const r=mulberry((P.seed*2654435761)>>>0);
       let rects=[];
-      if(P.layout==='grid'){
+      if(P.layout==='justified'){ rects=justify(); }
+      else if(P.layout==='grid'){
         const cw=W/P.cols, ch=H/P.rows;
-        for(let y=0;y<P.rows;y++) for(let x=0;x<P.cols;x++)
+        // the logo takes a block of whole tiles out of the middle, so the grid stays a grid
+        const hw=logo?Math.min(P.holeW,P.cols):0, hh=logo?Math.min(P.holeH,P.rows):0;
+        const hx=Math.floor((P.cols-hw)/2), hy=Math.floor((P.rows-hh)/2);
+        hole = hw&&hh ? {x:hx*cw, y:hy*ch, w:hw*cw, h:hh*ch} : null;
+        for(let y=0;y<P.rows;y++) for(let x=0;x<P.cols;x++){
+          if(hw&&hh && x>=hx && x<hx+hw && y>=hy && y<hy+hh) continue;   // left for the logo
           rects.push({x:x*cw, y:y*ch, w:cw, h:ch});
+        }
       } else {
         rects=[{x:0,y:0,w:W,h:H}];
         while(rects.length<P.tiles){
@@ -165,21 +206,139 @@
       // keep whatever each tile was showing, so changing the gap doesn't reshuffle the wall
       const old=cells;
       cells=rects.map((rc,i)=>({ ...rc,
-        cur: old[i] ? old[i].cur : (imgs.length? i%imgs.length : 0),
+        cur: rc.seat!==undefined ? rc.seat : (old[i] ? old[i].cur : (imgs.length? i%imgs.length : 0)),
         prev: -1, mix: 1 }));
     }
-    function reseat(){ const r=mulberry((P.seed*40503)>>>0);
-      cells.forEach((c,i)=>{ c.cur = imgs.length ? Math.floor(r()*imgs.length) : 0; c.prev=-1; c.mix=1; }); }
+    // ---- justified rows ------------------------------------------------------
+    // Each tile is its picture's own shape, so nothing is ever cropped; a row's
+    // pictures are scaled together until the row spans the frame exactly, so no
+    // ground shows. Row heights are then nudged by one shared factor to meet the
+    // bottom edge — the only give in the system, and typically well under 2%.
+    let jStretch=1;
+    function justify(){
+      jStretch=1;
+      if(!imgs.length) return [{x:0,y:0,w:W,h:H}];
+
+      // One arrangement: seat `n` pictures, break them into rows that each span the
+      // frame exactly, and solve for the row height whose natural total is the frame
+      // height. `k` is what is left over — how much the wall has to give to meet the
+      // bottom edge. k of 1 is a perfect fit: filled, and not a pixel distorted.
+      function attempt(n, salt){
+        const rnd=mulberry(((P.seed*2654435761)^(salt*2246822519))>>>0);
+        const seats=[]; let bag=[];
+        while(seats.length<n){
+          if(!bag.length){ bag=imgs.map((_,i)=>i);
+            for(let i=bag.length-1;i>0;i--){ const j=(rnd()*(i+1))|0; [bag[i],bag[j]]=[bag[j],bag[i]]; } }
+          seats.push(bag.pop());
+        }
+        const asp=seats.map(i=>Math.max(0.05,(imgs[i].naturalWidth||1)/(imgs[i].naturalHeight||1)));
+        const build=t=>{ const rows=[]; let cur=[], sum=0;
+          for(let q=0;q<asp.length;q++){ cur.push(q); sum+=asp[q];
+            if(sum*t>=W){ rows.push({idx:cur, A:sum}); cur=[]; sum=0; } }
+          if(cur.length) rows.push({idx:cur, A:sum});
+          return rows; };
+        const totalOf=rows=>rows.reduce((s2,q)=>s2+W/q.A,0);
+        let lo=2, hi=H*4;
+        for(let it=0; it<44; it++){ const t=(lo+hi)/2;
+          if(totalOf(build(t))>H) hi=t; else lo=t; }
+        let rows=build(lo), tot=totalOf(rows);
+        const alt=build(hi), ta=totalOf(alt);
+        if(Math.abs(ta-H)<Math.abs(tot-H)){ rows=alt; tot=ta; }
+        return { rows, seats, asp, k: tot>0 ? H/tot : 1 };
+      }
+
+      // The break points are discrete, so a single arrangement can land well off. Try a
+      // spread of nearby counts and shuffles and keep the one that needs least give —
+      // the user asked for "roughly this many", so a picture either way is free.
+      const want=Math.max(1,Math.round(P.count));
+      let best=null;
+      for(let d=0; d<=3; d++){
+        for(const n of (d===0?[want]:[want-d,want+d])){
+          if(n<1) continue;
+          for(let salt=0; salt<6; salt++){
+            const a2=attempt(n,salt);
+            if(!best || Math.abs(a2.k-1)<Math.abs(best.k-1)) best=a2;
+            if(best && Math.abs(best.k-1)<0.004) break;
+          }
+          if(best && Math.abs(best.k-1)<0.004) break;
+        }
+        if(best && Math.abs(best.k-1)<0.004) break;
+      }
+      if(!best || !best.rows.length) return [{x:0,y:0,w:W,h:H}];
+      const { rows, seats, asp, k } = best; jStretch=k;
+
+      const out=[]; let y=0;
+      rows.forEach((q,ri)=>{
+        const hn=W/q.A;
+        const h=(ri===rows.length-1) ? (H-y) : hn*k;   // sum(hn*k)===H, so this lands flush
+        let x=0;
+        q.idx.forEach((gi,ci)=>{
+          const w=(ci===q.idx.length-1) ? (W-x) : asp[gi]*hn;
+          out.push({x, y, w, h, seat:seats[gi]});
+          x+=w; });
+        y+=h; });
+      return out;
+    }
+    window.__jstretch=()=>jStretch;
+
+    function reseat(){
+      if(P.layout==='justified'){ cellKey=''; layout(); return; }   // its seats come from the layout
+      const r=mulberry((P.seed*40503)>>>0);
+      cells.forEach(c=>{ c.cur = imgs.length ? Math.floor(r()*imgs.length) : 0; c.prev=-1; c.mix=1; }); }
+
+    // ---- the pile ------------------------------------------------------------
+    // Prints land one after another, each a little askew, stacking up.
+    let pile=[], pileSeq=0;
+    function drop(){
+      if(!imgs.length) return;
+      const r=mulberry((P.seed*7919 + pileSeq*2654435761)>>>0); pileSeq++;
+      const showing=new Set(pile.slice(-Math.min(pile.length,4)).map(q=>q.i));
+      let pool=imgs.map((_,i)=>i).filter(i=>!showing.has(i));
+      if(!pool.length) pool=imgs.map((_,i)=>i);
+      pile.push({ i: pool[(r()*pool.length)|0],
+        dx:(r()-0.5)*2, dy:(r()-0.5)*2, rot:(r()-0.5)*2, born:t, sp:0.85+r()*0.3 });
+      const keep=Math.max(1,Math.round(P.pKeep));
+      if(pile.length>keep) pile.splice(0, pile.length-keep);
+    }
+    function drawPile(g,w,h){
+      const m=Math.min(w,h), sp=P.pSpread*m*0.5, edge=P.pEdge*m;
+      for(const q of pile){
+        const im=pic(q.i); if(!im||!iw(im)) continue;
+        // a print is a solid object: it lands opaque and just settles. Only the very
+        // first instant eases in, so a fast drop rate never leaves ghosts stacked up.
+        const age=Math.max(0, t-q.born), land=Math.min(1, age/0.22);
+        // the print, whole — fitted inside its box, so nothing is ever cropped
+        const box=P.pSize*m*q.sp, k=Math.min(box/iw(im), box/ih(im));
+        const pw=iw(im)*k, ph=ih(im)*k;
+        const ease=1-Math.pow(1-land,3);
+        g.save();
+        g.globalAlpha=0.35+0.65*Math.min(1, age/0.09);
+        g.translate(w/2 + q.dx*sp, h/2 + q.dy*sp);
+        g.rotate(q.rot*P.pTilt*Math.PI/180);
+        g.scale(1.08-0.08*ease, 1.08-0.08*ease);          // settles as it lands
+        if(edge>0.5){ g.fillStyle='#ffffff';
+          g.fillRect(-pw/2-edge, -ph/2-edge, pw+edge*2, ph+edge*2); }
+        g.drawImage(im, -pw/2, -ph/2, pw, ph);
+        g.restore();
+      }
+    }
 
     // ---- the switch ----------------------------------------------------------
+    const aspOf=i=>{ const im=imgs[i]; return im&&im.naturalHeight ? im.naturalWidth/im.naturalHeight : 1; };
     function swap(){
+      if(P.layout==='stack'){ drop(); return; }
       if(imgs.length<2 || !cells.length) return;
       const showing=new Set(cells.map(c=>c.cur));
       for(let k=0;k<P.atOnce;k++){
         const c=cells[(Math.random()*cells.length)|0];
+        // in Justified a tile IS its picture's shape, so it may only take a picture of
+        // the same shape — otherwise the swap would crop it or leave ground showing
+        const shaped = P.layout==='justified';
+        const a0 = aspOf(c.cur);
+        const ok = i => !shaped || Math.abs(aspOf(i)-a0) <= a0*0.02;
         // prefer a picture the wall isn't already showing, so every one comes around
-        let pool=[]; for(let i=0;i<imgs.length;i++) if(!showing.has(i)) pool.push(i);
-        if(!pool.length) for(let i=0;i<imgs.length;i++) if(i!==c.cur) pool.push(i);
+        let pool=[]; for(let i=0;i<imgs.length;i++) if(!showing.has(i) && ok(i)) pool.push(i);
+        if(!pool.length) for(let i=0;i<imgs.length;i++) if(i!==c.cur && ok(i)) pool.push(i);
         if(!pool.length) continue;
         const pick=pool[(Math.random()*pool.length)|0];
         showing.delete(c.cur); showing.add(pick);
@@ -235,16 +394,19 @@
     function place(g,idx,r,inset){
       const im=pic(idx); if(!im || !iw(im)) return;
       const x=r.x+inset, y=r.y+inset, w=Math.max(0,r.w-inset*2), h=Math.max(0,r.h-inset*2);
+      if(P.layout==='justified'){ g.drawImage(im, x, y, w, h); return; }
       const sx=w/iw(im), sy=h/ih(im);
       const s = P.fit==='cover' ? Math.max(sx,sy) : Math.min(sx,sy);
       const dw=iw(im)*s, dh=ih(im)*s;
       g.drawImage(im, x+(w-dw)/2, y+(h-dh)/2, dw, dh);
     }
     function draw(g,w,h){
-      layout(); duoSync();
+      duoSync();
+      if(P.layout!=='stack') layout();
       const sx=w/W, sy=h/H;                              // export renders the same wall, larger
       g.setTransform(1,0,0,1,0,0);
       g.fillStyle=P.bg; g.fillRect(0,0,w,h);
+      if(imgs.length && P.layout==='stack'){ drawPile(g,w,h); return; }
       if(!imgs.length){ g.fillStyle='rgba(0,0,0,.45)';
         g.font='500 '+Math.round(Math.min(w,h)*0.028)+'px "IBM Plex Sans",system-ui,sans-serif';
         g.textAlign='center'; g.fillText('Add pictures — each one takes a tile', w/2, h/2); g.textAlign='left'; return; }
@@ -258,6 +420,14 @@
           g.globalAlpha=c.mix; place(g, c.cur, r, inset); g.globalAlpha=1; }
         else place(g, c.cur, r, inset);
         g.restore();
+      }
+      // the logo, whole and centred in the space the grid left for it
+      if(logo && logo.naturalWidth){
+        const box = hole ? {x:hole.x*sx, y:hole.y*sy, w:hole.w*sx, h:hole.h*sy}
+                         : {x:0, y:0, w:w, h:h};
+        const k=Math.min(box.w/logo.naturalWidth, box.h/logo.naturalHeight)*P.logoSize;
+        const lw=logo.naturalWidth*k, lh=logo.naturalHeight*k;
+        g.drawImage(logo, box.x+(box.w-lw)/2, box.y+(box.h-lh)/2, lw, lh);
       }
     }
     function drawNow(){ draw(ctx,W,H); }
@@ -283,10 +453,13 @@
     // ---- pictures ------------------------------------------------------------
     function setStatus(m){ $('status').textContent=m; }
     function counts(){ const n=imgs.length;
-      setStatus(n ? n+(n===1?' picture · ':' pictures · ')+cells.length+(cells.length===1?' tile':' tiles') : 'No pictures yet.'); }
+      if(!n){ setStatus('No pictures yet.'); return; }
+      const what = P.layout==='stack' ? (pile.length+(pile.length===1?' on the pile':' on the pile'))
+                                      : (cells.length+(cells.length===1?' tile':' tiles'));
+      setStatus(n+(n===1?' picture · ':' pictures · ')+what); }
     function thumbs(){ const h=$('thumbs'); h.innerHTML='';
       imgs.forEach(im=>{ const t=document.createElement('img'); t.src=im.src; h.appendChild(t); }); }
-    function added(){ cellKey=''; duo=[]; layout(); reseat(); thumbs(); counts(); drawNow(); }
+    function added(){ cellKey=''; duo=[]; if(P.layout==='stack'){ if(!pile.length) drop(); } else { layout(); reseat(); } thumbs(); counts(); drawNow(); }
     const isPDF=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
     function addImage(file){ const im=new Image();
       im.onload=()=>{ imgs.push(im); added(); };
@@ -315,6 +488,34 @@
     $('addBtn').addEventListener('click',()=>$('fileInp').click());
     $('fileInp').addEventListener('change',e=>{ [...e.target.files].forEach(addFile); e.target.value=''; });
     $('clearBtn').addEventListener('click',()=>{ imgs=[]; added(); });
+
+    // ---- the logo ------------------------------------------------------------
+    // An SVG without width/height won't report a size to canvas, so give it one from
+    // its own viewBox before loading it.
+    function loadLogo(file){
+      const done=im=>{ logo=im; $('logoStatus').textContent=file.name; cellKey=''; layout(); counts(); drawNow(); };
+      if(/svg/i.test(file.type)||/\.svg$/i.test(file.name)){
+        const rd=new FileReader();
+        rd.onload=()=>{ let txt=String(rd.result||'');
+          if(!/<svg[^>]*\swidth=/i.test(txt)){
+            const vb=txt.match(/viewBox=["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)/i);
+            if(vb) txt=txt.replace(/<svg/i,'<svg width="'+vb[1]+'" height="'+vb[2]+'"');
+          }
+          const im=new Image();
+          im.onload=()=>done(im);
+          im.onerror=()=>$('logoStatus').textContent='could not read that SVG';
+          im.src=URL.createObjectURL(new Blob([txt],{type:'image/svg+xml'}));
+        };
+        rd.readAsText(file);
+      } else {
+        const im=new Image(); im.onload=()=>done(im);
+        im.onerror=()=>$('logoStatus').textContent='could not read that file';
+        im.src=URL.createObjectURL(file);
+      }
+    }
+    $('logoBtn').addEventListener('click',()=>$('logoInp').click());
+    $('logoInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadLogo(f); e.target.value=''; });
+    $('logoClear').addEventListener('click',()=>{ logo=null; $('logoStatus').textContent='No logo.'; cellKey=''; layout(); counts(); drawNow(); });
     ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); document.body.classList.add('drag'); }));
     ['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{ if(ev==='drop'||e.target===document.documentElement) document.body.classList.remove('drag'); }));
     document.addEventListener('drop',e=>{ e.preventDefault(); [...(e.dataTransfer?.files||[])].forEach(addFile); });
@@ -323,6 +524,12 @@
     function bind(id,rid,set,fmt,relay){ const r=$(id), v=$(rid); if(!r) return;
       r.oninput=()=>{ set(+r.value); if(v) v.textContent=fmt?fmt(+r.value):r.value;
         if(relay){ cellKey=''; layout(); counts(); } if(!P.play) drawNow(); }; }
+    bind('count','countR',v=>P.count=v,null,true);
+    bind('pSize','pSizeR',v=>P.pSize=v/100);
+    bind('pSpread','pSpreadR',v=>P.pSpread=v/100);
+    bind('pTilt','pTiltR',v=>P.pTilt=v);
+    bind('pKeep','pKeepR',v=>P.pKeep=v);
+    bind('pEdge','pEdgeR',v=>P.pEdge=v/1000, v=>(v/10).toFixed(1));
     bind('tiles','tilesR',v=>P.tiles=v,null,true);
     bind('vary','varyR',v=>P.vary=v/100,null,true);
     bind('cols','colsR',v=>P.cols=v,null,true);
@@ -337,8 +544,13 @@
         el.hidden = !el.classList.contains('lay-'+P.layout); }); }
     $('layoutSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
       [...e.currentTarget.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
-      P.layout=b.dataset.x; syncLayout(); cellKey=''; layout(); counts(); drawNow(); });
+      P.layout=b.dataset.x; syncLayout(); cellKey='';
+      if(P.layout==='stack'){ pile=[]; drop(); } else layout();
+      counts(); drawNow(); });
     bind('duoMix','duoMixR',v=>P.duoMix=v/100);
+    bind('holeW','holeWR',v=>P.holeW=v,null,true);
+    bind('holeH','holeHR',v=>P.holeH=v,null,true);
+    bind('logoSize','logoSizeR',v=>P.logoSize=v/100);
     $('duoOn').onchange=e=>{ P.duoOn=e.target.checked; drawNow(); };
     $('duoA').oninput=e=>{ P.duoA=e.target.value; drawNow(); };
     $('duoB').oninput=e=>{ P.duoB=e.target.value; drawNow(); };
@@ -346,7 +558,8 @@
       [...e.currentTarget.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
       P.fit=b.dataset.x; drawNow(); });
     $('reshuffle').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999);
-      cellKey=''; layout(); reseat(); counts(); drawNow(); });
+      cellKey=''; if(P.layout==='stack'){ pile=[]; pileSeq=0; drop(); } else { layout(); reseat(); }
+      counts(); drawNow(); });
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
     $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play));
       $('playBtn').textContent=P.play?'Pause':'Play'; if(!P.play) drawNow(); });
