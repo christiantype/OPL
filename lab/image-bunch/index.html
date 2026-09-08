@@ -79,8 +79,24 @@
         <div class="knob"><label>Gap <b id="gapR">10</b></label><input id="gap" type="range" min="0" max="60" value="10"></div>
         <div class="knob"><label>Corners <b id="radR">0</b></label><input id="rad" type="range" min="0" max="60" value="0"></div>
       </div>
+      <div class="knob"><label>Photos</label>
+        <div class="seg" id="fitSeg">
+          <button data-x="contain" aria-pressed="true">Whole photo</button>
+          <button data-x="cover" aria-pressed="false">Fill the tile</button>
+        </div>
+      </div>
+      <p class="rowhint">Whole photo fits the picture inside its tile so nothing is ever cropped; Fill the tile crops the overflow to leave no ground showing.</p>
       <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#ffffff"></div>
       <button class="btn" id="reshuffle">Reshuffle the wall</button>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Duotone</div>
+      <label class="tog"><span>Duotone the pictures</span><input type="checkbox" id="duoOn"></label>
+      <div class="crow"><label>Shadows</label><input type="color" class="sw" id="duoA" value="#101014"></div>
+      <div class="crow"><label>Highlights</label><input type="color" class="sw" id="duoB" value="#f7de4c"></div>
+      <div class="knob"><label>Amount <b id="duoMixR">100</b></label><input id="duoMix" type="range" min="0" max="100" value="100"></div>
+      <p class="rowhint">Every picture is remapped by its own brightness — darks to the first colour, lights to the second — so a mixed set reads as one palette.</p>
     </div>
 
     <div class="group">
@@ -109,7 +125,8 @@
     const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
     const P={ aspect:'1080/1920', seed:5, layout:'masonry', tiles:9, vary:0.55,
-      cols:3, rows:5, gap:10, rad:0, bg:'#ffffff',
+      cols:3, rows:5, gap:10, rad:0, bg:'#ffffff', fit:'contain',
+      duoOn:false, duoA:'#101014', duoB:'#f7de4c', duoMix:1,
       rate:1.4, atOnce:1, fade:0.35, play:true };
 
     let imgs=[], W=1080, H=1920, t=0, acc=0;
@@ -182,15 +199,49 @@
       g.lineTo(x,y+k); g.quadraticCurveTo(x,y,x+k,y);
       g.closePath();
     }
-    function cover(g,im,r,inset){
-      if(!im||!im.naturalWidth) return;
+    // ---- duotone -------------------------------------------------------------
+    // Each picture is remapped by its own brightness onto a two-colour ramp. Built
+    // lazily, one picture at a time, the first time it is actually drawn — so adding
+    // forty images doesn't stall, and only what you see is processed.
+    const HEXRGB=h=>{ const v=parseInt(h.slice(1),16); return [v>>16&255, v>>8&255, v&255]; };
+    let duo=[], duoKey='';
+    function duoSync(){ const key=[P.duoOn,P.duoA,P.duoB,P.duoMix].join('|');
+      if(duoKey!==key){ duoKey=key; duo=[]; } }
+    function makeDuo(im){
+      const long=Math.max(im.naturalWidth,im.naturalHeight), k=Math.min(1, 1000/Math.max(1,long));
+      const c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(im.naturalWidth*k)); c.height=Math.max(1,Math.round(im.naturalHeight*k));
+      const g=c.getContext('2d'); g.drawImage(im,0,0,c.width,c.height);
+      let id; try{ id=g.getImageData(0,0,c.width,c.height); }catch(e){ return im; }
+      const d=id.data, A=HEXRGB(P.duoA), B=HEXRGB(P.duoB), m=P.duoMix;
+      for(let i=0;i<d.length;i+=4){
+        const l=(0.2126*d[i] + 0.7152*d[i+1] + 0.0722*d[i+2])/255;
+        d[i]   = d[i]  +(A[0]+(B[0]-A[0])*l - d[i]  )*m;
+        d[i+1] = d[i+1]+(A[1]+(B[1]-A[1])*l - d[i+1])*m;
+        d[i+2] = d[i+2]+(A[2]+(B[2]-A[2])*l - d[i+2])*m;
+      }
+      g.putImageData(id,0,0); return c;
+    }
+    function pic(i){
+      const im=imgs[i]; if(!im) return null;
+      if(!P.duoOn) return im;
+      if(!duo[i]) duo[i]=makeDuo(im);
+      return duo[i];
+    }
+    const iw=o=>o.naturalWidth||o.width, ih=o=>o.naturalHeight||o.height;
+
+    // Whole photo fits it inside the tile — nothing is ever cropped, the ground shows
+    // around it. Fill the tile scales up until the tile is covered and crops the rest.
+    function place(g,idx,r,inset){
+      const im=pic(idx); if(!im || !iw(im)) return;
       const x=r.x+inset, y=r.y+inset, w=Math.max(0,r.w-inset*2), h=Math.max(0,r.h-inset*2);
-      const s=Math.max(w/im.naturalWidth, h/im.naturalHeight);
-      const dw=im.naturalWidth*s, dh=im.naturalHeight*s;
+      const sx=w/iw(im), sy=h/ih(im);
+      const s = P.fit==='cover' ? Math.max(sx,sy) : Math.min(sx,sy);
+      const dw=iw(im)*s, dh=ih(im)*s;
       g.drawImage(im, x+(w-dw)/2, y+(h-dh)/2, dw, dh);
     }
     function draw(g,w,h){
-      layout();
+      layout(); duoSync();
       const sx=w/W, sy=h/H;                              // export renders the same wall, larger
       g.setTransform(1,0,0,1,0,0);
       g.fillStyle=P.bg; g.fillRect(0,0,w,h);
@@ -201,9 +252,11 @@
       for(const c of cells){
         const r={x:c.x*sx, y:c.y*sy, w:c.w*sx, h:c.h*sy};
         g.save(); path(g,r,rad,inset); g.clip();
-        if(c.prev>=0 && c.mix<1){ cover(g, imgs[c.prev], r, inset);
-          g.globalAlpha=c.mix; cover(g, imgs[c.cur], r, inset); g.globalAlpha=1; }
-        else cover(g, imgs[c.cur], r, inset);
+        g.fillStyle=P.bg; g.fill();                     // the tile's own ground, so a
+                                                        // letterboxed photo sits on it cleanly
+        if(c.prev>=0 && c.mix<1){ place(g, c.prev, r, inset);
+          g.globalAlpha=c.mix; place(g, c.cur, r, inset); g.globalAlpha=1; }
+        else place(g, c.cur, r, inset);
         g.restore();
       }
     }
@@ -233,7 +286,7 @@
       setStatus(n ? n+(n===1?' picture · ':' pictures · ')+cells.length+(cells.length===1?' tile':' tiles') : 'No pictures yet.'); }
     function thumbs(){ const h=$('thumbs'); h.innerHTML='';
       imgs.forEach(im=>{ const t=document.createElement('img'); t.src=im.src; h.appendChild(t); }); }
-    function added(){ cellKey=''; layout(); reseat(); thumbs(); counts(); drawNow(); }
+    function added(){ cellKey=''; duo=[]; layout(); reseat(); thumbs(); counts(); drawNow(); }
     const isPDF=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
     function addImage(file){ const im=new Image();
       im.onload=()=>{ imgs.push(im); added(); };
@@ -285,6 +338,13 @@
     $('layoutSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
       [...e.currentTarget.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
       P.layout=b.dataset.x; syncLayout(); cellKey=''; layout(); counts(); drawNow(); });
+    bind('duoMix','duoMixR',v=>P.duoMix=v/100);
+    $('duoOn').onchange=e=>{ P.duoOn=e.target.checked; drawNow(); };
+    $('duoA').oninput=e=>{ P.duoA=e.target.value; drawNow(); };
+    $('duoB').oninput=e=>{ P.duoB=e.target.value; drawNow(); };
+    $('fitSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+      [...e.currentTarget.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+      P.fit=b.dataset.x; drawNow(); });
     $('reshuffle').addEventListener('click',()=>{ P.seed=1+Math.floor(Math.random()*99999);
       cellKey=''; layout(); reseat(); counts(); drawNow(); });
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
