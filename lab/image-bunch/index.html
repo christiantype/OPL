@@ -153,13 +153,15 @@
         <div class="knob"><label>Screen angle <b id="htAngR">45</b></label><input id="htAng" type="range" min="0" max="90" value="45"></div>
       </div>
       <div class="knob"><label>Grain <b id="grainR">0</b></label><input id="grain" type="range" min="0" max="100" value="0"></div>
+      <div class="knob"><label>Brightness <b id="brightR">100</b></label><input id="bright" type="range" min="20" max="220" value="100"></div>
     </div>
 
     <div class="group">
       <div class="group__t">Switching</div>
-      <p class="rowhint lay lay-justified lay-masonry lay-grid">Every so often a tile picks a picture it is not already showing and fades to it.</p>
-      <p class="rowhint lay lay-stack" hidden>How often the next print drops onto the pile.</p>
-      <div class="knob"><label>Rate <b id="rateR">1.4</b></label><input id="rate" type="range" min="1" max="80" value="14"></div>
+      <p class="rowhint lay lay-justified lay-masonry lay-grid">How long the reel runs. The pace follows from it, so every picture gets its turn in exactly that time — Record starts from the beginning and stops itself at the end.</p>
+      <p class="rowhint lay lay-stack" hidden>How long the reel runs. Every picture drops onto the pile once in that time — Record starts from the beginning and stops itself at the end.</p>
+      <div class="knob"><label>Length <b id="durR">15</b></label><input id="dur" type="range" min="3" max="90" value="15"></div>
+      <p class="rowhint" id="rateHint">&nbsp;</p>
       <div class="knob lay lay-justified lay-masonry lay-grid"><label>At once <b id="atOnceR">1</b></label><input id="atOnce" type="range" min="1" max="8" value="1"></div>
       <div class="knob lay lay-justified lay-masonry lay-grid"><label>Fade <b id="fadeR">0.35</b></label><input id="fade" type="range" min="0" max="150" value="35"></div>
       <button class="btn" id="playBtn" aria-pressed="true">Pause</button>
@@ -185,9 +187,21 @@
       duoOn:false, duoA:'#101014', duoB:'#f7de4c', duoMix:1, duoStep:40,
       htOn:false, htSize:6, htAng:45, grain:0,
       holeW:1, holeH:1, logoSize:0.72,
-      rate:1.4, atOnce:1, fade:0.35, play:true };
+      dur:15, atOnce:1, fade:0.35, bright:1, play:true };
 
     let imgs=[], W=1080, H=1920, t=0, acc=0;
+    // The length is the control; the pace falls out of it. One change per picture, so
+    // the whole set has had its turn by the time the reel ends.
+    function changesNeeded(){
+      const N=Math.max(1,imgs.length);
+      return P.layout==='stack' ? N : Math.ceil(N/Math.max(1,P.atOnce));
+    }
+    function rate(){ return changesNeeded()/Math.max(0.5,P.dur); }
+    function showRate(){ const el=$('rateHint'); if(!el) return;
+      if(!imgs.length){ el.innerHTML='&nbsp;'; return; }
+      const r=rate();
+      el.textContent = imgs.length+' pictures in '+P.dur+'s — about '+
+        (r>=1 ? r.toFixed(1)+' a second' : (1/r).toFixed(1)+'s apart'); }
 
     function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
       let x=Math.imul(a^a>>>15,1|a); x=x+Math.imul(x^x>>>7,61|x)^x;
@@ -305,6 +319,14 @@
     }
     window.__jstretch=()=>jStretch;
 
+    // back to frame one: the wall as first laid out, the pile empty, the clock at zero
+    function resetRun(){
+      t=0; acc=0; seen=new Set(); pileSeq=0;
+      if(P.layout==='stack'){ pile=[]; drop(); }
+      else { cellKey=''; layout(); reseat(); cells.forEach(c=>{ c.prev=-1; c.mix=1; }); }
+      drawNow();
+    }
+
     function reseat(){
       if(P.layout==='justified'){ cellKey=''; layout(); return; }   // its seats come from the layout
       const r=mulberry((P.seed*40503)>>>0);
@@ -312,14 +334,16 @@
 
     // ---- the pile ------------------------------------------------------------
     // Prints land one after another, each a little askew, stacking up.
-    let pile=[], pileSeq=0;
+    let pile=[], pileSeq=0, seen=new Set();
     function drop(){
       if(!imgs.length) return;
       const r=mulberry((P.seed*7919 + pileSeq*2654435761)>>>0); pileSeq++;
-      const showing=new Set(pile.slice(-Math.min(pile.length,4)).map(q=>q.i));
-      let pool=imgs.map((_,i)=>i).filter(i=>!showing.has(i));
+      // work through the whole set before any picture comes back round
+      if(seen.size>=imgs.length) seen.clear();
+      let pool=imgs.map((_,i)=>i).filter(i=>!seen.has(i));
       if(!pool.length) pool=imgs.map((_,i)=>i);
-      pile.push({ i: pool[(r()*pool.length)|0], hue:(pileSeq*P.duoStep)%360,
+      const chosen=pool[(r()*pool.length)|0]; seen.add(chosen);
+      pile.push({ i: chosen, hue:(pileSeq*P.duoStep)%360,
         dx:(r()-0.5)*2, dy:(r()-0.5)*2, rot:(r()-0.5)*2, born:t, sp:0.85+r()*0.3 });
       const keep=Math.max(1,Math.round(P.pKeep));
       if(pile.length>keep) pile.splice(0, pile.length-keep);
@@ -343,7 +367,9 @@
         g.scale(1.08-0.08*ease, 1.08-0.08*ease);          // settles as it lands
         if(edge>0.5){ g.fillStyle=P.pEdgeC;
           g.fillRect(-pw/2-edge, -ph/2-edge, pw+edge*2, ph+edge*2); }
+        if(P.bright!==1) g.filter='brightness('+P.bright+')';
         g.drawImage(im, -pw/2, -ph/2, pw, ph);
+        g.filter='none';
         g.restore();
       }
     }
@@ -361,11 +387,13 @@
         const shaped = P.layout==='justified';
         const a0 = aspOf(c.cur);
         const ok = i => !shaped || Math.abs(aspOf(i)-a0) <= a0*0.02;
-        // prefer a picture the wall isn't already showing, so every one comes around
-        let pool=[]; for(let i=0;i<imgs.length;i++) if(!showing.has(i) && ok(i)) pool.push(i);
+        // work through the whole set before any picture comes back round
+        if(seen.size>=imgs.length) seen.clear();
+        let pool=[]; for(let i=0;i<imgs.length;i++) if(!seen.has(i) && !showing.has(i) && ok(i)) pool.push(i);
+        if(!pool.length) for(let i=0;i<imgs.length;i++) if(!showing.has(i) && ok(i)) pool.push(i);
         if(!pool.length) for(let i=0;i<imgs.length;i++) if(i!==c.cur && ok(i)) pool.push(i);
         if(!pool.length) continue;
-        const pick=pool[(Math.random()*pool.length)|0];
+        const pick=pool[(Math.random()*pool.length)|0]; seen.add(pick);
         showing.delete(c.cur); showing.add(pick);
         c.prev=c.cur; c.cur=pick; c.mix = P.fade>0.001 ? 0 : 1;
       }
@@ -471,11 +499,13 @@
     function place(g,idx,r,inset){
       const im=pic(idx); if(!im || !iw(im)) return;
       const x=r.x+inset, y=r.y+inset, w=Math.max(0,r.w-inset*2), h=Math.max(0,r.h-inset*2);
-      if(P.layout==='justified'){ g.drawImage(im, x, y, w, h); return; }
+      if(P.bright!==1) g.filter='brightness('+P.bright+')';
+      if(P.layout==='justified'){ g.drawImage(im, x, y, w, h); g.filter='none'; return; }
       const sx=w/iw(im), sy=h/ih(im);
       const s = P.fit==='cover' ? Math.max(sx,sy) : Math.min(sx,sy);
       const dw=iw(im)*s, dh=ih(im)*s;
       g.drawImage(im, x+(w-dw)/2, y+(h-dh)/2, dw, dh);
+      g.filter='none';
     }
     function draw(g,w,h){
       duoSync();
@@ -547,7 +577,7 @@
       const dt=Math.min(0.05,(now-t0)/1000); t0=now;
       if(P.play){
         t+=dt; acc+=dt;
-        const every=1/Math.max(0.05,P.rate);
+        const every=1/Math.max(0.02,rate());
         while(acc>=every){ acc-=every; swap(); }
         if(P.fade>0.001) for(const c of cells) if(c.mix<1) c.mix=Math.min(1, c.mix+dt/P.fade);
         drawNow();
@@ -565,7 +595,7 @@
       setStatus(n+(n===1?' picture · ':' pictures · ')+what); }
     function thumbs(){ const h=$('thumbs'); h.innerHTML='';
       imgs.forEach(im=>{ const t=document.createElement('img'); t.src=im.src; h.appendChild(t); }); }
-    function added(){ cellKey=''; duo.clear(); if(P.layout==='stack'){ if(!pile.length) drop(); } else { layout(); reseat(); } thumbs(); counts(); drawNow(); }
+    function added(){ cellKey=''; duo.clear(); if(P.layout==='stack'){ if(!pile.length) drop(); } else { layout(); reseat(); } thumbs(); counts(); showRate(); drawNow(); }
     const isPDF=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
     function addImage(file){ const im=new Image();
       im.onload=()=>{ imgs.push(im); added(); };
@@ -649,8 +679,8 @@
     bind('rows','rowsR',v=>P.rows=v,null,true);
     bind('gap','gapR',v=>P.gap=v);
     bind('rad','radR',v=>P.rad=v);
-    bind('rate','rateR',v=>P.rate=v/10, v=>(v/10).toFixed(1));
-    bind('atOnce','atOnceR',v=>P.atOnce=v);
+    bind('dur','durR',v=>{ P.dur=v; showRate(); });
+    bind('atOnce','atOnceR',v=>{ P.atOnce=v; showRate(); });
     bind('fade','fadeR',v=>P.fade=v/100, v=>(v/100).toFixed(2));
     $('bg').oninput=e=>{ P.bg=e.target.value; if(!P.play) drawNow(); };
     function syncLayout(){ document.querySelectorAll('#dock .lay').forEach(el=>{
@@ -659,12 +689,13 @@
       [...e.currentTarget.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
       P.layout=b.dataset.x; syncLayout(); cellKey='';
       if(P.layout==='stack'){ pile=[]; drop(); } else layout();
-      counts(); drawNow(); });
+      counts(); showRate(); drawNow(); });
     bind('duoMix','duoMixR',v=>P.duoMix=v/100);
     bind('duoStep','duoStepR',v=>P.duoStep=v);
     bind('htSize','htSizeR',v=>P.htSize=v);
     bind('htAng','htAngR',v=>P.htAng=v);
     bind('grain','grainR',v=>P.grain=v);
+    bind('bright','brightR',v=>P.bright=v/100);
     $('htOn').onchange=e=>{ P.htOn=e.target.checked; drawNow(); };
     bind('holeW','holeWR',v=>P.holeW=v,null,true);
     bind('holeH','holeHR',v=>P.holeH=v,null,true);
@@ -692,9 +723,10 @@
     Opal.mountOutput(art,'image-bunch',{ render:(long)=>{ const [aw,ah]=aspectWH(), s=long/Math.max(aw,ah);
       const c=document.createElement('canvas'); c.width=Math.round(aw*s); c.height=Math.round(ah*s);
       draw(c.getContext('2d'), c.width, c.height); return c; } });
-    let rec=null, chunks=[], rt=0, tk=0;
+    let rec=null, chunks=[], rt=0, tk=0, recEnd=0;
     $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
       if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
+      resetRun();                                    // always from the beginning
       const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
       const bits=Math.min(120e6, Math.max(12e6, Math.round(art.width*art.height*30*0.25)));
       rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:bits}:undefined); chunks=[];
@@ -702,12 +734,16 @@
       rec.onstop=()=>{ const ext=mime.indexOf('mp4')>=0?'mp4':'webm', blob=new Blob(chunks,{type:mime||'video/webm'});
         if(blob.size>0){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='image-bunch.'+ext; a.click(); }
         else alert('The recorder produced no frames. Try a smaller canvas size.');
-        clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
+        clearInterval(tk); clearTimeout(recEnd);
+        $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
       rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop';
+      // it runs exactly as long as the reel, with a beat at the end to let the last
+      // change land, then stops itself
+      recEnd=setTimeout(()=>{ if(rec) rec.stop(); }, P.dur*1000 + 400);
       rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
         $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
 
-    syncLayout(); fit(); counts();
+    syncLayout(); fit(); counts(); showRate();
   })();
   </script>
 </body>
