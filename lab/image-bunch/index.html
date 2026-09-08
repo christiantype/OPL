@@ -322,7 +322,9 @@
     // back to frame one: the wall as first laid out, the pile empty, the clock at zero
     function resetRun(){
       t=0; acc=0; seen=new Set(); pileSeq=0;
-      if(P.layout==='stack'){ pile=[]; drop(); }
+      // the pile starts EMPTY — the reel opens on the logo alone and the first print
+      // lands one interval in, so there is no print already half-settled on frame one
+      if(P.layout==='stack'){ pile=[]; }
       else { cellKey=''; layout(); reseat(); cells.forEach(c=>{ c.prev=-1; c.mix=1; }); }
       drawNow();
     }
