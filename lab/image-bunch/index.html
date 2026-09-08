@@ -67,10 +67,10 @@
       <div class="group__t">Wall</div>
       <div class="knob"><label>Layout</label>
         <div class="seg" id="layoutSeg">
-          <button data-x="justified" aria-pressed="true">Justified</button>
+          <button data-x="justified" aria-pressed="false">Justified</button>
           <button data-x="masonry" aria-pressed="false">Masonry</button>
           <button data-x="grid" aria-pressed="false">Grid</button>
-          <button data-x="stack" aria-pressed="false">Stack</button>
+          <button data-x="stack" aria-pressed="true">Stack</button>
         </div>
       </div>
       <p class="rowhint lay lay-justified">Every tile takes the shape of its own picture and the rows are justified, so the canvas fills edge to edge and nothing is ever cropped. More pictures means smaller tiles; the number of rows follows from their shapes. Tiles only swap to a picture of the same shape.</p>
@@ -96,7 +96,7 @@
       <button class="btn" id="reshuffle">Reshuffle the wall</button>
     </div>
 
-    <div class="group lay lay-stack" hidden>
+    <div class="group lay lay-stack">
       <div class="group__t">Stack</div>
       <p class="rowhint">The pictures drop one after another and pile up, each landing a little askew — a stack of prints on a table.</p>
       <div class="duo">
@@ -129,7 +129,7 @@
         <div class="knob"><label>Hole across <b id="holeWR">1</b></label><input id="holeW" type="range" min="1" max="6" value="1"></div>
         <div class="knob"><label>Hole down <b id="holeHR">1</b></label><input id="holeH" type="range" min="1" max="6" value="1"></div>
       </div>
-      <div class="knob"><label>Logo size <b id="logoSizeR">72</b></label><input id="logoSize" type="range" min="10" max="300" value="72"></div>
+      <div class="knob"><label>Logo size <b id="logoSizeR">120</b></label><input id="logoSize" type="range" min="10" max="300" value="120"></div>
       <p class="rowhint">100 is as large as it fits. Past that it runs off the edges — set it high and the mark bleeds out of frame.</p>
     </div>
 
@@ -181,12 +181,12 @@
     const $=id=>document.getElementById(id);
     const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
-    const P={ aspect:'1080/1920', seed:5, layout:'justified', count:16, tiles:9, vary:0.55,
+    const P={ aspect:'1080/1920', seed:5, layout:'stack', count:16, tiles:9, vary:0.55,
       cols:3, rows:5, gap:10, rad:0, bg:'#ffffff', fit:'contain',
       pSize:0.62, pSpread:0.18, pTilt:9, pKeep:14, pEdge:0.030, pEdgeC:'#ffffff', pLand:0.22,
       duoOn:false, duoA:'#101014', duoB:'#f7de4c', duoMix:1, duoStep:40,
       htOn:false, htSize:6, htAng:45, grain:0,
-      holeW:1, holeH:1, logoSize:0.72,
+      holeW:1, holeH:1, logoSize:1.20,
       dur:15, atOnce:1, fade:0.35, bright:1, play:true };
 
     let imgs=[], W=1080, H=1920, t=0, acc=0;
