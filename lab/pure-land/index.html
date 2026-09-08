@@ -24,6 +24,8 @@
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .crow[hidden]{ display:none; }
+  .cend{ display:flex; align-items:center; gap:8px; }
+  .cend .rm{ width:28px; height:28px; padding:0; line-height:1; display:flex; align-items:center; justify-content:center; }
   .group[hidden]{ display:none !important; }
   .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
 </style>
@@ -105,11 +107,8 @@
         <div class="knob"><label>Direction <b id="angR">45°</b></label><input id="ang" type="range" min="0" max="360" value="45"></div>
         <div class="knob"><label>Spread <b id="spreadR">0.50</b></label><input id="spread" type="range" min="10" max="200" value="50"></div>
       </div>
-      <div class="knob"><label>Colours <b id="stopsR">3</b></label><input id="stops" type="range" min="2" max="4" value="3"></div>
-      <div class="crow" id="rowC0"><label>Colour 1</label><input type="color" class="sw" id="c0" value="#f7de4c"></div>
-      <div class="crow" id="rowC1"><label>Colour 2</label><input type="color" class="sw" id="c1" value="#ea2b1e"></div>
-      <div class="crow" id="rowC2"><label>Colour 3</label><input type="color" class="sw" id="c2" value="#1f40e6"></div>
-      <div class="crow" id="rowC3" hidden><label>Colour 4</label><input type="color" class="sw" id="c3" value="#10b981"></div>
+      <div id="colRows"></div>
+      <button class="btn" id="addCol">Add a colour</button>
     </div>
 
     <div class="group">
@@ -131,6 +130,31 @@
       <p class="rowhint">Staggers the squares themselves sideways, row by row.</p>
       <div class="knob"><label>Scatter <b id="scatR">0</b></label><input id="scat" type="range" min="0" max="100" value="0"></div>
       <p class="rowhint">Ordered at 0 — the offset runs diagonally. Turn it up to shuffle the squares out of sequence.</p>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Signature</div>
+      <label class="tog"><span>Show signature</span><input type="checkbox" id="sigOn"></label>
+      <input class="opal-input" id="sigText" type="text" value="lab colour study" maxlength="60" spellcheck="false" autocomplete="off">
+      <div class="knob"><label>Align</label>
+        <div class="seg" id="sigAlign">
+          <button data-x="left" aria-pressed="false">Left</button>
+          <button data-x="center" aria-pressed="true">Centre</button>
+          <button data-x="right" aria-pressed="false">Right</button>
+        </div>
+      </div>
+      <div class="knob"><label>Edge</label>
+        <div class="seg" id="sigEdge">
+          <button data-x="top" aria-pressed="false">Top</button>
+          <button data-x="bottom" aria-pressed="true">Bottom</button>
+        </div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Size <b id="sigSizeR">2.0</b></label><input id="sigSize" type="range" min="8" max="70" value="20"></div>
+        <div class="knob"><label>Margin <b id="sigMarR">4.0</b></label><input id="sigMar" type="range" min="10" max="140" value="40"></div>
+      </div>
+      <div class="crow"><label>Signature colour</label><input type="color" class="sw" id="sigC" value="#ffffff"></div>
+      <p class="rowhint">Burned into the canvas, so it is there in the saved still and the recording. The margin keeps it clear of the corners.</p>
     </div>
 
     <div class="group">
@@ -156,7 +180,8 @@ uniform float uCols, uRows, uAngle, uSpread, uGradOff, uTileOff, uScatter, uSeed
 uniform float uRim, uRimAngle, uRimA;
 uniform vec2 uCenter; uniform float uRadius, uRings, uPulse, uPrate;   /* radial */
 uniform sampler2D uTex; uniform float uStrokes;                        /* strokes */
-uniform vec3 uC0, uC1, uC2, uC3, uRimC;
+uniform sampler2D uSig; uniform float uSigOn;                          /* signature */
+uniform vec3 uC0, uC1, uC2, uC3, uC4, uC5, uC6, uC7, uRimC;
 const float TAU = 6.2831853;
 
 float hash21(vec2 p){ p=fract(p*vec2(123.34,345.45)); p+=dot(p,p+34.345); return fract(p.x*p.y); }
@@ -165,7 +190,11 @@ vec3 stopAt(int i){
   if(i==0) return uC0;
   if(i==1) return uC1;
   if(i==2) return uC2;
-  return uC3;
+  if(i==3) return uC3;
+  if(i==4) return uC4;
+  if(i==5) return uC5;
+  if(i==6) return uC6;
+  return uC7;
 }
 /* the ramp is cyclic — the last colour runs back into the first, so the travel never seams */
 vec3 ramp(float t){
@@ -259,6 +288,12 @@ void main(){
     col = mix(col, uRimC, band * fade * uRimA);
   }
 
+  /* the signature rides on top of everything, so it survives into stills and video */
+  if(uSigOn > 0.5){
+    vec4 sg = texture2D(uSig, vec2(fc.x/uRes.x, 1.0 - fc.y/uRes.y));
+    col = mix(col, sg.rgb, sg.a);
+  }
+
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
   </script>
@@ -274,8 +309,10 @@ void main(){
 
     const P={ aspect:'1080/1920', seed:3, mode:'tiles', cols:4, rows:7, square:true,
       ang:45, spread:0.5, stops:3,
-      c:['#f7de4c','#ea2b1e','#1f40e6','#10b981'],
-      rim:0.03, rimAng:90, rimA:1.0, rimC:'#ffffff',
+      c:['#f7de4c','#ea2b1e','#1f40e6'],
+      sigOn:false, sigText:'lab colour study', sigAlign:'center', sigEdge:'bottom',
+      sigSize:0.020, sigMar:0.040, sigC:'#ffffff',
+      rim:0.03, rimAng:90, rimA:1.0, rimC:'#ffffff', stops:3,
       goff:0.60, toff:0.0, scat:0, spd:1.0, play:true,
       cx:0.5, cy:0.5, rad:0.55, rings:4, pulse:0.25, prate:0.30,
       word:'AHA', face:'UniversNextPro-Bold.ttf', wsize:62, strokes:9 };
@@ -295,7 +332,8 @@ void main(){
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 1,-1, -1,1, 1,1]),gl.STATIC_DRAW);
     const ploc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(ploc); gl.vertexAttribPointer(ploc,2,gl.FLOAT,false,0,0);
     const U={}; ['uRes','uT','uMode','uCols','uRows','uAngle','uSpread','uGradOff','uTileOff','uScatter','uSeed','uSquare','uStops',
-      'uRim','uRimAngle','uRimA','uCenter','uRadius','uRings','uPulse','uPrate','uTex','uStrokes','uC0','uC1','uC2','uC3','uRimC']
+      'uRim','uRimAngle','uRimA','uCenter','uRadius','uRings','uPulse','uPrate','uTex','uStrokes','uSig','uSigOn',
+      'uC0','uC1','uC2','uC3','uC4','uC5','uC6','uC7','uRimC']
       .forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 
     // ---- the word's distance field, as a texture -------------------------------
@@ -370,6 +408,38 @@ void main(){
       opentype.load('/shared/fonts/'+P.face,(err,f)=>{ if(err){ console.warn('font load failed',err); return; }
         font=f; fieldKey=''; buildField(); drawNow(); }); }
 
+    // ---- the signature, drawn into a texture so it lands in stills and video ----
+    const sigTex=gl.createTexture(); const sigCv=document.createElement('canvas');
+    gl.bindTexture(gl.TEXTURE_2D,sigTex);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([0,0,0,0]));
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    let sigKey='';
+    function buildSig(w,h){
+      const key=[P.sigOn,P.sigText,P.sigAlign,P.sigEdge,P.sigSize,P.sigMar,P.sigC,w,h].join('|');
+      if(sigKey===key) return; sigKey=key;
+      if(!P.sigOn) return;
+      sigCv.width=w; sigCv.height=h;
+      const g=sigCv.getContext('2d');
+      g.clearRect(0,0,w,h);
+      const m=Math.min(w,h), px=Math.max(8, m*P.sigSize), mar=m*P.sigMar;
+      g.font='500 '+px+'px "IBM Plex Sans", system-ui, sans-serif';
+      g.fillStyle=P.sigC;
+      g.textAlign = P.sigAlign==='left' ? 'left' : P.sigAlign==='right' ? 'right' : 'center';
+      g.textBaseline = P.sigEdge==='top' ? 'top' : 'alphabetic';
+      const x = P.sigAlign==='left' ? mar : P.sigAlign==='right' ? w-mar : w/2;
+      const y = P.sigEdge==='top' ? mar : h-mar;
+      g.fillText(P.sigText||'', x, y);
+      gl.bindTexture(gl.TEXTURE_2D,sigTex);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,sigCv);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+    }
+    // the webfont may land after first paint — redraw once it has
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ sigKey=''; drawNow(); });
+
     let W=1080,H=1920,clock=0;
     function draw(w,h,tm){
       gl.viewport(0,0,w,h);
@@ -384,9 +454,12 @@ void main(){
       gl.uniform1f(U.uSpread,P.spread); gl.uniform1f(U.uGradOff,P.goff);
       gl.uniform1f(U.uTileOff,P.toff); gl.uniform1f(U.uScatter,P.scat);
       gl.uniform1f(U.uSeed,P.seed*0.137); gl.uniform1f(U.uSquare,P.square?1:0);
-      gl.uniform1f(U.uStops,P.stops);
-      gl.uniform3fv(U.uC0,HEX(P.c[0])); gl.uniform3fv(U.uC1,HEX(P.c[1]));
-      gl.uniform3fv(U.uC2,HEX(P.c[2])); gl.uniform3fv(U.uC3,HEX(P.c[3]));
+      for(let i=0;i<8;i++) gl.uniform3fv(U['uC'+i], HEX(P.c[Math.min(i,P.c.length-1)]));
+      gl.uniform1f(U.uStops, P.c.length);
+      buildSig(w,h);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,sigTex); gl.uniform1i(U.uSig,1);
+      gl.uniform1f(U.uSigOn, P.sigOn?1:0);
+      gl.activeTexture(gl.TEXTURE0);
       gl.uniform1f(U.uRim,P.rim); gl.uniform1f(U.uRimAngle,P.rimAng*Math.PI/180);
       gl.uniform1f(U.uRimA,P.rimA); gl.uniform3fv(U.uRimC,HEX(P.rimC));
       gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
@@ -429,11 +502,39 @@ void main(){
     $('mode').addEventListener('change',e=>{ P.mode=e.target.value; syncMode();
       if(P.mode==='strokes'){ fieldKey=''; buildField(); } drawNow(); });
 
-    // colour count — show only the swatches in play
-    function syncStops(){ for(let i=0;i<4;i++){ const row=$('rowC'+i); if(row) row.hidden = i >= P.stops; } }
-    $('stops').oninput=e=>{ P.stops=+e.target.value; $('stopsR').textContent=P.stops; syncStops(); if(!P.play) drawNow(); };
-    for(let i=0;i<4;i++){ const el=$('c'+i); if(el) el.oninput=e=>{ P.c[i]=e.target.value; if(!P.play) drawNow(); }; }
+    // the palette is a list you add to and take from — two colours minimum, eight maximum
+    const MAXC=8;
+    function syncStops(){
+      const host=$('colRows'); host.innerHTML='';
+      P.c.forEach((hex,i)=>{
+        const row=document.createElement('div'); row.className='crow';
+        const lab=document.createElement('label'); lab.textContent='Colour '+(i+1);
+        const end=document.createElement('span'); end.className='cend';
+        const sw=document.createElement('input'); sw.type='color'; sw.className='sw'; sw.value=hex;
+        sw.oninput=e=>{ P.c[i]=e.target.value; if(!P.play) drawNow(); };
+        const rm=document.createElement('button'); rm.className='btn rm'; rm.textContent='\u2212';
+        rm.title='Remove this colour'; rm.disabled=P.c.length<=2;
+        rm.onclick=()=>{ if(P.c.length<=2) return; P.c.splice(i,1); syncStops(); drawNow(); };
+        end.append(sw,rm); row.append(lab,end); host.appendChild(row);
+      });
+      $('addCol').disabled = P.c.length>=MAXC;
+    }
+    $('addCol').addEventListener('click',()=>{
+      if(P.c.length>=MAXC) return;
+      P.c.push(P.c[P.c.length-1]||'#ffffff'); syncStops(); drawNow();
+    });
     $('rimC').oninput=e=>{ P.rimC=e.target.value; if(!P.play) drawNow(); };
+    bind('sigSize','sigSizeR',v=>P.sigSize=v/1000, v=>(v/10).toFixed(1));
+    bind('sigMar','sigMarR',v=>P.sigMar=v/1000, v=>(v/10).toFixed(1));
+    $('sigOn').onchange=e=>{ P.sigOn=e.target.checked; drawNow(); };
+    $('sigText').oninput=e=>{ P.sigText=e.target.value; drawNow(); };
+    $('sigC').oninput=e=>{ P.sigC=e.target.value; drawNow(); };
+    function seg(id,set){ const el=$(id); if(!el) return;
+      el.addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return;
+        [...el.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+        set(b.dataset.x); drawNow(); }); }
+    seg('sigAlign',v=>P.sigAlign=v);
+    seg('sigEdge',v=>P.sigEdge=v);
     $('square').onchange=e=>{ P.square=e.target.checked; if(!P.play) drawNow(); };
 
     $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
