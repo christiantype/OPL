@@ -49,19 +49,16 @@
 
 <div id="dock">
   <div class="group">
-    <div class="group__t">Names</div>
-    <textarea id="names" rows="8" spellcheck="false" autocomplete="off"></textarea>
+    <div class="group__t">The roll</div>
     <p class="rowhint" id="count">&nbsp;</p>
-    <div class="grid2">
-      <button class="btn" id="dedupe">Remove repeats</button>
-      <button class="btn" id="shuffle">Shuffle</button>
-    </div>
+    <p class="rowhint">Everyone in AHA, each with their own poster behind their name — read off the print file, so a name can never land on somebody else's work.</p>
+    <button class="btn" id="shuffle">Shuffle the order</button>
   </div>
 
   <div class="group">
     <div class="group__t">Roll</div>
     <div class="duo">
-      <div class="knob"><label>Length <b id="durR">20</b></label><input id="dur" type="range" min="3" max="240" value="20"></div>
+      <div class="knob"><label>Length <b id="durR">300</b></label><input id="dur" type="range" min="5" max="600" step="5" value="300"></div>
       <div class="knob"><label>Size <b id="sizeR">126</b></label><input id="size" type="range" min="20" max="300" value="126"></div>
     </div>
     <p class="rowhint" id="pace">&nbsp;</p>
@@ -72,14 +69,19 @@
     <div class="group__t">Dots</div>
     <p class="rowhint">The name printed as a halftone screen — the dots <b>are</b> the letterform.</p>
     <div class="duo">
-      <div class="knob"><label>Cell <b id="cellR">8</b></label><input id="cell" type="range" min="0" max="100" value="8"></div>
+      <div class="knob"><label>Cell <b id="cellR">22</b></label><input id="cell" type="range" min="0" max="100" value="22"></div>
       <div class="knob"><label>Contrast <b id="contrastR">0</b></label><input id="contrast" type="range" min="0" max="100" value="0"></div>
     </div>
     <div class="duo">
       <div class="knob"><label>Size jitter <b id="jitterR">56</b></label><input id="jitter" type="range" min="0" max="100" value="56"></div>
       <div class="knob"><label>Blur dots <b id="blurR">0</b></label><input id="blur" type="range" min="0" max="100" value="0"></div>
     </div>
-    <div class="knob"><label>Connect <b id="gooR">0</b></label><input id="goo" type="range" min="0" max="100" value="0"></div>
+    <div class="knob"><label>Connect <b id="gooR">7</b></label><input id="goo" type="range" min="0" max="100" value="7"></div>
+    <div class="duo">
+      <div class="knob"><label>Breathe <b id="waveR">15</b></label><input id="wave" type="range" min="0" max="100" value="15"></div>
+      <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="30" value="10"></div>
+    </div>
+    <p class="rowhint">Breathe is the pulse travelling through the dots and Speed is how fast it and the aura drift — this is what there is to watch while a name is held.</p>
     <div class="crow"><label>Dot colour</label><input type="color" class="sw" id="dotCol" value="#ffffff"></div>
   </div>
 
@@ -91,6 +93,19 @@
   </div>
 
   <div class="group">
+    <div class="group__t">Poster</div>
+    <div class="duo">
+      <div class="knob"><label>Show <b id="posR">55</b></label><input id="pos" type="range" min="0" max="100" value="55"></div>
+      <div class="knob"><label>Scale <b id="posScR">100</b></label><input id="posSc" type="range" min="20" max="300" value="100"></div>
+    </div>
+    <div class="duo">
+      <div class="knob"><label>Across <b id="posXR">0.50</b></label><input id="posX" type="range" min="-50" max="150" value="50"></div>
+      <div class="knob"><label>Down <b id="posYR">0.50</b></label><input id="posY" type="range" min="-50" max="150" value="50"></div>
+    </div>
+    <p class="rowhint">The poster sits behind the name, whole and never cropped — the caption band is already trimmed off. Show at zero leaves the frame to the type alone; Across and Down place it, and they run past the edges so it can bleed.</p>
+  </div>
+
+  <div class="group">
     <div class="group__t">Aura</div>
     <p class="rowhint">Blurred, offset copies of the dot field beneath the dots — never the letterform, so no ghost of the type shows.</p>
     <div class="crow"><label>Under</label><input type="color" class="sw" id="g0c" value="#2a0f4a"></div>
@@ -99,6 +114,11 @@
       <div class="knob"><label>Spread <b id="auraR">100</b></label><input id="aura" type="range" min="0" max="200" value="100"></div>
       <div class="knob"><label>Drift <b id="mvR">50</b></label><input id="mv" type="range" min="0" max="100" value="50"></div>
     </div>
+    <div class="duo">
+      <div class="knob"><label>Offset across <b id="auXR">0</b></label><input id="auX" type="range" min="-100" max="100" value="0"></div>
+      <div class="knob"><label>Offset down <b id="auYR">0</b></label><input id="auY" type="range" min="-100" max="100" value="0"></div>
+    </div>
+    <p class="rowhint">Offset shifts the whole aura off the type — the further it goes the more the glow reads as a cast shadow rather than a halo.</p>
   </div>
 </div>
 
@@ -115,18 +135,32 @@
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
-  const ROLL_DEFAULT = ['Declan Kelly','Iana Evseeva','Emma Bloom','Reese Adara','Zoë Breillatt',
-    'Gabriella De La Hoya','Sean Fermoyle','Max Epperson','Bilal Syed','Frances Bedoya',
-    'Tanner Woodford','Cath Dizon','Cameron Sow','Barry Deck','Celeste Nunez','Neha Sunkara',
-    'Cristina Bottia','Lola Z.','George Miller','Carolyn Tubekis','Haley Helmold','David Sieren',
-    'Annie Norris','Kate Parks','Brian M Woodard','Christian Solorzano','Lawryn Johnson',
-    'Aaron Sutherland','Gregory Darteh','Sadie Van Wie','Francis','Morgan Manasa','Wendy Robles',
-    'Amrita Haughn','Kyle Eertmoed','Nick Adam','Rick Valicenti','Cass Pokora','John Wegner',
-    'Cheryl Bever','Carlos Segura','BANK™','Arianna Sanchez'];
+  // Name, value and poster page — read straight off AHA-Posters_Print-Final.pdf, whose
+  // every page carries "<Value> by <Name>", so the pairing comes from the artwork itself
+  // rather than from filenames. Page 33's line could not be parsed from the text layer —
+  // the poster itself reads "Resilience by Emma Bloom", which is also the only name the
+  // other 42 pages left unaccounted for.
+  const ROLL = [
+    ['John Wegner','Wellness'], ['Arianna Sanchez','Discipline'], ['Aaron Sutherland','Self-awareness'],
+    ['Tanner Woodford','Connect'], ['Amrita Haughn','Tolerance'], ['Annie Norris','Resilience'],
+    ['Bilal Syed','Self-awareness'], ['Brian M Woodard','Compassion'], ['Barry Deck','Sanity'],
+    ['BANK™','Responsibility'], ['Zoë Breillatt','Critical Thinking'], ['Carlos Segura','Self-awareness'],
+    ['Cass Pokora','Joy'], ['Cheryl Bever','Resilience'], ['Cath Dizon','Critical Thinking'],
+    ['Cristina Bottia','Resilience'], ['Cameron Sow','Originality'], ['Declan Kelly','Mindfulness'],
+    ['Frances Bedoya','Generosity'], ['Francis','Integrity'], ['Gabriella De La Hoya','Accountability'],
+    ['George Miller','Compassion'], ['Gregory Darteh','Openness'], ['Haley Helmold','Resilience'],
+    ['Kate Parks','Compassion'], ['Kyle Eertmoed','Courage'], ['Lawryn Johnson','Mindfulness'],
+    ['Lola Z.','Originality'], ['Max Epperson','Mindfulness'], ['Morgan Manasa','Responsibility'],
+    ['Neha Sunkara','Resilience'], ['Nick Adam','Integrity'], ['Emma Bloom','Resilience'],
+    ['Celeste Nunez','Tolerance'], ['Iana Evseeva','Mindfulness'], ['Reese Adara','Compassion'],
+    ['Sean Fermoyle','Joy'], ['Sadie Van Wie','Openness'], ['Carolyn Tubekis','Accountability'],
+    ['Wendy Robles','Joy'], ['David Sieren','Self-awareness'], ['Christian Solorzano','Honesty'],
+    ['Rick Valicenti','Compassion'] ].map((r,i)=>({ name:r[0], value:r[1], page:i+1 }));
+  const posters=[];   // one image per entry, from the print file's own pages
 
-  const P={ aspect:'1600/900', dur:20, size:126,
-    cell:8, contrast:0, jitter:56, blur:0, goo:0, wave:15, seed:1,
-    dotCol:'#ffffff', bg:'#000000', hue:47, aura:1, mv:0.5, play:true,
+  const P={ aspect:'1600/900', dur:300, size:126,
+    cell:22, contrast:0, jitter:56, blur:0, goo:7, wave:15, seed:1,
+    dotCol:'#ffffff', bg:'#000000', hue:47, aura:1, mv:0.5, spd:1.0, pos:0.55, posSc:1, posX:0.5, posY:0.5, auX:0, auY:0, play:true,
     glows:[ {color:'#2a0f4a', blur:34, opacity:0.95, disp:22},
             {color:'#7a2bd6', blur:48, opacity:0.60, disp:55} ] };
 
@@ -170,10 +204,7 @@
     CHARBOXES=[];
     if(name){
       lctx.fillStyle='#fff'; lctx.textAlign='left'; lctx.textBaseline='middle';
-      const cap=H*(0.03+(P.size/100)*0.26);
-      lctx.font=FONT(100);
-      const wide=Math.max(1, lctx.measureText(name).width);
-      const fontPx=Math.min(cap, 100*(W*0.86)/wide);
+      const fontPx=uniformPx();
       lctx.font=FONT(fontPx);
       // set it CHARACTER BY CHARACTER and keep a box for each: the halftone caps the dot
       // count per character, and one box round the whole name would coarsen the screen
@@ -188,6 +219,22 @@
       }
     }
     LDATA=lctx.getImageData(0,0,W,H).data;
+  }
+
+  // ONE size across the whole roll: the largest that still fits the LONGEST name.
+  // Fitting each name on its own made short names tower over long ones — the type
+  // should sit still and only the name change.
+  let _uni=0, _uniKey='';
+  function uniformPx(){
+    const key=[W,H,P.size,names.join('\u0001')].join('|');
+    if(_uni && _uniKey===key) return _uni;
+    _uniKey=key;
+    const cap=H*(0.03+(P.size/100)*0.26), measure=W*0.86;
+    lctx.font=FONT(100);
+    let px=cap;
+    for(const nm of names){ const wide=Math.max(1, lctx.measureText(nm).width);
+      px=Math.min(px, 100*measure/wide); }
+    return _uni = (isFinite(px)&&px>4) ? px : cap;
   }
 
   const hash=(i,j,s)=>{ const x=Math.sin(i*127.1+j*311.7+s*74.7)*43758.5453; return x-Math.floor(x); };
@@ -214,6 +261,16 @@
   function render(g,w,h,time){
     g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
     g.fillStyle=P.bg; g.fillRect(0,0,w,h);
+    // the poster behind the name — whole, never cropped, so the work stays readable
+    if(P.pos>0.004){
+      const im=posters[order[(idx<0?0:idx)%order.length]];
+      if(im && im.naturalWidth){
+        const k=Math.min(w/im.naturalWidth, h/im.naturalHeight)*P.posSc;
+        const pw=im.naturalWidth*k, ph=im.naturalHeight*k;
+        g.save(); g.globalAlpha=P.pos;
+        g.drawImage(im, P.posX*w-pw/2, P.posY*h-ph/2, pw, ph); g.restore();
+      }
+    }
     if(!LDATA) return;
     // Mitsuo caps a character at 15 dots because it sets ONE huge letter. A whole name
     // needs far more than that per character or it stops being readable, so the ceiling
@@ -255,8 +312,8 @@
     if(gGlow.width!==w||gGlow.height!==h){ gGlow.width=w; gGlow.height=h; }
     for(let i=0;i<P.glows.length;i++){ const L=P.glows[i];
       const ld=((L.disp||0)/100)*180*RS*P.aura;
-      const dx=ld + Math.sin(sp*0.6+i*1.7)*drift*22*RS,
-            dy=ld*0.7 + Math.cos(sp*0.5+i*2.3)*drift*20*RS;
+      const dx=ld + Math.sin(sp*0.6+i*1.7)*drift*22*RS + P.auX*1.6*RS,
+            dy=ld*0.7 + Math.cos(sp*0.5+i*2.3)*drift*20*RS + P.auY*1.6*RS;
       ggx.setTransform(1,0,0,1,0,0); ggx.globalAlpha=1; ggx.globalCompositeOperation='source-over'; ggx.filter='none'; ggx.clearRect(0,0,w,h);
       ggx.filter='blur('+(L.blur*RS*P.aura)+'px)'; ggx.drawImage(tintField(dotCv, auraCols[i], w, h),0,0); ggx.filter='none';
       g.save(); g.globalAlpha=L.opacity; g.drawImage(gGlow,dx,dy); g.drawImage(gGlow,dx,dy); g.restore(); }
@@ -268,11 +325,19 @@
   }
 
   /* ---------- the roll ---------- */
-  const list = () => ($('names').value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  let order=ROLL.map((_,i)=>i);
+  const mmss = sec => Math.floor(sec/60)+':'+String(Math.round(sec%60)).padStart(2,'0');
+  function paceText(){
+    if(!names.length) return '\u00a0';
+    const per=P.dur/names.length;
+    return names.length+' names in '+mmss(P.dur)+' \u2014 '+
+      (per>=1 ? per.toFixed(1)+'s each' : (1/per).toFixed(1)+' a second');
+  }
   function refresh(){
-    names=list();
-    $('count').textContent = names.length ? names.length+' names' : 'No names yet.';
-    $('pace').textContent = names.length ? (P.dur/names.length).toFixed(2)+'s each' : ' ';
+    names=order.map(i=>ROLL[i].name);
+    $('count').textContent = names.length+' names, each with their poster';
+    $('pace').textContent = paceText();
+    _uni=0;                                    // re-measure the one size
     idx=-1;
   }
   function setColours(i){
@@ -289,17 +354,17 @@
 
   function aspectWH(){ const p=(P.aspect||'1600/900').split(/[/:x]/).map(Number), a=p[0]||16, b=p[1]||9, long=1920;
     return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
-  function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; buildLetters(); }
+  function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; _uni=0; buildLetters(); }
   function tick(){ const now=performance.now(), dt=Math.min(0.05,(now-t0)/1000); t0=now;
     rollTick(dt);
-    if(P.play) clock+=dt;
+    if(P.play) clock+=dt*P.spd;
     render(ctx,W,H,clock); requestAnimationFrame(tick); }
 
   /* ---------- wire ---------- */
   function bind(id,rid,set,after){ const r=$(id), v=$(rid); if(!r) return;
     r.oninput=()=>{ set(+r.value); if(v) v.textContent=r.value; if(after) after(); }; }
   bind('dur','durR', v=>P.dur=v, refreshPace);
-  bind('size','sizeR', v=>P.size=v, ()=>buildLetters());
+  bind('size','sizeR', v=>{ P.size=v; _uni=0; }, ()=>buildLetters());
   bind('cell','cellR', v=>P.cell=v);
   bind('contrast','contrastR', v=>P.contrast=v);
   bind('jitter','jitterR', v=>P.jitter=v);
@@ -308,19 +373,22 @@
   bind('hue','hueR', v=>{ P.hue=v; setColours(idx<0?0:idx); });
   bind('aura','auraR', v=>P.aura=v/100);
   bind('mv','mvR', v=>P.mv=v/100);
-  function refreshPace(){ $('pace').textContent = names.length ? (P.dur/names.length).toFixed(2)+'s each' : ' '; }
-  $('names').addEventListener('input', ()=>{ refresh(); buildLetters(); });
+  bind('auX','auXR', v=>P.auX=v);
+  bind('auY','auYR', v=>P.auY=v);
+  bind('pos','posR', v=>P.pos=v/100);
+  bind('posSc','posScR', v=>P.posSc=v/100);
+  bind('posX','posXR', v=>P.posX=v/100, null);
+  bind('posY','posYR', v=>P.posY=v/100, null);
+  bind('wave','waveR', v=>P.wave=v);
+  bind('spd','spdR', v=>P.spd=v/10);
+  function refreshPace(){ $('pace').textContent = paceText(); }
   $('dotCol').oninput=e=>{ P.dotCol=e.target.value; setColours(idx<0?0:idx); };
   $('bg').oninput=e=>{ P.bg=e.target.value; };
   $('g0c').oninput=e=>{ P.glows[0].color=e.target.value; setColours(idx<0?0:idx); };
   $('g1c').oninput=e=>{ P.glows[1].color=e.target.value; setColours(idx<0?0:idx); };
-  $('dedupe').addEventListener('click',()=>{
-    const seen=new Set(), out=[];
-    for(const nm of list()){ const k=nm.toLocaleLowerCase(); if(seen.has(k)) continue; seen.add(k); out.push(nm); }
-    $('names').value=out.join('\n'); refresh(); buildLetters(); });
   $('shuffle').addEventListener('click',()=>{
-    const a=list(); for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; }
-    $('names').value=a.join('\n'); refresh(); rollT=0; buildLetters(); });
+    for(let i=order.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [order[i],order[j]]=[order[j],order[i]]; }
+    refresh(); rollT=0; buildLetters(); });
   $('restart').addEventListener('click',()=>{ rollT=0; idx=-1; });
   $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
   $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play));
@@ -361,7 +429,9 @@
     rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
       $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
 
-  $('names').value = ROLL_DEFAULT.join('\n');
+  ROLL.forEach((r,i)=>{ const im=new Image();
+    im.onload=()=>{ posters[i]=im; };
+    im.src='/lab/flash/posters/p-'+String(r.page).padStart(2,'0')+'.jpg'; });
   refresh(); setColours(0);
   if(document.fonts && document.fonts.load) document.fonts.load('400 80px "Sidepiece"').then(()=>buildLetters()).catch(()=>{});
   fit();
