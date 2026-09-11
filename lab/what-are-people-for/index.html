@@ -76,15 +76,19 @@
       <div class="group__t">Synapse</div>
       <label class="tog"><span>Spark the crossings</span><input type="checkbox" id="spkOn"></label>
       <div class="duo">
-        <div class="knob"><label>How many <b id="spkAmtR">45</b></label><input id="spkAmt" type="range" min="1" max="100" value="45"></div>
-        <div class="knob"><label>Size <b id="spkSizeR">2.6</b></label><input id="spkSize" type="range" min="4" max="90" value="26"></div>
+        <div class="knob"><label>How many <b id="spkAmtR">16</b></label><input id="spkAmt" type="range" min="1" max="70" value="16"></div>
+        <div class="knob"><label>Reach <b id="spkReachR">80</b></label><input id="spkReach" type="range" min="10" max="260" value="80"></div>
       </div>
       <div class="duo">
-        <div class="knob"><label>Glow <b id="spkGlowR">70</b></label><input id="spkGlow" type="range" min="0" max="100" value="70"></div>
-        <div class="knob"><label>Twinkle <b id="spkTwR">1.6</b></label><input id="spkTw" type="range" min="0" max="60" value="16"></div>
+        <div class="knob"><label>Branches <b id="spkBrR">3</b></label><input id="spkBr" type="range" min="0" max="5" value="3"></div>
+        <div class="knob"><label>Flicker <b id="spkLifeR">0.45</b></label><input id="spkLife" type="range" min="5" max="250" value="45"></div>
       </div>
-      <div class="crow"><label>Spark</label><input type="color" class="sw" id="spkC" value="#ffe66b"></div>
-      <p class="rowhint">Wherever two links cross, a spark fires — the network reads as something firing rather than a still diagram.</p>
+      <div class="duo">
+        <div class="knob"><label>Core <b id="spkCoreR">1.1</b></label><input id="spkCore" type="range" min="2" max="50" value="11"></div>
+        <div class="knob"><label>Glow <b id="spkGlowR">80</b></label><input id="spkGlow" type="range" min="0" max="100" value="80"></div>
+      </div>
+      <div class="crow"><label>Discharge</label><input type="color" class="sw" id="spkC" value="#7a5cff"></div>
+      <p class="rowhint">At the crossings, a discharge fires: a forked filament with a white-hot core and a coloured halo, gone in an instant and struck again somewhere else.</p>
     </div>
 
     <div class="group eng eng-thermal" hidden>
@@ -145,7 +149,7 @@
     const P={ aspect:'1080/1920', seed:1, char:'?', size:80, engine:'network',
       dens:100, disp:320, link:98, sw:0.6, lop:50,
       fill:'#ffffff', bg:'#000000', spd:1.0, play:true,
-      spkOn:false, spkAmt:45, spkSize:2.6, spkGlow:0.70, spkTw:1.6, spkC:'#ffe66b',
+      spkOn:false, spkAmt:16, spkReach:80, spkBr:3, spkLife:0.45, spkCore:1.1, spkGlow:0.80, spkC:'#7a5cff',
       // thermal field
       heatPal:'turbo', scat:120, drift:18, breath:0.55, bloom:14, gain:1.0, heat:0, grain:8 };
 
@@ -234,119 +238,106 @@
       g.stroke(); g.globalAlpha=1;
       const nr=Math.max(1, P.sw*1.6)*(W/1080); g.fillStyle=P.fill;
       for(const p of D){ g.beginPath(); g.arc(p[0],p[1],nr,0,TAU); g.fill(); }
-      if(keepSegs) drawSparks(g, segs, W, link, phase);
+      if(keepSegs){
+        const dphase=Math.max(0, Math.min(0.25, phase-lastPhase)); lastPhase=phase;
+        // strike at a handful of crossings a second; each bolt lives an instant
+        const want=P.spkAmt*dphase*3.0;
+        let fire=Math.floor(want) + (Math.random()<(want%1)?1:0);
+        if(fire>0 && bolts.length<70){
+          const pts2=crossings(segs, link, 260);     // only hunt crossings when one fires
+          if(pts2.length>=2) while(fire-- > 0 && bolts.length<70){
+            const k=((Math.random()*(pts2.length/2))|0)*2;
+            strike(pts2[k], pts2[k+1], W, H);
+          }
+        }
+        drawBolts(g, W, H, dphase);
+      }
     }
 
-    // ---- sparks at the crossings ---------------------------------------------
-    // Every pair of links would be millions of tests, so the segments go into a grid
-    // by their midpoint and only near neighbours are checked — the links are shorter
-    // than the link distance, so a cell that size catches the crossings that matter.
-    function drawSparks(g, segs, W, link, phase){
-      const N=segs.length/4; if(N<2) return;
+    // ---- discharge at the crossings ------------------------------------------
+    // Not a dot on every crossing — a forked filament that strikes, lives an instant
+    // and is gone, the way an arc does. Bolts are held in normalised coordinates so
+    // the same strike redraws correctly when the frame is exported larger.
+    let bolts=[], lastPhase=0, boltSeq=0;
+    function growBolt(x, y, ang, len, depth, rnd, out){
+      const steps=4+((rnd()*4)|0), line=[[x,y]];
+      let cx=x, cy=y, a=ang, step=len/steps;
+      for(let i=0;i<steps;i++){
+        a += (rnd()-0.5)*1.15;                       // the kink that makes it read as an arc
+        step *= 0.82+rnd()*0.3;
+        cx += Math.cos(a)*step; cy += Math.sin(a)*step;
+        line.push([cx,cy]);
+        // fork — the branching is what separates lightning from a squiggle
+        if(depth>0 && i>0 && rnd()<0.42)
+          growBolt(cx, cy, a+(rnd()<0.5?-1:1)*(0.5+rnd()*0.7), len*(0.42+rnd()*0.24), depth-1, rnd, out);
+      }
+      out.push(line);
+    }
+    function strike(px, py, W, H){
+      const sd=boltSeq++;
+      const rnd=(()=>{ let k=sd*9301+49297; return ()=>{ k=(k*9301+49297)%233280; return k/233280; }; })();
+      const lines=[];
+      const reach=(P.spkReach/100)*Math.min(W,H)*0.42;
+      const arms=1+((rnd()*2)|0);
+      for(let i=0;i<arms;i++) growBolt(px, py, rnd()*TAU, reach*(0.7+rnd()*0.6), P.spkBr, rnd, lines);
+      // normalise, so an export at another size strikes in the same place
+      bolts.push({ lines: lines.map(l=>l.map(pt=>[pt[0]/W, pt[1]/H])),
+                   born: 0, life: P.spkLife*(0.6+rnd()*0.8), x:px/W, y:py/H });
+    }
+    function drawBolts(g, W, H, dphase){
+      const keep=[];
+      g.save();
+      g.globalCompositeOperation='lighter';
+      g.lineCap='round'; g.lineJoin='round';
+      const sc=Math.min(W,H)/1080, core=Math.max(0.4,P.spkCore*sc), glow=P.spkGlow;
+      for(const bo of bolts){
+        bo.born += dphase;
+        const u=bo.born/Math.max(0.02,bo.life);
+        if(u>=1) continue; keep.push(bo);
+        // hot at the instant of the strike, guttering out
+        const a=Math.pow(1-u, 1.7) * (u<0.12 ? u/0.12 : 1);
+        // every filament of the bolt into ONE path, then stroke that path three times —
+        // a path per filament per pass was thirty strokes a bolt and cost half the frame
+        g.beginPath();
+        for(const l of bo.lines){ g.moveTo(l[0][0]*W,l[0][1]*H);
+          for(let i=1;i<l.length;i++) g.lineTo(l[i][0]*W,l[i][1]*H); }
+        if(glow>0.01){
+          g.strokeStyle=P.spkC; g.globalAlpha=a*0.5*glow; g.lineWidth=core*5.5; g.stroke();
+          g.globalAlpha=a*0.55*glow; g.lineWidth=core*2.2; g.stroke();
+        }
+        g.strokeStyle='#ffffff'; g.globalAlpha=a; g.lineWidth=core; g.stroke();
+        // the flare where it struck
+        g.globalAlpha=a*0.85; g.fillStyle='#ffffff';
+        g.beginPath(); g.arc(bo.x*W, bo.y*H, core*1.5, 0, TAU); g.fill();
+        if(glow>0.01){ g.globalAlpha=a*0.4*glow; g.fillStyle=P.spkC;
+          g.beginPath(); g.arc(bo.x*W, bo.y*H, core*6, 0, TAU); g.fill(); }
+      }
+      g.restore(); g.globalAlpha=1;
+      bolts=keep;
+    }
+    // the crossings — only enough of them to strike from, so this stays cheap
+    function crossings(segs, link, limit){
+      const N=segs.length/4, out=[]; if(N<2) return out;
       const cell=Math.max(24, link), buckets=new Map(), key=(cx,cy)=>cx*100000+cy;
       for(let s2=0;s2<N;s2++){ const o=s2*4;
         const mx=(segs[o]+segs[o+2])*0.5, my=(segs[o+1]+segs[o+3])*0.5;
         const k=key((mx/cell)|0,(my/cell)|0);
-        let a=buckets.get(k); if(!a){ a=[]; buckets.set(k,a); } a.push(s2); }
-
-      const sc=W/1080, r=Math.max(0.6, P.spkSize*sc), glow=P.spkGlow;
-      const amt=P.spkAmt/100, tw=P.spkTw, col=P.spkC;
-      // the budget is shared out per cell — spent globally it all went to the first few
-      // cells, which are neighbours, and the sparks piled into blobs
-      const MAXSPARK=2600; let drawn=0;
-      const perCell=Math.max(2, Math.ceil(MAXSPARK/Math.max(1,buckets.size)));
-      g.fillStyle=col;
-      for(const [k,arr] of buckets){
-        let here=0;
-        for(let ai=0; ai<arr.length && drawn<MAXSPARK && here<perCell; ai++){
+        let arr=buckets.get(k); if(!arr){ arr=[]; buckets.set(k,arr); } arr.push(s2); }
+      const per=Math.max(1, Math.ceil(limit/Math.max(1,buckets.size)));
+      for(const [,arr] of buckets){ let here=0;
+        for(let ai=0; ai<arr.length && here<per && out.length<limit; ai++){
           const A=arr[ai]*4, ax1=segs[A], ay1=segs[A+1], ax2=segs[A+2], ay2=segs[A+3];
-          for(let bi=ai+1; bi<arr.length && drawn<MAXSPARK && here<perCell; bi++){
+          for(let bi=ai+1; bi<arr.length && here<per && out.length<limit; bi++){
             const B=arr[bi]*4, bx1=segs[B], by1=segs[B+1], bx2=segs[B+2], by2=segs[B+3];
-            // shared endpoints are junctions, not crossings — the nodes already mark those
             if((ax1===bx1&&ay1===by1)||(ax1===bx2&&ay1===by2)||(ax2===bx1&&ay2===by1)||(ax2===bx2&&ay2===by2)) continue;
             const dx1=ax2-ax1, dy1=ay2-ay1, dx2=bx2-bx1, dy2=by2-by1;
             const den=dx1*dy2-dy1*dx2; if(den>-1e-9 && den<1e-9) continue;
             const ux=bx1-ax1, uy=by1-ay1;
             const t1=(ux*dy2-uy*dx2)/den; if(t1<0||t1>1) continue;
             const t2=(ux*dy1-uy*dx1)/den; if(t2<0||t2>1) continue;
-            const x=ax1+t1*dx1, y=ay1+t1*dy1;
-            // a stable pseudo-random per place, so a spark keeps its own rhythm as the
-            // field drifts rather than flickering at random every frame
-            const h=grand(((x*0.5)|0)*7919 + ((y*0.5)|0)*104729, 3.7);
-            if(h>amt) continue;
-            const pulse=0.5+0.5*Math.sin(phase*tw*2.4 + h*TAU*3.0);
-            const a2=0.25+0.75*pulse*pulse;
-            if(glow>0.01){ g.globalAlpha=a2*0.28*glow;
-              g.beginPath(); g.arc(x,y,r*3.2,0,TAU); g.fill(); }
-            g.globalAlpha=a2;
-            g.beginPath(); g.arc(x,y,r,0,TAU); g.fill();
-            drawn++; here++;
-          }
-        }
-        if(drawn>=MAXSPARK) break;
-      }
-      g.globalAlpha=1;
-    }
-
-    // ---- THERMAL FIELD (flux drawThermalField): the letterform seeds a blurred,
-    //      breathing organism. Radii, scatter, drift and blur all scale with the canvas,
-    //      so a 4K frame is the same field rendered larger — never a denser one. ----
-    let hiRes=false, recording=false;
-    function fieldW(W){ return Math.round(Math.min(W, hiRes?4096 : recording?1800 : (P.play?760:1500))); }
-    function drawThermal(g, W, H, t){
-      const k=Math.max(W,H)/1600;                       // 1 at the working size
-      const fw=fieldW(W), scale=fw/W, fh=Math.max(1,Math.round(H*scale));
-      const A=document.createElement('canvas'); A.width=fw; A.height=fh;
-      const a=A.getContext('2d');
-      a.fillStyle='#000'; a.fillRect(0,0,fw,fh); a.globalCompositeOperation='lighter';
-      const br=P.breath, spread=P.scat*k, drift=P.drift*k;
-      // the letterform itself as a soft warm mass, so it still reads through the field
-      if(glyphPath){ a.save(); a.scale(scale,scale); a.fillStyle='rgba(52,52,52,1)'; a.fill(glyphPath); a.restore(); }
-      for(let i=0;i<pts.length;i+=2){
-        let x=pts[i][0], y=pts[i][1];
-        if(spread){ const sa=grand(i*13,4.7)*TAU, sm=Math.pow(grand(i*13,2.9),1.6)*spread;
-          x+=Math.cos(sa)*sm; y+=Math.sin(sa)*sm; }
-        const ang=vnoise(x*0.005/k, y*0.005/k, t)*TAU*2;
-        x=(x+Math.cos(ang)*drift)*scale; y=(y+Math.sin(ang)*drift)*scale;
-        const seed=grand(i*61,3.3), pulse=0.5+0.5*Math.sin(t*1.4+seed*TAU);
-        const hotCore=grand(i*31,6.6)>0.87;                                  // rare bright emitters
-        let inten=hotCore?(0.72+0.28*grand(i,4.2)):Math.pow(grand(i,1.1),2.0);  // mostly dim
-        inten*=(1-br+br*pulse);
-        const rad=(7+Math.pow(grand(i,2.2),2)*72)*k*scale*(0.8+0.4*pulse*br)*(hotCore?1.25:1);
-        const c=Math.round(24+185*inten);
-        const rg=a.createRadialGradient(x,y,0,x,y,rad);
-        rg.addColorStop(0,'rgba('+c+','+c+','+c+',1)'); rg.addColorStop(1,'rgba(0,0,0,0)');
-        a.fillStyle=rg; a.beginPath(); a.arc(x,y,rad,0,TAU); a.fill();
-      }
-      const B=document.createElement('canvas'); B.width=fw; B.height=fh; const b=B.getContext('2d');
-      b.filter='blur('+Math.max(1.2, P.bloom*k*scale*0.7)+'px)'; b.drawImage(A,0,0); b.filter='none';
-      const img=b.getImageData(0,0,fw,fh), px=img.data, bias=P.heat/100, PAL=PALETTES[P.heatPal]||TURBO;
-      for(let i=0;i<px.length;i+=4){ const col=ramp(PAL, clamp(px[i]/255*P.gain+bias,0,1));
-        px[i]=col[0]; px[i+1]=col[1]; px[i+2]=col[2]; px[i+3]=255; }
-      b.putImageData(img,0,0);
-      // the cold end of the ramp is the field at rest — ground and vignette follow it
-      const cold=ramp(PAL,0), coldCSS='rgb('+cold[0]+','+cold[1]+','+cold[2]+')';
-      g.setTransform(1,0,0,1,0,0);
-      g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
-      g.fillStyle=coldCSS; g.fillRect(0,0,W,H); g.drawImage(B,0,0,W,H);
-      // additive glow would blow a light ground out to white — fade it as the ground brightens
-      const glow=0.32*(1-luma(cold));
-      if(glow>0.01){ g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=glow;
-        g.filter='blur('+(P.bloom*k*0.8)+'px)'; g.drawImage(B,0,0,W,H); g.restore(); g.filter='none'; g.globalAlpha=1; }
-      const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.16, W/2,H/2,Math.max(W,H)*0.72);
-      vg.addColorStop(0,'rgba('+cold[0]+','+cold[1]+','+cold[2]+',0)');
-      vg.addColorStop(1,'rgba('+cold[0]+','+cold[1]+','+cold[2]+',0.62)');
-      g.fillStyle=vg; g.fillRect(0,0,W,H);
-      if(P.grain) addGrain(g,W,H,P.grain);
-    }
-    function addGrain(g,W,H,amt){
-      const gw=300, gh=Math.max(1,Math.round(gw*H/W));
-      const c=document.createElement('canvas'); c.width=gw; c.height=gh; const gx=c.getContext('2d');
-      const id=gx.createImageData(gw,gh), d=id.data;
-      for(let i=0;i<d.length;i+=4){ const v=Math.random()*255; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; }
-      gx.putImageData(id,0,0);
-      g.save(); g.globalCompositeOperation='overlay'; g.globalAlpha=amt/100*0.45;
-      g.imageSmoothingEnabled=true; g.drawImage(c,0,0,W,H); g.restore(); g.globalAlpha=1;
+            out.push(ax1+t1*dx1, ay1+t1*dy1); here++;
+          } } }
+      return out;
     }
 
     // ---- sizing + loop ----
@@ -371,9 +362,11 @@
     bind('lop','lopR',v=>P.lop=v);
     bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
     bind('spkAmt','spkAmtR',v=>P.spkAmt=v);
-    bind('spkSize','spkSizeR',v=>P.spkSize=v/10, v=>(v/10).toFixed(1));
+    bind('spkReach','spkReachR',v=>P.spkReach=v);
+    bind('spkBr','spkBrR',v=>P.spkBr=v);
+    bind('spkLife','spkLifeR',v=>P.spkLife=v/100, v=>(v/100).toFixed(2));
+    bind('spkCore','spkCoreR',v=>P.spkCore=v/10, v=>(v/10).toFixed(1));
     bind('spkGlow','spkGlowR',v=>P.spkGlow=v/100);
-    bind('spkTw','spkTwR',v=>P.spkTw=v/10, v=>(v/10).toFixed(1));
     $('spkOn').onchange=e=>{ P.spkOn=e.target.checked; if(!P.play) drawNow(); };
     $('spkC').oninput=e=>{ P.spkC=e.target.value; if(!P.play) drawNow(); };
     bind('scat','scatR',v=>P.scat=v);
