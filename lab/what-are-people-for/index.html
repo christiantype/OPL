@@ -72,6 +72,21 @@
       <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#000000"></div>
     </div>
 
+    <div class="group eng eng-network">
+      <div class="group__t">Synapse</div>
+      <label class="tog"><span>Spark the crossings</span><input type="checkbox" id="spkOn"></label>
+      <div class="duo">
+        <div class="knob"><label>How many <b id="spkAmtR">45</b></label><input id="spkAmt" type="range" min="1" max="100" value="45"></div>
+        <div class="knob"><label>Size <b id="spkSizeR">2.6</b></label><input id="spkSize" type="range" min="4" max="90" value="26"></div>
+      </div>
+      <div class="duo">
+        <div class="knob"><label>Glow <b id="spkGlowR">70</b></label><input id="spkGlow" type="range" min="0" max="100" value="70"></div>
+        <div class="knob"><label>Twinkle <b id="spkTwR">1.6</b></label><input id="spkTw" type="range" min="0" max="60" value="16"></div>
+      </div>
+      <div class="crow"><label>Spark</label><input type="color" class="sw" id="spkC" value="#ffe66b"></div>
+      <p class="rowhint">Wherever two links cross, a spark fires — the network reads as something firing rather than a still diagram.</p>
+    </div>
+
     <div class="group eng eng-thermal" hidden>
       <div class="group__t">Thermal field</div>
       <select class="opal-input" id="heatPal">
@@ -130,6 +145,7 @@
     const P={ aspect:'1080/1920', seed:1, char:'?', size:80, engine:'network',
       dens:100, disp:320, link:98, sw:0.6, lop:50,
       fill:'#ffffff', bg:'#000000', spd:1.0, play:true,
+      spkOn:false, spkAmt:45, spkSize:2.6, spkGlow:0.70, spkTw:1.6, spkC:'#ffe66b',
       // thermal field
       heatPal:'turbo', scat:120, drift:18, breath:0.55, bloom:14, gain:1.0, heat:0, grain:8 };
 
@@ -207,14 +223,69 @@
       const cell=Math.max(8,link), cells=new Map(), key=(cx,cy)=>cx*100000+cy;
       for(let i=0;i<D.length;i++){ const cx=(D[i][0]/cell)|0, cy=(D[i][1]/cell)|0, k=key(cx,cy);
         let a=cells.get(k); if(!a){ a=[]; cells.set(k,a); } a.push(i); }
+      // the links are also kept when the sparks are on, so the crossings can be found
+      const keepSegs=P.spkOn, segs=[]; const SEGMAX=9000;
       g.strokeStyle=P.fill; g.lineWidth=P.sw*(W/1080); g.globalAlpha=P.lop/100; g.beginPath();
       for(let i=0;i<D.length;i++){ const pi=D[i], cx=(pi[0]/cell)|0, cy=(pi[1]/cell)|0;
         for(let ox=-1;ox<=1;ox++) for(let oy=-1;oy<=1;oy++){ const a=cells.get(key(cx+ox,cy+oy)); if(!a) continue;
           for(const j of a){ if(j<=i) continue; const pj=D[j], dx=pi[0]-pj[0], dy=pi[1]-pj[1];
-            if(dx*dx+dy*dy<l2){ g.moveTo(pi[0],pi[1]); g.lineTo(pj[0],pj[1]); } } } }
+            if(dx*dx+dy*dy<l2){ g.moveTo(pi[0],pi[1]); g.lineTo(pj[0],pj[1]);
+              if(keepSegs && segs.length<SEGMAX*4){ segs.push(pi[0],pi[1],pj[0],pj[1]); } } } } }
       g.stroke(); g.globalAlpha=1;
       const nr=Math.max(1, P.sw*1.6)*(W/1080); g.fillStyle=P.fill;
       for(const p of D){ g.beginPath(); g.arc(p[0],p[1],nr,0,TAU); g.fill(); }
+      if(keepSegs) drawSparks(g, segs, W, link, phase);
+    }
+
+    // ---- sparks at the crossings ---------------------------------------------
+    // Every pair of links would be millions of tests, so the segments go into a grid
+    // by their midpoint and only near neighbours are checked — the links are shorter
+    // than the link distance, so a cell that size catches the crossings that matter.
+    function drawSparks(g, segs, W, link, phase){
+      const N=segs.length/4; if(N<2) return;
+      const cell=Math.max(24, link), buckets=new Map(), key=(cx,cy)=>cx*100000+cy;
+      for(let s2=0;s2<N;s2++){ const o=s2*4;
+        const mx=(segs[o]+segs[o+2])*0.5, my=(segs[o+1]+segs[o+3])*0.5;
+        const k=key((mx/cell)|0,(my/cell)|0);
+        let a=buckets.get(k); if(!a){ a=[]; buckets.set(k,a); } a.push(s2); }
+
+      const sc=W/1080, r=Math.max(0.6, P.spkSize*sc), glow=P.spkGlow;
+      const amt=P.spkAmt/100, tw=P.spkTw, col=P.spkC;
+      // the budget is shared out per cell — spent globally it all went to the first few
+      // cells, which are neighbours, and the sparks piled into blobs
+      const MAXSPARK=2600; let drawn=0;
+      const perCell=Math.max(2, Math.ceil(MAXSPARK/Math.max(1,buckets.size)));
+      g.fillStyle=col;
+      for(const [k,arr] of buckets){
+        let here=0;
+        for(let ai=0; ai<arr.length && drawn<MAXSPARK && here<perCell; ai++){
+          const A=arr[ai]*4, ax1=segs[A], ay1=segs[A+1], ax2=segs[A+2], ay2=segs[A+3];
+          for(let bi=ai+1; bi<arr.length && drawn<MAXSPARK && here<perCell; bi++){
+            const B=arr[bi]*4, bx1=segs[B], by1=segs[B+1], bx2=segs[B+2], by2=segs[B+3];
+            // shared endpoints are junctions, not crossings — the nodes already mark those
+            if((ax1===bx1&&ay1===by1)||(ax1===bx2&&ay1===by2)||(ax2===bx1&&ay2===by1)||(ax2===bx2&&ay2===by2)) continue;
+            const dx1=ax2-ax1, dy1=ay2-ay1, dx2=bx2-bx1, dy2=by2-by1;
+            const den=dx1*dy2-dy1*dx2; if(den>-1e-9 && den<1e-9) continue;
+            const ux=bx1-ax1, uy=by1-ay1;
+            const t1=(ux*dy2-uy*dx2)/den; if(t1<0||t1>1) continue;
+            const t2=(ux*dy1-uy*dx1)/den; if(t2<0||t2>1) continue;
+            const x=ax1+t1*dx1, y=ay1+t1*dy1;
+            // a stable pseudo-random per place, so a spark keeps its own rhythm as the
+            // field drifts rather than flickering at random every frame
+            const h=grand(((x*0.5)|0)*7919 + ((y*0.5)|0)*104729, 3.7);
+            if(h>amt) continue;
+            const pulse=0.5+0.5*Math.sin(phase*tw*2.4 + h*TAU*3.0);
+            const a2=0.25+0.75*pulse*pulse;
+            if(glow>0.01){ g.globalAlpha=a2*0.28*glow;
+              g.beginPath(); g.arc(x,y,r*3.2,0,TAU); g.fill(); }
+            g.globalAlpha=a2;
+            g.beginPath(); g.arc(x,y,r,0,TAU); g.fill();
+            drawn++; here++;
+          }
+        }
+        if(drawn>=MAXSPARK) break;
+      }
+      g.globalAlpha=1;
     }
 
     // ---- THERMAL FIELD (flux drawThermalField): the letterform seeds a blurred,
@@ -299,6 +370,12 @@
     bind('sw','swR',v=>P.sw=v/10, v=>(v/10).toFixed(1));
     bind('lop','lopR',v=>P.lop=v);
     bind('spd','spdR',v=>P.spd=v, v=>(v/10).toFixed(1));
+    bind('spkAmt','spkAmtR',v=>P.spkAmt=v);
+    bind('spkSize','spkSizeR',v=>P.spkSize=v/10, v=>(v/10).toFixed(1));
+    bind('spkGlow','spkGlowR',v=>P.spkGlow=v/100);
+    bind('spkTw','spkTwR',v=>P.spkTw=v/10, v=>(v/10).toFixed(1));
+    $('spkOn').onchange=e=>{ P.spkOn=e.target.checked; if(!P.play) drawNow(); };
+    $('spkC').oninput=e=>{ P.spkC=e.target.value; if(!P.play) drawNow(); };
     bind('scat','scatR',v=>P.scat=v);
     bind('drift','driftR',v=>P.drift=v);
     bind('breath','breathR',v=>P.breath=v/100, v=>(v/100).toFixed(2));
