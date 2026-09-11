@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/lab/shared/gate.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Ink Circles — OP/AL</title>
+<link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
+<style>
+  :root{ --rail:300px; --top:120px; }
+  @media (max-width:560px){ :root{ --top:112px; } }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100vh; height:100dvh; overflow:hidden; background:var(--paper); font-family:var(--font,'IBM Plex Sans',system-ui,sans-serif); }
+  #dock{ position:fixed; top:var(--top); left:0; bottom:0; width:var(--rail); z-index:6; overflow-y:auto; }
+  #wrap{ position:fixed; top:var(--top); left:var(--rail); right:0; bottom:0; background:var(--mat);
+    display:flex; align-items:center; justify-content:center; padding:22px; }
+  #art{ max-width:100%; max-height:100%; display:block; }
+  #recDot{ position:fixed; top:calc(var(--top) + 14px); right:24px; z-index:11;
+    display:none; align-items:center; gap:7px; padding:6px 12px; font-size:11px; }
+  #recDot.on{ display:flex; }
+  #recDot i{ width:7px; height:7px; border-radius:50%; background:var(--rec); }
+  .group{ display:flex; flex-direction:column; gap:9px; }
+  .knob{ display:flex; flex-direction:column; gap:2px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
+  #words{ width:100%; resize:vertical; min-height:76px; font:inherit; }
+  [hidden]{ display:none !important; }
+</style>
+  <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
+</head>
+<body>
+  <script src="/lab/shared/opal.js"></script>
+  <script>Opal.mountTopbar({ name:'Ink Circles', desc:'A typewriter where every key prints its own splat',
+    about:'Every character on the keyboard owns an ink splat of its own — grown from one fixed seed, so the alphabet never changes and a letter prints the same mark every time. Each word is set around its own circle, a space starts a new circle, a return a new line of them. Neighbouring splats reach for each other through fine capillary threads, as if the ink were wicking through wet paper. Type, and it blooms. Choose the ink and the paper, the size of the letter and of the circle, how far the threads run. Export a still, or record the writing.' });</script>
+  <div id="sizeDock">
+    <span id="dimReadout">1080 × 1080</span>
+    <select id="aspect" title="Canvas size">
+      <option value="1400/1400" selected>Square · 1:1</option>
+      <option value="1280/1600">Portrait · 4:5</option>
+      <option value="1080/1920">Story · 9:16</option>
+      <option value="1600/900">Landscape · 16:9</option>
+    </select>
+  </div>
+  <div id="recDot"><i></i><b>0:00</b></div>
+
+  <div id="dock">
+    <div class="group">
+      <div class="group__t">Words</div>
+      <textarea id="words" rows="3" spellcheck="false" autocomplete="off">type</textarea>
+      <p class="rowhint">A word is set around its own circle; a space starts a new circle, a return a new line.</p>
+      <div class="grid2">
+        <button class="btn" id="clr">Clear</button>
+        <button class="btn" id="replay">Write again</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Ink</div>
+      <div class="crow"><label>Ink</label><input type="color" class="sw" id="ink" value="#16151a"></div>
+      <div class="crow"><label>Paper</label><input type="color" class="sw" id="paper" value="#e8e7e1"></div>
+      <label class="tog"><span>Guide circles</span><input type="checkbox" id="guides" checked></label>
+      <label class="tog"><span>Paper texture</span><input type="checkbox" id="grain" checked></label>
+    </div>
+
+    <div class="group">
+      <div class="group__t">Form</div>
+      <div class="knob"><label>Letter size <b id="sizeR">100</b></label><input id="size" type="range" min="50" max="220" step="5" value="100"></div>
+      <div class="knob"><label>Circle size <b id="spacingR">100</b></label><input id="spacing" type="range" min="60" max="220" step="5" value="100"></div>
+      <div class="knob"><label>Threads <b id="threadsR">100</b></label><input id="threads" type="range" min="0" max="250" step="10" value="100"></div>
+      <p class="rowhint">Threads are the capillaries between neighbouring splats — at zero the letters stand alone.</p>
+    </div>
+  </div>
+
+  <div id="wrap"><canvas id="art" width="1400" height="1400" role="img" aria-label="Words drawn as ink splats on circles"></canvas></div>
+
+  <div class="group out" id="output" data-export-custom>
+    <div class="group__t">Output</div>
+    <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
+  </div>
+
+  <script>
+  (function(){
+    const art=document.getElementById('art'), ctx=art.getContext('2d');
+    const $=id=>document.getElementById(id);
+
+    // The alphabet is grown from this seed. It is fixed on purpose: a key prints the
+    // same splat on every visit, on every device. Change it and you get a different
+    // alphabet entirely.
+    const SEED = 1, GS = 96;
+    const P={ aspect:'1400/1400', ink:'#16151a', paper:'#e8e7e1',
+      size:100, spacing:100, threads:100, guides:true, grain:true };
+
+    let INK, PAPER, UI, DARK;
+    let W=1400, H=1400, S=1, Z=1, G=34, RAD=62;
+    let cache={}, bcache={}, items=[], born={}, raf=null, paperCv=null;
+    const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const hex2rgb = h => { const n=parseInt(h.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
+    const lum = ([r,g,b]) => (0.2126*r + 0.7152*g + 0.0722*b)/255;
+    function rng(seed){ let s=seed>>>0; return()=>{ s=(s+0x6D2B79F5)>>>0; let t=s;
+      t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return((t^t>>>14)>>>0)/4294967296; }; }
+
+    /* ---------- glyphs: one seeded ink splat per character ---------- */
+    function glyph(ch){
+      if (cache[ch]) return cache[ch];
+      const res = 1.6;
+      const c = document.createElement('canvas'); c.width = c.height = GS*res;
+      const g = c.getContext('2d'); g.scale(res,res);
+      const cp = ch.codePointAt(0), low = ch.toLowerCase();
+      const isUp = ch !== low && [...low].length === 1;
+      const isDigit = /\p{N}/u.test(ch), isPunct = !/[\p{L}\p{N}]/u.test(ch);
+      const R = rng((isUp ? low.codePointAt(0) : cp) * 9301 + 49297 * SEED);
+      const cx = GS/2 + (R()-.5)*5, cy = GS/2 + (R()-.5)*5, MAX = GS*0.42;
+      const r0 = GS * (0.12 + R()*0.08) * (isUp ? 1.28 : 1);
+      const h=[]; for(let k=0;k<4;k++) h.push({f:2+Math.floor(R()*6), a:R()*0.2/(k+1)+0.03, p:R()*6.283});
+      const arms=[]; const na=Math.floor(R()*5)+(isUp?2:0);
+      for(let k=0;k<na;k++) arms.push({a:R()*6.283, w:0.07+R()*0.18, l:0.3+R()*1.1});
+      const rad = t => { let r=1;
+        h.forEach(o => r += o.a*Math.sin(o.f*t+o.p));
+        arms.forEach(o => { const d=Math.atan2(Math.sin(t-o.a),Math.cos(t-o.a)); r += o.l*Math.exp(-(d*d)/(2*o.w*o.w)); });
+        return Math.min(r0*r, MAX); };
+      const blob = (sc, fill, jit, stroke) => {
+        const N=96, pts=[];
+        for(let i=0;i<N;i++){ const t=i/N*6.2832, rr=rad(t)*sc*(1+(R()-.5)*jit); pts.push([cx+Math.cos(t)*rr, cy+Math.sin(t)*rr]); }
+        g.beginPath(); const a=pts[N-1], b=pts[0]; g.moveTo((a[0]+b[0])/2,(a[1]+b[1])/2);
+        for(let i=0;i<N;i++){ const p=pts[i], q=pts[(i+1)%N]; g.quadraticCurveTo(p[0],p[1],(p[0]+q[0])/2,(p[1]+q[1])/2); }
+        g.closePath(); g.fillStyle=fill; g.fill();
+        if(stroke){ g.strokeStyle=stroke; g.lineWidth=1.1; g.stroke(); } };
+      const drop = (x,y,s,ang,el,al) => { g.beginPath(); g.ellipse(x,y,s*el,s,ang,0,6.2832); g.fillStyle='rgba('+INK+','+al+')'; g.fill(); };
+
+      if (isPunct){
+        const Q = rng(cp*7727 + 1013*SEED), mode=(cp+SEED)%4, base=Q()*6.283, u=GS*0.3;
+        if (mode===0){ const n=3+Math.floor(Q()*5), len=u*(0.8+Q()*0.8);
+          for(let k=0;k<n;k++){ const f=k/(n-1)-0.5, d=f*len, wob=(Q()-.5)*u*0.15;
+            drop(cx+Math.cos(base)*d+Math.cos(base+1.57)*wob, cy+Math.sin(base)*d+Math.sin(base+1.57)*wob, GS*(0.02+Q()*0.05), base, 1+Q()*1.6, 0.9); } }
+        else if (mode===1){ const n=2+Math.floor(Q()*5);
+          for(let k=0;k<n;k++){ const a=Q()*6.283, d=Q()*u*0.55; drop(cx+Math.cos(a)*d, cy+Math.sin(a)*d, GS*(0.035+Q()*0.06), a, 1+Q()*0.9, 0.9); } }
+        else if (mode===2){ const n=5+Math.floor(Q()*8), rr=u*(0.35+Q()*0.4), sweep=2+Q()*4;
+          for(let k=0;k<n;k++){ const a=base+k/n*sweep; drop(cx+Math.cos(a)*rr, cy+Math.sin(a)*rr, GS*(0.012+Q()*0.035), a+1.57, 1+Q()*1.2, 0.88); } }
+        else { const s0=GS*(0.05+Q()*0.05), tl=u*(0.6+Q()*0.9);
+          const x1=cx+Math.cos(base)*tl, y1=cy+Math.sin(base)*tl;
+          g.beginPath(); g.moveTo(cx,cy); g.quadraticCurveTo(cx+Math.cos(base+0.5)*tl*0.5, cy+Math.sin(base+0.5)*tl*0.5, x1, y1);
+          g.strokeStyle='rgba('+INK+',0.85)'; g.lineWidth=s0*0.35; g.lineCap='round'; g.stroke();
+          drop(cx,cy,s0,base,1.2,0.92); drop(x1,y1,s0*0.35,base,1.5,0.9); }
+        for(let k=0;k<26;k++){ const a=Q()*6.283, d=Q()*u*1.1; drop(cx+Math.cos(a)*d, cy+Math.sin(a)*d, 0.3+Q()*0.6, 0, 1, 0.45+Q()*0.4); }
+        return cache[ch]=c;
+      }
+      arms.forEach(o => { if (R() < 0.6){
+        const d0=rad(o.a)*0.9, d1=Math.min(d0 + r0*(0.5+R()*0.9), MAX-3);
+        const x0=cx+Math.cos(o.a)*d0, y0=cy+Math.sin(o.a)*d0, x1=cx+Math.cos(o.a)*d1, y1=cy+Math.sin(o.a)*d1, bend=(R()-.5)*0.5;
+        g.beginPath(); g.moveTo(x0,y0);
+        g.quadraticCurveTo((x0+x1)/2+Math.cos(o.a+1.57)*bend*r0, (y0+y1)/2+Math.sin(o.a+1.57)*bend*r0, x1, y1);
+        g.strokeStyle='rgba('+INK+',0.85)'; g.lineWidth=r0*(0.05+R()*0.06); g.lineCap='round'; g.stroke();
+        drop(x1,y1,r0*(0.1+R()*0.12),o.a,1+R()*0.8,0.9); } });
+      blob(1, 'rgba('+INK+',0.97)', 0.05, 'rgba('+INK+',0.6)');
+      blob(0.72, 'rgba('+PAPER+',0.1)', 0.04);
+      blob(0.4, 'rgba('+PAPER+',0.06)', 0.03);
+      if (isDigit) blob(0.38 + R()*0.16, 'rgba('+PAPER+',0.72)', 0.1, 'rgba('+INK+',0.35)');
+      const ns = 3 + Math.floor(R()*10);
+      for(let k=0;k<ns;k++){
+        const ang = arms.length && R()<0.5 ? arms[Math.floor(R()*arms.length)].a+(R()-.5)*0.5 : R()*6.283;
+        const d = Math.min(r0*(1.35+R()*1.7), MAX-2);
+        const s = Math.max(0.6, r0*(0.2-0.05*(d/r0))*(0.4+R()));
+        drop(cx+Math.cos(ang)*d, cy+Math.sin(ang)*d, s, ang, 1+R()*1.4, 0.88);
+      }
+      for(let k=0;k<22;k++){ const ang=R()*6.283, d=Math.min(r0*(1.2+R()*1.9),MAX); drop(cx+Math.cos(ang)*d, cy+Math.sin(ang)*d, 0.3+R()*0.6, 0, 1, 0.5+R()*0.4); }
+      return cache[ch]=c;
+    }
+
+    /* ---------- capillary threads between neighbouring letters ---------- */
+    function bridge(key){
+      if (bcache[key]) return bcache[key];
+      let hs = SEED*7919 + key.length; for(const c of key) hs = Math.imul(hs ^ c.charCodeAt(0), 16777619);
+      const R = rng(hs), out=[], n = Math.round((3 + Math.floor(R()*4)) * P.threads/100);
+      for(let k=0;k<n;k++){
+        const fromA = k%2===0;
+        const u0 = fromA ? 0.1+R()*0.06 : 0.9-R()*0.06;
+        const u1 = 0.5 + (R()-.5)*0.14 + (fromA ? 0.07 : -0.07);
+        const steps = 16 + Math.floor(R()*8), du = (u1-u0)/steps;
+        let off = (R()-.5)*5; const pts=[];
+        for(let i=0;i<=steps;i++){ const f=i/steps; pts.push([u0+du*i, off, 1.6*(1-f)*(0.6+R()*0.6)+0.35]); off += (R()-.5)*1.9 - off*0.07; }
+        out.push({pts, s0:0, s1:1});
+        const nb = Math.floor(R()*3);
+        for(let b=0;b<nb;b++){
+          const si = 2 + Math.floor(R()*(steps-5)), sp = pts[si];
+          let o = sp[1]; const dir = R()<.5?-1:1, len = 3+Math.floor(R()*4), bp=[[sp[0],o,sp[2]*0.7]];
+          for(let j=1;j<=len;j++){ o += dir*(0.7+R()*1.3); bp.push([sp[0]+du*j*0.7, o, sp[2]*0.7*(1-j/len)+0.25]); }
+          const s0 = si/steps; out.push({pts:bp, s0, s1:Math.min(1, s0+0.3)});
+        }
+      }
+      return bcache[key]=out;
+    }
+
+    /* ---------- paper texture ---------- */
+    function makePaper(w,h){
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const g=c.getContext('2d');
+      g.fillStyle='rgb('+PAPER+')'; g.fillRect(0,0,w,h);
+      if(!P.grain) return c;
+      const R=rng(4242), count=Math.floor(w*h/260);
+      g.lineCap='round';
+      for(let i=0;i<count;i++){
+        const x=R()*w, y=R()*h, a=R()*6.283, l=4+R()*18;
+        g.strokeStyle = R()<0.5 ? 'rgba(255,255,255,'+(DARK ? 0.02+R()*0.05 : 0.15+R()*0.25)+')'
+                                : 'rgba('+(DARK ? '0,0,0' : UI)+','+(DARK ? 0.08+R()*0.1 : 0.02+R()*0.035)+')';
+        g.lineWidth = 0.4 + R()*0.6;
+        g.beginPath(); g.moveTo(x,y); g.quadraticCurveTo(x+Math.cos(a+0.4)*l*0.5, y+Math.sin(a+0.4)*l*0.5, x+Math.cos(a)*l, y+Math.sin(a)*l); g.stroke();
+      }
+      return c;
+    }
+
+    /* ---------- layout ---------- */
+    // The artboard is a fixed frame, so the block of circles is centred in it rather
+    // than growing a page — everything scales off the frame width, which is what keeps
+    // an export at any size the same composition.
+    function layout(w,h){
+      const pad=24*S, gap=8*S, maxR=(w - 2*pad - G)/2;
+      const r = Math.max(20, Math.min(RAD, maxR));
+      const mk = word => ({w:word, r, d:2*r+G});
+      const rows=[];
+      ($('words').value || '').split('\n').forEach(line => {
+        let cur=[], cw=0;
+        line.split(' ').forEach(word => {
+          const it=mk(word);
+          if(cur.length && cw + gap + it.d > w - 2*pad){ rows.push({a:cur,w:cw}); cur=[]; cw=0; }
+          cw += (cur.length ? gap : 0) + it.d; cur.push(it);
+        });
+        rows.push({a:cur, w:cw});
+      });
+      const total = rows.reduce((s,row) => s + Math.max(...row.a.map(i=>i.d)) + gap, 0) - gap;
+      let y = (h - total)/2;
+      items=[];
+      rows.forEach(row => {
+        const rh = Math.max(...row.a.map(i=>i.d)); let x=(w - row.w)/2;
+        row.a.forEach(it => { it.cx = x + it.d/2; it.cy = y + rh/2; x += it.d + gap; items.push(it); });
+        y += rh + gap;
+      });
+    }
+
+    function track(stagger){
+      const now=performance.now(); let i=0; const seen={};
+      items.forEach((it,wi) => { [...it.w].forEach((ch,ci) => {
+        const k=wi+':'+ci+':'+ch; seen[k]=1;
+        if(!(k in born)) born[k] = REDUCED ? -1e9 : now + (stagger ? i*90 : 0);
+        i++;
+      }); });
+      for(const k in born) if(!seen[k]) delete born[k];
+    }
+    const ease = t => { const c=1.9; return 1 + (c+1)*Math.pow(t-1,3) + c*Math.pow(t-1,2); };
+    const eout = t => 1 - Math.pow(1-t,3);
+
+    function drawBridge(g, it, thA, thB, b, p, z){
+      const dth = thB - thA;
+      b.forEach(t => {
+        const L=(p - t.s0)/(t.s1 - t.s0); if(L<=0) return;
+        const m=Math.floor(Math.min(1,L)*(t.pts.length-1)); let prev=null;
+        for(let i=0;i<=m;i++){
+          const q=t.pts[i], a=thA + q[0]*dth, rr=it.r + q[1]*z;
+          const x=it.cx + Math.cos(a)*rr, y=it.cy + Math.sin(a)*rr;
+          if(prev){ g.beginPath(); g.moveTo(prev[0],prev[1]); g.lineTo(x,y); g.lineWidth=q[2]*z; g.stroke(); }
+          prev=[x,y];
+        }
+        if(L>=1 && prev){ g.beginPath(); g.arc(prev[0],prev[1],0.8*z,0,6.2832); g.fill(); }
+      });
+    }
+    /* bend a glyph along its circle, stretching it to fill its share of the ring */
+    function drawWarped(g, img, it, thc, w, h){
+      if(w<0.5 || h<0.5) return;
+      const K=Math.max(6, Math.min(80, Math.round(w/3))), phi=w/it.r, sw=img.width/K, dw=w/K + 1.1;
+      for(let j=0;j<K;j++){
+        const a=thc - phi/2 + (j+0.5)/K*phi, rho=a + Math.PI/2, c=Math.cos(rho), sn=Math.sin(rho);
+        const x=it.cx + Math.cos(a)*it.r, y=it.cy + Math.sin(a)*it.r;
+        g.setTransform(c, sn, -sn, c, x, y);
+        g.drawImage(img, j*sw, 0, sw, img.height, -dw/2, -h/2, dw, h);
+      }
+      g.setTransform(1,0,0,1,0,0);
+    }
+
+    // `done` draws the finished writing regardless of the bloom clock — that is what
+    // an export needs, so a saved still is never caught mid-bloom.
+    function paint(g, w, h, z, gsz, done){
+      const now=performance.now(); let busy=false;
+      g.setTransform(1,0,0,1,0,0);
+      if(paperCv && paperCv.width===w && paperCv.height===h) g.drawImage(paperCv,0,0);
+      else { g.fillStyle='rgb('+PAPER+')'; g.fillRect(0,0,w,h); }
+      items.forEach((it,wi) => {
+        if(P.guides){ g.beginPath(); g.arc(it.cx,it.cy,it.r,0,6.2832);
+          g.strokeStyle='rgba('+UI+',0.1)'; g.lineWidth=0.75*Math.max(1,z); g.stroke(); }
+        const chs=[...it.w], n=chs.length; if(!n) return;
+        const step=6.2832/n, start=-Math.PI/2;
+        const arc=it.r*step, uni=Math.min(1, arc*1.15/gsz);
+        const gw=Math.max(gsz*uni, arc*0.94), gh=gsz*uni;
+        g.strokeStyle='rgba('+INK+',0.82)'; g.fillStyle='rgba('+INK+',0.82)'; g.lineCap='round';
+        for(let ci=0; ci<n; ci++){
+          const cj=(ci+1)%n;
+          const bA=born[wi+':'+ci+':'+chs[ci]]||0, bB=born[wi+':'+cj+':'+chs[cj]]||0;
+          let p = done ? 1 : (now - (Math.max(bA,bB) + 140))/800;
+          if(p<1) busy=true; if(p<=0) continue;
+          p = eout(Math.min(1,p));
+          const thA = start + ci*step;
+          drawBridge(g, it, thA, thA+step, bridge(wi+':'+ci+':'+chs[ci]+chs[cj]+':'+n), p, z);
+        }
+        chs.forEach((ch,ci) => {
+          const k=wi+':'+ci+':'+ch, t = done ? 1 : (now - (born[k]||0))/480;
+          if(t<1) busy=true; if(t<=0) return;
+          const s = t>=1 ? 1 : Math.max(0, ease(t)), th = start + ci*step;
+          g.globalAlpha = Math.min(1, t*2.5);
+          drawWarped(g, glyph(ch), it, th, gw*s, gh*s);
+          g.globalAlpha = 1;
+        });
+      });
+      return busy;
+    }
+    function draw(){ const busy = paint(ctx, W, H, Z, G, false); raf = busy ? requestAnimationFrame(draw) : null; }
+    function kick(){ if(!raf) raf = requestAnimationFrame(draw); }
+
+    /* ---------- sizing ---------- */
+    function aspectWH(){ const p=(P.aspect||'1400/1400').split(/[/:x]/).map(Number), a=p[0]||1, b=p[1]||1, long=1400;
+      return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
+    // everything scales off the frame width, so a word fills the frame the same way
+    // at any export size
+    function metrics(w){ const s=w/520; return { S:s, Z:s*P.size/100, G:34*s*P.size/100, RAD:62*s*P.spacing/100 }; }
+    function sizeUp(){
+      [W,H]=aspectWH(); art.width=W; art.height=H;
+      const m=metrics(W); S=m.S; Z=m.Z; G=m.G; RAD=m.RAD;
+      paperCv = makePaper(W,H);
+      layout(W,H); kick();
+    }
+    function applyColors(){
+      const i=hex2rgb(P.ink), p=hex2rgb(P.paper);
+      INK=i.join(','); PAPER=p.join(','); DARK=lum(p)<0.45; UI = DARK ? '242,241,236' : '22,21,26';
+      cache={}; paperCv=null;
+    }
+    function update(stagger){ layout(W,H); track(stagger); kick(); }
+
+    /* ---------- wire ---------- */
+    function bind(id,rid,set,after){ const r=$(id), v=$(rid); if(!r) return;
+      r.oninput=()=>{ set(+r.value); if(v) v.textContent=r.value; if(after) after(); }; }
+    bind('size','sizeR', v=>P.size=v, ()=>{ sizeUp(); });
+    bind('spacing','spacingR', v=>P.spacing=v, ()=>{ sizeUp(); });
+    bind('threads','threadsR', v=>P.threads=v, ()=>{ bcache={}; kick(); });
+    $('ink').oninput=e=>{ P.ink=e.target.value; applyColors(); sizeUp(); };
+    $('paper').oninput=e=>{ P.paper=e.target.value; applyColors(); sizeUp(); };
+    $('guides').onchange=e=>{ P.guides=e.target.checked; kick(); };
+    $('grain').onchange=e=>{ P.grain=e.target.checked; paperCv=makePaper(W,H); kick(); };
+    $('words').addEventListener('input', ()=>update(false));
+    $('clr').addEventListener('click', ()=>{ $('words').value=''; update(false); $('words').focus(); });
+    $('replay').addEventListener('click', ()=>{ born={}; update(true); });
+    $('aspect').addEventListener('change', e=>{ P.aspect=e.target.value; sizeUp(); });
+    // typing anywhere goes to the words — unless you are in another field, including a
+    // readout you are typing an exact value into
+    document.addEventListener('keydown', e => {
+      const a=document.activeElement;
+      if(a && (a.isContentEditable || ['INPUT','TEXTAREA','SELECT'].includes(a.tagName))) return;
+      if(e.key.length===1 && !e.metaKey && !e.ctrlKey && !e.altKey){ $('words').focus(); }
+    });
+
+    /* ---------- output ---------- */
+    Opal.mountOutput(art,'ink-circles',{ render:(long)=>{
+      const [aw,ah]=aspectWH(), sc=long/Math.max(aw,ah);
+      const w=Math.round(aw*sc), h=Math.round(ah*sc);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const m=metrics(w), keep={S,Z,G,RAD,paperCv,items:items.slice()};
+      S=m.S; Z=m.Z; G=m.G; RAD=m.RAD; paperCv=makePaper(w,h);
+      layout(w,h);
+      paint(c.getContext('2d'), w, h, Z, G, true);        // finished, never mid-bloom
+      S=keep.S; Z=keep.Z; G=keep.G; RAD=keep.RAD; paperCv=keep.paperCv; items=keep.items;
+      return c; } });
+    let rec=null, chunks=[], rt=0, tk=0;
+    $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
+      born={}; update(true);                              // record the writing from the first mark
+      const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+      const bits=Math.min(120e6, Math.max(12e6, Math.round(art.width*art.height*30*0.25)));
+      rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:bits}:undefined); chunks=[];
+      rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+      rec.onstop=()=>{ const ext=mime.indexOf('mp4')>=0?'mp4':'webm', blob=new Blob(chunks,{type:mime||'video/webm'});
+        if(blob.size>0){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ink-circles.'+ext; a.click(); }
+        else alert('The recorder produced no frames. Try a smaller canvas size.');
+        clearInterval(tk); $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
+      rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop';
+      rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
+        $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
+
+    applyColors(); sizeUp(); track(true); kick();
+  })();
+  </script>
+</body>
+</html>
