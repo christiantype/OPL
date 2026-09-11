@@ -7,8 +7,8 @@
 <title>Flash — OP/AL</title>
 <link rel="stylesheet" href="/lab/shared/opal.css?v=3" />
 <style>
-  @font-face{ font-family:'Sidepiece'; src:url('/shared/fonts/Sidepiece-HoneyPie.woff2') format('woff2');
-    font-weight:400; font-style:normal; font-display:swap; }
+  @font-face{ font-family:'Eunuverse'; src:url('/shared/fonts/Eunuverse-Roman.otf') format('opentype');
+    font-weight:400; font-style:normal; font-display:block; }
   :root{ --rail:300px; --top:120px; }
   @media (max-width:560px){ :root{ --top:112px; } }
   *{ box-sizing:border-box; }
@@ -26,16 +26,15 @@
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .rowhint{ font-size:12px; line-height:1.5; color:var(--mute); margin:0; }
-  #names{ width:100%; resize:vertical; min-height:130px; font:inherit; line-height:1.35; }
   [hidden]{ display:none !important; }
 </style>
   <link rel="stylesheet" href="/lab/shared/OPALAB.css?v=3" />
 </head>
 <body>
 <script src="/lab/shared/opal.js?v=3"></script>
-<script>Opal.mountTopbar({ name:'Flash', desc:'A roll of names, printed in dots',
-  about:'A list of names, one to a frame, each printed as Mitsuo’s halftone screen — a cell grid where every dot is sized by the letterform, so the dots ARE the name. The cut is hard: no fade, just the next name, and with every name the dots turn further round the colour wheel while the aura beneath follows. Names are fitted to the frame, so a long one sets smaller rather than running off the edge. Set how long the whole roll should take and the pace follows. Record starts on the first name and stops itself on the last.',
-  version:'v1' });</script>
+<script>Opal.mountTopbar({ name:'Flash', desc:'A roll of names, set in Eunuverse',
+  about:'Everyone in AHA, one name to a frame, set in Eunuverse Roman over their own poster. Every name is set at the same cap height — the size is a ceiling and the longest name sets it, so the type sits still and only the name changes. With each name the colour turns further round the wheel. Set how long the whole roll should take and the pace follows. Record renders the film as fast as the machine can encode it rather than playing it out in real time, so a five-minute roll saves in well under a minute.',
+  version:'v2' });</script>
 <div id="sizeDock">
   <span id="dimReadout">1920 × 1080</span>
   <select id="aspect" title="Canvas size">
@@ -57,38 +56,31 @@
 
   <div class="group">
     <div class="group__t">Roll</div>
-    <div class="duo">
-      <div class="knob"><label>Length <b id="durR">300</b></label><input id="dur" type="range" min="5" max="600" step="5" value="300"></div>
-      <div class="knob"><label>Size <b id="sizeR">126</b></label><input id="size" type="range" min="20" max="300" value="126"></div>
-    </div>
+    <div class="knob"><label>Total length, minutes <b id="durR">5</b></label><input id="dur" type="range" min="0.5" max="15" step="0.5" value="5"></div>
     <p class="rowhint" id="pace">&nbsp;</p>
+    <p class="rowhint">The whole roll fits inside it, so the pace follows from the count.</p>
     <div class="grid2"><button class="btn" id="restart">Restart</button><button class="btn" id="playBtn" aria-pressed="true">Pause</button></div>
   </div>
 
   <div class="group">
-    <div class="group__t">Dots</div>
-    <p class="rowhint">The name printed as a halftone screen — the dots <b>are</b> the letterform.</p>
+    <div class="group__t">Type</div>
+    <p class="rowhint">Eunuverse Roman. One cap height across the whole roll — Size is the ceiling and the longest name decides, so nothing towers over anything else.</p>
     <div class="duo">
-      <div class="knob"><label>Cell <b id="cellR">22</b></label><input id="cell" type="range" min="0" max="100" value="22"></div>
-      <div class="knob"><label>Contrast <b id="contrastR">0</b></label><input id="contrast" type="range" min="0" max="100" value="0"></div>
+      <div class="knob"><label>Size <b id="sizeR">126</b></label><input id="size" type="range" min="20" max="300" value="126"></div>
+      <div class="knob"><label>Tracking <b id="trackR">0</b></label><input id="track" type="range" min="-60" max="400" value="0"></div>
     </div>
+    <p class="rowhint">Tracking is in thousandths of an em, the way it is set in InDesign. The fit takes it into account, so opening the letters makes the type smaller rather than running it off the edge.</p>
     <div class="duo">
-      <div class="knob"><label>Size jitter <b id="jitterR">56</b></label><input id="jitter" type="range" min="0" max="100" value="56"></div>
-      <div class="knob"><label>Blur dots <b id="blurR">0</b></label><input id="blur" type="range" min="0" max="100" value="0"></div>
+      <div class="knob"><label>Across <b id="tyXR">0.50</b></label><input id="tyX" type="range" min="-20" max="120" value="50"></div>
+      <div class="knob"><label>Down <b id="tyYR">0.50</b></label><input id="tyY" type="range" min="-20" max="120" value="50"></div>
     </div>
-    <div class="knob"><label>Connect <b id="gooR">7</b></label><input id="goo" type="range" min="0" max="100" value="7"></div>
-    <div class="duo">
-      <div class="knob"><label>Breathe <b id="waveR">15</b></label><input id="wave" type="range" min="0" max="100" value="15"></div>
-      <div class="knob"><label>Speed <b id="spdR">1.0</b></label><input id="spd" type="range" min="0" max="30" value="10"></div>
-    </div>
-    <p class="rowhint">Breathe is the pulse travelling through the dots and Speed is how fast it and the aura drift — this is what there is to watch while a name is held.</p>
-    <div class="crow"><label>Dot colour</label><input type="color" class="sw" id="dotCol" value="#ffffff"></div>
+    <div class="crow"><label>Type colour</label><input type="color" class="sw" id="typeCol" value="#ffffff"></div>
   </div>
 
   <div class="group">
     <div class="group__t">Colour</div>
     <div class="knob"><label>Turn per name <b id="hueR">47</b></label><input id="hue" type="range" min="0" max="180" value="47"></div>
-    <p class="rowhint">Every name turns the colour further round the wheel. White or black dots have no hue to turn, so with the defaults it is the aura that changes and the dots stay white — give the dots a colour and they will turn too. At zero the roll holds one colour.</p>
+    <p class="rowhint">Every name turns the type further round the wheel. White and black have no hue to turn, so give the type a colour if you want the roll to change with it. At zero the roll holds one colour.</p>
     <div class="crow"><label>Background</label><input type="color" class="sw" id="bg" value="#000000"></div>
   </div>
 
@@ -102,23 +94,7 @@
       <div class="knob"><label>Across <b id="posXR">0.50</b></label><input id="posX" type="range" min="-50" max="150" value="50"></div>
       <div class="knob"><label>Down <b id="posYR">0.50</b></label><input id="posY" type="range" min="-50" max="150" value="50"></div>
     </div>
-    <p class="rowhint">The poster sits behind the name, whole and never cropped — the caption band is already trimmed off. Show at zero leaves the frame to the type alone; Across and Down place it, and they run past the edges so it can bleed.</p>
-  </div>
-
-  <div class="group">
-    <div class="group__t">Aura</div>
-    <p class="rowhint">Blurred, offset copies of the dot field beneath the dots — never the letterform, so no ghost of the type shows.</p>
-    <div class="crow"><label>Under</label><input type="color" class="sw" id="g0c" value="#2a0f4a"></div>
-    <div class="crow"><label>Over</label><input type="color" class="sw" id="g1c" value="#7a2bd6"></div>
-    <div class="duo">
-      <div class="knob"><label>Spread <b id="auraR">35</b></label><input id="aura" type="range" min="0" max="200" value="35"></div>
-      <div class="knob"><label>Drift <b id="mvR">50</b></label><input id="mv" type="range" min="0" max="100" value="50"></div>
-    </div>
-    <div class="duo">
-      <div class="knob"><label>Offset across <b id="auXR">-25</b></label><input id="auX" type="range" min="-100" max="100" value="-25"></div>
-      <div class="knob"><label>Offset down <b id="auYR">0</b></label><input id="auY" type="range" min="-100" max="100" value="0"></div>
-    </div>
-    <p class="rowhint">Offset shifts the whole aura off the type — the further it goes the more the glow reads as a cast shadow rather than a halo.</p>
+    <p class="rowhint">The posters are the 24 × 36 artwork, whole and never cropped — the caption band is trimmed off at the artwork edge. Show at zero leaves the frame to the type alone; Across and Down place it, and they run past the edges so it can bleed.</p>
   </div>
 </div>
 
@@ -126,6 +102,7 @@
 
 <div class="group out" id="output" data-export-custom>
   <div class="group__t">Output</div>
+  <p class="rowhint" id="recLen">&nbsp;</p>
   <div class="grid2"><button class="btn" id="recBtn">Record</button><button class="btn" id="saveBtn">Save</button></div>
 </div>
 
@@ -133,7 +110,7 @@
 'use strict';
 (function(){
   const $=id=>document.getElementById(id);
-  const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
   // Name, value and poster page — read straight off AHA-Posters_Print-Final.pdf, whose
   // every page carries "<Value> by <Name>", so the pairing comes from the artwork itself
@@ -158,26 +135,20 @@
     ['Rick Valicenti','Compassion'] ].map((r,i)=>({ name:r[0], value:r[1], page:i+1 }));
   const posters=[];   // one image per entry, from the print file's own pages
 
-  const P={ aspect:'1600/900', dur:300, size:126,
-    cell:22, contrast:0, jitter:56, blur:0, goo:7, wave:15, seed:1,
-    dotCol:'#ffffff', bg:'#000000', hue:47, aura:0.35, mv:0.5, spd:1.0, pos:0.52, posSc:0.73, posX:0.5, posY:0.5, auX:-25, auY:0, play:true,
-    glows:[ {color:'#2a0f4a', blur:34, opacity:0.95, disp:22},
-            {color:'#7a2bd6', blur:48, opacity:0.60, disp:55} ] };
+  const P={ aspect:'1600/900', mins:5, dur:300, size:126, track:0, tyX:0.5, tyY:0.5,
+    typeCol:'#ffffff', bg:'#000000', hue:47,
+    pos:0.52, posSc:0.73, posX:0.5, posY:0.5, play:true };
 
-  let W=1080, H=1920, RS=1, LDATA=null, CHARBOXES=[], t0=performance.now(), clock=0;
-  let names=[], idx=-1, rollT=0, inkCol=P.dotCol, auraCols=P.glows.map(g=>g.color);
+  let W=1600, H=900, t0=performance.now();
+  let names=[], idx=-1, rollT=0, inkCol=P.typeCol;
 
-  const letterCv=document.createElement('canvas'), lctx=letterCv.getContext('2d',{willReadFrequently:true});
-  const dotCv=document.createElement('canvas'), dctx=dotCv.getContext('2d');
-  const d2=document.createElement('canvas'), d2ctx=d2.getContext('2d',{willReadFrequently:true});
-  const tintCv=document.createElement('canvas'), tctx=tintCv.getContext('2d');
-  const gGlow=document.createElement('canvas'), ggx=gGlow.getContext('2d');
   const art=$('art'), ctx=art.getContext('2d');
+  const mCv=document.createElement('canvas'), mctx=mCv.getContext('2d');   // for measuring only
+  const FONT=fp=>'400 '+fp+'px "Eunuverse",'+'"Arial Black",system-ui,sans-serif';
 
   const hex=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
-  const FONT=fp=>'400 '+fp+'px "Sidepiece","Arial Black",system-ui,sans-serif';
 
-  // the colour walks the wheel, a step per name — the aura walks with it
+  // the colour walks the wheel, a step per name
   function hueStep(hexc, deg){
     let [r,g,b]=hex(hexc).map(v=>v/255);
     const mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2; let h=0, sat=0;
@@ -195,73 +166,56 @@
     return '#'+to(hk(h+1/3))+to(hk(h))+to(hk(h-1/3));
   }
 
-  // ---- the name → white letterform, FITTED to the frame ----------------------
-  // These run long ("Gabriella De La Hoya"), so the size control is a ceiling and the
-  // name is scaled down to the measure rather than allowed to run off the edge.
-  function buildLetters(){
-    letterCv.width=W; letterCv.height=H; lctx.clearRect(0,0,W,H);
-    const name = names.length ? names[((idx<0?0:idx)%names.length+names.length)%names.length] : '';
-    CHARBOXES=[];
-    if(name){
-      lctx.fillStyle='#fff'; lctx.textAlign='left'; lctx.textBaseline='middle';
-      const fontPx=uniformPx();
-      lctx.font=FONT(fontPx);
-      // set it CHARACTER BY CHARACTER and keep a box for each: the halftone caps the dot
-      // count per character, and one box round the whole name would coarsen the screen
-      // until the entire name was fifteen dots.
-      const chs=[...name], widths=chs.map(c=>lctx.measureText(c).width);
-      const tot=widths.reduce((a,b)=>a+b,0);
-      let x=W/2-tot/2; const y=H/2;
-      for(let k=0;k<chs.length;k++){
-        if(chs[k].trim()){ lctx.fillText(chs[k], x, y);
-          CHARBOXES.push({x0:x, x1:x+widths[k], y0:y-fontPx*0.6, y1:y+fontPx*0.6}); }
-        x+=widths[k];
-      }
+  /* ---------- setting a name ---------------------------------------------------
+     Widths are measured once at 100px and scale linearly, tracking included, so the
+     fit is a division rather than a search. ONE size serves the whole roll: the
+     largest that still fits the longest name, so short names never tower over long
+     ones and the cap height never moves. */
+  const REF=100;
+  let _m=null, _mKey='';
+  function metrics(){
+    const key=names.join('');
+    if(_m && _mKey===key) return _m;
+    _mKey=key;
+    mctx.font=FONT(REF);
+    const cap=mctx.measureText('H');
+    const capH=(cap.actualBoundingBoxAscent||REF*0.72)/REF;     // in ems, the same for every name
+    const per=names.map(nm=>{
+      const chs=[...nm], w=chs.map(c=>mctx.measureText(c).width/REF);
+      return { chs, w, sum:w.reduce((a,b)=>a+b,0) };
+    });
+    return _m={ capH, per };
+  }
+  function fontPxFor(w,h){
+    const M=metrics(); if(!M.per.length) return 10;
+    const ceiling=h*(0.03+(P.size/100)*0.26), measure=w*0.86, tr=P.track/1000;
+    let px=ceiling;
+    for(const e of M.per){
+      const em=e.sum + tr*Math.max(0,e.chs.length-1);
+      if(em>0) px=Math.min(px, measure/em);
     }
-    LDATA=lctx.getImageData(0,0,W,H).data;
+    return (isFinite(px)&&px>4) ? px : ceiling;
+  }
+  function drawName(g,w,h){
+    if(!names.length) return;
+    const M=metrics(), e=M.per[((idx<0?0:idx)%names.length+names.length)%names.length];
+    if(!e) return;
+    const px=fontPxFor(w,h), tr=(P.track/1000)*px;
+    const total=e.sum*px + tr*Math.max(0,e.chs.length-1);
+    // baseline from the cap height alone, so a descender or an accent never shifts the line
+    const capPx=M.capH*px;
+    let x=P.tyX*w - total/2;
+    const base=P.tyY*h + capPx/2;
+    g.save();
+    g.font=FONT(px); g.textAlign='left'; g.textBaseline='alphabetic'; g.fillStyle=inkCol;
+    for(let k=0;k<e.chs.length;k++){ g.fillText(e.chs[k], x, base); x+=e.w[k]*px+tr; }
+    g.restore();
   }
 
-  // ONE size across the whole roll: the largest that still fits the LONGEST name.
-  // Fitting each name on its own made short names tower over long ones — the type
-  // should sit still and only the name change.
-  let _uni=0, _uniKey='';
-  function uniformPx(){
-    const key=[W,H,P.size,names.join('\u0001')].join('|');
-    if(_uni && _uniKey===key) return _uni;
-    _uniKey=key;
-    const cap=H*(0.03+(P.size/100)*0.26), measure=W*0.86;
-    lctx.font=FONT(100);
-    let px=cap;
-    for(const nm of names){ const wide=Math.max(1, lctx.measureText(nm).width);
-      px=Math.min(px, 100*measure/wide); }
-    return _uni = (isFinite(px)&&px>4) ? px : cap;
-  }
-
-  const hash=(i,j,s)=>{ const x=Math.sin(i*127.1+j*311.7+s*74.7)*43758.5453; return x-Math.floor(x); };
-  const covA=(x,y,w)=>{ x|=0; y|=0; if(x<0||y<0||x>=w||!LDATA) return 0; const idx2=((y*w+x)<<2)+3; return idx2<LDATA.length?LDATA[idx2]/255:0; };
-  function busiestCharDots(cell,w,h){
-    const n=CHARBOXES.length; if(!n) return 0;
-    const cx=w/2, cy=h/2, Nx=Math.ceil(w/cell/2)+1, Ny=Math.ceil(h/cell/2)+1, counts=new Int32Array(n); let mx=0;
-    for(let i=-Nx;i<=Nx;i++){ for(let j=-Ny;j<=Ny;j++){
-      const x=cx+i*cell, y=cy+j*cell; if(covA(x,y,w)<=0.03) continue;
-      for(let b=0;b<n;b++){ const B=CHARBOXES[b]; if(x>=B.x0&&x<B.x1&&y>=B.y0&&y<B.y1){ if(++counts[b]>mx) mx=counts[b]; break; } }
-    }}
-    return mx;
-  }
-  // tint the DOT FIELD into a colour — the aura is made of the dots themselves,
-  // never a letterform, so no ghost of the type shows through it
-  function tintField(src, color, w, h){
-    if(tintCv.width!==w||tintCv.height!==h){ tintCv.width=w; tintCv.height=h; }
-    tctx.setTransform(1,0,0,1,0,0); tctx.globalCompositeOperation='source-over'; tctx.clearRect(0,0,w,h);
-    tctx.drawImage(src,0,0); tctx.globalCompositeOperation='source-in';
-    tctx.fillStyle=color; tctx.fillRect(0,0,w,h); tctx.globalCompositeOperation='source-over'; return tintCv;
-  }
-
-  // ---- one frame: the halftone screen, its aura, and the dots on top ---------
-  function render(g,w,h,time){
+  /* ---------- one frame ---------- */
+  function render(g,w,h){
     g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='source-over'; g.globalAlpha=1; g.filter='none';
     g.fillStyle=P.bg; g.fillRect(0,0,w,h);
-    // the poster behind the name — whole, never cropped, so the work stays readable
     if(P.pos>0.004){
       const im=posters[order[(idx<0?0:idx)%order.length]];
       if(im && im.naturalWidth){
@@ -271,124 +225,64 @@
         g.drawImage(im, P.posX*w-pw/2, P.posY*h-ph/2, pw, ph); g.restore();
       }
     }
-    if(!LDATA) return;
-    // Mitsuo caps a character at 15 dots because it sets ONE huge letter. A whole name
-    // needs far more than that per character or it stops being readable, so the ceiling
-    // is raised and Cell is left to set the screen.
-    const MAXDOTS=70;
-    let cell=(6+(P.cell/100)*46)*RS;
-    if(CHARBOXES.length){ let N=busiestCharDots(cell,w,h), guard=0;
-      while(N>MAXDOTS && guard++<24){ cell*=Math.max(1.1, Math.sqrt(N/MAXDOTS)); N=busiestCharDots(cell,w,h); } }
-    const cx=w/2, cy=h/2;
-    const Nx=Math.ceil(w/cell/2)+1, Ny=Math.ceil(h/cell/2)+1, gamma=0.12+(1-P.contrast/100)*2.0;
-    const rad=0.62 + Math.max(0,(P.contrast-55)/45)*0.30;
-    const jit=P.jitter/100, waveA=P.wave/100, t=time, blurFrac=P.blur/100, s1=(P.seed||1)>>>0;
-    if(dotCv.width!==w||dotCv.height!==h){ dotCv.width=w; dotCv.height=h; }
-    dctx.setTransform(1,0,0,1,0,0); dctx.globalCompositeOperation='source-over'; dctx.filter='none';
-    dctx.clearRect(0,0,w,h); dctx.fillStyle=inkCol;
-    const soft=[];
-    for(let i=-Nx;i<=Nx;i++){ for(let j=-Ny;j<=Ny;j++){
-      const x=cx+i*cell, y=cy+j*cell;
-      if(x<-cell||x>w+cell||y<-cell||y>h+cell) continue;
-      const c=covA(x,y,w); if(c<=0.03) continue;
-      let cc=Math.pow(c,gamma); if(cc>1) cc=1;
-      let r=cell*rad*cc; r*=(1+(hash(i,j,s1)-0.5)*jit*1.4);
-      if(waveA>0) r*=1+waveA*0.5*Math.sin(x*0.018 - t*2.2 + y*0.006);
-      if(r<0.35) continue;
-      if(blurFrac>0 && hash(i,j,s1+7) < blurFrac) soft.push([x,y,r]);
-      else { dctx.beginPath(); dctx.arc(x,y,r,0,TAU); dctx.fill(); }
-    }}
-    if(P.goo>0){
-      const conn=(P.goo/100)*cell*1.1;
-      if(d2.width!==w||d2.height!==h){ d2.width=w; d2.height=h; }
-      d2ctx.setTransform(1,0,0,1,0,0); d2ctx.globalCompositeOperation='source-over'; d2ctx.filter='none'; d2ctx.clearRect(0,0,w,h);
-      d2ctx.filter='blur('+conn.toFixed(1)+'px)'; d2ctx.drawImage(dotCv,0,0); d2ctx.filter='none';
-      const im=d2ctx.getImageData(0,0,w,h), D=im.data, dc=hex(inkCol), T=128;
-      for(let k=0;k<D.length;k+=4){ if(D[k+3]>=T){ D[k]=dc[0]; D[k+1]=dc[1]; D[k+2]=dc[2]; D[k+3]=255; } else D[k+3]=0; }
-      d2ctx.putImageData(im,0,0);
-      dctx.clearRect(0,0,w,h); dctx.drawImage(d2,0,0);
-    }
-    const drift=P.mv, sp=time;
-    if(gGlow.width!==w||gGlow.height!==h){ gGlow.width=w; gGlow.height=h; }
-    for(let i=0;i<P.glows.length;i++){ const L=P.glows[i];
-      const ld=((L.disp||0)/100)*180*RS*P.aura;
-      const dx=ld + Math.sin(sp*0.6+i*1.7)*drift*22*RS + P.auX*1.6*RS,
-            dy=ld*0.7 + Math.cos(sp*0.5+i*2.3)*drift*20*RS + P.auY*1.6*RS;
-      ggx.setTransform(1,0,0,1,0,0); ggx.globalAlpha=1; ggx.globalCompositeOperation='source-over'; ggx.filter='none'; ggx.clearRect(0,0,w,h);
-      ggx.filter='blur('+(L.blur*RS*P.aura)+'px)'; ggx.drawImage(tintField(dotCv, auraCols[i], w, h),0,0); ggx.filter='none';
-      g.save(); g.globalAlpha=L.opacity; g.drawImage(gGlow,dx,dy); g.drawImage(gGlow,dx,dy); g.restore(); }
-    g.filter='none'; g.globalAlpha=1;
-    g.drawImage(dotCv,0,0);
-    if(soft.length){ g.save(); g.fillStyle=inkCol;
-      for(const s of soft){ g.filter='blur('+(s[2]*0.5).toFixed(1)+'px)'; g.beginPath(); g.arc(s[0],s[1],s[2],0,TAU); g.fill(); }
-      g.restore(); g.filter='none'; }
+    drawName(g,w,h);
   }
 
   /* ---------- the roll ---------- */
   let order=ROLL.map((_,i)=>i);
   const mmss = sec => Math.floor(sec/60)+':'+String(Math.round(sec%60)).padStart(2,'0');
   function paceText(){
-    if(!names.length) return '\u00a0';
+    if(!names.length) return ' ';
     const per=P.dur/names.length;
-    return names.length+' names in '+mmss(P.dur)+' \u2014 '+
+    return names.length+' names in '+mmss(P.dur)+' — '+
       (per>=1 ? per.toFixed(1)+'s each' : (1/per).toFixed(1)+' a second');
   }
   function refresh(){
     names=order.map(i=>ROLL[i].name);
     $('count').textContent = names.length+' names, each with their poster';
-    $('pace').textContent = paceText();
-    _uni=0;                                    // re-measure the one size
+    refreshPace();
+    _m=null; _mKey='';
     idx=-1;
   }
-  function setColours(i){
-    inkCol   = P.hue ? hueStep(P.dotCol, i*P.hue) : P.dotCol;
-    auraCols = P.glows.map(g2 => P.hue ? hueStep(g2.color, i*P.hue) : g2.color);
-  }
-  function rollTick(dt){
-    if(!names.length) return;
-    if(P.play) rollT += dt;
+  function refreshPace(){ $('pace').textContent = paceText();
+    const r=$('recLen'); if(r) r.textContent = 'Renders the whole roll — '+mmss(P.dur); }
+  function setColours(i){ inkCol = P.hue ? hueStep(P.typeCol, i*P.hue) : P.typeCol; }
+  function indexAt(t){
+    if(!names.length) return 0;
     const per=P.dur/names.length;
-    const i=Math.floor((rollT % P.dur)/per);
-    if(i!==idx){ idx=i; setColours(i); buildLetters(); }
+    return Math.floor(((t % P.dur)+P.dur) % P.dur / per) % names.length;
   }
+  function seek(t){ const i=indexAt(t); if(i!==idx){ idx=i; setColours(i); } }
 
   function aspectWH(){ const p=(P.aspect||'1600/900').split(/[/:x]/).map(Number), a=p[0]||16, b=p[1]||9, long=1920;
     return a>=b ? [long, Math.round(long*b/a)] : [Math.round(long*a/b), long]; }
-  function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; _uni=0; buildLetters(); }
+  function fit(){ [W,H]=aspectWH(); art.width=W; art.height=H; }
   function tick(){ const now=performance.now(), dt=Math.min(0.05,(now-t0)/1000); t0=now;
-    rollTick(dt);
-    if(P.play) clock+=dt*P.spd;
-    render(ctx,W,H,clock); requestAnimationFrame(tick); }
+    if(!offline){
+      if(P.play) rollT+=dt;
+      seek(rollT);
+      render(ctx,W,H);
+    }
+    requestAnimationFrame(tick); }
 
   /* ---------- wire ---------- */
   function bind(id,rid,set,after){ const r=$(id), v=$(rid); if(!r) return;
     r.oninput=()=>{ set(+r.value); if(v) v.textContent=r.value; if(after) after(); }; }
-  bind('dur','durR', v=>P.dur=v, refreshPace);
-  bind('size','sizeR', v=>{ P.size=v; _uni=0; }, ()=>buildLetters());
-  bind('cell','cellR', v=>P.cell=v);
-  bind('contrast','contrastR', v=>P.contrast=v);
-  bind('jitter','jitterR', v=>P.jitter=v);
-  bind('blur','blurR', v=>P.blur=v);
-  bind('goo','gooR', v=>P.goo=v);
+  bind('dur','durR', v=>{ P.mins=v; P.dur=v*60; }, refreshPace);
+  bind('size','sizeR', v=>P.size=v);
+  bind('track','trackR', v=>P.track=v);
+  bind('tyX','tyXR', v=>P.tyX=v/100);
+  bind('tyY','tyYR', v=>P.tyY=v/100);
   bind('hue','hueR', v=>{ P.hue=v; setColours(idx<0?0:idx); });
-  bind('aura','auraR', v=>P.aura=v/100);
-  bind('mv','mvR', v=>P.mv=v/100);
-  bind('auX','auXR', v=>P.auX=v);
-  bind('auY','auYR', v=>P.auY=v);
   bind('pos','posR', v=>P.pos=v/100);
   bind('posSc','posScR', v=>P.posSc=v/100);
-  bind('posX','posXR', v=>P.posX=v/100, null);
-  bind('posY','posYR', v=>P.posY=v/100, null);
-  bind('wave','waveR', v=>P.wave=v);
-  bind('spd','spdR', v=>P.spd=v/10);
-  function refreshPace(){ $('pace').textContent = paceText(); }
-  $('dotCol').oninput=e=>{ P.dotCol=e.target.value; setColours(idx<0?0:idx); };
+  bind('posX','posXR', v=>P.posX=v/100);
+  bind('posY','posYR', v=>P.posY=v/100);
+  $('typeCol').oninput=e=>{ P.typeCol=e.target.value; setColours(idx<0?0:idx); };
   $('bg').oninput=e=>{ P.bg=e.target.value; };
-  $('g0c').oninput=e=>{ P.glows[0].color=e.target.value; setColours(idx<0?0:idx); };
-  $('g1c').oninput=e=>{ P.glows[1].color=e.target.value; setColours(idx<0?0:idx); };
   $('shuffle').addEventListener('click',()=>{
     for(let i=order.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [order[i],order[j]]=[order[j],order[i]]; }
-    refresh(); rollT=0; buildLetters(); });
+    refresh(); rollT=0; });
   $('restart').addEventListener('click',()=>{ rollT=0; idx=-1; });
   $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
   $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play));
@@ -407,33 +301,154 @@
     const [aw,ah]=aspectWH(), long=Math.max(aw,ah), sc=px/long;
     const ew=Math.round(aw*sc), eh=Math.round(ah*sc);
     const off=document.createElement('canvas'); off.width=ew; off.height=eh;
-    const sW=W,sH=H,sRS=RS; W=ew; H=eh; RS=Math.max(1,px/long);
-    buildLetters(); render(off.getContext('2d'), ew, eh, clock);
-    W=sW; H=sH; RS=sRS; buildLetters();
+    render(off.getContext('2d'), ew, eh);
     return off; } });
-  let rec=null, chunks=[], rt=0, tk=0, recEnd=0;
-  $('recBtn').addEventListener('click',()=>{ if(rec){ rec.stop(); return; }
+
+  /* ================= recording =================================================
+     The roll is five minutes long and there is no reason to sit through it. Frames
+     are rendered and encoded as fast as the machine will go and the timestamps are
+     written by hand, so the film comes out the right length however long the render
+     took. WebCodecs gives the encoder; the few dozen lines below are the Matroska
+     container it has to be wrapped in. If the browser has no VideoEncoder the old
+     real-time recorder is still there as a fallback. ---------------------------- */
+  const EL={ EBML:[0x1A,0x45,0xDF,0xA3], EBMLVersion:[0x42,0x86], EBMLReadVersion:[0x42,0xF7],
+    EBMLMaxIDLength:[0x42,0xF2], EBMLMaxSizeLength:[0x42,0xF3],
+    DocType:[0x42,0x82], DocTypeVersion:[0x42,0x87], DocTypeReadVersion:[0x42,0x85],
+    Segment:[0x18,0x53,0x80,0x67], Info:[0x15,0x49,0xA9,0x66], TimecodeScale:[0x2A,0xD7,0xB1],
+    MuxingApp:[0x4D,0x80], WritingApp:[0x57,0x41], Duration:[0x44,0x89],
+    Tracks:[0x16,0x54,0xAE,0x6B], TrackEntry:[0xAE], TrackNumber:[0xD7], TrackUID:[0x73,0xC5],
+    TrackType:[0x83], CodecID:[0x86], DefaultDuration:[0x23,0xE3,0x83],
+    Video:[0xE0], PixelWidth:[0xB0], PixelHeight:[0xBA],
+    Cluster:[0x1F,0x43,0xB6,0x75], Timecode:[0xE7], SimpleBlock:[0xA3] };
+
+  function cat(list){ let n=0; for(const a of list) n+=a.length;
+    const o=new Uint8Array(n); let k=0; for(const a of list){ o.set(a,k); k+=a.length; } return o; }
+  function vint(n){                                   // element size, with its length marker
+    let len=1; while(n >= Math.pow(2,7*len)-1) len++;
+    const b=new Uint8Array(len); let v=n;
+    for(let i=len-1;i>=0;i--){ b[i]=v%256; v=Math.floor(v/256); }
+    b[0]|=1<<(8-len); return b; }
+  function uint(n){ const b=[]; do{ b.unshift(n%256); n=Math.floor(n/256); }while(n>0); return new Uint8Array(b); }
+  function f64(n){ const b=new Uint8Array(8); new DataView(b.buffer).setFloat64(0,n); return b; }
+  const str=s=>new TextEncoder().encode(s);
+  function el(id, payload){ const p=cat(Array.isArray(payload)?payload:[payload]);
+    return cat([new Uint8Array(id), vint(p.length), p]); }
+
+  function webm(w,h,fps,codecID,durMs){
+    const clusters=[]; let cur=null, curT=0;
+    function flushCluster(){ if(!cur||!cur.length) { cur=null; return; }
+      clusters.push(el(EL.Cluster, [el(EL.Timecode, uint(curT))].concat(cur))); cur=null; }
+    return {
+      add(data,key,tsMs){
+        if(key && (!cur || tsMs-curT>=2000)){ flushCluster(); cur=[]; curT=tsMs; }
+        if(!cur){ cur=[]; curT=tsMs; }
+        const rel=Math.max(-32768, Math.min(32767, tsMs-curT));
+        const head=new Uint8Array([0x81,(rel>>8)&0xff, rel&0xff, key?0x80:0x00]);
+        cur.push(el(EL.SimpleBlock,[head,data]));
+      },
+      finish(){
+        flushCluster();
+        const header=el(EL.EBML,[ el(EL.EBMLVersion,uint(1)), el(EL.EBMLReadVersion,uint(1)),
+          el(EL.EBMLMaxIDLength,uint(4)), el(EL.EBMLMaxSizeLength,uint(8)),
+          el(EL.DocType,str('webm')), el(EL.DocTypeVersion,uint(2)), el(EL.DocTypeReadVersion,uint(2)) ]);
+        const info=el(EL.Info,[ el(EL.TimecodeScale,uint(1000000)), el(EL.MuxingApp,str('OP/AL Lab')),
+          el(EL.WritingApp,str('Flash')), el(EL.Duration,f64(durMs)) ]);
+        const tracks=el(EL.Tracks,[ el(EL.TrackEntry,[
+          el(EL.TrackNumber,uint(1)), el(EL.TrackUID,uint(1)), el(EL.TrackType,uint(1)),
+          el(EL.CodecID,str(codecID)), el(EL.DefaultDuration,uint(Math.round(1e9/fps))),
+          el(EL.Video,[ el(EL.PixelWidth,uint(w)), el(EL.PixelHeight,uint(h)) ]) ]) ]);
+        return new Blob([header, el(EL.Segment,[info,tracks].concat(clusters))], {type:'video/webm'});
+      }
+    };
+  }
+
+  let offline=false, cancel=false, rec=null, chunks=[], rt=0, tk=0, recEnd=0;
+  function recUI(on,label){ $('recDot').classList.toggle('on',on);
+    $('recBtn').textContent = on ? 'Stop' : 'Record';
+    if(label) $('recDot').querySelector('b').textContent=label; }
+  function download(blob,ext){ const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='flash.'+ext; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000); }
+
+  async function renderOffline(){
+    const fps=30, total=Math.max(1,Math.round(P.dur*fps));
+    const want=[['vp09.00.10.08','V_VP9'],['vp8','V_VP8']];
+    let picked=null;
+    for(const [codec,cid] of want){
+      const cfg={ codec, width:W, height:H, framerate:fps,
+        bitrate:Math.min(40e6, Math.max(6e6, Math.round(W*H*fps*0.12))) };
+      try{ const s=await VideoEncoder.isConfigSupported(cfg); if(s && s.supported){ picked={cfg,cid}; break; } }catch(e){}
+    }
+    if(!picked) throw new Error('no encoder');
+    const mux=webm(W,H,fps,picked.cid,P.dur*1000);
+    let failed=null;
+    const enc=new VideoEncoder({
+      output:(chunk)=>{ const buf=new Uint8Array(chunk.byteLength); chunk.copyTo(buf);
+        mux.add(buf, chunk.type==='key', Math.round(chunk.timestamp/1000)); },
+      error:e=>{ failed=e; } });
+    enc.configure(picked.cfg);
+
+    offline=true; cancel=false;
+    const started=performance.now();
+    const wasPlaying=P.play, hadT=rollT;
+    try{
+      for(let f=0; f<total; f++){
+        if(cancel || failed) break;
+        const t=f/fps;
+        seek(t);
+        render(ctx,W,H);
+        const vf=new VideoFrame(art,{ timestamp:Math.round(f*1e6/fps), duration:Math.round(1e6/fps) });
+        enc.encode(vf,{ keyFrame:(f % (fps*2))===0 });
+        vf.close();
+        while(enc.encodeQueueSize>6 && !failed) await new Promise(r=>setTimeout(r,2));
+        if((f&15)===0){
+          const pct=Math.round(f/total*100), el2=Math.round((performance.now()-started)/1000);
+          recUI(true, pct+'% · '+mmss(el2));
+          await new Promise(r=>setTimeout(r,0));
+        }
+      }
+      if(failed) throw failed;
+      await enc.flush();
+    } finally {
+      try{ enc.close(); }catch(e){}
+      offline=false; P.play=wasPlaying; rollT=hadT; seek(rollT);
+    }
+    if(cancel){ recUI(false); return; }
+    recUI(true,'writing…');
+    download(mux.finish(),'webm');
+    recUI(false);
+  }
+
+  function recordRealtime(){                       // fallback: no VideoEncoder in this browser
+    rollT=0; idx=-1;
     if(!P.play){ P.play=true; $('playBtn').setAttribute('aria-pressed','true'); $('playBtn').textContent='Pause'; }
-    rollT=0; idx=-1;                                    // always from the first name
     const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
     const bits=Math.min(120e6, Math.max(12e6, Math.round(art.width*art.height*30*0.25)));
     rec=new MediaRecorder(art.captureStream(30), mime?{mimeType:mime,videoBitsPerSecond:bits}:undefined); chunks=[];
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop=()=>{ const ext=mime.indexOf('mp4')>=0?'mp4':'webm', blob=new Blob(chunks,{type:mime||'video/webm'});
-      if(blob.size>0){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='flash.'+ext; a.click(); }
-      else alert('The recorder produced no frames. Try a smaller canvas size.');
-      clearInterval(tk); clearTimeout(recEnd);
-      $('recDot').classList.remove('on'); $('recBtn').textContent='Record'; rec=null; };
-    rec.start(); $('recDot').classList.add('on'); $('recBtn').textContent='Stop';
-    recEnd=setTimeout(()=>{ if(rec) rec.stop(); }, P.dur*1000 + 250);
-    rt=Date.now(); tk=setInterval(()=>{ const el=Math.floor((Date.now()-rt)/1000);
-      $('recDot').querySelector('b').textContent=(el/60|0)+':'+String(el%60).padStart(2,'0'); },250); });
+      if(blob.size>0) download(blob,ext); else alert('The recorder produced no frames. Try a smaller canvas size.');
+      clearInterval(tk); clearTimeout(recEnd); recUI(false); rec=null; };
+    rec.start(); recUI(true,'0:00');
+    recEnd=setTimeout(()=>{ if(rec) rec.stop(); }, P.dur*1000+250);
+    rt=Date.now(); tk=setInterval(()=>{ const e2=Math.floor((Date.now()-rt)/1000);
+      recUI(true,(e2/60|0)+':'+String(e2%60).padStart(2,'0')); },250);
+  }
+
+  $('recBtn').addEventListener('click',()=>{
+    if(offline){ cancel=true; return; }
+    if(rec){ rec.stop(); return; }
+    if(typeof VideoEncoder==='undefined' || typeof VideoFrame==='undefined'){ recordRealtime(); return; }
+    recUI(true,'0%');
+    renderOffline().catch(err=>{ console.warn(err); offline=false; recUI(false); recordRealtime(); });
+  });
 
   ROLL.forEach((r,i)=>{ const im=new Image();
     im.onload=()=>{ posters[i]=im; };
     im.src='/lab/flash/posters/p-'+String(r.page).padStart(2,'0')+'.jpg'; });
   refresh(); setColours(0);
-  if(document.fonts && document.fonts.load) document.fonts.load('400 80px "Sidepiece"').then(()=>buildLetters()).catch(()=>{});
+  if(document.fonts && document.fonts.load)
+    document.fonts.load('400 80px "Eunuverse"').then(()=>{ _m=null; _mKey=''; }).catch(()=>{});
   fit();
   requestAnimationFrame(tick);
 })();
