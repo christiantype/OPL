@@ -50,8 +50,8 @@
   <div class="group">
     <div class="group__t">The roll</div>
     <p class="rowhint" id="count">&nbsp;</p>
-    <p class="rowhint">Everyone in AHA, each with their own poster behind their name — read off the print file, so a name can never land on somebody else's work.</p>
-    <button class="btn" id="shuffle">Shuffle the order</button>
+    <p class="rowhint">Everyone in AHA, A to Z, each with their own poster behind their name — read off the print file, so a name can never land on somebody else's work.</p>
+    <div class="grid2"><button class="btn" id="az">A–Z</button><button class="btn" id="shuffle">Shuffle</button></div>
   </div>
 
   <div class="group">
@@ -229,7 +229,13 @@
   }
 
   /* ---------- the roll ---------- */
+  // A to Z on the name as it is set. Punctuation is ignored so BANK™ files under B
+  // and Lola Z. under L, and the comparison is accent-insensitive so Zoë lands at Z.
   let order=ROLL.map((_,i)=>i);
+  function alphabetise(){
+    order=ROLL.map((_,i)=>i).sort((a,b)=>
+      ROLL[a].name.localeCompare(ROLL[b].name,'en',{sensitivity:'base',ignorePunctuation:true}));
+  }
   const mmss = sec => Math.floor(sec/60)+':'+String(Math.round(sec%60)).padStart(2,'0');
   function paceText(){
     if(!names.length) return ' ';
@@ -283,6 +289,7 @@
   $('shuffle').addEventListener('click',()=>{
     for(let i=order.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [order[i],order[j]]=[order[j],order[i]]; }
     refresh(); rollT=0; });
+  $('az').addEventListener('click',()=>{ alphabetise(); refresh(); rollT=0; });
   $('restart').addEventListener('click',()=>{ rollT=0; idx=-1; });
   $('aspect').addEventListener('change',e=>{ P.aspect=e.target.value; fit(); });
   $('playBtn').addEventListener('click',()=>{ P.play=!P.play; $('playBtn').setAttribute('aria-pressed',String(P.play));
@@ -535,7 +542,7 @@
   ROLL.forEach((r,i)=>{ const im=new Image();
     im.onload=()=>{ posters[i]=im; };
     im.src='/lab/flash/posters/p-'+String(r.page).padStart(2,'0')+'.jpg'; });
-  refresh(); setColours(0);
+  alphabetise(); refresh(); setColours(0);
   if(document.fonts && document.fonts.load)
     document.fonts.load('400 80px "Eunuverse"').then(()=>{ _m=null; _mKey=''; }).catch(()=>{});
   fit();
