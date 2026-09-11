@@ -248,7 +248,7 @@
         const want=P.spkAmt*dphase*3.0;
         let fire=Math.floor(want) + (Math.random()<(want%1)?1:0);
         if(fire>0 && bolts.length<70){
-          const pts2=crossings(segs, link, 260);     // only hunt crossings when one fires
+          const pts2=crossings(segs, link, 4);       // only hunt crossings when one fires
           if(pts2.length>=4) while(fire-- > 0 && bolts.length<70){
             const k=((Math.random()*(pts2.length/2))|0)*2;
             strike(pts2, k, W, H);
@@ -368,19 +368,21 @@
       g.restore(); g.globalAlpha=1;
       bolts=keep;
     }
-    // the crossings — only enough of them to strike from, so this stays cheap
-    function crossings(segs, link, limit){
+    // the crossings — a few from EVERY cell of the field. Taking a global number
+    // instead filled it in bucket order, which follows the outline, so the list ran
+    // out before it reached most of the character and every strike landed in one spot.
+    function crossings(segs, link, perCell){
       const N=segs.length/4, out=[]; if(N<2) return out;
       const cell=Math.max(24, link), buckets=new Map(), key=(cx,cy)=>cx*100000+cy;
       for(let s2=0;s2<N;s2++){ const o=s2*4;
         const mx=(segs[o]+segs[o+2])*0.5, my=(segs[o+1]+segs[o+3])*0.5;
         const k=key((mx/cell)|0,(my/cell)|0);
         let arr=buckets.get(k); if(!arr){ arr=[]; buckets.set(k,arr); } arr.push(s2); }
-      const per=Math.max(1, Math.ceil(limit/Math.max(1,buckets.size)));
+      const per=Math.max(1, perCell);
       for(const [,arr] of buckets){ let here=0;
-        for(let ai=0; ai<arr.length && here<per && out.length<limit; ai++){
+        for(let ai=0; ai<arr.length && here<per; ai++){
           const A=arr[ai]*4, ax1=segs[A], ay1=segs[A+1], ax2=segs[A+2], ay2=segs[A+3];
-          for(let bi=ai+1; bi<arr.length && here<per && out.length<limit; bi++){
+          for(let bi=ai+1; bi<arr.length && here<per; bi++){
             const B=arr[bi]*4, bx1=segs[B], by1=segs[B+1], bx2=segs[B+2], by2=segs[B+3];
             if((ax1===bx1&&ay1===by1)||(ax1===bx2&&ay1===by2)||(ax2===bx1&&ay2===by1)||(ax2===bx2&&ay2===by2)) continue;
             const dx1=ax2-ax1, dy1=ay2-ay1, dx2=bx2-bx1, dy2=by2-by1;
