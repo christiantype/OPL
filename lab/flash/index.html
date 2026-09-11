@@ -33,7 +33,7 @@
 <body>
 <script src="/lab/shared/opal.js?v=3"></script>
 <script>Opal.mountTopbar({ name:'Flash', desc:'A roll of names, set in Eunuverse',
-  about:'Everyone in AHA, one name to a frame, set in Eunuverse Roman over their own poster. Every name is set at the same cap height — the size is a ceiling and the longest name sets it, so the type sits still and only the name changes. With each name the colour turns further round the wheel. Set how long the whole roll should take and the pace follows. Record renders the film as fast as the machine can encode it rather than playing it out in real time, so a five-minute roll saves in well under a minute.',
+  about:'Everyone in AHA, one name to a frame, set in Eunuverse Roman over their own poster. Every name is set at the same cap height — the size is a ceiling and the longest name sets it, so the type sits still and only the name changes. With each name the colour turns further round the wheel. Set how long the whole roll should take and the pace follows. Record renders the film as fast as the machine can encode it rather than playing it out in real time, so a five-minute roll saves in well under a minute — as an MP4, at the length you asked for.',
   version:'v2' });</script>
 <div id="sizeDock">
   <span id="dimReadout">1920 × 1080</span>
@@ -245,7 +245,7 @@
     idx=-1;
   }
   function refreshPace(){ $('pace').textContent = paceText();
-    const r=$('recLen'); if(r) r.textContent = 'Renders the whole roll — '+mmss(P.dur); }
+    const r=$('recLen'); if(r) r.textContent = 'Renders the whole roll as an MP4 — '+mmss(P.dur); }
   function setColours(i){ inkCol = P.hue ? hueStep(P.typeCol, i*P.hue) : P.typeCol; }
   function indexAt(t){
     if(!names.length) return 0;
@@ -308,9 +308,89 @@
      The roll is five minutes long and there is no reason to sit through it. Frames
      are rendered and encoded as fast as the machine will go and the timestamps are
      written by hand, so the film comes out the right length however long the render
-     took. WebCodecs gives the encoder; the few dozen lines below are the Matroska
-     container it has to be wrapped in. If the browser has no VideoEncoder the old
-     real-time recorder is still there as a fallback. ---------------------------- */
+     took. WebCodecs gives the encoder; the containers below are what it has to be
+     wrapped in — MP4 around H.264 for anything that has to be handed to somebody
+     else, and Matroska around VP9 only if this browser cannot encode H.264. If
+     there is no VideoEncoder at all the old real-time recorder is the fallback.
+
+     MediaRecorder cannot do this job: it stamps frames with the wall clock, so a
+     five-minute film rendered in forty seconds would come out forty seconds long.
+     Writing the container by hand is what buys the right duration. ------------- */
+
+  function cat(list){ let n=0; for(const a of list) n+=a.length;
+    const o=new Uint8Array(n); let k=0; for(const a of list){ o.set(a,k); k+=a.length; } return o; }
+  const U32=n=>new Uint8Array([(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]);
+  const U16=n=>new Uint8Array([(n>>8)&255,n&255]);
+  const FOUR=s=>new Uint8Array([s.charCodeAt(0),s.charCodeAt(1),s.charCodeAt(2),s.charCodeAt(3)]);
+
+  /* ---- MP4 (ISO base media) around an H.264 stream ----------------------------
+     ftyp, then the samples in one mdat, then the moov that indexes them. The moov
+     goes last so every chunk offset is known by the time it is written. */
+  function mp4(w,h,fps){
+    const S=[]; let desc=null;
+    function box(type, parts){ const p=cat(parts);
+      return cat([U32(p.length+8), FOUR(type), p]); }
+    function full(type, ver, flags, parts){
+      return box(type, [new Uint8Array([ver,(flags>>16)&255,(flags>>8)&255,flags&255])].concat(parts)); }
+    const MATRIX = cat([U32(0x00010000),U32(0),U32(0),U32(0),U32(0x00010000),U32(0),U32(0),U32(0),U32(0x40000000)]);
+    return {
+      describe(d){ if(d && !desc) desc=new Uint8Array(d instanceof ArrayBuffer ? d : d.buffer ? d.buffer.slice(d.byteOffset, d.byteOffset+d.byteLength) : d); },
+      // ts is the presentation time in microseconds. Samples are kept in the order the
+      // encoder emitted them, which is decode order — the composition table below is
+      // what puts them back in the right order if the encoder used B-frames.
+      add(data,key,ts){ S.push({data,key,ts}); },
+      get ready(){ return !!desc && S.length>0; },
+      finish(){
+        const TS=90000, DT=Math.round(TS/fps), n=S.length, dur=n*DT;
+        const ftyp=box('ftyp',[FOUR('isom'),U32(512),FOUR('isom'),FOUR('iso2'),FOUR('avc1'),FOUR('mp41')]);
+        let mdat=8; for(const s of S) mdat+=s.data.length;
+        const offs=[]; let o=ftyp.length+8;
+        for(const s of S){ offs.push(o); o+=s.data.length; }
+
+        const avcC=box('avcC',[desc]);
+        const label='OP/AL Lab', name=new Uint8Array(32);      // compressorname: a length byte, then ASCII
+        name[0]=label.length; for(let i=0;i<label.length;i++) name[i+1]=label.charCodeAt(i);
+        const avc1=box('avc1',[ new Uint8Array(6), U16(1),
+          U16(0), U16(0), U32(0),U32(0),U32(0),
+          U16(w), U16(h), U32(0x00480000), U32(0x00480000), U32(0), U16(1),
+          name, U16(0x0018), new Uint8Array([0xff,0xff]), avcC ]);
+
+        const stsd=full('stsd',0,0,[U32(1), avc1]);
+        const stts=full('stts',0,0,[U32(1), U32(n), U32(DT)]);
+        const keys=[]; for(let i=0;i<n;i++) if(S[i].key) keys.push(i+1);
+        const stss=(keys.length && keys.length<n) ? full('stss',0,0,[U32(keys.length)].concat(keys.map(U32))) : null;
+        // composition offsets: zero throughout unless the encoder reordered frames
+        const co=S.map((s,i)=>Math.round(s.ts*TS/1e6) - i*DT);
+        const ctts=co.some(v=>v!==0)
+          ? full('ctts',1,0,[U32(n)].concat(co.map(v=>U32(v<0 ? v>>>0 : v))))
+          : null;
+        const stsc=full('stsc',0,0,[U32(1), U32(1), U32(1), U32(1)]);
+        const stsz=full('stsz',0,0,[U32(0), U32(n)].concat(S.map(s=>U32(s.data.length))));
+        const stco=full('stco',0,0,[U32(n)].concat(offs.map(U32)));
+        const stbl=box('stbl',[stsd,stts].concat(ctts?[ctts]:[]).concat(stss?[stss]:[]).concat([stsc,stsz,stco]));
+
+        const vmhd=full('vmhd',0,1,[U16(0),U16(0),U16(0),U16(0)]);
+        const dref=full('dref',0,0,[U32(1), full('url ',0,1,[])]);
+        const dinf=box('dinf',[dref]);
+        const minf=box('minf',[vmhd,dinf,stbl]);
+        const hdlr=full('hdlr',0,0,[U32(0), FOUR('vide'), U32(0),U32(0),U32(0),
+          new TextEncoder().encode('VideoHandler\0')]);
+        const mdhd=full('mdhd',0,0,[U32(0),U32(0),U32(TS),U32(dur),U16(0x55C4),U16(0)]);
+        const mdia=box('mdia',[mdhd,hdlr,minf]);
+        const tkhd=full('tkhd',0,7,[U32(0),U32(0),U32(1),U32(0),U32(dur),
+          U32(0),U32(0), U16(0),U16(0),U16(0),U16(0), MATRIX, U32(w*65536), U32(h*65536)]);
+        const trak=box('trak',[tkhd,mdia]);
+        const mvhd=full('mvhd',0,0,[U32(0),U32(0),U32(TS),U32(dur),
+          U32(0x00010000), U16(0x0100), U16(0), U32(0),U32(0), MATRIX,
+          U32(0),U32(0),U32(0),U32(0),U32(0),U32(0), U32(2)]);
+        const moov=box('moov',[mvhd,trak]);
+
+        return new Blob([ftyp, U32(mdat), FOUR('mdat')].concat(S.map(s=>s.data)).concat([moov]),
+          { type:'video/mp4' });
+      }
+    };
+  }
+
   const EL={ EBML:[0x1A,0x45,0xDF,0xA3], EBMLVersion:[0x42,0x86], EBMLReadVersion:[0x42,0xF7],
     EBMLMaxIDLength:[0x42,0xF2], EBMLMaxSizeLength:[0x42,0xF3],
     DocType:[0x42,0x82], DocTypeVersion:[0x42,0x87], DocTypeReadVersion:[0x42,0x85],
@@ -321,8 +401,6 @@
     Video:[0xE0], PixelWidth:[0xB0], PixelHeight:[0xBA],
     Cluster:[0x1F,0x43,0xB6,0x75], Timecode:[0xE7], SimpleBlock:[0xA3] };
 
-  function cat(list){ let n=0; for(const a of list) n+=a.length;
-    const o=new Uint8Array(n); let k=0; for(const a of list){ o.set(a,k); k+=a.length; } return o; }
   function vint(n){                                   // element size, with its length marker
     let len=1; while(n >= Math.pow(2,7*len)-1) len++;
     const b=new Uint8Array(len); let v=n;
@@ -372,19 +450,29 @@
 
   async function renderOffline(){
     const fps=30, total=Math.max(1,Math.round(P.dur*fps));
-    const want=[['vp09.00.10.08','V_VP9'],['vp8','V_VP8']];
+    // H.264 first so the file that comes out is an .mp4 — the rest are only there
+    // for a browser that cannot encode it. High, Main, then Baseline at level 5.1,
+    // which covers every canvas size this tool offers.
+    const want=[ ['avc1.640033','mp4'], ['avc1.4d0033','mp4'], ['avc1.420033','mp4'],
+                 ['avc1.640028','mp4'], ['avc1.42e01f','mp4'],
+                 ['vp09.00.10.08','V_VP9'], ['vp8','V_VP8'] ];
+    const bitrate=Math.min(40e6, Math.max(6e6, Math.round(W*H*fps*0.12)));
     let picked=null;
     for(const [codec,cid] of want){
-      const cfg={ codec, width:W, height:H, framerate:fps,
-        bitrate:Math.min(40e6, Math.max(6e6, Math.round(W*H*fps*0.12))) };
+      const cfg={ codec, width:W, height:H, framerate:fps, bitrate,
+        latencyMode:'quality' };
+      if(cid==='mp4') cfg.avc={ format:'avc' };          // AVCC, with an avcC description
       try{ const s=await VideoEncoder.isConfigSupported(cfg); if(s && s.supported){ picked={cfg,cid}; break; } }catch(e){}
     }
     if(!picked) throw new Error('no encoder');
-    const mux=webm(W,H,fps,picked.cid,P.dur*1000);
+    const isMp4 = picked.cid==='mp4';
+    const mux = isMp4 ? mp4(W,H,fps) : webm(W,H,fps,picked.cid,P.dur*1000);
     let failed=null;
     const enc=new VideoEncoder({
-      output:(chunk)=>{ const buf=new Uint8Array(chunk.byteLength); chunk.copyTo(buf);
-        mux.add(buf, chunk.type==='key', Math.round(chunk.timestamp/1000)); },
+      output:(chunk,meta)=>{
+        if(isMp4 && meta && meta.decoderConfig && meta.decoderConfig.description) mux.describe(meta.decoderConfig.description);
+        const buf=new Uint8Array(chunk.byteLength); chunk.copyTo(buf);
+        mux.add(buf, chunk.type==='key', isMp4 ? chunk.timestamp : Math.round(chunk.timestamp/1000)); },
       error:e=>{ failed=e; } });
     enc.configure(picked.cfg);
 
@@ -414,8 +502,9 @@
       offline=false; P.play=wasPlaying; rollT=hadT; seek(rollT);
     }
     if(cancel){ recUI(false); return; }
+    if(isMp4 && !mux.ready) throw new Error('the encoder gave no avcC');   // fall through to the fallback
     recUI(true,'writing…');
-    download(mux.finish(),'webm');
+    download(mux.finish(), isMp4?'mp4':'webm');
     recUI(false);
   }
 
