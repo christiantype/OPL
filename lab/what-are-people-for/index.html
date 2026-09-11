@@ -87,6 +87,10 @@
         <div class="knob"><label>Core <b id="spkCoreR">1.1</b></label><input id="spkCore" type="range" min="2" max="50" value="11"></div>
         <div class="knob"><label>Glow <b id="spkGlowR">80</b></label><input id="spkGlow" type="range" min="0" max="100" value="80"></div>
       </div>
+      <div class="duo">
+        <div class="knob"><label>Sparks <b id="spkDustR">12</b></label><input id="spkDust" type="range" min="0" max="40" value="12"></div>
+        <div class="knob"><label>Fall <b id="spkFallR">35</b></label><input id="spkFall" type="range" min="0" max="100" value="35"></div>
+      </div>
       <div class="crow"><label>Discharge</label><input type="color" class="sw" id="spkC" value="#7a5cff"></div>
       <p class="rowhint">A discharge arcs from one crossing to another — a forked filament with a white-hot core and a coloured halo, gone in an instant and struck again elsewhere. It travels through the web of lines, never out over the character.</p>
     </div>
@@ -149,7 +153,7 @@
     const P={ aspect:'1080/1920', seed:1, char:'?', size:80, engine:'network',
       dens:100, disp:320, link:98, sw:0.6, lop:50,
       fill:'#ffffff', bg:'#000000', spd:1.0, play:true,
-      spkOn:false, spkAmt:16, spkReach:55, spkBr:3, spkLife:0.45, spkCore:1.1, spkGlow:0.80, spkC:'#7a5cff',
+      spkOn:false, spkAmt:16, spkReach:55, spkBr:3, spkLife:0.45, spkCore:1.1, spkGlow:0.80, spkDust:12, spkFall:35, spkC:'#7a5cff',
       // thermal field
       heatPal:'turbo', scat:120, drift:18, breath:0.55, bloom:14, gain:1.0, heat:0, grain:8 };
 
@@ -251,6 +255,7 @@
           }
         }
         drawBolts(g, W, H, dphase);
+        drawEmbers(g, W, H, dphase);
       }
     }
 
@@ -298,7 +303,40 @@
       }
       bolts.push({ lines: lines.map(l=>l.map(pt=>[pt[0]/W, pt[1]/H])),
                    born: 0, life: P.spkLife*(0.6+rnd()*0.8), x:x0/W, y:y0/H });
+      if(P.spkDust>0) emitEmbers(lines, W, H, rnd);
     }
+    // sparks thrown off the strike: they fly, drag, fall and burn down. Held in
+    // normalised coordinates like the bolts, so an export matches.
+    let embers=[];
+    function emitEmbers(lines, W, H, rnd){
+      for(let i=0;i<P.spkDust && embers.length<700;i++){
+        const l=lines[(rnd()*lines.length)|0]; if(!l||!l.length) continue;
+        const q=l[(rnd()*l.length)|0];
+        const a=rnd()*TAU, sp=0.8+rnd()*2.2;
+        embers.push({ x:q[0]/W, y:q[1]/H, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+          born:0, life:0.08+rnd()*0.20, r:0.4+rnd()*0.9 });
+      }
+    }
+    function drawEmbers(g, W, H, dphase){
+      if(!embers.length) return;
+      const keep=[], grav=P.spkFall*0.06, sc=Math.min(W,H)/1080;
+      const base=Math.max(0.35, P.spkCore*sc*0.8);
+      g.save(); g.globalCompositeOperation='lighter';
+      for(const e of embers){
+        e.born+=dphase; const u=e.born/e.life; if(u>=1) continue; keep.push(e);
+        e.vy += grav*dphase;                       // the fall
+        const drag=1-Math.min(0.5, dphase*2.0);
+        e.vx*=drag; e.vy*=drag;
+        e.x += e.vx*dphase; e.y += e.vy*dphase;
+        const a=Math.pow(1-u, 2.2), r=base*e.r;
+        g.globalAlpha=a*0.45; g.fillStyle=P.spkC;
+        g.beginPath(); g.arc(e.x*W, e.y*H, r*2.8, 0, TAU); g.fill();
+        g.globalAlpha=a; g.fillStyle='#ffffff';
+        g.beginPath(); g.arc(e.x*W, e.y*H, r, 0, TAU); g.fill();
+      }
+      g.restore(); g.globalAlpha=1; embers=keep;
+    }
+
     function drawBolts(g, W, H, dphase){
       const keep=[];
       g.save();
@@ -382,6 +420,8 @@
     bind('spkLife','spkLifeR',v=>P.spkLife=v/100, v=>(v/100).toFixed(2));
     bind('spkCore','spkCoreR',v=>P.spkCore=v/10, v=>(v/10).toFixed(1));
     bind('spkGlow','spkGlowR',v=>P.spkGlow=v/100);
+    bind('spkDust','spkDustR',v=>P.spkDust=v);
+    bind('spkFall','spkFallR',v=>P.spkFall=v);
     $('spkOn').onchange=e=>{ P.spkOn=e.target.checked; if(!P.play) drawNow(); };
     $('spkC').oninput=e=>{ P.spkC=e.target.value; if(!P.play) drawNow(); };
     bind('scat','scatR',v=>P.scat=v);
