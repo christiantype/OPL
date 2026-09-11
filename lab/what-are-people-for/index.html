@@ -119,7 +119,11 @@
         <div class="knob"><label>Gain <b id="gainR">1.00</b></label><input id="gain" type="range" min="30" max="260" value="100"></div>
         <div class="knob"><label>Heat <b id="heatR">0</b></label><input id="heat" type="range" min="-30" max="60" value="0"></div>
       </div>
-      <div class="knob"><label>Grain <b id="grainR">8</b></label><input id="grain" type="range" min="0" max="60" value="8"></div>
+      <div class="duo">
+        <div class="knob"><label>Grain <b id="grainR">8</b></label><input id="grain" type="range" min="0" max="60" value="8"></div>
+        <div class="knob"><label>Detail <b id="detailR">100</b></label><input id="detail" type="range" min="40" max="100" step="5" value="100"></div>
+      </div>
+      <p class="rowhint">Detail is the resolution the field is built at. 100 is the full canvas — drop it only if the motion stutters on your machine; a still or an export is always rendered at full detail regardless.</p>
       <p class="rowhint">The letterform seeds a blurred, breathing field — dense stroke areas run hot, the rest settles into the cold end of the ramp.</p>
     </div>
 
@@ -155,7 +159,7 @@
       fill:'#ffffff', bg:'#000000', spd:1.0, play:true,
       spkOn:false, spkAmt:38, spkReach:61, spkBr:1, spkLife:0.79, spkCore:1.7, spkGlow:0.39, spkDust:3, spkFall:92, spkC:'#b8a832',
       // thermal field
-      heatPal:'turbo', scat:120, drift:18, breath:0.55, bloom:14, gain:1.0, heat:0, grain:8 };
+      heatPal:'turbo', scat:120, drift:18, breath:0.55, bloom:14, gain:1.0, heat:0, grain:8, detail:1 };
 
     // ---- flux's exact helpers ----
     const smooth=t=>t*t*(3-2*t);
@@ -399,6 +403,100 @@
       return out;
     }
 
+    // ---- THERMAL FIELD (flux drawThermalField): the letterform seeds a blurred,
+    //      breathing organism. Radii, scatter, drift and blur all scale with the canvas,
+    //      so a 4K frame is the same field rendered larger — never a denser one. ----
+    let hiRes=false, recording=false;
+    // The field is built at the canvas's own resolution. It used to run at 760px and
+    // upscale, which is exactly what made it grainy — full resolution is affordable
+    // because the colour mapping below is now a lookup rather than a search per pixel.
+    function fieldW(W){ return Math.max(240, Math.round(hiRes ? Math.min(W,4096) : W*P.detail)); }
+
+    // 256-entry ramp, rebuilt only when the colourway, gain or heat changes. The mapping
+    // pass used to walk the stop list for EVERY pixel — two million searches a frame at
+    // full resolution, and the whole reason the field had to be rendered small.
+    // One emitter sprite, drawn once and stamped for every point. Building a
+    // createRadialGradient per point was the cost that forced a small field: the shape
+    // is identical every time, only its size and brightness change.
+    let emitSprite=null;
+    function sprite(){
+      if(emitSprite) return emitSprite;
+      const S=128, c=document.createElement('canvas'); c.width=c.height=S;
+      const g=c.getContext('2d');
+      const rg=g.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+      rg.addColorStop(0,'rgba(255,255,255,1)'); rg.addColorStop(1,'rgba(255,255,255,0)');
+      g.fillStyle=rg; g.fillRect(0,0,S,S);
+      return emitSprite=c;
+    }
+    let heatLut=null, heatKey='';
+    function heatLUT(){
+      const key=[P.heatPal,P.gain,P.heat].join('|');
+      if(heatLut && heatKey===key) return heatLut;
+      heatKey=key; heatLut=new Uint8Array(768);
+      const PAL=PALETTES[P.heatPal]||TURBO, bias=P.heat/100;
+      for(let i=0;i<256;i++){ const c=ramp(PAL, clamp(i/255*P.gain+bias,0,1));
+        heatLut[i*3]=c[0]; heatLut[i*3+1]=c[1]; heatLut[i*3+2]=c[2]; }
+      return heatLut;
+    }
+    function drawThermal(g, W, H, t){
+      const k=Math.max(W,H)/1600;                       // 1 at the working size
+      const fw=fieldW(W), scale=fw/W, fh=Math.max(1,Math.round(H*scale));
+      const A=document.createElement('canvas'); A.width=fw; A.height=fh;
+      const a=A.getContext('2d');
+      a.fillStyle='#000'; a.fillRect(0,0,fw,fh); a.globalCompositeOperation='lighter';
+      const br=P.breath, spread=P.scat*k, drift=P.drift*k, sp=sprite();
+      // the letterform itself as a soft warm mass, so it still reads through the field
+      if(glyphPath){ a.save(); a.scale(scale,scale); a.fillStyle='rgba(52,52,52,1)'; a.fill(glyphPath); a.restore(); }
+      for(let i=0;i<pts.length;i+=2){
+        let x=pts[i][0], y=pts[i][1];
+        if(spread){ const sa=grand(i*13,4.7)*TAU, sm=Math.pow(grand(i*13,2.9),1.6)*spread;
+          x+=Math.cos(sa)*sm; y+=Math.sin(sa)*sm; }
+        const ang=vnoise(x*0.005/k, y*0.005/k, t)*TAU*2;
+        x=(x+Math.cos(ang)*drift)*scale; y=(y+Math.sin(ang)*drift)*scale;
+        const seed=grand(i*61,3.3), pulse=0.5+0.5*Math.sin(t*1.4+seed*TAU);
+        const hotCore=grand(i*31,6.6)>0.87;                                  // rare bright emitters
+        let inten=hotCore?(0.72+0.28*grand(i,4.2)):Math.pow(grand(i,1.1),2.0);  // mostly dim
+        inten*=(1-br+br*pulse);
+        const rad=(7+Math.pow(grand(i,2.2),2)*72)*k*scale*(0.8+0.4*pulse*br)*(hotCore?1.25:1);
+        // 'lighter' is already set, so stamping white at this alpha adds exactly what
+        // the per-point gradient used to
+        const c=Math.round(24+185*inten);
+        a.globalAlpha=c/255;
+        a.drawImage(sp, x-rad, y-rad, rad*2, rad*2);
+      }
+      a.globalAlpha=1;
+      const B=document.createElement('canvas'); B.width=fw; B.height=fh; const b=B.getContext('2d');
+      b.filter='blur('+Math.max(1.2, P.bloom*k*scale*0.7)+'px)'; b.drawImage(A,0,0); b.filter='none';
+      const img=b.getImageData(0,0,fw,fh), px=img.data, L=heatLUT();
+      for(let i=0;i<px.length;i+=4){ const v=px[i]*3;
+        px[i]=L[v]; px[i+1]=L[v+1]; px[i+2]=L[v+2]; px[i+3]=255; }
+      b.putImageData(img,0,0);
+      const PAL=PALETTES[P.heatPal]||TURBO;
+      // the cold end of the ramp is the field at rest — ground and vignette follow it
+      const cold=ramp(PAL,0), coldCSS='rgb('+cold[0]+','+cold[1]+','+cold[2]+')';
+      g.setTransform(1,0,0,1,0,0);
+      g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+      g.fillStyle=coldCSS; g.fillRect(0,0,W,H); g.drawImage(B,0,0,W,H);
+      // additive glow would blow a light ground out to white — fade it as the ground brightens
+      const glow=0.32*(1-luma(cold));
+      if(glow>0.01){ g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=glow;
+        g.filter='blur('+(P.bloom*k*0.8)+'px)'; g.drawImage(B,0,0,W,H); g.restore(); g.filter='none'; g.globalAlpha=1; }
+      const vg=g.createRadialGradient(W/2,H/2,Math.min(W,H)*0.16, W/2,H/2,Math.max(W,H)*0.72);
+      vg.addColorStop(0,'rgba('+cold[0]+','+cold[1]+','+cold[2]+',0)');
+      vg.addColorStop(1,'rgba('+cold[0]+','+cold[1]+','+cold[2]+',0.62)');
+      g.fillStyle=vg; g.fillRect(0,0,W,H);
+      if(P.grain) addGrain(g,W,H,P.grain);
+    }
+    function addGrain(g,W,H,amt){
+      const gw=300, gh=Math.max(1,Math.round(gw*H/W));
+      const c=document.createElement('canvas'); c.width=gw; c.height=gh; const gx=c.getContext('2d');
+      const id=gx.createImageData(gw,gh), d=id.data;
+      for(let i=0;i<d.length;i+=4){ const v=Math.random()*255; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; }
+      gx.putImageData(id,0,0);
+      g.save(); g.globalCompositeOperation='overlay'; g.globalAlpha=amt/100*0.45;
+      g.imageSmoothingEnabled=true; g.drawImage(c,0,0,W,H); g.restore(); g.globalAlpha=1;
+    }
+
     // ---- sizing + loop ----
     let W=1080, H=1920, phase=0;
     function aspectWH(){ const p=(P.aspect||'1080/1920').split(/[/:x]/).map(Number), a=p[0]||9, b=p[1]||16, long=1920;
@@ -437,6 +535,7 @@
     bind('gain','gainR',v=>P.gain=v/100, v=>(v/100).toFixed(2));
     bind('heat','heatR',v=>P.heat=v);
     bind('grain','grainR',v=>P.grain=v);
+    bind('detail','detailR',v=>P.detail=v/100);
     $('heatPal').addEventListener('change',e=>{ P.heatPal=e.target.value; if(!P.play) drawNow(); });
     function syncEngine(){ document.querySelectorAll('#dock .group.eng').forEach(el=>{
         el.hidden = !el.classList.contains('eng-'+P.engine); }); }
