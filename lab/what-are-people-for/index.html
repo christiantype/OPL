@@ -77,7 +77,7 @@
       <label class="tog"><span>Spark the crossings</span><input type="checkbox" id="spkOn"></label>
       <div class="duo">
         <div class="knob"><label>How many <b id="spkAmtR">16</b></label><input id="spkAmt" type="range" min="1" max="70" value="16"></div>
-        <div class="knob"><label>Reach <b id="spkReachR">80</b></label><input id="spkReach" type="range" min="10" max="260" value="80"></div>
+        <div class="knob"><label>Reach <b id="spkReachR">55</b></label><input id="spkReach" type="range" min="5" max="160" value="55"></div>
       </div>
       <div class="duo">
         <div class="knob"><label>Branches <b id="spkBrR">3</b></label><input id="spkBr" type="range" min="0" max="5" value="3"></div>
@@ -88,7 +88,7 @@
         <div class="knob"><label>Glow <b id="spkGlowR">80</b></label><input id="spkGlow" type="range" min="0" max="100" value="80"></div>
       </div>
       <div class="crow"><label>Discharge</label><input type="color" class="sw" id="spkC" value="#7a5cff"></div>
-      <p class="rowhint">At the crossings, a discharge fires: a forked filament with a white-hot core and a coloured halo, gone in an instant and struck again somewhere else.</p>
+      <p class="rowhint">A discharge arcs from one crossing to another — a forked filament with a white-hot core and a coloured halo, gone in an instant and struck again elsewhere. It travels through the web of lines, never out over the character.</p>
     </div>
 
     <div class="group eng eng-thermal" hidden>
@@ -149,7 +149,7 @@
     const P={ aspect:'1080/1920', seed:1, char:'?', size:80, engine:'network',
       dens:100, disp:320, link:98, sw:0.6, lop:50,
       fill:'#ffffff', bg:'#000000', spd:1.0, play:true,
-      spkOn:false, spkAmt:16, spkReach:80, spkBr:3, spkLife:0.45, spkCore:1.1, spkGlow:0.80, spkC:'#7a5cff',
+      spkOn:false, spkAmt:16, spkReach:55, spkBr:3, spkLife:0.45, spkCore:1.1, spkGlow:0.80, spkC:'#7a5cff',
       // thermal field
       heatPal:'turbo', scat:120, drift:18, breath:0.55, bloom:14, gain:1.0, heat:0, grain:8 };
 
@@ -245,9 +245,9 @@
         let fire=Math.floor(want) + (Math.random()<(want%1)?1:0);
         if(fire>0 && bolts.length<70){
           const pts2=crossings(segs, link, 260);     // only hunt crossings when one fires
-          if(pts2.length>=2) while(fire-- > 0 && bolts.length<70){
+          if(pts2.length>=4) while(fire-- > 0 && bolts.length<70){
             const k=((Math.random()*(pts2.length/2))|0)*2;
-            strike(pts2[k], pts2[k+1], W, H);
+            strike(pts2, k, W, H);
           }
         }
         drawBolts(g, W, H, dphase);
@@ -259,30 +259,45 @@
     // and is gone, the way an arc does. Bolts are held in normalised coordinates so
     // the same strike redraws correctly when the frame is exported larger.
     let bolts=[], lastPhase=0, boltSeq=0;
-    function growBolt(x, y, ang, len, depth, rnd, out){
-      const steps=4+((rnd()*4)|0), line=[[x,y]];
-      let cx=x, cy=y, a=ang, step=len/steps;
-      for(let i=0;i<steps;i++){
-        a += (rnd()-0.5)*1.15;                       // the kink that makes it read as an arc
-        step *= 0.82+rnd()*0.3;
-        cx += Math.cos(a)*step; cy += Math.sin(a)*step;
-        line.push([cx,cy]);
-        // fork — the branching is what separates lightning from a squiggle
-        if(depth>0 && i>0 && rnd()<0.42)
-          growBolt(cx, cy, a+(rnd()<0.5?-1:1)*(0.5+rnd()*0.7), len*(0.42+rnd()*0.24), depth-1, rnd, out);
-      }
-      out.push(line);
+    // A bolt runs BETWEEN two crossings — midpoint displacement, halving each level,
+    // which is what gives an arc its kinks. Both ends are crossings, so the discharge
+    // stays inside the web of lines instead of spraying out over the character.
+    function jag(x1,y1,x2,y2,disp,depth,rnd,line){
+      if(depth<=0 || disp<0.6){ line.push([x2,y2]); return; }
+      const dx=x2-x1, dy=y2-y1, L=Math.hypot(dx,dy)||1, off=(rnd()-0.5)*disp;
+      const px=(x1+x2)/2 - dy/L*off, py=(y1+y2)/2 + dx/L*off;
+      jag(x1,y1,px,py,disp*0.55,depth-1,rnd,line);
+      jag(px,py,x2,y2,disp*0.55,depth-1,rnd,line);
     }
-    function strike(px, py, W, H){
+    function nearCross(cross,x,y,maxD,rnd){
+      const c=[];
+      for(let i=0;i<cross.length;i+=2){
+        const dx=cross[i]-x, dy=cross[i+1]-y, d2=dx*dx+dy*dy;
+        if(d2>16 && d2<maxD*maxD) c.push(i);
+      }
+      return c.length ? c[(rnd()*c.length)|0] : -1;
+    }
+    function strike(cross, k, W, H){
       const sd=boltSeq++;
-      const rnd=(()=>{ let k=sd*9301+49297; return ()=>{ k=(k*9301+49297)%233280; return k/233280; }; })();
-      const lines=[];
-      const reach=(P.spkReach/100)*Math.min(W,H)*0.42;
-      const arms=1+((rnd()*2)|0);
-      for(let i=0;i<arms;i++) growBolt(px, py, rnd()*TAU, reach*(0.7+rnd()*0.6), P.spkBr, rnd, lines);
-      // normalise, so an export at another size strikes in the same place
+      const rnd=(()=>{ let q=sd*9301+49297; return ()=>{ q=(q*9301+49297)%233280; return q/233280; }; })();
+      const x0=cross[k], y0=cross[k+1];
+      const maxD=(P.spkReach/100)*Math.min(W,H)*0.30;
+      const t=nearCross(cross,x0,y0,maxD,rnd); if(t<0) return;
+      const lines=[], main=[[x0,y0]];
+      const d0=Math.hypot(cross[t]-x0, cross[t+1]-y0);
+      jag(x0,y0,cross[t],cross[t+1], d0*0.36, 5, rnd, main);
+      lines.push(main);
+      // forks leave the path for ANOTHER crossing, so a branch also lands on the web
+      for(let i=0;i<P.spkBr;i++){
+        const q=main[1+((rnd()*Math.max(1,main.length-2))|0)]; if(!q) break;
+        const t2=nearCross(cross,q[0],q[1], maxD*0.7, rnd); if(t2<0) continue;
+        const l2=[[q[0],q[1]]];
+        const d2=Math.hypot(cross[t2]-q[0], cross[t2+1]-q[1]);
+        jag(q[0],q[1],cross[t2],cross[t2+1], d2*0.30, 4, rnd, l2);
+        lines.push(l2);
+      }
       bolts.push({ lines: lines.map(l=>l.map(pt=>[pt[0]/W, pt[1]/H])),
-                   born: 0, life: P.spkLife*(0.6+rnd()*0.8), x:px/W, y:py/H });
+                   born: 0, life: P.spkLife*(0.6+rnd()*0.8), x:x0/W, y:y0/H });
     }
     function drawBolts(g, W, H, dphase){
       const keep=[];
