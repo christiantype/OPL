@@ -27,6 +27,7 @@
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   #letterIn{ width:100%; font-size:15px; letter-spacing:.02em; }
+  [hidden]{ display:none !important; }
   .rowhint{ margin:0; font-size:12px; color:var(--mute); line-height:1.45; }
   /* glow-layer rows (built by JS) */
   #glowList{ display:flex; flex-direction:column; gap:10px; }
@@ -72,9 +73,24 @@
 
   <div class="group">
     <div class="group__t">Text</div>
-    <textarea class="opal-input" id="letterIn" rows="2" maxlength="120" spellcheck="false" autocomplete="off" placeholder="Type text — Enter for a new line" style="resize:vertical; line-height:1.3; min-height:2.4em;">C</textarea>
+    <div class="knob"><label>Source</label>
+      <div class="seg" id="srcSeg">
+        <button data-x="text" aria-pressed="true">Text</button>
+        <button data-x="svg" aria-pressed="false">SVG</button>
+      </div>
+    </div>
+    <div class="src src-svg" hidden>
+      <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn" id="svgBtn">Add SVG</button>
+        <button class="btn" id="svgClear">Remove</button>
+      </div>
+      <input id="svgInp" type="file" accept="image/svg+xml,.svg,image/png" hidden />
+      <p class="rowhint" id="svgStatus">No shape yet.</p>
+      <p class="rowhint">The shape is taken as a silhouette, whatever colour it is drawn in — so it feeds the dots, the glow and the fan exactly as a letter does.</p>
+    </div>
+    <textarea class="opal-input src src-text" id="letterIn" rows="2" maxlength="120" spellcheck="false" autocomplete="off" placeholder="Type text — Enter for a new line" style="resize:vertical; line-height:1.3; min-height:2.4em;">C</textarea>
     <div class="knob"><label>Text size <b id="tsizeR">126</b></label><input id="tsize" type="range" min="8" max="500" value="126"></div>
-    <div class="duo">
+    <div class="duo src src-text">
       <div class="knob"><label>Letter-spacing <b id="trackR">25</b></label><input id="track" type="range" min="-40" max="120" value="25"></div>
       <div class="knob"><label>Line-height <b id="leadR">116</b></label><input id="lead" type="range" min="70" max="240" value="116"></div>
     </div>
@@ -190,7 +206,7 @@
   const $=id=>document.getElementById(id);
   const TAU=Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const art=$('art'); let ctx=art.getContext('2d');
-  const P={ engine:'metaball', letter:'C', size:126, track:25, lead:116, posX:0.5, posY:0.5, cell:100, contrast:38, jitter:100, blur:50, wave:15, goo:50,
+  const P={ engine:'metaball', src:'text', letter:'C', size:126, track:25, lead:116, posX:0.5, posY:0.5, cell:100, contrast:38, jitter:100, blur:50, wave:15, goo:50,
     dotCol:'#f4f0ff', bg:'#b11a10', mv:0.5, spd:1.0, play:true, aspect:'1080/1080', seed:1,
     glows:[ {color:'#160a12', blur:34, opacity:0.95, on:true, disp:22}, {color:'#7a2bd6', blur:48, opacity:0.6, on:true, disp:55} ],
     letterFan:'CC', sizeFan:184, trackFan:-1, leadFan:199, bgFan:'#000000', fanMode:'turn', fanCount:80, fanSpread:100, fanGap:0, fanPersp:100, fanOp:0.19, fanFeather:0, fanBlend:'screen',
@@ -212,8 +228,37 @@
   // ---- word → white glyphs (coverage + the glow's fill shape) and per-CHARACTER boxes ----
   // Sized EXACTLY like OPEN LAB: fontPx = H·(0.03 + size·0.26), centred, with letter-spacing + line-height.
   // Boxes let us cap the number of dots PER CHARACTER.
+  // An uploaded shape is reduced to a white silhouette — whatever colours the file
+  // carries — so everything downstream (coverage, dots, glow, fan) reads it exactly
+  // as it reads a letterform.
+  let svgImg=null;
+  const silCv=document.createElement('canvas'), silx=silCv.getContext('2d');
+  function drawShape(){
+    const iw=svgImg.naturalWidth||1, ih=svgImg.naturalHeight||1;
+    const sz=(P.engine==='fan'? P.sizeFan : P.size);
+    const target=H*(0.06+(sz/100)*0.62);
+    const k=Math.min(target/ih, (W*0.92)/iw), dw=Math.max(1,Math.round(iw*k)), dh=Math.max(1,Math.round(ih*k));
+    silCv.width=dw; silCv.height=dh;
+    silx.clearRect(0,0,dw,dh);
+    silx.drawImage(svgImg,0,0,dw,dh);
+    silx.globalCompositeOperation='source-in';        // keep the alpha, throw the colour
+    silx.fillStyle='#fff'; silx.fillRect(0,0,dw,dh);
+    silx.globalCompositeOperation='source-over';
+    const x=Math.round(W/2-dw/2), y=Math.round(H/2-dh/2);
+    lctx.drawImage(silCv, x, y);
+    return [{x0:x, x1:x+dw, y0:y, y1:y+dh}];
+  }
   function buildLetters(){
     letterCv.width=W; letterCv.height=H; lctx.clearRect(0,0,W,H);
+    if(P.src==='svg' && svgImg && svgImg.naturalWidth){
+      CHARBOXES = drawShape();
+      LDATA = lctx.getImageData(0,0,W,H).data;
+      BASEY=Math.round(H/2);
+      for(let yy=H-1; yy>=0; yy--){ let any=false, base=yy*W;
+        for(let xx=0; xx<W; xx+=3){ if(LDATA[((base+xx)<<2)+3]>60){ any=true; break; } }
+        if(any){ BASEY=yy; break; } }
+      return;
+    }
     const lw=(P.engine==='fan'? P.letterFan : P.letter);
     const word=((lw!=null?lw:'C')+'')||' ';
     lctx.fillStyle='#fff'; lctx.textAlign='left'; lctx.textBaseline='middle';
@@ -458,6 +503,37 @@
   bind('fanPersp','fanPerspR',v=>P.fanPersp=v,v=>(v|0));
   bind('fanFeather','fanFeatherR',v=>P.fanFeather=v,v=>(v|0));
   bind('fanGap','fanGapR',v=>P.fanGap=v,v=>(v|0));
+  function syncSrc(){ document.querySelectorAll('#dock .src').forEach(el=>{
+      el.hidden = !el.classList.contains('src-'+P.src); }); }
+  $('srcSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    P.src=b.dataset.x; syncSrc(); buildLetters(); scheduleDraw(); });
+  // an SVG carrying only a viewBox reports no size to canvas — give it one from the box
+  function loadSVG(file){
+    const done=im=>{ svgImg=im; $('svgStatus').textContent=file.name;
+      P.src='svg'; [...$('srcSeg').querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.x==='svg')));
+      syncSrc(); buildLetters(); scheduleDraw(); };
+    if(/svg/i.test(file.type)||/\.svg$/i.test(file.name)){
+      const rd=new FileReader();
+      rd.onload=()=>{ let txt=String(rd.result||'');
+        if(!/<svg[^>]*\swidth=/i.test(txt)){
+          const vb=txt.match(/viewBox=["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)/i);
+          if(vb) txt=txt.replace(/<svg/i,'<svg width="'+vb[1]+'" height="'+vb[2]+'"');
+        }
+        const im=new Image(); im.onload=()=>done(im);
+        im.onerror=()=>$('svgStatus').textContent='could not read that SVG';
+        im.src=URL.createObjectURL(new Blob([txt],{type:'image/svg+xml'})); };
+      rd.readAsText(file);
+    } else { const im=new Image(); im.onload=()=>done(im);
+      im.onerror=()=>$('svgStatus').textContent='could not read that file';
+      im.src=URL.createObjectURL(file); }
+  }
+  $('svgBtn').addEventListener('click',()=>$('svgInp').click());
+  $('svgInp').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) loadSVG(f); e.target.value=''; });
+  $('svgClear').addEventListener('click',()=>{ svgImg=null; $('svgStatus').textContent='No shape yet.';
+    P.src='text'; [...$('srcSeg').querySelectorAll('button')].forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.x==='text')));
+    syncSrc(); buildLetters(); scheduleDraw(); });
+  syncSrc();
   bind('posX','posXR',v=>P.posX=v/100,v=>(v/100).toFixed(2));
   bind('posY','posYR',v=>P.posY=v/100,v=>(v/100).toFixed(2));
   bind('fanSpd','fanSpdR',v=>P.fanSpd=v/10,v=>(v/10).toFixed(1));
