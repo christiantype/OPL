@@ -385,7 +385,8 @@
       if (g.type === 'stack') {
         const s = g.item.stack;
         const spread = s.overlay ? ' postcard-stack--overlay'
-                     : s.spread  ? ' postcard-stack--spread' : '';
+                     : s.spread  ? ' postcard-stack--spread'
+                     : s.tall    ? ' postcard-stack--tall' : '';
         // Optional fold line: front card becomes a wrapper holding image + crease.
         const front = s.crease
           ? `<div class="postcard-stack__card postcard-stack__card--front">`

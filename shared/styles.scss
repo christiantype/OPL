@@ -705,6 +705,33 @@ nav { mix-blend-mode: difference; }
     .postcard-stack__card--front { top: 28%; left: 25%; }
   }
 
+  // Tall variant — a full viewport, the two faces of one sheet leaning on each
+  // other. Sized from the viewport height rather than the column width, so the
+  // pair always fills the screen and never spills off it.
+  &--tall {
+    max-width: none;
+    aspect-ratio: auto;
+    height: 100vh;
+    height: 100svh;
+    margin: 0 auto var(--space-16);
+
+    .postcard-stack__card {
+      width: auto;
+      height: 74vh;
+      border-radius: 3px;
+    }
+    .postcard-stack__card--back  { top: 15%; left: calc(50% - 44vh); transform: rotate(-7deg); }
+    .postcard-stack__card--front { top: 10%; left: calc(50% - 8vh);  transform: rotate(5deg); }
+
+    @media (max-width: 40em) {
+      height: auto;
+      aspect-ratio: 3 / 4;
+      .postcard-stack__card { height: auto; width: 68%; }
+      .postcard-stack__card--back  { top: 16%; left: 2%;  }
+      .postcard-stack__card--front { top: 8%;  left: 30%; }
+    }
+  }
+
   // Overlay variant — a portrait cover (back) with a landscape spread laid over
   // it, both sized to the SAME height (the landscape spread is ~2× the portrait
   // cover's width), filling most of the column width.
