@@ -59,9 +59,17 @@
        tile trading places with a poster not yet shown on a slow crossfade. ── */
     .values-wall{position:relative;margin:var(--space-8) 0 var(--space-16)}
     .values-wall__cell{position:relative;aspect-ratio:2/3;overflow:hidden;background:#111}
+    .values-wall__cap{display:flex;flex-direction:column;background:#fff;color:#000;padding:1em;gap:.75em}
+    .values-wall__lede{display:block;flex:0 0 auto;line-height:1.5}
+    .values-wall__roll{flex:1 1 auto;min-height:0;overflow:hidden;-webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent)}
+    .values-wall__names{display:flex;flex-direction:column;animation:values-roll 70s linear infinite}
+    .values-wall__names span{display:block;line-height:1.5;color:#000;white-space:nowrap}
+    @keyframes values-roll{to{transform:translateY(-50%)}}
+    @media(prefers-reduced-motion:reduce){.values-wall__names{animation:none}}
+    .values-wall--vh{height:100svh;grid-auto-rows:0}
+    .values-wall--vh .values-wall__cell{aspect-ratio:auto;min-height:0}
     .values-wall__cell img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transition:opacity .9s ease}
     .values-wall__cell img[data-under]{opacity:0}
-    @media(max-width:40em){.values-wall .col-3{grid-column:span 3}}
   </style>
 </head>
 <body>
@@ -179,22 +187,62 @@
     var wall = document.getElementById('valuesWall');
     if (!wall) return;
 
-    var COLS = 4, ROWS = 2, cells = [], shown = [], timer = 0;
+    var cells = [], shown = [], timer = 0, key = '';
+    var GAP = 8, MOBILE_GAP = 16;                        // the site's grid gaps: .5em / 1em
+
+    // Desktop: four across, two deep, tiles at a true 2:3 and the grid as tall
+    // as that makes it. Phone: the whole section is one viewport, so the count
+    // is solved from the screen — two or three across, however many rows land
+    // nearest 2:3 inside 100svh.
+    function plan () {
+      var mobile = window.matchMedia('(max-width: 40em)').matches;
+      if (!mobile) return { cols: 4, rows: 2, span: 3, vh: false };
+      var W = wall.clientWidth, H = document.documentElement.clientHeight, best = null;
+      [2, 3].forEach(function (cols) {
+        var cellW = (W - MOBILE_GAP * (cols - 1)) / cols;
+        var rows = Math.max(2, Math.round((H + MOBILE_GAP) / (cellW * 1.5 + MOBILE_GAP)));
+        var cellH = (H - MOBILE_GAP * (rows - 1)) / rows;
+        var err = Math.abs(cellW / cellH - 2 / 3);
+        if (!best || err < best.err) best = { cols: cols, rows: rows, span: 6 / cols, vh: true, err: err };
+      });
+      return best;
+    }
 
     function build () {
-      var n = COLS * ROWS;
+      var pl = plan(), k = pl.cols + 'x' + pl.rows + (pl.vh ? 'v' : '');
+      if (k === key) return; key = k;
+      var n = pl.cols * pl.rows;
       wall.innerHTML = ''; cells = []; shown = [];
+      wall.classList.toggle('values-wall--vh', pl.vh);
+      wall.style.gridTemplateRows = pl.vh ? 'repeat(' + pl.rows + ', 1fr)' : '';
       var order = POSTERS.map(function (_, i) { return i; });
       for (var i = order.length - 1; i > 0; i--) { var j = (Math.random() * (i + 1)) | 0; var t = order[i]; order[i] = order[j]; order[j] = t; }
-      for (var k = 0; k < n; k++) {
-        var cell = document.createElement('div'); cell.className = 'col-3 values-wall__cell';
+
+      // The last tile is the credits: "Featuring the work of" and every name in
+      // the show rolling up behind it, the way credits do. Set in the site's
+      // own type, white so it reads as a caption and not another poster.
+      var names = POSTERS.map(function (p) { return p[1].split(' by ')[1]; });
+      var cap = document.createElement('div');
+      cap.className = 'values-wall__cell values-wall__cap';
+      cap.style.gridColumn = 'span ' + (pl.vh ? (pl.cols === 3 ? 4 : 6) : pl.span);   // two tiles wide on a phone
+      cap.innerHTML = '<span class="values-wall__lede">Featuring the work of</span>'
+        + '<div class="values-wall__roll" aria-label="' + names.join(', ') + '"><div class="values-wall__names">'
+        + names.map(function (n) { return '<span>' + n + '</span>'; }).join('')
+        + names.map(function (n) { return '<span aria-hidden="true">' + n + '</span>'; }).join('')   // second pass makes the loop seamless
+        + '</div></div>';
+
+      var capSpan = pl.vh ? (pl.cols === 3 ? 2 : 2) : 1;      // tiles the caption occupies
+      for (var c = 0; c < n - capSpan; c++) {
+        var cell = document.createElement('div'); cell.className = 'values-wall__cell';
+        cell.style.gridColumn = 'span ' + pl.span;
         var a = document.createElement('img'), b = document.createElement('img');
-        a.src = POSTERS[order[k]][0]; a.alt = POSTERS[order[k]][1]; a.loading = 'lazy'; a.decoding = 'async';
+        a.src = POSTERS[order[c]][0]; a.alt = POSTERS[order[c]][1]; a.loading = 'lazy'; a.decoding = 'async';
         b.setAttribute('data-under', ''); b.alt = ''; b.decoding = 'async';
         cell.appendChild(a); cell.appendChild(b); wall.appendChild(cell);
-        cells.push({ el: cell, top: a, under: b, idx: order[k] });
-        shown.push(order[k]);
+        cells.push({ el: cell, top: a, under: b, idx: order[c] });
+        shown.push(order[c]);
       }
+      wall.appendChild(cap);
     }
 
     function swap () {
@@ -217,6 +265,7 @@
 
     var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     build();
+    var rs = 0; window.addEventListener('resize', function () { clearTimeout(rs); rs = setTimeout(build, 150); });
     if (!still) {
       var io = new IntersectionObserver(function (es) {
         es.forEach(function (e) {
