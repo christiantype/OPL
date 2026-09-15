@@ -307,7 +307,9 @@
       } else if (mediaType === 'video') {
         media = `<video class="${mediaClass}" autoplay muted loop playsinline preload="auto"${styleAttr}><source src="${item.src}" type="video/mp4"></video>`;
       } else {
-        media = `<img class="${mediaClass}" src="${item.src}" alt="${item.alt || ''}"${styleAttr}>`;
+        // Opt-in lazy loading for long galleries (a page of forty posters).
+        const lazy = item.lazy ? ' loading="lazy" decoding="async"' : '';
+        media = `<img class="${mediaClass}" src="${item.src}" alt="${item.alt || ''}"${styleAttr}${lazy}>`;
       }
 
       // Annotations: numbered hotspots overlaid on the image. Desktop floats
